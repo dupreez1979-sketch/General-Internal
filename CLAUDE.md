@@ -30,6 +30,20 @@ The overview visual is the common thread: it should visibly accumulate understan
 
 Background, People model, Business model, Artistic model, Financial model, NCTI model, New strategy.
 
+## Design system: Monkey Baa Brand Overview
+
+Source: `Monkey_Baa_brand_overview (1).pdf` in Kevin's Google Drive (2022). Always use it. The colours are defined as `--mb-*` CSS variables in `board-storyboard/index.html`.
+
+- **Neutrals:** Neutral 1 #F0DBD3, Neutral 2 #EFCEBE, Neutral 3 #CE9788, Grey 1 #CBD1D5, Grey 2 #949695
+- **Darks:** Dark Teal #1B5A68, Dark Red #99351E, Dark Green #328276, Gold #B36E24
+- **Brights:** Magenta #FF4C80, Yellow #ECEB00, Pink #FF92B1, Orange #FF7552, Green #6FC483
+- **Contrast:** black and white
+- The palette flexes; no single corporate colour. Each chapter opener takes its own brand colour.
+- **Text:** black text wherever possible. White only where contrast needs it.
+- **Type:** Gellix (Bold, SemiBold, Medium) with Sebenta Regular. Gellix at large scale with tight kerning and tight leading. The file loads Outfit as a web stand-in until Gellix font files are supplied.
+- **Logo:** always black, never reversed out.
+- **Shapes:** for an adult audience like the Board, use the brand shapes rather than the characters.
+
 ## Writing style
 
 - Never use em-dashes.

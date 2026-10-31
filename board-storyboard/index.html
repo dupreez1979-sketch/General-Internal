@@ -3,508 +3,474 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monkey Baa: Next Steps | Board Storyboard, November 2026</title>
+<title>Monkey Baa: Next Steps | Board, November 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&display=swap">
 <style>
+  /* Monkey Baa Brand Overview palette. Brand type is Gellix; Outfit is the web stand-in until font files are supplied. */
   :root {
-    --ink: #1d1b2f;
-    --ink-soft: #55526b;
-    --paper: #fbf8f3;
-    --card: #ffffff;
-    --line: #e7e1d6;
-    --brand: #e8553f;      /* swap for Monkey Baa brand colours */
-    --brand-2: #2f6fde;
-    --brand-3: #f4b73f;
-    --brand-4: #2ba58a;
-    --nav-h: 64px;
-    --radius: 18px;
-    --ease: cubic-bezier(.2,.7,.2,1);
+    --mb-neutral-1: #F0DBD3; --mb-neutral-2: #EFCEBE; --mb-neutral-3: #CE9788;
+    --mb-grey-1: #CBD1D5; --mb-grey-2: #949695;
+    --mb-dark-teal: #1B5A68; --mb-dark-red: #99351E; --mb-dark-green: #328276; --mb-gold: #B36E24;
+    --mb-magenta: #FF4C80; --mb-yellow: #ECEB00; --mb-pink: #FF92B1; --mb-orange: #FF7552; --mb-green: #6FC483;
+    --font: "Gellix", "Outfit", system-ui, sans-serif;
+    --ink: #000;
+    --soft: #4a4c4b;
+    --paper: #fff;
+    --line: var(--mb-grey-1);
+    --teal: var(--mb-dark-teal);
+    --teal-soft: var(--mb-green);
+    --sand: var(--mb-neutral-3);
+    --sand-soft: var(--mb-neutral-3);
+    --coral: var(--mb-orange);
+    --nav-h: 60px;
+    --ease: cubic-bezier(.65,0,.35,1);
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 8px); }
-  body {
-    margin: 0; background: var(--paper); color: var(--ink);
-    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  h1, h2, h3 { line-height: 1.12; margin: 0 0 .4em; letter-spacing: -.01em; }
-  p { margin: 0 0 1em; }
-  .ph { background: #fff4cf; border-radius: 4px; padding: 0 .25em; } /* placeholder highlight */
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 500 17px/1.5 var(--font);
+    -webkit-font-smoothing: antialiased; }
 
   /* ---------- Top navigation ---------- */
-  .topbar {
-    position: fixed; inset: 0 0 auto 0; height: var(--nav-h); z-index: 50;
-    display: flex; align-items: center; gap: 18px; padding: 0 20px;
-    background: rgba(251,248,243,.88); backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--line);
-  }
-  .brandmark { font-weight: 800; white-space: nowrap; font-size: 15px; }
-  .brandmark span { color: var(--brand); }
-  .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
-  .tabs { mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 24px), transparent); }
+  .topbar { position: fixed; inset: 0 0 auto 0; height: var(--nav-h); z-index: 50;
+    display: flex; align-items: center; gap: 16px; padding: 0 18px;
+    background: rgba(255,255,255,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .mark { font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; flex: 1; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tabs a {
-    flex: none; display: flex; align-items: center; gap: 8px;
-    padding: 8px 12px; border-radius: 999px; text-decoration: none;
-    color: var(--ink-soft); font-size: 14px; font-weight: 600;
-    transition: background .25s, color .25s;
-  }
-  .tabs a .n {
-    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-    font-size: 12px; background: var(--line); color: var(--ink-soft); transition: inherit;
-  }
-  .tabs a:hover { background: #f1ece3; color: var(--ink); }
-  .tabs a.seen .n { background: #d9d3c7; color: var(--ink); }
-  .tabs a.active { background: var(--ink); color: #fff; }
-  .tabs a.active .n { background: var(--brand); color: #fff; }
-  .counter { font-size: 13px; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .progress { position: absolute; left: 0; bottom: -1px; height: 3px; width: 100%;
-    background: linear-gradient(90deg, var(--brand), var(--brand-3));
-    transform-origin: 0 50%; transform: scaleX(0); }
+  .tabs a { position: relative; flex: none; padding: 8px 13px 10px; text-decoration: none;
+    color: var(--soft); font-size: 14px; font-weight: 600; border-radius: 10px; transition: color .25s, background .25s; }
+  .tabs a:hover { color: var(--ink); background: var(--mb-neutral-1); }
+  .tabs a.active { color: var(--ink); }
+  .tabs a i { position: absolute; left: 13px; right: 13px; bottom: 4px; height: 3px; border-radius: 2px; background: var(--line); opacity: 0; }
+  .tabs a i b { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--mb-orange); transition: width .3s; }
+  .tabs a.active i, .tabs a.seen i { opacity: 1; }
+  .tabs a.seen i b { width: 100%; }
 
-  /* side step buttons */
-  .stepper { position: fixed; right: 18px; bottom: 18px; z-index: 40; display: flex; flex-direction: column; gap: 8px; }
-  .stepper button {
-    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
-    background: var(--card); color: var(--ink); font-size: 18px; cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0,0,0,.06);
-  }
+  .stepper { position: fixed; right: 16px; bottom: 16px; z-index: 40; display: flex; flex-direction: column; gap: 8px; }
+  .stepper button { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 17px; cursor: pointer; }
   .stepper button:hover { background: var(--ink); color: #fff; }
 
-  /* ---------- Sections ---------- */
-  section.chapter {
-    min-height: 100vh; padding: calc(var(--nav-h) + 56px) 6vw 80px;
-    display: flex; flex-direction: column; justify-content: center;
-    border-bottom: 1px solid var(--line);
-  }
-  .wrap { max-width: 1120px; margin: 0 auto; width: 100%; }
-  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin-bottom: 14px; }
-  .chapter h2 { font-size: clamp(32px, 4.6vw, 56px); max-width: 18ch; }
-  .lede { font-size: clamp(18px, 1.6vw, 22px); color: var(--ink-soft); max-width: 60ch; }
+  /* ---------- Simple one-idea screens ---------- */
+  .screen { position: relative; overflow: hidden; background: var(--bg, var(--mb-neutral-1)); min-height: 100vh; display: grid; place-items: center; text-align: center; padding: var(--nav-h) 6vw 0; }
+  .screen h1 { font-size: clamp(56px, 10vw, 150px); line-height: .87; margin: 0; letter-spacing: -.03em; font-weight: 700; }
+  .screen h1 span { color: inherit; }
+  .screen .small { margin-top: 26px; color: var(--ink); font-size: 17px; font-weight: 600; }
+  .screen .num { display: block; font-size: 17px; font-weight: 700; color: var(--ink); margin-bottom: 14px; letter-spacing: .1em; }
+  .todo { display: inline-block; background: #fff; color: #000; font-size: 14px; padding: 3px 10px; border-radius: 6px; }
+  .shape { position: absolute; border-radius: 50%; pointer-events: none; animation: bob 12s ease-in-out infinite; }
+  .shape.s1 { width: 34vmin; height: 34vmin; right: -8vmin; top: 14vh; background: var(--s1, var(--mb-dark-teal)); border-radius: 50% 50% 8vmin 50%; }
+  .shape.s2 { width: 16vmin; height: 16vmin; left: 7vw; bottom: 9vh; background: var(--s2, var(--mb-yellow)); animation-delay: -5s; }
+  @keyframes bob { 50% { transform: translateY(-14px) rotate(4deg); } }
+  .rise { position: relative; opacity: 0; transform: translateY(24px); transition: opacity .9s, transform .9s var(--ease); }
+  .rise.in { opacity: 1; transform: none; }
 
-  /* reveal animation */
-  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
-  .reveal.in { opacity: 1; transform: none; }
-  .d1 { transition-delay: .1s } .d2 { transition-delay: .2s } .d3 { transition-delay: .3s }
-  .d4 { transition-delay: .4s } .d5 { transition-delay: .5s } .d6 { transition-delay: .6s }
+  /* ---------- Scrollytelling chapter ---------- */
+  .scrolly { position: relative; }
+  .stage { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .steps { margin-top: -100vh; position: relative; pointer-events: none; }
+  .step { height: 100vh; }
+  .step:first-child { height: 100vh; }
 
-  .grid { display: grid; gap: 20px; margin-top: 40px; }
-  .g3 { grid-template-columns: repeat(3, 1fr); }
-  .g4 { grid-template-columns: repeat(4, 1fr); }
-  .g2 { grid-template-columns: repeat(2, 1fr); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
-  .card h3 { font-size: 20px; }
-  .card p { color: var(--ink-soft); margin: 0; }
-  .icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 16px; font-size: 22px; }
+  #chart { position: absolute; left: 0; right: 0; top: var(--nav-h); bottom: 22vh; width: 100%; height: calc(78vh - var(--nav-h)); transition: opacity .6s; }
+  .caption { letter-spacing: -.02em; position: absolute; left: 6vw; right: 6vw; bottom: 9vh; text-align: center;
+    font-size: clamp(22px, 2.8vw, 38px); font-weight: 750; letter-spacing: -.01em; line-height: 1.2;
+    transition: opacity .35s, transform .35s; }
+  .caption.out { opacity: 0; transform: translateY(8px); }
 
-  /* Hero */
-  #hero { background: var(--ink); color: #fff; position: relative; overflow: hidden; }
-  #hero h1 { font-size: clamp(48px, 9vw, 120px); font-weight: 850; }
-  #hero h1 em { font-style: normal; color: var(--brand-3); }
-  #hero .lede { color: #c9c6da; }
-  .blob { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .9; animation: float 14s ease-in-out infinite; }
-  .blob.a { width: 340px; height: 340px; background: var(--brand); right: -80px; top: 12%; }
-  .blob.b { width: 200px; height: 200px; background: var(--brand-2); right: 22%; bottom: 8%; animation-delay: -4s; }
-  .blob.c { width: 120px; height: 120px; background: var(--brand-3); right: 8%; bottom: 30%; animation-delay: -8s; }
-  @keyframes float { 50% { transform: translate(-24px, 18px) scale(1.06); } }
-  .hero-meta { display: flex; gap: 28px; margin-top: 36px; flex-wrap: wrap; font-size: 15px; color: #c9c6da; position: relative; }
-  .hero-meta b { display: block; color: #fff; font-size: 17px; }
-  .scrollcue { margin-top: 60px; font-size: 14px; color: #c9c6da; display: flex; align-items: center; gap: 10px; position: relative; }
-  .scrollcue i { width: 22px; height: 34px; border: 2px solid #c9c6da; border-radius: 12px; position: relative; }
-  .scrollcue i::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 7px; margin-left: -2px; border-radius: 2px; background: #fff; animation: wheel 1.6s infinite; }
-  @keyframes wheel { to { transform: translateY(10px); opacity: 0; } }
+  /* nodes */
+  .node { transition: transform 1.1s var(--ease), opacity .7s; }
+  .node rect { fill: #fff; stroke: var(--line); stroke-width: 1.5; transition: fill .6s, stroke .6s; }
+  .node text { font: 600 14.5px var(--font); fill: var(--ink); text-anchor: middle; dominant-baseline: middle; transition: opacity .6s, fill .6s; }
+  .node .lab-new { opacity: 0; }
+  .node.show-new .lab-new { opacity: 1; }
+  .node.show-new .lab-cur { opacity: 0; }
+  .node.side rect { stroke-dasharray: 5 4; stroke: var(--mb-dark-teal); fill: #fff; }
+  .node.board rect { fill: var(--ink); stroke: var(--ink); }
+  .node.board text { fill: #fff; font-weight: 800; letter-spacing: .12em; }
+  .node.dept-artistic rect { fill: var(--mb-green); stroke: var(--mb-green); }
+  .node.dept-business rect { fill: var(--mb-neutral-3); stroke: var(--mb-neutral-3); }
+  .node.dept-none rect { fill: #fff; stroke: var(--line); }
+  .node.hl rect { fill: var(--mb-orange); stroke: var(--mb-orange); }
+  .node.hl text { fill: #000; }
+  .edges { transition: opacity .6s; }
+  .edges path { fill: none; stroke: var(--mb-grey-2); stroke-width: 2; }
+  .edges path.side { stroke-dasharray: 4 5; }
 
-  /* Stats */
-  .stat { font-size: clamp(40px, 5vw, 64px); font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums; }
-  .stat small { font-size: .45em; font-weight: 700; }
-  .bar { height: 8px; border-radius: 6px; background: #f1ece3; margin-top: 18px; overflow: hidden; }
-  .bar span { display: block; height: 100%; width: 0; border-radius: 6px; transition: width 1.4s var(--ease) .3s; }
-  .in .bar span { width: var(--w); }
+  /* duties dots */
+  #dots { position: absolute; left: 50%; top: calc(var(--nav-h) + (78vh - var(--nav-h)) / 2); width: 640px; height: 320px;
+    transform: translate(-50%, -50%); opacity: 0; transition: opacity .6s; pointer-events: none; }
+  #dots .d { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: var(--sand);
+    transition: left 1.1s var(--ease), top 1.1s var(--ease), background .8s, opacity .8s; }
+  #dots .lbl { position: absolute; top: 250px; font-size: 16px; font-weight: 600; color: var(--ink); text-align: center; opacity: 0; transition: opacity .6s .6s; }
+  #dots .lbl b { display: block; font-size: 40px; line-height: 1.1; }
+  #dots.split .lbl { opacity: 1; }
 
-  /* Pressures: arrows pushing in */
-  .pressure { display: grid; grid-template-columns: 1fr 260px 1fr; gap: 24px; align-items: center; margin-top: 48px; }
-  .pressure .col { display: grid; gap: 16px; }
-  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; font-weight: 600; display: flex; gap: 12px; align-items: center; }
-  .chip .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
-  .core { aspect-ratio: 1; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; text-align: center; padding: 30px; font-weight: 700; font-size: 18px; position: relative; }
-  .core::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 2px dashed var(--brand); animation: spin 30s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .col.left .chip { transform: translateX(-40px); }
-  .col.right .chip { transform: translateX(40px); }
-  .in .col .chip { transform: none; transition: transform 1s var(--ease); }
+  /* placeholder layer */
+  #ph { position: absolute; inset: var(--nav-h) 0 22vh; display: grid; place-items: center; opacity: 0; transition: opacity .6s; pointer-events: none; }
 
-  /* Vision pillars */
-  .vision-statement { font-size: clamp(26px, 3.2vw, 40px); font-weight: 750; max-width: 26ch; line-height: 1.2; }
-  .vision-statement mark { background: linear-gradient(transparent 60%, rgba(244,183,63,.55) 60%); color: inherit; }
-  .pillar { border-top: 6px solid; }
+  .view-dots #chart, .view-ph #chart { opacity: 0; }
+  .view-dots #dots, .view-ph #ph { opacity: 1; }
 
-  /* Operating model diagram */
-  .diagram { margin-top: 36px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
-  .diagram svg { width: 100%; height: auto; display: block; }
-  .diagram .link { stroke: #cfc7b8; stroke-width: 2.5; fill: none; stroke-dasharray: 600; stroke-dashoffset: 600; transition: stroke-dashoffset 1.6s var(--ease); }
-  .diagram.in .link { stroke-dashoffset: 0; }
-  .diagram .node { opacity: 0; transform: scale(.6); transform-box: fill-box; transform-origin: center; transition: opacity .6s, transform .6s var(--ease); }
-  .diagram.in .node { opacity: 1; transform: none; }
-  .diagram .flow { fill: var(--brand); }
-  .diagram text { font: 600 15px system-ui, sans-serif; fill: var(--ink); }
-  .diagram .sub { font-weight: 400; font-size: 12.5px; fill: var(--ink-soft); }
-  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 14px; color: var(--ink-soft); }
-  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 8px; vertical-align: -1px; background: var(--c); }
+  /* step rail (no text, just position) */
+  .rail { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 7px; }
+  .rail span { width: 6px; height: 6px; border-radius: 50%; background: var(--line); transition: background .3s, transform .3s; }
+  .rail span.on { background: var(--mb-orange); transform: scale(1.5); }
+  .rail span.done { background: var(--mb-dark-teal); }
 
-  /* Before / after */
-  .toggle { display: inline-flex; background: #efe9de; border-radius: 999px; padding: 4px; margin-top: 30px; }
-  .toggle button { border: 0; background: transparent; padding: 10px 22px; border-radius: 999px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer; }
-  .toggle button.on { background: var(--ink); color: #fff; }
-  .ba { margin-top: 26px; display: grid; gap: 14px; }
-  .ba-row { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
-  .ba-row .k { font-weight: 700; }
-  .ba-row .v { position: relative; min-height: 1.6em; }
-  .ba-row .v span { position: absolute; inset: 0; transition: opacity .45s, transform .45s var(--ease); }
-  .ba-row .v .after { opacity: 0; transform: translateY(10px); color: var(--brand-4); font-weight: 600; }
-  .show-after .ba-row .v .before { opacity: 0; transform: translateY(-10px); }
-  .show-after .ba-row .v .after { opacity: 1; transform: none; }
-
-  /* Roadmap */
-  .timeline { position: relative; margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
-  .timeline::before { content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 4px; background: var(--line); border-radius: 2px; }
-  .timeline::after { content: ""; position: absolute; left: 0; top: 18px; height: 4px; width: 0; background: linear-gradient(90deg, var(--brand), var(--brand-3)); border-radius: 2px; transition: width 2s var(--ease) .2s; }
-  .timeline.in::after { width: 100%; }
-  .phase { position: relative; padding-top: 52px; }
-  .phase::before { content: ""; position: absolute; top: 8px; left: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--card); border: 4px solid var(--c); }
-  .phase .when { font-size: 13px; font-weight: 700; color: var(--c); text-transform: uppercase; letter-spacing: .08em; }
-  .phase h3 { font-size: 20px; margin-top: 6px; }
-  .phase ul { margin: 10px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 15px; }
-  .now-flag { position: absolute; top: -30px; left: 0; font-size: 12px; font-weight: 700; background: var(--ink); color: #fff; padding: 3px 9px; border-radius: 6px; }
-
-  /* Risk matrix */
-  .matrix-wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px; margin-top: 40px; align-items: center; }
-  .matrix { position: relative; aspect-ratio: 1; background:
-      linear-gradient(to right, transparent 49.8%, var(--line) 50%, transparent 50.2%),
-      linear-gradient(to bottom, transparent 49.8%, var(--line) 50%, transparent 50.2%),
-      linear-gradient(45deg, #eef7f3 0%, #fff8e6 50%, #fdeae6 100%);
-    border-radius: var(--radius); border: 1px solid var(--line); }
-  .matrix .axis { position: absolute; font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
-  .matrix .ax-x { bottom: -26px; left: 0; right: 0; text-align: center; }
-  .matrix .ax-y { left: -30px; top: 50%; transform: rotate(-90deg) translateX(50%); transform-origin: left top; white-space: nowrap; }
-  .risk { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 14px; box-shadow: 0 6px 16px rgba(0,0,0,.15); transform: scale(0); transition: transform .6s var(--ease); cursor: default; }
-  .in .risk { transform: scale(1); }
-  .risk-list { display: grid; gap: 12px; }
-  .risk-list .card { padding: 16px 20px; display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; }
-  .risk-list .num { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
-  .risk-list h3 { font-size: 16px; margin-bottom: 2px; }
-  .risk-list p { font-size: 14.5px; }
-
-  /* Board asks */
-  #asks { background: var(--ink); color: #fff; }
-  #asks .lede { color: #c9c6da; }
-  .ask { background: #2a2843; border: 1px solid #3a3757; border-radius: var(--radius); padding: 28px; position: relative; }
-  .ask .tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; margin-bottom: 14px; }
-  .ask h3 { font-size: 22px; }
-  .ask p { color: #c9c6da; margin: 0; }
-  .ask .big { position: absolute; right: 22px; top: 18px; font-size: 54px; font-weight: 850; color: #3a3757; }
-  .closing { margin-top: 56px; text-align: center; color: #c9c6da; font-size: 15px; }
-
-  footer { padding: 30px 6vw; font-size: 13px; color: var(--ink-soft); text-align: center; }
-
-  @media (max-width: 900px) {
-    .g3, .g4, .g2, .timeline, .matrix-wrap { grid-template-columns: 1fr; }
-    .pressure { grid-template-columns: 1fr; }
-    .core { max-width: 240px; margin: 0 auto; }
-    .timeline::before, .timeline::after { display: none; }
-    .ba-row { grid-template-columns: 1fr; gap: 6px; }
-    .ba-row .v { min-height: 3.2em; }
-    .counter, .brandmark { display: none; }
-  }
   @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    .reveal { opacity: 1; transform: none; }
+    *, *::before, *::after { transition: none !important; animation: none !important; }
     html { scroll-behavior: auto; }
+    .rise { opacity: 1; transform: none; }
   }
-  @media print {
-    .topbar, .stepper { display: none; }
-    section.chapter { min-height: auto; page-break-after: always; padding-top: 40px; }
-    .reveal { opacity: 1; transform: none; }
-  }
+  @media (max-width: 700px) { .mark { display: none; } .rail { display: none; } }
 </style>
 </head>
 <body>
 
 <header class="topbar">
-  <div class="brandmark">Monkey Baa <span>Next Steps</span></div>
-  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
-  <div class="counter" id="counter">1 / 9</div>
-  <div class="progress" id="progress"></div>
+  <div class="mark">Monkey Baa: Next Steps</div>
+  <nav class="tabs" id="tabs" aria-label="Chapters"></nav>
 </header>
-
-<div class="stepper" aria-label="Step through sections">
-  <button id="prev" title="Previous section (↑ or K)" aria-label="Previous section">↑</button>
-  <button id="next" title="Next section (↓ or J)" aria-label="Next section">↓</button>
+<div class="stepper">
+  <button id="prev" aria-label="Previous screen" title="Previous (↑)">↑</button>
+  <button id="next" aria-label="Next screen" title="Next (↓)">↓</button>
 </div>
 
 <main>
 
-<!-- 0. HERO -->
-<section class="chapter" id="hero" data-label="Welcome">
-  <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
-  <div class="wrap" style="position:relative">
-    <div class="eyebrow reveal">Board Storyboard &middot; November 2026</div>
-    <h1 class="reveal d1">Monkey Baa:<br><em>Next Steps</em></h1>
-    <p class="lede reveal d2">A visual walk through the change ahead: why we are moving, what the new operating design looks like, how we get there, and what we need from the Board.</p>
-    <div class="hero-meta reveal d3">
-      <div><b>9 chapters</b>scroll or jump</div>
-      <div><b>~10 minutes</b>to read end to end</div>
-      <div><b><span class="ph" style="color:var(--ink)">[Presenter]</span></b>prepared by</div>
-    </div>
-    <div class="scrollcue reveal d4"><i></i> Scroll to begin, or use the tabs above</div>
-  </div>
+<section class="chapter" id="welcome" data-label="Welcome">
+  <div class="screen" style="--bg:var(--mb-orange)"><i class="shape s1" style="--s1:var(--mb-dark-teal)"></i><i class="shape s2" style="--s2:var(--mb-yellow)"></i><div class="rise">
+    <h1>Monkey Baa:<br><span>Next Steps</span></h1>
+    <div class="small">Board &middot; November 2026</div>
+  </div></div>
 </section>
 
-<!-- 1. WHERE WE ARE -->
-<section class="chapter" id="today" data-label="Where we are">
-  <div class="wrap">
-    <div class="eyebrow reveal">01 &middot; Where we are</div>
-    <h2 class="reveal d1">A strong base to build from</h2>
-    <p class="lede reveal d2"><span class="ph">[One sentence on the organisation today: reach, reputation and momentum.]</span></p>
-    <div class="grid g4">
-      <div class="card reveal d2"><div class="stat" data-count="0">0</div><p>Audience members this year <span class="ph">[figure]</span></p><div class="bar"><span style="--w:78%;background:var(--brand)"></span></div></div>
-      <div class="card reveal d3"><div class="stat" data-count="0">0</div><p>Performances delivered <span class="ph">[figure]</span></p><div class="bar"><span style="--w:64%;background:var(--brand-2)"></span></div></div>
-      <div class="card reveal d4"><div class="stat" data-count="0" data-suffix="%">0</div><p>Regional and remote reach <span class="ph">[figure]</span></p><div class="bar"><span style="--w:45%;background:var(--brand-3)"></span></div></div>
-      <div class="card reveal d5"><div class="stat" data-count="0">0</div><p>Schools and communities engaged <span class="ph">[figure]</span></p><div class="bar"><span style="--w:70%;background:var(--brand-4)"></span></div></div>
-    </div>
-  </div>
+<section class="chapter" id="background" data-label="Background">
+  <div class="screen" style="--bg:var(--mb-neutral-2)"><div class="rise"><span class="num">01</span><h1>The last<br>12 months</h1><div class="small"><span class="todo">In development</span></div></div></div>
 </section>
 
-<!-- 2. WHY CHANGE -->
-<section class="chapter" id="why" data-label="Why change">
-  <div class="wrap">
-    <div class="eyebrow reveal">02 &middot; Why change, why now</div>
-    <h2 class="reveal d1">The pressures pushing in on our current model</h2>
-    <p class="lede reveal d2">What got us here will not get us to the next stage. These forces are converging at once.</p>
-    <div class="pressure reveal d2">
-      <div class="col left">
-        <div class="chip"><span class="dot" style="background:var(--brand)"></span><span class="ph">[Pressure 1: e.g. funding landscape]</span></div>
-        <div class="chip"><span class="dot" style="background:var(--brand-2)"></span><span class="ph">[Pressure 2: e.g. cost of touring]</span></div>
-        <div class="chip"><span class="dot" style="background:var(--brand-3)"></span><span class="ph">[Pressure 3: e.g. capacity of the team]</span></div>
-      </div>
-      <div class="core">Our current<br>operating model</div>
-      <div class="col right">
-        <div class="chip"><span class="dot" style="background:var(--brand-4)"></span><span class="ph">[Opportunity 1: e.g. national demand]</span></div>
-        <div class="chip"><span class="dot" style="background:var(--brand)"></span><span class="ph">[Opportunity 2: e.g. new partnerships]</span></div>
-        <div class="chip"><span class="dot" style="background:var(--brand-2)"></span><span class="ph">[Opportunity 3: e.g. digital reach]</span></div>
-      </div>
-    </div>
-  </div>
-</section>
+<!-- ================= PEOPLE MODEL ================= -->
+<section class="chapter" id="people" data-label="People model">
+  <div class="screen" style="--bg:var(--mb-green)"><i class="shape s1" style="--s1:var(--mb-dark-green)"></i><i class="shape s2" style="--s2:var(--mb-pink)"></i><div class="rise"><span class="num">02</span><h1>People<br>model</h1></div></div>
 
-<!-- 3. VISION -->
-<section class="chapter" id="vision" data-label="The vision">
-  <div class="wrap">
-    <div class="eyebrow reveal">03 &middot; Where we are heading</div>
-    <p class="vision-statement reveal d1"><span class="ph">[Vision statement, e.g.]</span> Every young person in Australia has the chance to <mark>experience theatre made for them</mark>.</p>
-    <div class="grid g3">
-      <div class="card pillar reveal d2" style="border-color:var(--brand)"><div class="icon" style="background:#fde6e1">🎭</div><h3>Pillar one</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
-      <div class="card pillar reveal d3" style="border-color:var(--brand-2)"><div class="icon" style="background:#e1ebfc">🗺️</div><h3>Pillar two</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
-      <div class="card pillar reveal d4" style="border-color:var(--brand-4)"><div class="icon" style="background:#dff3ed">🌱</div><h3>Pillar three</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
-    </div>
-  </div>
-</section>
-
-<!-- 4. OPERATING DESIGN -->
-<section class="chapter" id="design" data-label="Operating design">
-  <div class="wrap">
-    <div class="eyebrow reveal">04 &middot; The operating design</div>
-    <h2 class="reveal d1">How the new model fits together</h2>
-    <p class="lede reveal d2">One core, clear functions around it, and work that flows between them. <span class="ph">[Replace with the actual structure.]</span></p>
-    <div class="diagram reveal d2">
-      <svg viewBox="0 0 1000 460" role="img" aria-label="Operating model diagram: a central core connected to five functions">
-        <path class="link" d="M500 230 L170 90" />
-        <path class="link" d="M500 230 L830 90" />
-        <path class="link" d="M500 230 L130 340" />
-        <path class="link" d="M500 230 L870 340" />
-        <path class="link" d="M500 230 L500 410" />
-        <path class="link" d="M170 90 Q500 10 830 90" style="stroke-dasharray:6 8;stroke-dashoffset:0;opacity:.6" />
-
-        <circle class="flow" r="6"><animateMotion dur="3s" repeatCount="indefinite" path="M500 230 L170 90"/></circle>
-        <circle class="flow" r="6" style="fill:var(--brand-2)"><animateMotion dur="3.4s" repeatCount="indefinite" path="M830 90 L500 230"/></circle>
-        <circle class="flow" r="6" style="fill:var(--brand-4)"><animateMotion dur="2.8s" repeatCount="indefinite" path="M500 230 L870 340"/></circle>
-        <circle class="flow" r="6" style="fill:var(--brand-3)"><animateMotion dur="3.2s" repeatCount="indefinite" path="M130 340 L500 230"/></circle>
-
-        <g class="node" style="transition-delay:.2s"><circle cx="500" cy="230" r="86" fill="#1d1b2f"/><text x="500" y="224" text-anchor="middle" style="fill:#fff;font-size:18px">Core</text><text x="500" y="246" text-anchor="middle" class="sub" style="fill:#c9c6da">[Leadership / strategy]</text></g>
-        <g class="node" style="transition-delay:.5s"><rect x="60" y="50" width="220" height="80" rx="16" fill="#fde6e1"/><text x="170" y="86" text-anchor="middle">Function A</text><text x="170" y="108" text-anchor="middle" class="sub">[e.g. Artistic &amp; creative]</text></g>
-        <g class="node" style="transition-delay:.65s"><rect x="720" y="50" width="220" height="80" rx="16" fill="#e1ebfc"/><text x="830" y="86" text-anchor="middle">Function B</text><text x="830" y="108" text-anchor="middle" class="sub">[e.g. Touring &amp; production]</text></g>
-        <g class="node" style="transition-delay:.8s"><rect x="20" y="300" width="220" height="80" rx="16" fill="#fff1d3"/><text x="130" y="336" text-anchor="middle">Function C</text><text x="130" y="358" text-anchor="middle" class="sub">[e.g. Learning &amp; access]</text></g>
-        <g class="node" style="transition-delay:.95s"><rect x="760" y="300" width="220" height="80" rx="16" fill="#dff3ed"/><text x="870" y="336" text-anchor="middle">Function D</text><text x="870" y="358" text-anchor="middle" class="sub">[e.g. Partnerships &amp; income]</text></g>
-        <g class="node" style="transition-delay:1.1s"><rect x="390" y="380" width="220" height="70" rx="16" fill="#efe9de"/><text x="500" y="411" text-anchor="middle">Enabling services</text><text x="500" y="432" text-anchor="middle" class="sub">[Finance, people, systems]</text></g>
+  <div class="scrolly" id="peopleScrolly">
+    <div class="stage" id="stage">
+      <svg id="chart" viewBox="200 10 1180 620" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Organisation chart">
+        <g id="edgeLayer"></g>
+        <g id="nodeLayer"></g>
       </svg>
-      <div class="legend">
-        <span style="--c:var(--ink)">Leadership and decisions</span>
-        <span style="--c:var(--brand)">Flow of work</span>
-        <span style="--c:#cfc7b8">Reporting lines</span>
-      </div>
+      <div id="dots"></div>
+      <div id="ph"><div style="text-align:center"><h1 id="phTitle" style="font-size:clamp(40px,6vw,84px);margin:0;line-height:1.05"></h1><div class="small" style="margin-top:18px"><span class="todo">Content to come</span></div></div></div>
+      <div class="caption" id="caption"></div>
+      <div class="rail" id="rail"></div>
     </div>
+    <div class="steps" id="steps"></div>
   </div>
 </section>
 
-<!-- 5. WHAT CHANGES -->
-<section class="chapter" id="changes" data-label="What changes">
-  <div class="wrap" id="baWrap">
-    <div class="eyebrow reveal">05 &middot; What actually changes</div>
-    <h2 class="reveal d1">Today versus tomorrow</h2>
-    <p class="lede reveal d2">Flip the switch to see how each part of the organisation shifts.</p>
-    <div class="toggle reveal d2" role="group" aria-label="Show before or after">
-      <button class="on" data-mode="before">Today</button>
-      <button data-mode="after">Next steps</button>
-    </div>
-    <div class="ba">
-      <div class="ba-row reveal d2"><div class="k">Structure</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
-      <div class="ba-row reveal d3"><div class="k">Decision making</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
-      <div class="ba-row reveal d4"><div class="k">Programs</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
-      <div class="ba-row reveal d5"><div class="k">People and roles</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
-      <div class="ba-row reveal d6"><div class="k">Income model</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
-    </div>
-  </div>
+<section class="chapter" id="business" data-label="Business model">
+  <div class="screen" style="--bg:var(--mb-pink)"><div class="rise"><span class="num">03</span><h1>Business<br>model</h1><div class="small"><span class="todo">In development</span></div></div></div>
 </section>
-
-<!-- 6. ROADMAP -->
-<section class="chapter" id="roadmap" data-label="Roadmap">
-  <div class="wrap">
-    <div class="eyebrow reveal">06 &middot; The roadmap</div>
-    <h2 class="reveal d1">How we get there, in four moves</h2>
-    <p class="lede reveal d2">Sequenced so that each phase de-risks the next.</p>
-    <div class="timeline reveal d2">
-      <div class="phase" style="--c:var(--brand)"><span class="now-flag">We are here</span><div class="when">Phase 1 &middot; <span class="ph">[dates]</span></div><h3>Prepare</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
-      <div class="phase" style="--c:var(--brand-3)"><div class="when">Phase 2 &middot; <span class="ph">[dates]</span></div><h3>Design</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
-      <div class="phase" style="--c:var(--brand-2)"><div class="when">Phase 3 &middot; <span class="ph">[dates]</span></div><h3>Transition</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
-      <div class="phase" style="--c:var(--brand-4)"><div class="when">Phase 4 &middot; <span class="ph">[dates]</span></div><h3>Embed</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
-    </div>
-  </div>
+<section class="chapter" id="artistic" data-label="Artistic model">
+  <div class="screen" style="--bg:var(--mb-yellow)"><div class="rise"><span class="num">04</span><h1>Artistic<br>model</h1><div class="small"><span class="todo">In development</span></div></div></div>
 </section>
-
-<!-- 7. RISKS -->
-<section class="chapter" id="risks" data-label="Risks">
-  <div class="wrap">
-    <div class="eyebrow reveal">07 &middot; Risks and safeguards</div>
-    <h2 class="reveal d1">What could go wrong, and how we are managing it</h2>
-    <div class="matrix-wrap">
-      <div class="matrix reveal d2" style="margin:0 0 30px 30px">
-        <div class="axis ax-x">Likelihood &rarr;</div>
-        <div class="axis ax-y">Impact &rarr;</div>
-        <div class="risk" style="left:72%;top:24%;background:var(--brand);transition-delay:.4s">1</div>
-        <div class="risk" style="left:35%;top:30%;background:var(--brand-3);transition-delay:.6s">2</div>
-        <div class="risk" style="left:62%;top:62%;background:var(--brand-2);transition-delay:.8s">3</div>
-        <div class="risk" style="left:24%;top:74%;background:var(--brand-4);transition-delay:1s">4</div>
-      </div>
-      <div class="risk-list">
-        <div class="card reveal d2"><div class="num" style="background:var(--brand)">1</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
-        <div class="card reveal d3"><div class="num" style="background:var(--brand-3)">2</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
-        <div class="card reveal d4"><div class="num" style="background:var(--brand-2)">3</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
-        <div class="card reveal d5"><div class="num" style="background:var(--brand-4)">4</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
-      </div>
-    </div>
-  </div>
+<section class="chapter" id="financial" data-label="Financial model">
+  <div class="screen" style="--bg:var(--mb-grey-1)"><div class="rise"><span class="num">05</span><h1>Financial<br>model</h1><div class="small"><span class="todo">In development</span></div></div></div>
 </section>
-
-<!-- 8. BOARD ASKS -->
-<section class="chapter" id="asks" data-label="Board asks">
-  <div class="wrap">
-    <div class="eyebrow reveal">08 &middot; What we need from the Board</div>
-    <h2 class="reveal d1">Three decisions for November</h2>
-    <p class="lede reveal d2">Everything above leads here.</p>
-    <div class="grid g3">
-      <div class="ask reveal d2"><span class="big">1</span><span class="tag" style="background:var(--brand)">Approve</span><h3><span class="ph" style="color:var(--ink)">[Decision]</span></h3><p><span class="ph" style="color:var(--ink)">[What approval enables]</span></p></div>
-      <div class="ask reveal d3"><span class="big">2</span><span class="tag" style="background:var(--brand-2)">Endorse</span><h3><span class="ph" style="color:var(--ink)">[Decision]</span></h3><p><span class="ph" style="color:var(--ink)">[What endorsement enables]</span></p></div>
-      <div class="ask reveal d4"><span class="big">3</span><span class="tag" style="background:var(--brand-4);">Note</span><h3><span class="ph" style="color:var(--ink)">[Item to note]</span></h3><p><span class="ph" style="color:var(--ink)">[Why it matters]</span></p></div>
-    </div>
-    <p class="closing reveal d5">Questions ahead of the meeting: <span class="ph" style="color:var(--ink)">[contact]</span></p>
-  </div>
+<section class="chapter" id="ncti" data-label="NCTI model">
+  <div class="screen" style="--bg:var(--mb-neutral-3)"><div class="rise"><span class="num">06</span><h1>NCTI<br>model</h1><div class="small"><span class="todo">In development</span></div></div></div>
+</section>
+<section class="chapter" id="strategy" data-label="New strategy">
+  <div class="screen" style="--bg:var(--mb-magenta)"><div class="rise"><span class="num">07</span><h1>New<br>strategy</h1><div class="small"><span class="todo">In development</span></div></div></div>
 </section>
 
 </main>
-<footer>Monkey Baa Theatre Company &middot; Board Storyboard &middot; November 2026 &middot; Confidential: prepared for Board members</footer>
 
 <script>
-(() => {
-  const sections = [...document.querySelectorAll('section.chapter')];
-  const tabs = document.getElementById('tabs');
-  const counter = document.getElementById('counter');
-  const progress = document.getElementById('progress');
+/* =========================================================
+   PEOPLE MODEL DATA
+   Source: "Scenario comparison", Current (August 2026) vs AD & CEO Model, 31/10/2026
+   ========================================================= */
+const W = 184, H = 60;
+const NODES = {
+  B:   { cur: 'BOARD', board: true },
+  AD:  { cur: 'Artistic Director', nu: 'Artistic Director|& CEO', dept: ['artistic', 'artistic'] },
+  ED:  { cur: 'Executive Director', dept: ['none', null] },
+  SP:  { cur: 'Senior Producer', nu: 'Executive Producer', dept: ['artistic', 'artistic'] },
+  AP:  { cur: 'Associate Producer', nu: 'Producer', dept: ['artistic', 'artistic'] },
+  HOP: { cur: 'Head of Production', nu: 'General Manager', dept: ['none', 'artistic'] },
+  MM:  { cur: 'Marketing Manager', dept: ['none', 'artistic'] },
+  FM:  { cur: 'Finance Manager', dept: ['business', 'artistic'] },
+  SM:  { cur: 'Stage Managers', dept: ['none', 'artistic'] },
+  PM:  { cur: 'Production|Managers', dept: ['none', 'artistic'] },
+  ASM: { cur: 'ASMs / Technical|Coordinators', dept: ['none', 'artistic'] },
+  T:   { cur: 'Treasurer', side: true, w: 160 },
+  HA:  { cur: 'HR Advisor', side: true, w: 160 },
+  S:   { cur: 'Secretary', side: true, w: 160 },
+  FSC: { cur: 'Fundraising|Support Consultant', side: true, w: 190 },
+};
+// positions [x, y] per layout; null = not present
+const LAYOUT = {
+  current: { B:[630,60], AD:[330,190], ED:[930,190], SP:[330,320], AP:[330,450], HOP:[730,320], MM:[930,320], FM:[1130,320], SM:[630,450], PM:[830,450], ASM:[630,580],
+             T:[870,60], HA:[1050,60], S:[1230,60], FSC:[880,190] },
+  merge:   { B:[630,60], AD:[630,190], ED:[630,190], SP:[330,320], AP:[330,450], HOP:[730,320], MM:[930,320], FM:[1130,320], SM:[630,450], PM:[830,450], ASM:[630,580],
+             T:[870,60], HA:[1050,60], S:[1230,60], FSC:[880,190] },
+  nu:      { B:[630,60], AD:[630,190], ED:[630,190], SP:[330,320], AP:[330,450], HOP:[930,320], MM:[630,450], FM:[830,450], SM:[1030,450], PM:[1230,450], ASM:[1030,580],
+             T:[870,60], HA:[1050,60], S:[1230,60], FSC:[880,190] },
+};
+const PRESENT = {
+  current: ['B','AD','ED','SP','AP','HOP','MM','FM','SM','PM','ASM'],
+  merge:   ['B','AD','ED','SP','AP','HOP','MM','FM','SM','PM','ASM'],
+  nu:      ['B','AD','SP','AP','HOP','MM','FM','SM','PM','ASM','T','HA','S','FSC'],
+};
+const PARENTS = {
+  current: { AD:'B', ED:'B', SP:'AD', AP:'SP', HOP:'ED', MM:'ED', FM:'ED', SM:'HOP', PM:'HOP', ASM:'SM' },
+  nu:      { AD:'B', SP:'AD', AP:'SP', HOP:'AD', MM:'HOP', FM:'HOP', SM:'HOP', PM:'HOP', ASM:'SM' },
+  nuSide:  { T:'B', HA:'T', S:'HA', FSC:'AD' },
+};
 
-  // Build tabs from sections
-  sections.forEach((s, i) => {
-    const a = document.createElement('a');
-    a.href = '#' + s.id;
-    a.innerHTML = `<span class="n">${i === 0 ? '★' : i}</span>${s.dataset.label}`;
-    tabs.appendChild(a);
-  });
-  const links = [...tabs.children];
-  let current = 0;
+// Cameras: [x, y, width, height] in chart units
+const CAM = {
+  full:  [200, 10, 1180, 620],
+  top:   [170, 0, 920, 260],
+  merge: [380, 20, 500, 230],
+  ep:    [120, 250, 420, 270],
+  gm:    [500, 260, 880, 360],
+  board: [480, 0, 880, 120],
+  adc:   [480, 120, 560, 140],
+};
 
-  function setActive(i) {
-    if (i === current && links[i].classList.contains('active')) return;
-    current = i;
-    links.forEach((l, j) => {
-      l.classList.toggle('active', j === i);
-      if (j < i) l.classList.add('seen');
-    });
-    links[i].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
-    counter.textContent = `${i + 1} / ${sections.length}`;
-    history.replaceState(null, '', '#' + sections[i].id);
+/* =========================================================
+   STEPS: one idea per screen
+   ========================================================= */
+const STEPS = [
+  // Overview
+  { layout:'current', cam:'full', cap:'Today, two leaders report to the Board.' },
+  { layout:'nu',      cam:'full', cap:'Next, one leader reports to the Board.' },
+  // Zoom in: the top role
+  { layout:'current', cam:'top',   hl:['AD','ED'], cap:'Two roles at the top.' },
+  { layout:'merge',   cam:'merge', hl:['AD'],      cap:'Become one: Artistic Director & CEO.' },
+  { view:'dots', dots:'grid',  cap:'The Executive Director role holds 42 core duties.' },
+  { view:'dots', dots:'split', cap:'Where those duties go.' },
+  { layout:'nu',      cam:'full',  hl:['AD'],      cap:'One leader at the top.' },
+  // Zoom in: promotions
+  { layout:'current', cam:'ep', hl:['SP'],  cap:'The Senior Producer…' },
+  { layout:'nu',      cam:'ep', hl:['SP'],  cap:'…steps up to Executive Producer.' },
+  { layout:'current', cam:'gm', hl:['HOP'], cap:'The Head of Production…' },
+  { layout:'nu',      cam:'gm', hl:['HOP'], cap:'…steps up to General Manager.' },
+  { layout:'nu',      cam:'gm', hl:['HOP','MM','FM','SM','PM','ASM'], cap:'Marketing, finance and production now report to the General Manager.' },
+  { layout:'nu',      cam:'full', hl:['SP','HOP'], cap:'Two promotions share the load.' },
+  // Zoom in: interim and recruitment (content to come)
+  { view:'ph', ph:'Interim arrangements', cap:'' },
+  { view:'ph', ph:'Recruitment timeline', cap:'' },
+  // Zoom in: board and support
+  { layout:'nu', cam:'board', hl:['T','HA','S'], cap:'Three new supports for the Board.' },
+  { layout:'nu', cam:'adc',   hl:['FSC'],        cap:'Fundraising support for the Artistic Director & CEO.' },
+  { layout:'nu', cam:'full',  hl:['B','T','HA','S','AD','FSC'], cap:'Support built in around the top.' },
+  // Zoom in: one company
+  { layout:'current', cam:'full', dept:true, cap:'Today, the artistic team sits apart.' },
+  { layout:'nu',      cam:'full', dept:true, cap:'Next, one artistic company.' },
+  // Close
+  { layout:'nu', cam:'full', cap:'The new people model.' },
+];
+
+/* =========================================================
+   BUILD
+   ========================================================= */
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('chart');
+const nodeLayer = document.getElementById('nodeLayer');
+const edgeLayer = document.getElementById('edgeLayer');
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; };
+
+function label(g, text, cls) {
+  const lines = text.split('|');
+  const t = el('text', { class: cls }, g);
+  lines.forEach((ln, i) => el('tspan', { x: 0, dy: i === 0 ? (lines.length > 1 ? '-0.55em' : '0') : '1.15em' }, t).textContent = ln);
+}
+const nodeEls = {};
+for (const id in NODES) {
+  const n = NODES[id], w = n.w || W;
+  const g = el('g', { class: 'node' + (n.side ? ' side' : '') + (n.board ? ' board' : '') }, nodeLayer);
+  el('rect', { x: -w/2, y: -H/2, width: w, height: H, rx: 14 }, g);
+  label(g, n.cur, 'lab-cur');
+  if (n.nu) label(g, n.nu, 'lab-new');
+  nodeEls[id] = g;
+}
+function nodeW(id) { return NODES[id].w || W; }
+function buildEdges(name, layoutKey, parents, side) {
+  const g = el('g', { class: 'edges', 'data-layout': name, opacity: 0 }, edgeLayer);
+  const P = LAYOUT[layoutKey];
+  for (const c in parents) {
+    const [px, py] = P[parents[c]], [cx, cy] = P[c];
+    if (side) {
+      el('path', { class: 'side', d: `M${px + nodeW(parents[c])/2} ${py} H${cx - nodeW(c)/2}` }, g);
+    } else {
+      const mid = py + (cy - py) / 2;
+      el('path', { d: `M${px} ${py + H/2} V${mid} H${cx} V${cy - H/2}` }, g);
+    }
   }
+  return g;
+}
+const EDGES = {
+  current: buildEdges('current', 'current', PARENTS.current),
+  nu: buildEdges('nu', 'nu', PARENTS.nu),
+  nuSide: buildEdges('nuSide', 'nu', PARENTS.nuSide, true),
+};
 
-  // Track which section is in the middle of the viewport
-  const spy = new IntersectionObserver(entries => {
-    entries.forEach(e => { if (e.isIntersecting) setActive(sections.indexOf(e.target)); });
-  }, { rootMargin: '-45% 0px -50% 0px' });
-  sections.forEach(s => spy.observe(s));
 
-  // Reading progress bar
-  const onScroll = () => {
-    const h = document.documentElement;
-    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
-    progress.style.transform = `scaleX(${p})`;
+/* Duties: 42 dots that split into 3 / 7 / 32 */
+const dotsBox = document.getElementById('dots');
+const GROUPS = [
+  { n: 3,  color: 'var(--mb-green)',  x: 0,   cols: 2, lbl: '<b>3</b>move to the Executive Producer' },
+  { n: 7,  color: 'var(--mb-grey-2)',      x: 150, cols: 3, lbl: '<b>7</b>stop' },
+  { n: 32, color: 'var(--mb-orange)', x: 330, cols: 8, lbl: '<b>32</b>to be reallocated' },
+];
+const dots = [];
+for (let i = 0; i < 42; i++) { const d = document.createElement('div'); d.className = 'd'; dotsBox.appendChild(d); dots.push(d); }
+GROUPS.forEach(g => {
+  const l = document.createElement('div'); l.className = 'lbl'; l.innerHTML = g.lbl;
+  const gw = g.cols * 38; l.style.left = (g.x - 30) + 'px'; l.style.width = (gw + 60) + 'px';
+  dotsBox.appendChild(l);
+});
+function layoutDots(mode) {
+  dotsBox.classList.toggle('split', mode === 'split');
+  if (mode === 'grid') {
+    dots.forEach((d, i) => { const c = i % 14, r = Math.floor(i / 14);
+      d.style.left = (c * 46) + 'px'; d.style.top = (60 + r * 46) + 'px'; d.style.background = 'var(--mb-dark-teal)'; });
+  } else {
+    let k = 0;
+    GROUPS.forEach(g => { for (let j = 0; j < g.n; j++, k++) {
+      const c = j % g.cols, r = Math.floor(j / g.cols);
+      dots[k].style.left = (g.x + c * 38) + 'px'; dots[k].style.top = (220 - (r + 1) * 38) + 'px'; dots[k].style.background = g.color; } });
+  }
+}
+layoutDots('grid');
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let vb = CAM.full.slice(), camAnim;
+function moveCamera(target, instant) {
+  cancelAnimationFrame(camAnim);
+  const from = vb.slice(), t0 = performance.now(), dur = instant ? 0 : 1100;
+  const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2;
+  const tick = now => {
+    const k = dur ? Math.min(1, (now - t0) / dur) : 1, e = ease(k);
+    vb = from.map((v, i) => v + (target[i] - v) * e);
+    svg.setAttribute('viewBox', vb.join(' '));
+    if (k < 1) camAnim = requestAnimationFrame(tick);
   };
-  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  camAnim = requestAnimationFrame(tick);
+}
 
-  // Reveal on scroll (elements and whole sections)
-  const reveal = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (!e.isIntersecting) return;
-      e.target.classList.add('in');
-      e.target.querySelectorAll('[data-count]').forEach(countUp);
-      reveal.unobserve(e.target);
-    });
-  }, { threshold: 0.18 });
-  document.querySelectorAll('.reveal').forEach(el => reveal.observe(el));
+const stage = document.getElementById('stage');
+const caption = document.getElementById('caption');
+const phTitle = document.getElementById('phTitle');
+let lastCap = null;
+function setCaption(text) {
+  if (text === lastCap) return; lastCap = text;
+  caption.classList.add('out');
+  setTimeout(() => { caption.textContent = text; caption.classList.remove('out'); }, 250);
+}
 
-  // Count-up numbers (set data-count to the real figure)
-  function countUp(el) {
-    const target = +el.dataset.count, suffix = el.dataset.suffix || '';
-    if (!target) { el.innerHTML = `00<small>${suffix}</small>`; return; }
-    const t0 = performance.now(), dur = 1600;
-    const tick = t => {
-      const k = Math.min(1, (t - t0) / dur), v = Math.round(target * (1 - Math.pow(1 - k, 3)));
-      el.innerHTML = v.toLocaleString() + (suffix ? `<small>${suffix}</small>` : '');
-      if (k < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
+let lastLayout = 'current';
+function apply(step) {
+  const view = step.view || 'chart';
+  stage.classList.toggle('view-dots', view === 'dots');
+  stage.classList.toggle('view-ph', view === 'ph');
+  setCaption(step.cap || '');
+  if (view === 'dots') { layoutDots(step.dots); return; }
+  if (view === 'ph') { phTitle.textContent = step.ph; return; }
+
+  const L = step.layout, P = LAYOUT[L], present = PRESENT[L], hl = step.hl || [];
+  const dIdx = L === 'current' || L === 'merge' ? 0 : 1;
+  for (const id in nodeEls) {
+    const g = nodeEls[id], [x, y] = P[id];
+    g.style.transform = `translate(${x}px, ${y}px)`;
+    let op = present.includes(id) ? 1 : 0;
+    if (L === 'merge' && id === 'ED') op = 0;
+    if (op && hl.length && !hl.includes(id)) op = .16;
+    g.style.opacity = op;
+    g.classList.toggle('show-new', !!NODES[id].nu && (L === 'nu' || (L === 'merge' && id === 'AD')));
+    g.classList.toggle('hl', hl.includes(id) && !NODES[id].board);
+    ['artistic', 'business', 'none'].forEach(d => g.classList.remove('dept-' + d));
+    if (step.dept && NODES[id].dept && NODES[id].dept[dIdx]) g.classList.add('dept-' + NODES[id].dept[dIdx]);
   }
+  const edgeOp = hl.length ? .35 : 1;
+  EDGES.current.setAttribute('opacity', L === 'current' ? edgeOp : 0);
+  EDGES.nu.setAttribute('opacity', L === 'nu' ? edgeOp : 0);
+  EDGES.nuSide.setAttribute('opacity', L === 'nu' ? edgeOp : 0);
+  // fade edges in after nodes have moved
+  [EDGES.current, EDGES.nu, EDGES.nuSide].forEach(e => e.style.transitionDelay = L !== lastLayout ? '.7s' : '0s');
+  lastLayout = L;
+  moveCamera(CAM[step.cam]);
+}
 
-  // Step navigation: buttons and keyboard
-  const go = d => sections[Math.max(0, Math.min(sections.length - 1, current + d))].scrollIntoView({ behavior: 'smooth' });
-  document.getElementById('prev').onclick = () => go(-1);
-  document.getElementById('next').onclick = () => go(1);
-  addEventListener('keydown', e => {
-    if (e.target.closest('input, textarea, button')) return;
-    if (['ArrowDown', 'PageDown', 'j', 'J'].includes(e.key)) { e.preventDefault(); go(1); }
-    if (['ArrowUp', 'PageUp', 'k', 'K'].includes(e.key)) { e.preventDefault(); go(-1); }
-  });
+/* steps + rail */
+const stepsBox = document.getElementById('steps'), rail = document.getElementById('rail');
+const stepEls = STEPS.map(() => { const d = document.createElement('div'); d.className = 'step screen-stop'; stepsBox.appendChild(d); rail.appendChild(document.createElement('span')); return d; });
+const railDots = [...rail.children];
+let activeStep = -1;
 
-  // Before / after toggle
-  const baWrap = document.getElementById('baWrap');
-  baWrap.querySelectorAll('.toggle button').forEach(b => b.onclick = () => {
-    baWrap.querySelectorAll('.toggle button').forEach(x => x.classList.toggle('on', x === b));
-    baWrap.classList.toggle('show-after', b.dataset.mode === 'after');
-  });
-})();
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+const chapters = [...document.querySelectorAll('section.chapter')];
+const tabs = document.getElementById('tabs');
+chapters.forEach(c => { const a = document.createElement('a'); a.href = '#' + c.id; a.innerHTML = c.dataset.label + '<i><b></b></i>'; tabs.appendChild(a); });
+const tabEls = [...tabs.children];
+
+// every stop in the story: simple screens plus each step
+const stops = [...document.querySelectorAll('.screen, .screen-stop')];
+const absTop = e => e.getBoundingClientRect().top + scrollY;
+
+function update() {
+  const mid = scrollY + innerHeight * .5;
+  // chapter
+  let ci = 0; chapters.forEach((c, i) => { if (absTop(c) <= mid) ci = i; });
+  tabEls.forEach((t, i) => { t.classList.toggle('active', i === ci); t.classList.toggle('seen', i < ci); });
+  const c = chapters[ci], top = absTop(c), h = c.offsetHeight;
+  tabEls[ci].querySelector('b').style.width = Math.min(100, Math.max(0, (mid - top) / h * 100)) + '%';
+  // people step
+  let si = -1; stepEls.forEach((s, i) => { if (absTop(s) <= mid) si = i; });
+  si = Math.max(0, Math.min(STEPS.length - 1, si));
+  if (si !== activeStep) {
+    activeStep = si; apply(STEPS[si]);
+    railDots.forEach((d, i) => { d.classList.toggle('on', i === si); d.classList.toggle('done', i < si); });
+  }
+}
+let ticking = false;
+addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(() => { update(); ticking = false; }); } }, { passive: true });
+addEventListener('resize', update);
+
+// keep the active tab in view
+let lastTab = -1;
+setInterval(() => { const i = tabEls.findIndex(t => t.classList.contains('active')); if (i !== lastTab && i >= 0) { lastTab = i; tabEls[i].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); } }, 400);
+
+function go(dir) {
+  const y = scrollY + 2;
+  const tops = stops.map(absTop);
+  let idx = tops.findIndex(t => t > y + 5);
+  if (idx === -1) idx = tops.length;
+  const cur = idx - 1;
+  const target = dir > 0 ? Math.min(tops.length - 1, cur + 1) : Math.max(0, tops[cur] < y - 5 ? cur : cur - 1);
+  scrollTo({ top: tops[target], behavior: 'smooth' });
+}
+document.getElementById('next').onclick = () => go(1);
+document.getElementById('prev').onclick = () => go(-1);
+addEventListener('keydown', e => {
+  if (['ArrowDown', 'PageDown', ' ', 'j'].includes(e.key)) { e.preventDefault(); go(1); }
+  if (['ArrowUp', 'PageUp', 'k'].includes(e.key)) { e.preventDefault(); go(-1); }
+});
+
+// rise-in for simple screens
+const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add('in')), { threshold: .3 });
+document.querySelectorAll('.rise').forEach(r => io.observe(r));
+
+apply(STEPS[0]); activeStep = 0; update();
 </script>
 </body>
 </html>
