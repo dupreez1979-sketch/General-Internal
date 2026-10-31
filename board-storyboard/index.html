@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monkey Baa: Next Steps | Board Storyboard, November 2026</title>
+<style>
+  :root {
+    --ink: #1d1b2f;
+    --ink-soft: #55526b;
+    --paper: #fbf8f3;
+    --card: #ffffff;
+    --line: #e7e1d6;
+    --brand: #e8553f;      /* swap for Monkey Baa brand colours */
+    --brand-2: #2f6fde;
+    --brand-3: #f4b73f;
+    --brand-4: #2ba58a;
+    --nav-h: 64px;
+    --radius: 18px;
+    --ease: cubic-bezier(.2,.7,.2,1);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 8px); }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { line-height: 1.12; margin: 0 0 .4em; letter-spacing: -.01em; }
+  p { margin: 0 0 1em; }
+  .ph { background: #fff4cf; border-radius: 4px; padding: 0 .25em; } /* placeholder highlight */
+
+  /* ---------- Top navigation ---------- */
+  .topbar {
+    position: fixed; inset: 0 0 auto 0; height: var(--nav-h); z-index: 50;
+    display: flex; align-items: center; gap: 18px; padding: 0 20px;
+    background: rgba(251,248,243,.88); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .brandmark { font-weight: 800; white-space: nowrap; font-size: 15px; }
+  .brandmark span { color: var(--brand); }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; }
+  .tabs { mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 24px), transparent); }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs a {
+    flex: none; display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: 999px; text-decoration: none;
+    color: var(--ink-soft); font-size: 14px; font-weight: 600;
+    transition: background .25s, color .25s;
+  }
+  .tabs a .n {
+    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 12px; background: var(--line); color: var(--ink-soft); transition: inherit;
+  }
+  .tabs a:hover { background: #f1ece3; color: var(--ink); }
+  .tabs a.seen .n { background: #d9d3c7; color: var(--ink); }
+  .tabs a.active { background: var(--ink); color: #fff; }
+  .tabs a.active .n { background: var(--brand); color: #fff; }
+  .counter { font-size: 13px; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .progress { position: absolute; left: 0; bottom: -1px; height: 3px; width: 100%;
+    background: linear-gradient(90deg, var(--brand), var(--brand-3));
+    transform-origin: 0 50%; transform: scaleX(0); }
+
+  /* side step buttons */
+  .stepper { position: fixed; right: 18px; bottom: 18px; z-index: 40; display: flex; flex-direction: column; gap: 8px; }
+  .stepper button {
+    width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--card); color: var(--ink); font-size: 18px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,.06);
+  }
+  .stepper button:hover { background: var(--ink); color: #fff; }
+
+  /* ---------- Sections ---------- */
+  section.chapter {
+    min-height: 100vh; padding: calc(var(--nav-h) + 56px) 6vw 80px;
+    display: flex; flex-direction: column; justify-content: center;
+    border-bottom: 1px solid var(--line);
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; width: 100%; }
+  .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--brand); margin-bottom: 14px; }
+  .chapter h2 { font-size: clamp(32px, 4.6vw, 56px); max-width: 18ch; }
+  .lede { font-size: clamp(18px, 1.6vw, 22px); color: var(--ink-soft); max-width: 60ch; }
+
+  /* reveal animation */
+  .reveal { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
+  .reveal.in { opacity: 1; transform: none; }
+  .d1 { transition-delay: .1s } .d2 { transition-delay: .2s } .d3 { transition-delay: .3s }
+  .d4 { transition-delay: .4s } .d5 { transition-delay: .5s } .d6 { transition-delay: .6s }
+
+  .grid { display: grid; gap: 20px; margin-top: 40px; }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+  .card h3 { font-size: 20px; }
+  .card p { color: var(--ink-soft); margin: 0; }
+  .icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 16px; font-size: 22px; }
+
+  /* Hero */
+  #hero { background: var(--ink); color: #fff; position: relative; overflow: hidden; }
+  #hero h1 { font-size: clamp(48px, 9vw, 120px); font-weight: 850; }
+  #hero h1 em { font-style: normal; color: var(--brand-3); }
+  #hero .lede { color: #c9c6da; }
+  .blob { position: absolute; border-radius: 50%; filter: blur(2px); opacity: .9; animation: float 14s ease-in-out infinite; }
+  .blob.a { width: 340px; height: 340px; background: var(--brand); right: -80px; top: 12%; }
+  .blob.b { width: 200px; height: 200px; background: var(--brand-2); right: 22%; bottom: 8%; animation-delay: -4s; }
+  .blob.c { width: 120px; height: 120px; background: var(--brand-3); right: 8%; bottom: 30%; animation-delay: -8s; }
+  @keyframes float { 50% { transform: translate(-24px, 18px) scale(1.06); } }
+  .hero-meta { display: flex; gap: 28px; margin-top: 36px; flex-wrap: wrap; font-size: 15px; color: #c9c6da; position: relative; }
+  .hero-meta b { display: block; color: #fff; font-size: 17px; }
+  .scrollcue { margin-top: 60px; font-size: 14px; color: #c9c6da; display: flex; align-items: center; gap: 10px; position: relative; }
+  .scrollcue i { width: 22px; height: 34px; border: 2px solid #c9c6da; border-radius: 12px; position: relative; }
+  .scrollcue i::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 7px; margin-left: -2px; border-radius: 2px; background: #fff; animation: wheel 1.6s infinite; }
+  @keyframes wheel { to { transform: translateY(10px); opacity: 0; } }
+
+  /* Stats */
+  .stat { font-size: clamp(40px, 5vw, 64px); font-weight: 850; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat small { font-size: .45em; font-weight: 700; }
+  .bar { height: 8px; border-radius: 6px; background: #f1ece3; margin-top: 18px; overflow: hidden; }
+  .bar span { display: block; height: 100%; width: 0; border-radius: 6px; transition: width 1.4s var(--ease) .3s; }
+  .in .bar span { width: var(--w); }
+
+  /* Pressures: arrows pushing in */
+  .pressure { display: grid; grid-template-columns: 1fr 260px 1fr; gap: 24px; align-items: center; margin-top: 48px; }
+  .pressure .col { display: grid; gap: 16px; }
+  .chip { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; font-weight: 600; display: flex; gap: 12px; align-items: center; }
+  .chip .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .core { aspect-ratio: 1; border-radius: 50%; background: var(--ink); color: #fff; display: grid; place-items: center; text-align: center; padding: 30px; font-weight: 700; font-size: 18px; position: relative; }
+  .core::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 2px dashed var(--brand); animation: spin 30s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .col.left .chip { transform: translateX(-40px); }
+  .col.right .chip { transform: translateX(40px); }
+  .in .col .chip { transform: none; transition: transform 1s var(--ease); }
+
+  /* Vision pillars */
+  .vision-statement { font-size: clamp(26px, 3.2vw, 40px); font-weight: 750; max-width: 26ch; line-height: 1.2; }
+  .vision-statement mark { background: linear-gradient(transparent 60%, rgba(244,183,63,.55) 60%); color: inherit; }
+  .pillar { border-top: 6px solid; }
+
+  /* Operating model diagram */
+  .diagram { margin-top: 36px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+  .diagram svg { width: 100%; height: auto; display: block; }
+  .diagram .link { stroke: #cfc7b8; stroke-width: 2.5; fill: none; stroke-dasharray: 600; stroke-dashoffset: 600; transition: stroke-dashoffset 1.6s var(--ease); }
+  .diagram.in .link { stroke-dashoffset: 0; }
+  .diagram .node { opacity: 0; transform: scale(.6); transform-box: fill-box; transform-origin: center; transition: opacity .6s, transform .6s var(--ease); }
+  .diagram.in .node { opacity: 1; transform: none; }
+  .diagram .flow { fill: var(--brand); }
+  .diagram text { font: 600 15px system-ui, sans-serif; fill: var(--ink); }
+  .diagram .sub { font-weight: 400; font-size: 12.5px; fill: var(--ink-soft); }
+  .legend { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 14px; font-size: 14px; color: var(--ink-soft); }
+  .legend span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 8px; vertical-align: -1px; background: var(--c); }
+
+  /* Before / after */
+  .toggle { display: inline-flex; background: #efe9de; border-radius: 999px; padding: 4px; margin-top: 30px; }
+  .toggle button { border: 0; background: transparent; padding: 10px 22px; border-radius: 999px; font: inherit; font-weight: 700; color: var(--ink-soft); cursor: pointer; }
+  .toggle button.on { background: var(--ink); color: #fff; }
+  .ba { margin-top: 26px; display: grid; gap: 14px; }
+  .ba-row { display: grid; grid-template-columns: 200px 1fr; gap: 20px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 22px; }
+  .ba-row .k { font-weight: 700; }
+  .ba-row .v { position: relative; min-height: 1.6em; }
+  .ba-row .v span { position: absolute; inset: 0; transition: opacity .45s, transform .45s var(--ease); }
+  .ba-row .v .after { opacity: 0; transform: translateY(10px); color: var(--brand-4); font-weight: 600; }
+  .show-after .ba-row .v .before { opacity: 0; transform: translateY(-10px); }
+  .show-after .ba-row .v .after { opacity: 1; transform: none; }
+
+  /* Roadmap */
+  .timeline { position: relative; margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+  .timeline::before { content: ""; position: absolute; left: 0; right: 0; top: 18px; height: 4px; background: var(--line); border-radius: 2px; }
+  .timeline::after { content: ""; position: absolute; left: 0; top: 18px; height: 4px; width: 0; background: linear-gradient(90deg, var(--brand), var(--brand-3)); border-radius: 2px; transition: width 2s var(--ease) .2s; }
+  .timeline.in::after { width: 100%; }
+  .phase { position: relative; padding-top: 52px; }
+  .phase::before { content: ""; position: absolute; top: 8px; left: 0; width: 24px; height: 24px; border-radius: 50%; background: var(--card); border: 4px solid var(--c); }
+  .phase .when { font-size: 13px; font-weight: 700; color: var(--c); text-transform: uppercase; letter-spacing: .08em; }
+  .phase h3 { font-size: 20px; margin-top: 6px; }
+  .phase ul { margin: 10px 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 15px; }
+  .now-flag { position: absolute; top: -30px; left: 0; font-size: 12px; font-weight: 700; background: var(--ink); color: #fff; padding: 3px 9px; border-radius: 6px; }
+
+  /* Risk matrix */
+  .matrix-wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: 36px; margin-top: 40px; align-items: center; }
+  .matrix { position: relative; aspect-ratio: 1; background:
+      linear-gradient(to right, transparent 49.8%, var(--line) 50%, transparent 50.2%),
+      linear-gradient(to bottom, transparent 49.8%, var(--line) 50%, transparent 50.2%),
+      linear-gradient(45deg, #eef7f3 0%, #fff8e6 50%, #fdeae6 100%);
+    border-radius: var(--radius); border: 1px solid var(--line); }
+  .matrix .axis { position: absolute; font-size: 12px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; }
+  .matrix .ax-x { bottom: -26px; left: 0; right: 0; text-align: center; }
+  .matrix .ax-y { left: -30px; top: 50%; transform: rotate(-90deg) translateX(50%); transform-origin: left top; white-space: nowrap; }
+  .risk { position: absolute; width: 38px; height: 38px; margin: -19px 0 0 -19px; border-radius: 50%; color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 14px; box-shadow: 0 6px 16px rgba(0,0,0,.15); transform: scale(0); transition: transform .6s var(--ease); cursor: default; }
+  .in .risk { transform: scale(1); }
+  .risk-list { display: grid; gap: 12px; }
+  .risk-list .card { padding: 16px 20px; display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; }
+  .risk-list .num { width: 30px; height: 30px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+  .risk-list h3 { font-size: 16px; margin-bottom: 2px; }
+  .risk-list p { font-size: 14.5px; }
+
+  /* Board asks */
+  #asks { background: var(--ink); color: #fff; }
+  #asks .lede { color: #c9c6da; }
+  .ask { background: #2a2843; border: 1px solid #3a3757; border-radius: var(--radius); padding: 28px; position: relative; }
+  .ask .tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; padding: 4px 10px; border-radius: 6px; margin-bottom: 14px; }
+  .ask h3 { font-size: 22px; }
+  .ask p { color: #c9c6da; margin: 0; }
+  .ask .big { position: absolute; right: 22px; top: 18px; font-size: 54px; font-weight: 850; color: #3a3757; }
+  .closing { margin-top: 56px; text-align: center; color: #c9c6da; font-size: 15px; }
+
+  footer { padding: 30px 6vw; font-size: 13px; color: var(--ink-soft); text-align: center; }
+
+  @media (max-width: 900px) {
+    .g3, .g4, .g2, .timeline, .matrix-wrap { grid-template-columns: 1fr; }
+    .pressure { grid-template-columns: 1fr; }
+    .core { max-width: 240px; margin: 0 auto; }
+    .timeline::before, .timeline::after { display: none; }
+    .ba-row { grid-template-columns: 1fr; gap: 6px; }
+    .ba-row .v { min-height: 3.2em; }
+    .counter, .brandmark { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .reveal { opacity: 1; transform: none; }
+    html { scroll-behavior: auto; }
+  }
+  @media print {
+    .topbar, .stepper { display: none; }
+    section.chapter { min-height: auto; page-break-after: always; padding-top: 40px; }
+    .reveal { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brandmark">Monkey Baa <span>Next Steps</span></div>
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  <div class="counter" id="counter">1 / 9</div>
+  <div class="progress" id="progress"></div>
+</header>
+
+<div class="stepper" aria-label="Step through sections">
+  <button id="prev" title="Previous section (↑ or K)" aria-label="Previous section">↑</button>
+  <button id="next" title="Next section (↓ or J)" aria-label="Next section">↓</button>
+</div>
+
+<main>
+
+<!-- 0. HERO -->
+<section class="chapter" id="hero" data-label="Welcome">
+  <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
+  <div class="wrap" style="position:relative">
+    <div class="eyebrow reveal">Board Storyboard &middot; November 2026</div>
+    <h1 class="reveal d1">Monkey Baa:<br><em>Next Steps</em></h1>
+    <p class="lede reveal d2">A visual walk through the change ahead: why we are moving, what the new operating design looks like, how we get there, and what we need from the Board.</p>
+    <div class="hero-meta reveal d3">
+      <div><b>9 chapters</b>scroll or jump</div>
+      <div><b>~10 minutes</b>to read end to end</div>
+      <div><b><span class="ph" style="color:var(--ink)">[Presenter]</span></b>prepared by</div>
+    </div>
+    <div class="scrollcue reveal d4"><i></i> Scroll to begin, or use the tabs above</div>
+  </div>
+</section>
+
+<!-- 1. WHERE WE ARE -->
+<section class="chapter" id="today" data-label="Where we are">
+  <div class="wrap">
+    <div class="eyebrow reveal">01 &middot; Where we are</div>
+    <h2 class="reveal d1">A strong base to build from</h2>
+    <p class="lede reveal d2"><span class="ph">[One sentence on the organisation today: reach, reputation and momentum.]</span></p>
+    <div class="grid g4">
+      <div class="card reveal d2"><div class="stat" data-count="0">0</div><p>Audience members this year <span class="ph">[figure]</span></p><div class="bar"><span style="--w:78%;background:var(--brand)"></span></div></div>
+      <div class="card reveal d3"><div class="stat" data-count="0">0</div><p>Performances delivered <span class="ph">[figure]</span></p><div class="bar"><span style="--w:64%;background:var(--brand-2)"></span></div></div>
+      <div class="card reveal d4"><div class="stat" data-count="0" data-suffix="%">0</div><p>Regional and remote reach <span class="ph">[figure]</span></p><div class="bar"><span style="--w:45%;background:var(--brand-3)"></span></div></div>
+      <div class="card reveal d5"><div class="stat" data-count="0">0</div><p>Schools and communities engaged <span class="ph">[figure]</span></p><div class="bar"><span style="--w:70%;background:var(--brand-4)"></span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. WHY CHANGE -->
+<section class="chapter" id="why" data-label="Why change">
+  <div class="wrap">
+    <div class="eyebrow reveal">02 &middot; Why change, why now</div>
+    <h2 class="reveal d1">The pressures pushing in on our current model</h2>
+    <p class="lede reveal d2">What got us here will not get us to the next stage. These forces are converging at once.</p>
+    <div class="pressure reveal d2">
+      <div class="col left">
+        <div class="chip"><span class="dot" style="background:var(--brand)"></span><span class="ph">[Pressure 1: e.g. funding landscape]</span></div>
+        <div class="chip"><span class="dot" style="background:var(--brand-2)"></span><span class="ph">[Pressure 2: e.g. cost of touring]</span></div>
+        <div class="chip"><span class="dot" style="background:var(--brand-3)"></span><span class="ph">[Pressure 3: e.g. capacity of the team]</span></div>
+      </div>
+      <div class="core">Our current<br>operating model</div>
+      <div class="col right">
+        <div class="chip"><span class="dot" style="background:var(--brand-4)"></span><span class="ph">[Opportunity 1: e.g. national demand]</span></div>
+        <div class="chip"><span class="dot" style="background:var(--brand)"></span><span class="ph">[Opportunity 2: e.g. new partnerships]</span></div>
+        <div class="chip"><span class="dot" style="background:var(--brand-2)"></span><span class="ph">[Opportunity 3: e.g. digital reach]</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. VISION -->
+<section class="chapter" id="vision" data-label="The vision">
+  <div class="wrap">
+    <div class="eyebrow reveal">03 &middot; Where we are heading</div>
+    <p class="vision-statement reveal d1"><span class="ph">[Vision statement, e.g.]</span> Every young person in Australia has the chance to <mark>experience theatre made for them</mark>.</p>
+    <div class="grid g3">
+      <div class="card pillar reveal d2" style="border-color:var(--brand)"><div class="icon" style="background:#fde6e1">🎭</div><h3>Pillar one</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
+      <div class="card pillar reveal d3" style="border-color:var(--brand-2)"><div class="icon" style="background:#e1ebfc">🗺️</div><h3>Pillar two</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
+      <div class="card pillar reveal d4" style="border-color:var(--brand-4)"><div class="icon" style="background:#dff3ed">🌱</div><h3>Pillar three</h3><p><span class="ph">[What this pillar means and the outcome it drives.]</span></p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. OPERATING DESIGN -->
+<section class="chapter" id="design" data-label="Operating design">
+  <div class="wrap">
+    <div class="eyebrow reveal">04 &middot; The operating design</div>
+    <h2 class="reveal d1">How the new model fits together</h2>
+    <p class="lede reveal d2">One core, clear functions around it, and work that flows between them. <span class="ph">[Replace with the actual structure.]</span></p>
+    <div class="diagram reveal d2">
+      <svg viewBox="0 0 1000 460" role="img" aria-label="Operating model diagram: a central core connected to five functions">
+        <path class="link" d="M500 230 L170 90" />
+        <path class="link" d="M500 230 L830 90" />
+        <path class="link" d="M500 230 L130 340" />
+        <path class="link" d="M500 230 L870 340" />
+        <path class="link" d="M500 230 L500 410" />
+        <path class="link" d="M170 90 Q500 10 830 90" style="stroke-dasharray:6 8;stroke-dashoffset:0;opacity:.6" />
+
+        <circle class="flow" r="6"><animateMotion dur="3s" repeatCount="indefinite" path="M500 230 L170 90"/></circle>
+        <circle class="flow" r="6" style="fill:var(--brand-2)"><animateMotion dur="3.4s" repeatCount="indefinite" path="M830 90 L500 230"/></circle>
+        <circle class="flow" r="6" style="fill:var(--brand-4)"><animateMotion dur="2.8s" repeatCount="indefinite" path="M500 230 L870 340"/></circle>
+        <circle class="flow" r="6" style="fill:var(--brand-3)"><animateMotion dur="3.2s" repeatCount="indefinite" path="M130 340 L500 230"/></circle>
+
+        <g class="node" style="transition-delay:.2s"><circle cx="500" cy="230" r="86" fill="#1d1b2f"/><text x="500" y="224" text-anchor="middle" style="fill:#fff;font-size:18px">Core</text><text x="500" y="246" text-anchor="middle" class="sub" style="fill:#c9c6da">[Leadership / strategy]</text></g>
+        <g class="node" style="transition-delay:.5s"><rect x="60" y="50" width="220" height="80" rx="16" fill="#fde6e1"/><text x="170" y="86" text-anchor="middle">Function A</text><text x="170" y="108" text-anchor="middle" class="sub">[e.g. Artistic &amp; creative]</text></g>
+        <g class="node" style="transition-delay:.65s"><rect x="720" y="50" width="220" height="80" rx="16" fill="#e1ebfc"/><text x="830" y="86" text-anchor="middle">Function B</text><text x="830" y="108" text-anchor="middle" class="sub">[e.g. Touring &amp; production]</text></g>
+        <g class="node" style="transition-delay:.8s"><rect x="20" y="300" width="220" height="80" rx="16" fill="#fff1d3"/><text x="130" y="336" text-anchor="middle">Function C</text><text x="130" y="358" text-anchor="middle" class="sub">[e.g. Learning &amp; access]</text></g>
+        <g class="node" style="transition-delay:.95s"><rect x="760" y="300" width="220" height="80" rx="16" fill="#dff3ed"/><text x="870" y="336" text-anchor="middle">Function D</text><text x="870" y="358" text-anchor="middle" class="sub">[e.g. Partnerships &amp; income]</text></g>
+        <g class="node" style="transition-delay:1.1s"><rect x="390" y="380" width="220" height="70" rx="16" fill="#efe9de"/><text x="500" y="411" text-anchor="middle">Enabling services</text><text x="500" y="432" text-anchor="middle" class="sub">[Finance, people, systems]</text></g>
+      </svg>
+      <div class="legend">
+        <span style="--c:var(--ink)">Leadership and decisions</span>
+        <span style="--c:var(--brand)">Flow of work</span>
+        <span style="--c:#cfc7b8">Reporting lines</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. WHAT CHANGES -->
+<section class="chapter" id="changes" data-label="What changes">
+  <div class="wrap" id="baWrap">
+    <div class="eyebrow reveal">05 &middot; What actually changes</div>
+    <h2 class="reveal d1">Today versus tomorrow</h2>
+    <p class="lede reveal d2">Flip the switch to see how each part of the organisation shifts.</p>
+    <div class="toggle reveal d2" role="group" aria-label="Show before or after">
+      <button class="on" data-mode="before">Today</button>
+      <button data-mode="after">Next steps</button>
+    </div>
+    <div class="ba">
+      <div class="ba-row reveal d2"><div class="k">Structure</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
+      <div class="ba-row reveal d3"><div class="k">Decision making</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
+      <div class="ba-row reveal d4"><div class="k">Programs</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
+      <div class="ba-row reveal d5"><div class="k">People and roles</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
+      <div class="ba-row reveal d6"><div class="k">Income model</div><div class="v"><span class="before"><span class="ph">[How it works today]</span></span><span class="after"><span class="ph">[How it will work]</span></span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. ROADMAP -->
+<section class="chapter" id="roadmap" data-label="Roadmap">
+  <div class="wrap">
+    <div class="eyebrow reveal">06 &middot; The roadmap</div>
+    <h2 class="reveal d1">How we get there, in four moves</h2>
+    <p class="lede reveal d2">Sequenced so that each phase de-risks the next.</p>
+    <div class="timeline reveal d2">
+      <div class="phase" style="--c:var(--brand)"><span class="now-flag">We are here</span><div class="when">Phase 1 &middot; <span class="ph">[dates]</span></div><h3>Prepare</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
+      <div class="phase" style="--c:var(--brand-3)"><div class="when">Phase 2 &middot; <span class="ph">[dates]</span></div><h3>Design</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
+      <div class="phase" style="--c:var(--brand-2)"><div class="when">Phase 3 &middot; <span class="ph">[dates]</span></div><h3>Transition</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
+      <div class="phase" style="--c:var(--brand-4)"><div class="when">Phase 4 &middot; <span class="ph">[dates]</span></div><h3>Embed</h3><ul><li><span class="ph">[Key activity]</span></li><li><span class="ph">[Key activity]</span></li></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. RISKS -->
+<section class="chapter" id="risks" data-label="Risks">
+  <div class="wrap">
+    <div class="eyebrow reveal">07 &middot; Risks and safeguards</div>
+    <h2 class="reveal d1">What could go wrong, and how we are managing it</h2>
+    <div class="matrix-wrap">
+      <div class="matrix reveal d2" style="margin:0 0 30px 30px">
+        <div class="axis ax-x">Likelihood &rarr;</div>
+        <div class="axis ax-y">Impact &rarr;</div>
+        <div class="risk" style="left:72%;top:24%;background:var(--brand);transition-delay:.4s">1</div>
+        <div class="risk" style="left:35%;top:30%;background:var(--brand-3);transition-delay:.6s">2</div>
+        <div class="risk" style="left:62%;top:62%;background:var(--brand-2);transition-delay:.8s">3</div>
+        <div class="risk" style="left:24%;top:74%;background:var(--brand-4);transition-delay:1s">4</div>
+      </div>
+      <div class="risk-list">
+        <div class="card reveal d2"><div class="num" style="background:var(--brand)">1</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
+        <div class="card reveal d3"><div class="num" style="background:var(--brand-3)">2</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
+        <div class="card reveal d4"><div class="num" style="background:var(--brand-2)">3</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
+        <div class="card reveal d5"><div class="num" style="background:var(--brand-4)">4</div><div><h3><span class="ph">[Risk]</span></h3><p>Safeguard: <span class="ph">[mitigation]</span></p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. BOARD ASKS -->
+<section class="chapter" id="asks" data-label="Board asks">
+  <div class="wrap">
+    <div class="eyebrow reveal">08 &middot; What we need from the Board</div>
+    <h2 class="reveal d1">Three decisions for November</h2>
+    <p class="lede reveal d2">Everything above leads here.</p>
+    <div class="grid g3">
+      <div class="ask reveal d2"><span class="big">1</span><span class="tag" style="background:var(--brand)">Approve</span><h3><span class="ph" style="color:var(--ink)">[Decision]</span></h3><p><span class="ph" style="color:var(--ink)">[What approval enables]</span></p></div>
+      <div class="ask reveal d3"><span class="big">2</span><span class="tag" style="background:var(--brand-2)">Endorse</span><h3><span class="ph" style="color:var(--ink)">[Decision]</span></h3><p><span class="ph" style="color:var(--ink)">[What endorsement enables]</span></p></div>
+      <div class="ask reveal d4"><span class="big">3</span><span class="tag" style="background:var(--brand-4);">Note</span><h3><span class="ph" style="color:var(--ink)">[Item to note]</span></h3><p><span class="ph" style="color:var(--ink)">[Why it matters]</span></p></div>
+    </div>
+    <p class="closing reveal d5">Questions ahead of the meeting: <span class="ph" style="color:var(--ink)">[contact]</span></p>
+  </div>
+</section>
+
+</main>
+<footer>Monkey Baa Theatre Company &middot; Board Storyboard &middot; November 2026 &middot; Confidential: prepared for Board members</footer>
+
+<script>
+(() => {
+  const sections = [...document.querySelectorAll('section.chapter')];
+  const tabs = document.getElementById('tabs');
+  const counter = document.getElementById('counter');
+  const progress = document.getElementById('progress');
+
+  // Build tabs from sections
+  sections.forEach((s, i) => {
+    const a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.innerHTML = `<span class="n">${i === 0 ? '★' : i}</span>${s.dataset.label}`;
+    tabs.appendChild(a);
+  });
+  const links = [...tabs.children];
+  let current = 0;
+
+  function setActive(i) {
+    if (i === current && links[i].classList.contains('active')) return;
+    current = i;
+    links.forEach((l, j) => {
+      l.classList.toggle('active', j === i);
+      if (j < i) l.classList.add('seen');
+    });
+    links[i].scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+    counter.textContent = `${i + 1} / ${sections.length}`;
+    history.replaceState(null, '', '#' + sections[i].id);
+  }
+
+  // Track which section is in the middle of the viewport
+  const spy = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(sections.indexOf(e.target)); });
+  }, { rootMargin: '-45% 0px -50% 0px' });
+  sections.forEach(s => spy.observe(s));
+
+  // Reading progress bar
+  const onScroll = () => {
+    const h = document.documentElement;
+    const p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
+    progress.style.transform = `scaleX(${p})`;
+  };
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Reveal on scroll (elements and whole sections)
+  const reveal = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      e.target.querySelectorAll('[data-count]').forEach(countUp);
+      reveal.unobserve(e.target);
+    });
+  }, { threshold: 0.18 });
+  document.querySelectorAll('.reveal').forEach(el => reveal.observe(el));
+
+  // Count-up numbers (set data-count to the real figure)
+  function countUp(el) {
+    const target = +el.dataset.count, suffix = el.dataset.suffix || '';
+    if (!target) { el.innerHTML = `00<small>${suffix}</small>`; return; }
+    const t0 = performance.now(), dur = 1600;
+    const tick = t => {
+      const k = Math.min(1, (t - t0) / dur), v = Math.round(target * (1 - Math.pow(1 - k, 3)));
+      el.innerHTML = v.toLocaleString() + (suffix ? `<small>${suffix}</small>` : '');
+      if (k < 1) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // Step navigation: buttons and keyboard
+  const go = d => sections[Math.max(0, Math.min(sections.length - 1, current + d))].scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('prev').onclick = () => go(-1);
+  document.getElementById('next').onclick = () => go(1);
+  addEventListener('keydown', e => {
+    if (e.target.closest('input, textarea, button')) return;
+    if (['ArrowDown', 'PageDown', 'j', 'J'].includes(e.key)) { e.preventDefault(); go(1); }
+    if (['ArrowUp', 'PageUp', 'k', 'K'].includes(e.key)) { e.preventDefault(); go(-1); }
+  });
+
+  // Before / after toggle
+  const baWrap = document.getElementById('baWrap');
+  baWrap.querySelectorAll('.toggle button').forEach(b => b.onclick = () => {
+    baWrap.querySelectorAll('.toggle button').forEach(x => x.classList.toggle('on', x === b));
+    baWrap.classList.toggle('show-after', b.dataset.mode === 'after');
+  });
+})();
+</script>
+</body>
+</html>
