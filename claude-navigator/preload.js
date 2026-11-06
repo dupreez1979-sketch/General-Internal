@@ -1,5 +1,5 @@
 // Bridges the folder page to the desktop app. Only these functions are exposed.
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 contextBridge.exposeInMainWorld('navigatorApp', {
   isElectron: true,
@@ -13,5 +13,19 @@ contextBridge.exposeInMainWorld('navigatorApp', {
   deleteChats: (items) => ipcRenderer.invoke('claude-delete-chats', items),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
+  // Folders on this computer
+  fsStatus: () => ipcRenderer.invoke('fs-status'),
+  fsEnable: (root) => ipcRenderer.invoke('fs-enable', root),
+  fsDisable: () => ipcRenderer.invoke('fs-disable'),
+  fsChooseRoot: () => ipcRenderer.invoke('fs-choose-root'),
+  fsScan: () => ipcRenderer.invoke('fs-scan'),
+  fsApply: (payload) => ipcRenderer.invoke('fs-apply', payload),
+  fsOpen: (rel) => ipcRenderer.invoke('fs-open', rel),
+  fsReveal: (rel) => ipcRenderer.invoke('fs-reveal', rel),
+  fsAbs: (rel) => ipcRenderer.invoke('fs-abs', rel),
+  fsNewFile: (kind, destRel, name) => ipcRenderer.invoke('fs-new-file', kind, destRel, name),
+  fsImport: (paths, destRel) => ipcRenderer.invoke('fs-import', paths, destRel),
+  onFsChanged: (fn) => ipcRenderer.on('fs-changed', () => fn()),
+  pathForFile: (file) => { try { return webUtils.getPathForFile(file); } catch (e) { return ''; } },
   onContextAction: (fn) => ipcRenderer.on('context-action', (_e, info) => fn(info)),
 });

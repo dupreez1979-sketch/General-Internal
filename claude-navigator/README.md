@@ -78,6 +78,18 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## Your folders on your Mac
+
+Turn on **Keep Folders on This Mac** (the app offers it once, and it is in the ... menu) and your profiles and folders become real folders in **Documents › Claude Navigator**: one folder per profile, with your folders inside.
+
+- **Claude items** (chats, artifacts, projects, links) are small link files there (".webloc" on a Mac). In the app they open in Claude; double-clicked in Finder they open in your browser.
+- **Your own files** (Word, Excel, PowerPoint, PDF, images, anything) can live in the same folders. They show in the app with their own icons and open in their own apps.
+- **New files**: the + menu and right-click menus have **New Word Document**, **New Excel Spreadsheet**, **New PowerPoint Presentation** and **New Text File**. Give it a name and a folder; it is created there and opens in its app.
+- **Both ways**: what you do in the app (new folder, rename, move, delete) happens on disk, and what you do in Finder (add files, rename, move, delete) shows up in the app within a second or two.
+- **Drag files in** from Finder or the desktop onto any folder in the app to copy them there.
+- **Deleting** in the app moves things to the Mac Trash, so you can always get them back from there.
+- Right-click anything and choose **Show in Finder**. **Change Folder Location…** in the ... menu moves your folders somewhere else.
+
 ## Profiles
 
 Your folders live in **profiles**, for example Monkey Baa, NCTI and Personal. The switcher at the top of the sidebar picks one:
@@ -95,7 +107,7 @@ The first time you open this version, your old layout is converted once: Work �
 
 **New Chat**, **All Chats** and **Artifacts**, then **Other** (closed until you open it) with **Design Systems**, **Code** and **Scheduled**. The numbers show what is not in a folder yet.
 
-**All Chats** shows chats and artifacts together: each chat's artifacts under it, then the artifacts not linked to any chat at the end. Drag one of those onto its chat to link them. The Artifacts button at the top shows or hides them.
+**All Chats** shows chats and artifacts together: each chat's artifacts under it (click the arrow beside a chat to hide or show them), then the artifacts not linked to any chat at the end. Drag one of those onto its chat to link them. The Artifacts button at the top shows or hides them.
 
 Items get the right icon where Claude says what they are, or where the name makes it clear (for example "… Design System" or "… Slides"). Right-click anything and choose **Change Icon…** to correct it.
 
@@ -123,7 +135,7 @@ Archived items are hidden everywhere, including the sidebar, until you choose Fi
 
 ## Artifacts stay with the chat they came from
 
-An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. They move together: drag either one and both go.
+An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. Click the arrow beside the chat to hide or show its artifacts. They move together: drag either one and both go.
 
 - **Detach** an artifact (right-click, Detach from Chat) to move it on its own, for example when one chat made several artifacts that belong in different places. ⌥-drag also moves it on its own.
 - **Attach** it again by dropping it onto the chat, or right-click and choose Attach to Chat.

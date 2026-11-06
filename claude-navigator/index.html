@@ -149,6 +149,11 @@
   .tile { display: flex; flex-direction: column; align-items: center; padding: 6px 4px 4px; border-radius: 8px; position: relative; }
   .tile .att { position: absolute; top: 4px; right: 14px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 600; border-radius: 8px; padding: 0 5px; line-height: 16px; }
   .twisty.conn, .lrow .conn { color: var(--muted); }
+  .lrow .disc { width: 14px; height: 14px; flex: none; display: grid; place-items: center; color: var(--muted); margin-left: -4px; }
+  .lrow .disc svg { transition: transform .15s ease; }
+  .lrow .disc.open svg { transform: rotate(90deg); }
+  .lrow .disc:hover { color: var(--text); }
+  .list .item.selected .disc { color: inherit; }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
   @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #bSaveText { display: none; } }
@@ -487,6 +492,16 @@
     link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
   G.canva = G.design;
+  G.file = C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  G.word = C => G.file(C) + `<path d="M5.3 7.5l.9 4 .9-3 .9 3 .9-4" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.excel = C => G.file(C) + `<path d="M5.5 7.5l3.4 4.2M8.9 7.5l-3.4 4.2" fill="none" stroke="${C}" stroke-width="1.1" stroke-linecap="round"/>`;
+  G.powerpoint = C => G.file(C) + `<path d="M5.8 11.8V7.6h1.5a1.2 1.2 0 010 2.4H5.8" fill="none" stroke="${C}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.pdf = C => G.file(C) + `<path d="M5.2 11.2c1.6-.6 3.3-2.2 3.8-3.8.3-1-.8-1.1-.8 0 0 1.4 1.4 3.2 3 3.6" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
+  G.image = C => `<rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.6" cy="6.4" r="1.1" fill="${C}"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3" fill="none" stroke="${C}" stroke-width="1.2" stroke-linejoin="round"/>`;
+  G.video = C => `<rect x="2" y="3.5" width="9" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M11 6.5l3-1.8v6.6l-3-1.8" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  G.audio = C => `<path d="M6 11.5V3.5l6.5-1.5v8" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4.5" cy="11.8" r="1.6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="11" cy="10.2" r="1.6" fill="none" stroke="${C}" stroke-width="1.3"/>`;
+  G.text = C => G.file(C) + `<path d="M5.5 8h5M5.5 10.2h5M5.5 12.4h3" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
+  G.archive = C => G.file(C) + `<path d="M7.5 4.5v1M7.5 6.5v1M7.5 8.5v1M6.8 10.5h1.4v1.6H6.8z" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
   G.code = C => `<path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5M9 3l-2 10" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
   G.schedule = C => `<circle cx="8" cy="8.5" r="5.8" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 5.3v3.4l2.2 1.5" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`;
   G.designsystem = C => `<rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="5.7" r="1.3" fill="${C}"/><circle cx="10.3" cy="5.7" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="5.7" cy="10.3" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="10.3" cy="10.3" r="1.3" fill="${C}"/>`;
@@ -496,15 +511,18 @@
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
     doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
     code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2',
+    word: '#6EA0F5', excel: '#4CC27C', powerpoint: '#F07A4E', pdf: '#F06A6A', image: '#B08CF0', video: '#E07BD0', audio: '#E7A24A', text: '#A0A7B0', archive: '#B0A090', file: '#A0A7B0',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
     code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8',
+    word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
     code: 'Code', schedule: 'Schedule', designsystem: 'Design system',
+    word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
 
@@ -731,7 +749,167 @@
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
-  function save() { ls.set(STORE, JSON.stringify(state.tree)); }
+  function save() { ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) scheduleApply(); }
+
+  // ---------- Folders on this computer (Documents › Claude Navigator) ----------
+  // The disk mirrors the app: app changes are written to disk shortly after; Finder changes come back in.
+  const fsState = { enabled: false, root: '', asked: true, pulling: false, timer: null, applying: false, pullAfter: false };
+  const FS_MAP = 'claudeNavigator.fsPaths';
+  const safeName = name => {
+    let t = String(name || 'Untitled').replace(/[\/\\:*?"<>|\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim();
+    t = t.replace(/^\.+/, '').slice(0, 120).trim();
+    return t || 'Untitled';
+  };
+  function scheduleApply() {
+    clearTimeout(fsState.timer);
+    fsState.timerPending = true;
+    fsState.timer = setTimeout(() => { fsState.timerPending = false; runApply(); }, 300);
+  }
+  async function runApply() {
+    if (!fsState.enabled || fsState.applying) { if (fsState.applying) scheduleApply(); return; }
+    fsState.applying = true;
+    try {
+      const nodes = [];
+      const visit = (list, parentId) => list.forEach(n => {
+        nodes.push({ id: n.id, type: n.type, name: n.name, url: n.url || '', parentId, path: n.path || null });
+        if (n.children) visit(n.children, n.id);
+      });
+      visit(state.tree, null);
+      // What was on disk last time but has since been deleted in the app goes to the Trash.
+      let prev = {};
+      try { prev = JSON.parse(ls.get(FS_MAP)) || {}; } catch (e) { /* ignore */ }
+      const ids = new Set(nodes.map(n => n.id));
+      let trash = Object.entries(prev).filter(([id]) => !ids.has(id)).map(([, p]) => p);
+      trash = trash.filter(p => !trash.some(o => o !== p && p.startsWith(o + '/')));     // only the outermost
+      const res = await window.navigatorApp.fsApply({ nodes, trash });
+      if (!res) return;
+      let removed = false;
+      for (const [id, v] of Object.entries(res.map || {})) {
+        const n = nodeOf(id);
+        if (!n) continue;
+        if (v.missing) { const l = locate(id); if (l) { l.list.splice(l.index, 1); removed = true; } continue; }
+        n.path = v.path;
+        n.ino = v.ino;
+      }
+      const map = {};
+      walk(state.tree, n => { if (n.path) map[n.id] = n.path; });
+      ls.set(FS_MAP, JSON.stringify(map));
+      ls.set(STORE, JSON.stringify(state.tree));
+      if (removed) renderAll();
+      if (res.errors && res.errors.length) toast(`Some changes could not be made on disk: ${res.errors[0]}`);
+    } catch (e) {
+      toast(`Could not update the folders on disk: ${e.message || e}`);
+    } finally {
+      fsState.applying = false;
+      if (fsState.pullAfter) { fsState.pullAfter = false; pullFromDisk(); }
+    }
+  }
+  // Brings in what changed on disk: new files and folders, renames and moves made in Finder, deletions.
+  async function pullFromDisk() {
+    if (!fsState.enabled) return;
+    if (fsState.applying || fsState.timerPending) { fsState.pullAfter = true; return; }
+    const entries = await window.navigatorApp.fsScan();
+    if (!entries) return;
+    fsState.pulling = true;
+    try {
+      const byIno = new Map(), byPath = new Map();
+      walk(state.tree, n => { if (n.ino) byIno.set(String(n.ino), n); if (n.path) byPath.set(n.path, n); });
+      const relNode = new Map(), seen = new Set();
+      let changed = false;
+      const folderOfNode = n => { const l = locate(n.id); if (!l) return null; const p = l.parent; return p && p.type === 'link' ? (locate(p.id) || {}).parent || null : p; };
+      for (const e of entries) {
+        let n = byIno.get(e.ino) || byPath.get(e.rel);
+        if (n && seen.has(n)) n = null;
+        const parent = e.parentRel ? relNode.get(e.parentRel) : null;
+        if (e.parentRel && !parent) continue;
+        if (n && (n.type === 'folder') !== (e.kind === 'dir')) n = null;          // a different kind of thing now
+        if (!n) {
+          if (e.kind === 'dir') {
+            n = Folder(e.name);
+            if (!parent) Object.assign(n, { profile: true, open: true, tint: 'medium', color: PROFILE_COLOURS[(profiles().length + 3) % PROFILE_COLOURS.length] });
+          } else if (e.kind === 'link') {
+            n = Link(e.name, e.url);
+            n.autoName = false;
+          } else {
+            n = { id: uid(), type: 'file', name: e.name, added: Date.now() };
+          }
+          if (parent && !parent.children) parent.children = [];
+          (parent ? parent.children : state.tree).push(n);
+          changed = true;
+        } else {
+          const curFolder = folderOfNode(n);
+          if ((curFolder ? curFolder.id : null) !== (parent ? parent.id : null)) {           // moved in Finder
+            const l = locate(n.id);
+            l.list.splice(l.index, 1);
+            if (parent && !parent.children) parent.children = [];
+            (parent ? parent.children : state.tree).push(n);
+            changed = true;
+          }
+          const expected = n.type === 'file' ? n.name : safeName(n.name);
+          const numbered = new RegExp(`^${expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} \\d+$`);
+          if (e.name !== expected && !numbered.test(e.name)) {                                // renamed in Finder
+            n.name = e.name;
+            if (n.type === 'link') n.autoName = false;
+            changed = true;
+          }
+          if (e.kind === 'link' && e.url && e.url !== n.url) { n.url = e.url; changed = true; }
+        }
+        n.path = e.rel;
+        n.ino = e.ino;
+        if (n.type === 'file') Object.assign(n, { ext: e.ext, size: e.size, mtime: e.mtime });
+        relNode.set(e.rel, n);
+        seen.add(n);
+      }
+      const gone = [];
+      walk(state.tree, n => { if (n.path && !seen.has(n)) gone.push(n.id); });
+      for (const id of outermost(gone)) { const l = locate(id); if (l) { l.list.splice(l.index, 1); changed = true; } }
+      const map = {};
+      walk(state.tree, n => { if (n.path) map[n.id] = n.path; });
+      ls.set(FS_MAP, JSON.stringify(map));
+      ls.set(STORE, JSON.stringify(state.tree));
+      if (changed) renderAll();
+    } finally {
+      fsState.pulling = false;
+    }
+  }
+  async function enableFolderSync(root) {
+    const res = await window.navigatorApp.fsEnable(root);
+    const moved = root && root !== fsState.root;
+    fsState.enabled = true;
+    fsState.root = res.root;
+    if (moved) { walk(state.tree, n => { delete n.path; delete n.ino; }); ls.set(FS_MAP, '{}'); }
+    await runApply();          // write the app's folders (adopting any that already exist)
+    await pullFromDisk();      // then bring in whatever else is there
+    renderAll();
+    toast(`Your folders are now in ${res.root.replace(/^\/Users\/[^/]+/, '~')}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal('') });
+  }
+  async function disableFolderSync() {
+    await window.navigatorApp.fsDisable();
+    fsState.enabled = false;
+    renderAll();
+    toast('Folders are no longer kept on disk. Everything stays in the app.');
+  }
+  async function initFolderSync() {
+    if (!isApp) return;
+    const st = await window.navigatorApp.fsStatus();
+    Object.assign(fsState, { root: st.root, asked: st.asked });
+    window.navigatorApp.onFsChanged(() => pullFromDisk());
+    if (st.enabled) {
+      fsState.enabled = true;
+      await pullFromDisk();
+      scheduleApply();
+    }
+    if (!st.enabled && !st.asked) renderMain();     // shows the one-time offer
+  }
+  function folderSyncOffer() {
+    const b = document.createElement('div');
+    b.className = 'banner';
+    b.innerHTML = `<span>Keep these folders as real folders on your Mac, in <b>Documents \u203a Claude Navigator</b>? Word, Excel, PDF and other files you put there in Finder will show up here too, and open in their own apps.</span><button class="tb" title="Create the folders in Documents and keep them in step">Turn On</button><button class="tb" title="Ask again from the ... menu">Not Now</button>`;
+    const [on, later] = b.querySelectorAll('button');
+    on.addEventListener('click', () => { fsState.asked = true; enableFolderSync(); });
+    later.addEventListener('click', async () => { fsState.asked = true; await window.navigatorApp.fsDisable(); renderMain(); });
+    return b;
+  }
   function snap() { undoStack.push(JSON.stringify(state.tree)); if (undoStack.length > 60) undoStack.shift(); }
   function undo() {
     const prev = undoStack.pop();
@@ -791,8 +969,17 @@
     if (u && !/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
     return u;
   }
+  // Normal files (Word, Excel, PDF...) sitting in your folders on disk.
+  const FILE_KINDS = [
+    ['word', /^\.(docx?|dotx?|pages|rtf|odt)$/i], ['excel', /^\.(xlsx?|xlsm|csv|numbers|ods)$/i],
+    ['powerpoint', /^\.(pptx?|key|odp)$/i], ['pdf', /^\.pdf$/i], ['image', /^\.(png|jpe?g|gif|heic|webp|svg|tiff?|bmp)$/i],
+    ['video', /^\.(mp4|mov|m4v|avi|mkv)$/i], ['audio', /^\.(mp3|m4a|wav|aiff?|flac)$/i], ['text', /^\.(txt|md|json|html?|css|js|ts|py)$/i],
+    ['archive', /^\.(zip|tar|gz|rar|7z)$/i],
+  ];
+  const fileKind = n => { const e = (n.ext || (/\.[^.]+$/.exec(n.name || '') || [''])[0]).toLowerCase(); const f = FILE_KINDS.find(([, re]) => re.test(e)); return f ? f[0] : 'file'; };
   function kindOf(n) {
     if (n.type === 'folder') return 'folder';
+    if (n.type === 'file') return fileKind(n);
     if (n.as && G[n.as]) return n.as;
     const u = n.url || '';
     if (/claude\.ai\/chat\//.test(u)) return 'chat';
@@ -1177,6 +1364,7 @@
     const frag = document.createDocumentFragment();
     if (state.libSelectMode && items.length) frag.appendChild(folderActionBar());
 
+    if (isApp && !fsState.enabled && !fsState.asked && !state.query) frag.appendChild(folderSyncOffer());
     if (!isApp && !state.query && !ls.get(BANNER_STORE)) {
       const b = document.createElement('div');
       b.className = 'banner';
@@ -1218,7 +1406,9 @@
       }
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
-        l.appendChild(listRowFor(n, view, updated));
+        const row = listRowFor(n, view, updated);
+        if (n.type === 'link' && n.children && n.children.length && !where) addDisclosure(row, n.open !== false, `${n.children.length} attached`);
+        l.appendChild(row);
         if (n.type === 'link' && n.children && n.children.length && n.open !== false && !where) {
           for (const c of n.children) {
             const cr = listRowFor(c, view, updated);
@@ -1243,7 +1433,7 @@
   // ---------- Filters for folder and search lists ----------
   const FF_KINDS = {
     any: 'All Kinds', folders: 'Folders', chats: 'Chats', artifacts: 'Artifacts (docs, slides, designs\u2026)',
-    code: 'Code', projects: 'Projects', links: 'Other links',
+    code: 'Code', projects: 'Projects', files: 'Files on This Mac (Word, PDF, images\u2026)', links: 'Other links',
   };
   const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard']);
   state.ff = { kind: 'any', when: 'any', archived: false };
@@ -1255,7 +1445,7 @@
       if (n.type === 'folder' && f.archived) return false;
       const k = kindOf(n);
       if (f.kind !== 'any') {
-        const ok = f.kind === 'folders' ? n.type === 'folder' : f.kind === 'chats' ? k === 'chat' : f.kind === 'artifacts' ? ARTIFACTY.has(k)
+        const ok = f.kind === 'folders' ? n.type === 'folder' : f.kind === 'files' ? n.type === 'file' : f.kind === 'chats' ? k === 'chat' : f.kind === 'artifacts' ? ARTIFACTY.has(k)
           : f.kind === 'code' ? k === 'code' : f.kind === 'projects' ? k === 'project' : n.type === 'link' && !['chat', 'code', 'project'].includes(k) && !ARTIFACTY.has(k);
         if (!ok) return false;
       }
@@ -1405,9 +1595,13 @@
       libRowItems = new Map();
       for (const x of pageItems) {
         libRowItems.set(x.url, x);
-        l.appendChild(libRow(x, kind, idx));
-        if (kind === 'chats' && state.libShowAttached) {
-          for (const a of relatedFor(x.url)) {
+        const row = libRow(x, kind, idx);
+        const rel = kind === 'chats' && state.libShowAttached ? relatedFor(x.url) : [];
+        const shut = libCollapsed.has(normUrl(x.url));
+        if (rel.length) addDisclosure(row, !shut, `${rel.length} artifact${rel.length === 1 ? '' : 's'}`);
+        l.appendChild(row);
+        if (rel.length && !shut) {
+          for (const a of rel) {
             if (libRowItems.has(a.url)) continue;
             libRowItems.set(a.url, a);
             const ar = libRow(a, a.list, idx);
@@ -1469,6 +1663,17 @@
   function chooseKindMenu(x, y, current, onPick) {
     showMenu(x, y, CHOOSABLE_KINDS.map(k => ({ label: KIND_NAME[k], icon: k, checked: k === current, run: () => onPick(k) })));
   }
+
+  // A Finder-style arrow at the start of a row that has items under it.
+  function addDisclosure(row, open, what) {
+    const d = document.createElement('span');
+    d.className = 'disc' + (open ? ' open' : '');
+    d.innerHTML = UI.chev;
+    d.title = `${open ? 'Hide' : 'Show'} ${what}`;
+    row.querySelector('.nm').prepend(d);
+    row.classList.add('has-disc');
+  }
+  const libCollapsed = new Set((() => { try { return JSON.parse(ls.get('claudeNavigator.libCollapsed')) || []; } catch (e) { return []; } })());
 
   function libRow(x, kind, idx) {
     const r = libRowBase(x, kind, idx);
@@ -1711,6 +1916,7 @@
     renderMain();
   }
   function editedOf(n, updated) {
+    if (n.type === 'file') return n.mtime || '';
     if (n.type === 'link') return updated.get(normUrl(n.url)) || '';
     let latest = '';
     walk(n.children, c => { const u = c.type === 'link' && updated.get(normUrl(c.url)); if (u && u > latest) latest = u; });
@@ -2184,6 +2390,12 @@
   function openNode(n, { newWindow = false } = {}) {
     if (!n) return;
     if (n.type === 'folder') return go({ kind: 'folder', id: n.id });
+    if (n.type === 'file') {                                   // opens in its own app (Word, Excel, Preview...)
+      if (!isApp || !n.path) return toast('This file is on your Mac; open it from the desktop app');
+      n.opened = Date.now();
+      save();
+      return window.navigatorApp.fsOpen(n.path).then(err => { if (err) toast(`Could not open \u201c${n.name}\u201d: ${err}`); });
+    }
     if (newWindow) return openNewWindow(n.url);
     state.lastFolderId = folderIdOf(n.id);
     go({ kind: 'page', url: n.url });
@@ -2228,6 +2440,30 @@
   const knownItem = url => savedLinksFor(url).length > 0 ||
     ['chats', 'projects', 'artifacts'].some(k => (lib[k] || []).some(x => normUrl(x.url) === normUrl(url)));
 
+  // Real files made from the app: saved in the folder on disk and opened in their own app.
+  const NEW_FILES = { word: 'Word Document', excel: 'Excel Spreadsheet', powerpoint: 'PowerPoint Presentation', text: 'Text File' };
+  function newFileIn(kind, folderId) {
+    if (!fsState.enabled) {
+      if (confirm('New files are saved in your folders on this Mac. Turn on Keep Folders on This Mac (in Documents \u203a Claude Navigator) now?')) enableFolderSync().then(() => newFileIn(kind, folderId));
+      return;
+    }
+    openDialog({
+      title: `New ${NEW_FILES[kind]}`, name: 'Untitled', url: 'about:blank', nameOnly: true, okLabel: 'Create',
+      folderId: folderId || (state.loc.kind === 'folder' ? state.loc.id : state.lastFolderId),
+      onSave: async ({ name, folderId: where }) => {
+        if (fsState.timerPending || fsState.applying) { clearTimeout(fsState.timer); fsState.timerPending = false; await runApply(); }   // new folders need a place on disk first
+        const folder = where ? nodeOf(where) : activeProfile();
+        const res = await window.navigatorApp.fsNewFile(kind, folder ? folder.path || '' : '', name || 'Untitled');
+        if (!res || res.error && !res.rel) return toast(`Could not create the file: ${res ? res.error : 'unknown error'}`);
+        await pullFromDisk();
+        const made = [];
+        walk(state.tree, n => { if (n.path === res.rel) made.push(n); });
+        if (made[0]) { if (state.loc.kind === 'folder') { state.browseSel = made[0].id; applyBrowseSel(); } }
+        toast(res.error ? `Created ${res.rel.split('/').pop()}, but it could not be opened: ${res.error}` : `Created ${res.rel.split('/').pop()} in ${folder ? folder.name : 'the top level'}`);
+      },
+    });
+  }
+
   function newItemsMenu(folderId, suffix = '') {
     const add = kind => ({ label: `New ${NEW_KINDS[kind].label}${suffix}`, icon: NEW_KINDS[kind].icon, key: kind === 'chat' ? K.mod + 'N' : undefined, run: () => newInFolder(kind, folderId) });
     return [
@@ -2237,6 +2473,8 @@
       isApp && '-',
       isApp && add('project'), isApp && add('artifactChat'),
       '-',
+      ...(isApp ? Object.keys(NEW_FILES).map(k => ({ label: `New ${NEW_FILES[k]}${suffix}`, icon: k, run: () => newFileIn(k, folderId) })) : []),
+      isApp && '-',
     ];
   }
 
@@ -2684,7 +2922,11 @@
     const loc = locate(id);
     if (!loc) return;
     const n = loc.node;
-    if (n.children && n.children.length) {
+    const files = [];
+    walk([n], x => { if (x.type === 'file') files.push(x); });
+    const askedAboutFiles = !!(fsState.enabled && files.length);
+    if (askedAboutFiles && !confirm(n.type === 'file' ? `Move \u201c${n.name}\u201d to the Trash?` : `Delete \u201c${n.name}\u201d? The ${files.length} file${files.length === 1 ? '' : 's'} in it will be moved to the Trash.`)) return;
+    if (!askedAboutFiles && n.children && n.children.length) {
       let c = 0;
       walk(n.children, () => c++);
       const what = n.type === 'folder' ? `the ${c} item${c === 1 ? '' : 's'} inside it` : `its ${c} attached item${c === 1 ? '' : 's'}`;
@@ -2698,7 +2940,8 @@
     loc.list.splice(loc.index, 1);
     if (state.browseSel === id) state.browseSel = null;
     commit();
-    toast(`Deleted “${n.name}”`, true);
+    if (askedAboutFiles) toast(`Moved \u201c${n.name}\u201d to the Trash. Restore it from the Trash if you need it back.`);
+    else toast(`Deleted \u201c${n.name}\u201d`, true);
   }
 
   const attachable = n => n && n.type === 'link' && kindOf(n) !== 'chat';
@@ -3163,9 +3406,24 @@
       ];
     }
     const searching = scope === browseEl && state.query;
+    const finder = fsState.enabled && n.path && { label: isMac ? 'Show in Finder' : 'Show in File Explorer', run: () => window.navigatorApp.fsReveal(n.path) };
+    if (n.type === 'file') {
+      return [
+        { label: 'Open', key: K.open, run: () => openNode(n) },
+        finder,
+        searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
+        '-',
+        { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
+        { label: 'Move To\u2026', run: () => moveTo(n.id) },
+        { label: 'Copy Path', run: () => window.navigatorApp.fsAbs(n.path).then(p => navigator.clipboard.writeText(p)).then(() => toast('Path copied')) },
+        '-',
+        { label: 'Move to Trash', key: K.del, run: () => removeNode(n.id) },
+      ];
+    }
     if (n.type === 'folder') {
       return [
         { label: 'Open', key: K.open, run: () => openNode(n) },
+        finder,
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
         ...newItemsMenu(n.id, ' Here'),
@@ -3185,6 +3443,7 @@
     return [
       { label: 'Open', key: K.open, run: () => openNode(n) },
       { label: 'Open in New Window', run: () => openNewWindow(n.url) },
+      finder,
       { label: 'Open in Web Browser', run: () => openExternal(n.url) },
       searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
       '-',
@@ -3439,6 +3698,20 @@
 
   browseEl.addEventListener('mousedown', e => {
     if (e.target.closest('input:not(.lchk), button, .banner')) return;
+    const disc = e.target.closest('.lrow .disc');
+    if (disc) {
+      e.preventDefault();
+      const row = disc.closest('.item');
+      if (state.loc.kind === 'library') {
+        const k = normUrl(row.dataset.key);
+        if (libCollapsed.has(k)) libCollapsed.delete(k); else libCollapsed.add(k);
+        ls.set('claudeNavigator.libCollapsed', JSON.stringify([...libCollapsed]));
+        return renderLibrary();
+      }
+      const n = nodeOf(row.dataset.id);
+      if (n) { n.open = n.open === false ? true : false; save(); renderSide(); renderMain(); }
+      return;
+    }
     if (state.loc.kind === 'library') return libMouseDown(e);
     if (e.target.closest('.libbar, .lchk-all')) return;
     const it = e.target.closest('.item');
@@ -3578,7 +3851,7 @@
     return /^https?:\/\/\S+$/i.test(t) ? t : '';
   }
   const isInternal = dt => [...dt.types].includes(NAV_TYPE);
-  const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain');
+  const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain' || t === 'Files');
 
   function onDragStart(e) {
     const libEl = e.target.closest('.item.lib');
@@ -3712,7 +3985,7 @@
     dropTarget = { id: here, zone: 'into' };
   });
 
-  function onDrop(e) {
+  async function onDrop(e) {
     if (state.loc.kind === 'library' && !dropTarget) return;
     e.preventDefault();
     clearTimeout(hoverTimer);
@@ -3753,6 +4026,18 @@
         toast(`Moved ${srcIds.length} items to ${f ? f.name : 'the top level'}`, true);
       }
       return;
+    }
+    // Files dragged in from Finder or the desktop are copied into the folder on disk.
+    if (!srcIds.length && e.dataTransfer.files && e.dataTransfer.files.length && isApp) {
+      if (!fsState.enabled) return toast('Turn on Keep Folders on This Mac (in the ... menu) to add files');
+      let folder = t.zone === 'into' ? nodeOf(t.id) : t.id ? (locate(t.id) || {}).parent : null;
+      while (folder && folder.type !== 'folder') folder = (locate(folder.id) || {}).parent;
+      if (!folder) folder = activeProfile();
+      if (!folder || !folder.path) return toast('Drop files onto a folder');
+      const paths = [...e.dataTransfer.files].map(f => window.navigatorApp.pathForFile(f)).filter(Boolean);
+      const done = await window.navigatorApp.fsImport(paths, folder.path);
+      await pullFromDisk();
+      return toast(`Copied ${done.length} file${done.length === 1 ? '' : 's'} into ${folder.name}`);
     }
     const srcId = srcIds[0];
     const intoLink = t.zone === 'into' && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link';
@@ -3898,6 +4183,16 @@
       { label: 'Collapse All', run: () => setAllOpen(false) },
       '-',
       isApp && { label: 'Hide Claude\u2019s Own Sidebar', checked: hideClaudeSidebar(), run: () => setHideClaudeSidebar(!hideClaudeSidebar()) },
+      isApp && '-',
+      isApp && { label: fsState.enabled ? 'Keep Folders on This Mac' : 'Keep Folders on This Mac\u2026', checked: fsState.enabled, run: () => {
+        if (fsState.enabled) { if (confirm('Stop keeping your folders on disk? The folders and files already there stay where they are.')) disableFolderSync(); }
+        else enableFolderSync();
+      } },
+      isApp && fsState.enabled && { label: isMac ? 'Show Folders in Finder' : 'Show Folders in File Explorer', run: () => window.navigatorApp.fsReveal('') },
+      isApp && { label: 'Change Folder Location\u2026', run: async () => {
+        const root = await window.navigatorApp.fsChooseRoot();
+        if (root) enableFolderSync(root);
+      } },
       isApp && '-',
       isApp && { label: 'Copy Link Diagnostics', run: () => {
         const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
@@ -4268,6 +4563,7 @@
   } catch (e) { /* ignore */ }
   applyProfileTheme();
   repairGenericNames();
+  initFolderSync();
   renderSide();
   state.lastFolderId = startFolder;
   go(start);

@@ -4,10 +4,11 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { FolderSync } = require('./fsync');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -621,6 +622,68 @@ ipcMain.handle('harvest-pane', async (_e, id, kind) => {
   return wc.executeJavaScript(`(${COLLECT_FN})(${JSON.stringify(LIB_PATTERNS[kind])})`, true).catch(() => []);
 });
 
+// ---------- Folders on this computer ----------
+// Settings live next to the app's other data: { enabled, root }.
+const syncSettingsFile = () => path.join(app.getPath('userData'), 'folder-sync.json');
+function readSyncSettings() {
+  try { return JSON.parse(fs.readFileSync(syncSettingsFile(), 'utf8')); } catch (e) { return { enabled: false, asked: false }; }
+}
+function writeSyncSettings(s) { fs.writeFileSync(syncSettingsFile(), JSON.stringify(s, null, 2)); }
+const defaultRoot = () => {
+  let docs = app.getPath('documents');
+  if (path.resolve(docs) === path.resolve(app.getPath('home'))) docs = path.join(docs, 'Documents');   // systems with no Documents folder
+  return path.join(docs, 'Claude Navigator');
+};
+let folderSync = null;
+function startSync(root) {
+  if (folderSync) folderSync.unwatch();
+  folderSync = new FolderSync(root);
+  folderSync.ensureRoot();
+  folderSync.watch(() => send('fs-changed'));
+}
+ipcMain.handle('fs-status', () => {
+  const s = readSyncSettings();
+  return { enabled: !!s.enabled, asked: !!s.asked, root: s.root || defaultRoot(), defaultRoot: defaultRoot(), platform: process.platform };
+});
+ipcMain.handle('fs-enable', (_e, root) => {
+  const s = readSyncSettings();
+  const r = typeof root === 'string' && root ? root : (s.root || defaultRoot());
+  writeSyncSettings({ enabled: true, asked: true, root: r });
+  startSync(r);
+  return { enabled: true, root: r };
+});
+ipcMain.handle('fs-disable', (_e, askedOnly) => {
+  const s = readSyncSettings();
+  writeSyncSettings(Object.assign(s, { enabled: false, asked: true }));
+  if (folderSync) folderSync.unwatch();
+  folderSync = null;
+  return { enabled: false };
+});
+ipcMain.handle('fs-choose-root', async () => {
+  const r = await dialog.showOpenDialog(mainWindow, { title: 'Choose where your folders live', properties: ['openDirectory', 'createDirectory'], defaultPath: app.getPath('documents') });
+  return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+});
+ipcMain.handle('fs-scan', () => (folderSync ? folderSync.scan() : null));
+ipcMain.handle('fs-apply', (_e, payload) => (folderSync ? folderSync.apply(payload || {}) : null));
+ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
+ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
+ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
+ipcMain.handle('fs-import', (_e, paths, destRel) => (folderSync ? folderSync.importFiles(paths, destRel) : []));
+// New Word / Excel / PowerPoint / text file from a blank template, then open it in its own app.
+const NEW_FILE_TYPES = { word: 'docx', excel: 'xlsx', powerpoint: 'pptx', text: 'txt' };
+ipcMain.handle('fs-new-file', async (_e, kind, destRel, name) => {
+  if (!folderSync || !NEW_FILE_TYPES[kind]) return { error: 'Folders on this Mac are not turned on' };
+  const ext = NEW_FILE_TYPES[kind];
+  const dir = folderSync.abs(destRel || '');
+  fs.mkdirSync(dir, { recursive: true });
+  const stem = String(name || 'Untitled').replace(/[\/\\:*?"<>|]/g, '-').replace(new RegExp(`\\.${ext}$`, 'i'), '').trim() || 'Untitled';
+  let target = path.join(dir, `${stem}.${ext}`);
+  for (let i = 2; fs.existsSync(target); i++) target = path.join(dir, `${stem} ${i}.${ext}`);
+  fs.writeFileSync(target, fs.readFileSync(path.join(__dirname, 'templates', `blank.${ext}`)));
+  const err = await shell.openPath(target);
+  return { rel: folderSync.rel(target), error: err || null };
+});
+
 // ---------- Messages from the folder page ----------
 const httpUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u);
 ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.openExternal(url); });
@@ -644,6 +707,8 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.whenReady().then(() => {
+    const syncSettings = readSyncSettings();
+    if (syncSettings.enabled) { try { startSync(syncSettings.root || defaultRoot()); } catch (e) { /* folder unavailable */ } }
     setUpSession();
     buildMenu();
     createWindow();
