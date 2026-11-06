@@ -433,7 +433,7 @@
  <button class="tb" id="splitBtn" data-tb="splitBtn" title="Split view: your folders on the left, Claude or monday.com on the right, so you can drag across without losing your place"><span data-icon="split"></span><span class="t">Split</span></button>
     <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
     <button class="tb" id="libSelectBtn" data-tb="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
-    <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
+    <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show or hide the artifacts under each chat (in All Chats and in your folders)" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
     <button class="tb" id="subAllBtn" data-tb="subAllBtn" title="Show or hide the artifacts under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
     <button class="tb" id="bRefreshLib" data-tb="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" data-tb="bReload" title="Reload"><span data-icon="reload"></span></button>
@@ -1692,12 +1692,13 @@
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
         const row = listRowFor(n, view, updated);
-        if (n.type === 'link' && n.children && n.children.length && !where) {
+        const showKids = state.libShowAttached && !where;   // the Artifacts button switches attached items on and off
+        if (n.type === 'link' && n.children && n.children.length && showKids) {
           addDisclosure(row, isOpen(n), `${n.children.length} attached`);
           subTargets.push({ isOpen: () => isOpen(n), set: open => { n.open = open; } });
         }
         l.appendChild(row);
-        if (n.type === 'link' && n.children && n.children.length && isOpen(n) && !where) {
+        if (n.type === 'link' && n.children && n.children.length && isOpen(n) && showKids) {
           for (const c of n.children) {
             const cr = listRowFor(c, view, updated);
             cr.classList.add('attached');
@@ -2628,7 +2629,7 @@
     }
     document.title = title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || !!state.query || inLib;
-    $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
+    $('libAttachedBtn').hidden = !((inLib && state.loc.which === 'chats') || (state.loc.kind === 'folder' && !state.query && !page));
     $('splitBtn').hidden = page;
     try { renderSplit(); } catch (e) { /* during start-up */ }
     const listView = !page;
