@@ -34,10 +34,15 @@ else
   echo "Claude says a change is ready; the app refreshes by itself as soon as the files change."
 fi
 
-if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
+if [ ! -d node_modules ] || [ package.json -nt node_modules ] || [ package-lock.json -nt node_modules ]; then
   printf '\n\033[1mDownloading the building blocks (first time takes a minute)\033[0m\n'
   npm ci --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
   touch node_modules
+fi
+# The Electron engine is a separate download; fetch it if it is missing or incomplete.
+if [ ! -f node_modules/electron/path.txt ] || [ ! -d node_modules/electron/dist ]; then
+  printf '\n\033[1mDownloading the Electron engine (about 100 MB, once)\033[0m\n'
+  node node_modules/electron/install.js || fail "Could not download Electron. Check your internet connection and try again."
 fi
 
 printf '\n\033[32mStarting the live preview. Keep this window open; close it (or quit the app) to stop.\033[0m\n'
