@@ -36,9 +36,9 @@ base64 -i ~/Desktop/Certificates.p12 | pbcopy
 
 At account.apple.com, go to **Sign-In and Security › App-Specific Passwords**, click **+**, and name it "Claude Navigator". Copy the password it shows; it is shown only once.
 
-### 4. Find your Team ID
+### 4. Team ID
 
-At developer.apple.com/account, scroll to **Membership details** and copy the **Team ID**. It is 10 letters and numbers.
+Already done: your Team ID (484VNWY9P3) is set in the release workflow.
 
 ### 5. Create the public releases repository
 
@@ -60,7 +60,7 @@ In `General-Internal` on GitHub, go to **Settings › Actions › General**. Mak
 
 ### 8. Add the secrets
 
-In `General-Internal` on GitHub, go to **Settings › Secrets and variables › Actions › New repository secret**, and add each of these:
+In `General-Internal` on GitHub, go to **Settings › Secrets and variables › Actions › New repository secret**, and add these five:
 
 | Name | Value |
 |---|---|
@@ -68,7 +68,6 @@ In `General-Internal` on GitHub, go to **Settings › Secrets and variables › 
 | `MAC_CERT_PASSWORD` | the `.p12` password from step 2.6 |
 | `APPLE_ID` | your Apple ID email |
 | `APPLE_APP_SPECIFIC_PASSWORD` | the password from step 3 |
-| `APPLE_TEAM_ID` | the Team ID from step 4 |
 | `RELEASES_TOKEN` | the token from step 6 |
 
 Then delete the `.p12` file and the request file from your Desktop, and clear your clipboard.
