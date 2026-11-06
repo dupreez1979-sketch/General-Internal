@@ -156,7 +156,8 @@
   .list .item.selected .disc { color: inherit; }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
-  @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #bSaveText { display: none; } }
+  @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #subAllBtn .t, #bSaveText { display: none; } }
+  #subAllBtn .ic { display: inline-grid; place-items: center; }
   @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
   #bSaveMore { min-width: 18px; padding: 0 3px; margin-left: -4px; }
@@ -376,6 +377,7 @@
     <button class="tb" id="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
     <button class="tb" id="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
     <button class="tb" id="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
+    <button class="tb" id="subAllBtn" title="Show or hide the artifacts under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
     <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
@@ -1370,8 +1372,22 @@
   }
 
   // ---------- Main area ----------
+  // Chats in the list on screen that have artifacts under them, for Expand All / Collapse All.
+  let subTargets = [];
+  function updateSubAll() {
+    const b = $('subAllBtn');
+    b.hidden = !subTargets.length;
+    if (!subTargets.length) return;
+    const anyShut = subTargets.some(t => !t.isOpen());
+    b.querySelector('.ic').innerHTML = anyShut ? UI.expandAll : UI.collapseAll;
+    b.querySelector('.t').textContent = anyShut ? 'Expand All' : 'Collapse All';
+    b.title = anyShut ? `Show the artifacts under every chat in this list (${subTargets.length} chat${subTargets.length === 1 ? '' : 's'})` : 'Hide the artifacts under every chat in this list';
+    b.dataset.open = anyShut ? '1' : '0';
+  }
   function renderMain() {
+    subTargets = [];
     const showPage = isApp && state.loc.kind === 'page' && !state.query;
+    try { if (showPage || state.loc.kind !== 'library') updateSubAll(); } catch (e) { /* during start-up */ }
     pane.hidden = !showPage;
     browseEl.hidden = showPage;
     $('pathbar').hidden = showPage;
@@ -1442,7 +1458,10 @@
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
         const row = listRowFor(n, view, updated);
-        if (n.type === 'link' && n.children && n.children.length && !where) addDisclosure(row, isOpen(n), `${n.children.length} attached`);
+        if (n.type === 'link' && n.children && n.children.length && !where) {
+          addDisclosure(row, isOpen(n), `${n.children.length} attached`);
+          subTargets.push({ isOpen: () => isOpen(n), set: open => { n.open = open; } });
+        }
         l.appendChild(row);
         if (n.type === 'link' && n.children && n.children.length && isOpen(n) && !where) {
           for (const c of n.children) {
@@ -1460,6 +1479,7 @@
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
+    updateSubAll();
     renderPathbar(items.length);
     applyBrowseSel(false);
     renderLibPager(items.length);
@@ -1582,6 +1602,8 @@
   }
 
   function renderLibrary() {
+    subTargets = [];
+    updateSubAll();
     allFiledCache = null;
     const { kind, idx, items } = libVisible();
     state.libFiltered = items;
@@ -1633,7 +1655,11 @@
         const row = libRow(x, kind, idx);
         const rel = kind === 'chats' && state.libShowAttached ? relatedFor(x.url) : [];
         const shut = libCollapsed.has(normUrl(x.url));
-        if (rel.length) addDisclosure(row, !shut, `${rel.length} artifact${rel.length === 1 ? '' : 's'}`);
+        if (rel.length) {
+          addDisclosure(row, !shut, `${rel.length} artifact${rel.length === 1 ? '' : 's'}`);
+          const k = normUrl(x.url);
+          subTargets.push({ isOpen: () => !libCollapsed.has(k), set: open => { if (open) libCollapsed.delete(k); else libCollapsed.add(k); } });
+        }
         l.appendChild(row);
         if (rel.length && !shut) {
           for (const a of rel) {
@@ -1667,6 +1693,7 @@
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
+    updateSubAll();
     for (const k of [...libSel]) if (!libRowItems.has(k) && !items.some(x => x.url === k)) libSel.delete(k);
     applyLibSel();
     renderLibPathbar(kind, idx, items.length);
@@ -4218,6 +4245,12 @@
   $('libFilterBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
+  });
+  $('subAllBtn').addEventListener('click', () => {
+    const open = $('subAllBtn').dataset.open === '1';
+    for (const t of subTargets) t.set(open);
+    if (state.loc.kind === 'library') { ls.set('claudeNavigator.libCollapsed', JSON.stringify([...libCollapsed])); renderLibrary(); }
+    else { save(); renderSide(); renderMain(); }
   });
   $('libSelectBtn').addEventListener('click', () => { state.libSelectMode = !state.libSelectMode; renderMain(); renderToolbar(); });
   $('libAttachedBtn').addEventListener('click', () => {
