@@ -2128,6 +2128,8 @@
     state.libPage = 0;
     if (loc.kind === 'library') {
       libSel.clear(); libAnchor = null; state.lastFolderId = null; state.libPage = 0; refreshLibrary(false);
+      // The Claude lists always open newest first (Last Edited); a heading click changes it until you leave.
+      colsFor('library').sort = { col: 'edited', dir: 'desc' };
       if (CLAUDE_OTHER.includes(loc.which) && ls.get('claudeNavigator.claudeOtherOpen') !== '1') { ls.set('claudeNavigator.claudeOtherOpen', '1'); renderSide(); }
     }
     if (loc.kind === 'folder') {
@@ -2529,7 +2531,7 @@
       if (ex) {
         if (f.name && ex.name !== f.name && !/^untitled/i.test(f.name)) { ex.name = f.name; changed = true; }
       } else {
-        const x = { name: f.name || 'Untitled', url: f.url, updated: null };
+        const x = { name: f.name || 'Untitled', url: f.url, updated: new Date().toISOString() };   // just seen in Claude: recent
         lib[kind].unshift(x);
         byUrl.set(k, x);
         changed = true;
