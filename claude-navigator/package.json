@@ -1,0 +1,24 @@
+{
+  "name": "claude-navigator",
+  "productName": "Claude Navigator",
+  "version": "0.1.0",
+  "description": "Your own folder tree for Claude chats, projects and artifacts, with Claude open alongside.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.dupreez.claude-navigator",
+    "productName": "Claude Navigator",
+    "files": ["main.js", "preload.js", "index.html"],
+    "win": { "target": ["nsis", "portable"] },
+    "mac": { "target": "dmg", "category": "public.app-category.productivity" }
+  }
+}
