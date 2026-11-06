@@ -428,12 +428,6 @@
   const Link = (name, url) => ({ id: uid(), type: 'link', name, url, added: Date.now() });
 
   const seed = () => [
-    Folder('Claude', [
-      Link('New chat', 'https://claude.ai/new'),
-      Link('Recent chats', 'https://claude.ai/recents'),
-      Link('Projects', 'https://claude.ai/projects'),
-      Link('Artifacts', 'https://claude.ai/artifacts'),
-    ], true),
     Folder('Work', [
       Folder('Monkey Baa', [
         Folder('Board', [Folder('November 2026 meeting')]),
@@ -452,8 +446,21 @@
     return seed();
   }
 
+  // The old "Claude" folder of shortcuts is replaced by the Claude section at the top.
+  // Remove it once, and only if it still holds just those four shortcuts.
+  const SHORTCUT_URLS = ['https://claude.ai/new', 'https://claude.ai/recents', 'https://claude.ai/projects', 'https://claude.ai/artifacts'];
+  function dropOldClaudeSection(tree) {
+    if (ls.get('claudeNavigator.claudeSectionMerged')) return tree;
+    ls.set('claudeNavigator.claudeSectionMerged', '1');
+    const isOld = n => n.type === 'folder' && n.name === 'Claude' && n.children.length > 0 &&
+      n.children.every(c => c.type === 'link' && SHORTCUT_URLS.includes((c.url || '').replace(/\/+$/, '')));
+    const kept = tree.filter(n => !isOld(n));
+    if (kept.length !== tree.length) ls.set(STORE, JSON.stringify(kept));
+    return kept;
+  }
+
   const state = {
-    tree: load(),
+    tree: dropOldClaudeSection(load()),
     loc: { kind: 'folder', id: null },   // what the main area shows: a folder, or a Claude page
     pageUrl: '',                          // what the Claude pane is actually showing
     pageTitle: '',
@@ -593,8 +600,16 @@
     if (isApp) {
       const h = document.createElement('div');
       h.className = 'row section open lib-head';
-      h.innerHTML = '<span class="label">Claude Library</span>';
+      h.innerHTML = '<span class="label">Claude</span>';
+      h.title = 'Everything in your Claude account';
       frag.appendChild(h);
+      const nc = document.createElement('div');
+      nc.className = 'row lib-action';
+      nc.dataset.action = 'new-chat';
+      nc.innerHTML = `<span class="twisty"></span><span class="icon">${UI.compose}</span><span class="label">New Chat</span>`;
+      const here = newHereFolder();
+      nc.title = here ? `New chat, saved in \u201c${nodeOf(here).name}\u201d once you send it (${K.mod}N)` : `New chat (${K.mod}N)`;
+      frag.appendChild(nc);
       const idx = filedIndex();
       for (const k of Object.keys(LIB_KINDS)) {
         const r = document.createElement('div');
@@ -2061,6 +2076,7 @@
   treeEl.addEventListener('click', e => {
     const row = e.target.closest('.row');
     if (!row) return;
+    if (row.dataset.action === 'new-chat') return newChat();
     if (row.dataset.lib) return go({ kind: 'library', which: row.dataset.lib });
     const n = nodeOf(row.dataset.id);
     if (!n) return;
@@ -2084,6 +2100,10 @@
   treeEl.addEventListener('contextmenu', e => {
     e.preventDefault();
     const row = e.target.closest('.row');
+    if (row && row.dataset.action === 'new-chat') {
+      showNewMenu(e.clientX, e.clientY);
+      return;
+    }
     if (row && (row.dataset.lib || row.classList.contains('lib-head'))) {
       showMenu(e.clientX, e.clientY, [{ label: 'Refresh from Claude', run: () => refreshLibrary(true) }]);
       return;

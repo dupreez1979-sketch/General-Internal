@@ -57,9 +57,9 @@ While it waits, the top bar shows "Saves in Board once created". Click the ✕ o
 
 **Claude's own sidebar is hidden** so your folders are the only navigation. Claude's own button still opens it when you need it. To keep it showing, untick "Hide Claude's Own Sidebar" in the ... menu at the bottom of the sidebar.
 
-## Claude Library: file your existing chats
+## The Claude section: file your existing chats
 
-At the top of the sidebar, **Claude Library** lists everything in your Claude account: **Recent Chats**, **Projects** and **Artifacts**. The number beside each shows how many are not in one of your folders yet.
+At the top of the sidebar, the **Claude** section has **New Chat** and lists everything in your Claude account: **Recent Chats**, **Projects** and **Artifacts**. The number beside each shows how many are not in one of your folders yet.
 
 - Click Recent Chats to see every chat, newest first, with a column showing which folder it is filed in.
 - Drag a chat onto any folder in the sidebar to file it. Select several first with ⌘-click, or ⇧-click for a range, and drag them together.
