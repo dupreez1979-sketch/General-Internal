@@ -1102,7 +1102,7 @@
     toast('Undone');
   }
   // Folders start closed; a chat's attached items start shown. The sidebar and the lists both use this.
-  const isOpen = n => n.type === 'link' ? n.open !== false : !!n.open;
+  const isOpen = n => !!n.open;     // folders and chats with attached artifacts start closed
   function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
   function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
@@ -1485,7 +1485,6 @@
       l.list.splice(l.index, 1);
       if (!chat.children) chat.children = [];
       chat.children.push(l.node);
-      chat.open = true;
     }
     fileRelatedArtifacts();
     save();
@@ -1905,11 +1904,11 @@
         libRowItems.set(x.url, x);
         const row = libRow(x, kind, idx);
         const rel = kind === 'chats' && state.libShowAttached ? relatedFor(x.url) : [];
-        const shut = libCollapsed.has(normUrl(x.url));
+        const shut = !libExpanded.has(normUrl(x.url));
         if (rel.length) {
           addDisclosure(row, !shut, `${rel.length} artifact${rel.length === 1 ? '' : 's'}`);
           const k = normUrl(x.url);
-          subTargets.push({ isOpen: () => !libCollapsed.has(k), set: open => { if (open) libCollapsed.delete(k); else libCollapsed.add(k); } });
+          subTargets.push({ isOpen: () => libExpanded.has(k), set: open => { if (open) libExpanded.add(k); else libExpanded.delete(k); } });
         }
         l.appendChild(row);
         if (rel.length && !shut) {
@@ -1988,7 +1987,8 @@
     row.querySelector('.nm').prepend(d);
     row.classList.add('has-disc');
   }
-  const libCollapsed = new Set((() => { try { return JSON.parse(ls.get('claudeNavigator.libCollapsed')) || []; } catch (e) { return []; } })());
+  // Chats in the Claude lists whose artifacts you opened (all start closed).
+  const libExpanded = new Set((() => { try { return JSON.parse(ls.get('claudeNavigator.libExpanded')) || []; } catch (e) { return []; } })());
 
   function libRow(x, kind, idx) {
     const r = libRowBase(x, kind, idx);
@@ -3780,7 +3780,7 @@
         l.autoName = true;
         return l;
       });
-      if (extra.length) { node.children = extra; node.open = true; }
+      if (extra.length) node.children = extra;
     }
     const intoFolder = t.zone === 'into' || !t.id;
     if (intoFolder && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link') {
@@ -4245,8 +4245,8 @@
       const row = disc.closest('.item');
       if (state.loc.kind === 'library') {
         const k = normUrl(row.dataset.key);
-        if (libCollapsed.has(k)) libCollapsed.delete(k); else libCollapsed.add(k);
-        ls.set('claudeNavigator.libCollapsed', JSON.stringify([...libCollapsed]));
+        if (libExpanded.has(k)) libExpanded.delete(k); else libExpanded.add(k);
+        ls.set('claudeNavigator.libExpanded', JSON.stringify([...libExpanded]));
         return renderLibrary();
       }
       const n = nodeOf(row.dataset.id);
@@ -5289,7 +5289,7 @@
   $('subAllBtn').addEventListener('click', () => {
     const open = $('subAllBtn').dataset.open === '1';
     for (const t of subTargets) t.set(open);
-    if (state.loc.kind === 'library') { ls.set('claudeNavigator.libCollapsed', JSON.stringify([...libCollapsed])); renderLibrary(); }
+    if (state.loc.kind === 'library') { ls.set('claudeNavigator.libExpanded', JSON.stringify([...libExpanded])); renderLibrary(); }
     else { save(); renderSide(); renderMain(); }
   });
   $('libSelectBtn').addEventListener('click', () => { state.libSelectMode = !state.libSelectMode; renderMain(); renderToolbar(); });
@@ -5834,6 +5834,11 @@
   } catch (e) { /* ignore */ }
   applyProfileTheme();
   repairGenericNames();
+  if (!ls.get('claudeNavigator.attachedClosed')) {     // once: chats' attached artifacts now start closed
+    ls.set('claudeNavigator.attachedClosed', '1');
+    walk(state.tree, n => { if (n.type === 'link' && n.children && n.children.length) n.open = false; });
+    save();
+  }
   (() => {   // names picked up earlier with a notification counter in front, e.g. "(1) Register of Interests"
     let fixed = 0;
     walk(state.tree, n => { if (n.type === 'link' && n.autoName !== false && /^\(\d+\+?\)\s+\S/.test(n.name || '')) { n.name = cleanTitle(n.name); fixed++; } });
