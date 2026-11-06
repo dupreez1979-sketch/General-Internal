@@ -151,6 +151,15 @@
   .twisty.conn, .lrow .conn { color: var(--muted); }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
+  .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
+  .libbar b { margin-right: 6px; }
+  .libbar .danger { color: #c0392b; }
+  .lchk { margin: 0 6px 0 0; flex: none; }
+  .pager { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; }
+  .pager button { border: 0; background: none; color: var(--text); border-radius: 4px; padding: 0 6px; }
+  .pager button:hover:not(:disabled) { background: var(--hover); }
+  .pager button:disabled { opacity: .35; }
+  #libFilterBtn.on, #libSelectBtn.on { color: var(--text); background: var(--sel); }
   .lsub { color: var(--muted); font-size: 11px; font-weight: 600; padding: 14px 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
   .lrow.link-target { box-shadow: inset 0 0 0 2px var(--accent); }
   #libAttachedBtn.on { color: var(--text); background: var(--sel); }
@@ -359,6 +368,8 @@
       <button class="tb" id="libAll" title="Show everything"><span class="t">All</span></button>
       <button class="tb" id="libUnfiled" title="Show only items not yet in one of your folders"><span class="t">Not Filed</span></button>
     </div>
+    <button class="tb" id="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
+    <button class="tb" id="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
     <button class="tb" id="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
     <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
@@ -529,6 +540,8 @@
     collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     account: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5.6" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
     attach: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 2v6.5a2 2 0 002 2h7M10.5 7.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    filter: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    check: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
   };
@@ -674,7 +687,7 @@
   const LIB_STORE = 'claudeNavigator.library.v1';
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
-  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled' };
+  const LIB_KINDS = { chats: 'All Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled' };
   // Shown in the Claude section (Projects and Design are still read: Design feeds Design Systems).
   const SIDEBAR_LIB = ['chats', 'artifacts'];
   const CLAUDE_OTHER = ['designsystems', 'code', 'scheduled'];      // under "Other", closed by default
@@ -696,7 +709,7 @@
     return out;
   }
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, scanned: {}, detached: [], fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, scanned: {}, detached: [], archived: [], fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -705,11 +718,13 @@
   })();
   const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
-    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
   }));
-  state.libFilter = ls.get(LIB_FILTER_STORE) === 'unfiled' ? 'unfiled' : 'all';
+  state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
   const libSel = new Set();
   let libRowItems = new Map();
+  const PAGE_SIZE = 100;
+  Object.assign(state, { libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0, libSelectMode: false, libFiltered: [] });
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
@@ -1095,7 +1110,7 @@
     });
     return map;
   }
-  const unfiledCount = (kind, idx = filedIndex()) => libList(kind).filter(x => !idx.has(normUrl(x.url))).length;
+  const unfiledCount = (kind, idx = filedIndex()) => libList(kind).filter(x => !idx.has(normUrl(x.url)) && !(lib.archived || []).includes(normUrl(x.url))).length;
   function fmtDate(s) {
     if (!s) return '';
     const d = new Date(s);
@@ -1185,11 +1200,27 @@
     applyBrowseSel(false);
   }
 
+  const isArchived = url => (lib.archived || []).includes(normUrl(url));
+  const WHEN = { any: 'Any time', today: 'Today', week: 'Last 7 days', month: 'Last 30 days', older: 'Older than 30 days' };
   function libVisible() {
     const kind = state.loc.which;
     const idx = filedIndex();
     let items = libList(kind);
+    // Archived items (kept only in this app) show only when you ask for them.
+    items = items.filter(x => (state.libFilter === 'archived') === isArchived(x.url));
     if (state.libFilter === 'unfiled') items = items.filter(x => !idx.has(normUrl(x.url)));
+    if (state.libFilter === 'filed') items = items.filter(x => idx.has(normUrl(x.url)));
+    if (state.libWhen !== 'any') {
+      const day = 864e5, now = Date.now(), start = new Date(); start.setHours(0, 0, 0, 0);
+      items = items.filter(x => {
+        const t = x.updated ? new Date(x.updated).getTime() : 0;
+        if (!t) return state.libWhen === 'older';
+        return state.libWhen === 'today' ? t >= start.getTime() : state.libWhen === 'week' ? t >= now - 7 * day
+          : state.libWhen === 'month' ? t >= now - 30 * day : t < now - 30 * day;
+      });
+    }
+    if (kind === 'chats' && state.libArts !== 'any') items = items.filter(x => (relatedFor(x.url).length > 0) === (state.libArts === 'with'));
+    if (kind === 'chats' && state.libStarred) items = items.filter(x => x.starred);
     if (state.query) {
       const q = state.query.toLowerCase();
       items = items.filter(x => (x.name || '').toLowerCase().includes(q));
@@ -1208,6 +1239,11 @@
 
   function renderLibrary() {
     const { kind, idx, items } = libVisible();
+    state.libFiltered = items;
+    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    if (state.libPage >= pages) state.libPage = pages - 1;
+    const pageItems = items.slice(state.libPage * PAGE_SIZE, (state.libPage + 1) * PAGE_SIZE);
+    const lastPage = state.libPage === pages - 1;
     const all = libList(kind);
     const frag = document.createDocumentFragment();
     if (!ls.get(LIB_TIP_STORE) && all.length) {
@@ -1224,13 +1260,30 @@
     } else if (!items.length) {
       if (lib.busy && !all.length) frag.appendChild(emptyMsg('Loading from Claude\u2026', 'This takes a few seconds the first time.'));
       else if (state.query) frag.appendChild(emptyMsg('No matches', 'Try a different word.'));
+      else if (state.libFilter === 'archived') frag.appendChild(emptyMsg('Nothing archived', 'Archived items appear here. Archiving only hides them in this app; Claude is not changed.'));
+      else if (activeFilterCount()) frag.appendChild(emptyMsg('Nothing matches these filters', 'Change or reset the filters.'));
       else if (state.libFilter === 'unfiled' && all.length) frag.appendChild(emptyMsg('All filed', 'Every item here is in one of your folders.'));
       else if (lib.error) frag.appendChild(emptyMsg('Could not read your list from Claude', `Click Refresh to try again. Details: ${lib.error}`));
       else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
     } else {
+      if (state.libSelectMode) frag.appendChild(libActionBar(kind));     // only in Select mode, so the list never jumps
       const l = makeList('library', 'lib-list');
+      if (state.libSelectMode) {
+        const all2 = document.createElement('input');
+        all2.type = 'checkbox';
+        all2.className = 'lchk lchk-all';
+        all2.title = `Select all ${items.length} (every page)`;
+        all2.addEventListener('mousedown', e => e.stopPropagation());
+        all2.addEventListener('click', e => {
+          e.stopPropagation();
+          const everyone = items.every(x => libSel.has(x.url));
+          if (everyone) items.forEach(x => libSel.delete(x.url)); else items.forEach(x => libSel.add(x.url));
+          renderLibrary();
+        });
+        l.querySelector('.lhead .hc').prepend(all2);
+      }
       libRowItems = new Map();
-      for (const x of items) {
+      for (const x of pageItems) {
         libRowItems.set(x.url, x);
         l.appendChild(libRow(x, kind, idx));
         if (kind === 'chats' && state.libShowAttached) {
@@ -1248,7 +1301,7 @@
           }
         }
       }
-      if (kind === 'chats' && state.libShowAttached) {
+      if (kind === 'chats' && state.libShowAttached && lastPage) {
         const linked = new Set();
         for (const c of lib.chats || []) for (const a of relatedFor(c.url)) linked.add(normUrl(a.url));
         const q = (state.query || '').toLowerCase();
@@ -1298,6 +1351,18 @@
   }
 
   function libRow(x, kind, idx) {
+    const r = libRowBase(x, kind, idx);
+    if (state.libSelectMode) {
+      const c = document.createElement('input');
+      c.type = 'checkbox';
+      c.className = 'lchk';
+      c.checked = libSel.has(x.url);
+      c.title = 'Select';
+      r.querySelector('.nm').prepend(c);
+    }
+    return r;
+  }
+  function libRowBase(x, kind, idx) {
     const r = document.createElement('div');
     const where = idx.get(normUrl(x.url));
     r.className = 'lrow item lib' + (where ? ' filed' : '');
@@ -1315,12 +1380,133 @@
   }
 
   function applyLibSel() {
-    browseEl.querySelectorAll('.item.lib').forEach(r => r.classList.toggle('selected', libSel.has(r.dataset.key)));
+    browseEl.querySelectorAll('.item.lib').forEach(r => {
+      r.classList.toggle('selected', libSel.has(r.dataset.key));
+      const c = r.querySelector('.lchk');
+      if (c) c.checked = libSel.has(r.dataset.key);
+    });
+    const ca = browseEl.querySelector('.lchk-all');
+    if (ca) {
+      const f = state.libFiltered || [];
+      const n = f.filter(x => libSel.has(x.url)).length;
+      ca.checked = f.length > 0 && n === f.length;
+      ca.indeterminate = n > 0 && n < f.length;
+    }
+    const bar = browseEl.querySelector('.libbar');
+    if (bar && state.loc.kind === 'library') bar.replaceWith(libActionBar(state.loc.which));
+
     const st = $('status');
     if (st && state.loc.kind === 'library') {
       const shown = browseEl.querySelectorAll('.item.lib').length;
       st.textContent = libSel.size ? `${libSel.size} of ${shown} selected` : `${shown} shown`;
     }
+  }
+
+  function activeFilterCount() {
+    return (state.libFilter !== 'all' ? 1 : 0) + (state.libWhen !== 'any' ? 1 : 0) + (state.libArts !== 'any' ? 1 : 0) + (state.libStarred ? 1 : 0);
+  }
+  function libActionBar(kind) {
+    const sel = selectedLibItems();
+    const bar = document.createElement('div');
+    bar.className = 'libbar';
+    const b = (label, run, cls = '', title = '') => {
+      const x = document.createElement('button');
+      x.className = 'tb ' + cls;
+      x.innerHTML = `<span class="t"></span>`;
+      x.firstChild.textContent = label;
+      if (title) x.title = title;
+      x.addEventListener('mousedown', e => e.stopPropagation());
+      x.addEventListener('click', e => { e.stopPropagation(); run(); });
+      bar.appendChild(x);
+      return x;
+    };
+    const count = document.createElement('b');
+    count.textContent = sel.length ? `${sel.length} selected` : 'Select items with the checkboxes';
+    bar.appendChild(count);
+    if (!sel.length) return bar;
+    b('File in Folder\u2026', () => fileLibPrompt(sel), '', 'Save them into one of your folders');
+    const archivedView = state.libFilter === 'archived';
+    b(archivedView ? 'Unarchive' : 'Archive', () => archiveItems(sel, !archivedView), '', 'Hide them from this list (only in this app; Claude is not changed)');
+    if (kind === 'chats') b('Delete from Claude\u2026', () => deleteFromClaude(sel), 'danger', 'Delete these chats from your Claude account for good');
+    else if (sel.length === 1) b('Open in Claude to Delete', () => openLib(sel[0].url), '', 'Open it in Claude, where you can delete it');
+    b('Clear Selection', () => { libSel.clear(); renderLibrary(); });
+    return bar;
+  }
+  function renderLibPager(total) {
+    const st = $('status');
+    if (!st) return;
+    const pages = Math.ceil(total / PAGE_SIZE);
+    if (pages <= 1) return;
+    const p = document.createElement('span');
+    p.className = 'pager';
+    const from = state.libPage * PAGE_SIZE + 1, to = Math.min(total, (state.libPage + 1) * PAGE_SIZE);
+    const btn = (label, title, page, disabled) => {
+      const x = document.createElement('button');
+      x.textContent = label;
+      x.title = title;
+      x.disabled = disabled;
+      x.addEventListener('click', () => { state.libPage = page; renderMain(); browseEl.scrollTop = 0; });
+      return x;
+    };
+    const mid = document.createElement('span');
+    mid.textContent = `${from}\u2013${to} of ${total}`;
+    p.append(btn('\u2039 Previous', 'Previous page', state.libPage - 1, state.libPage === 0), mid, btn('Next \u203a', 'Next page', state.libPage + 1, state.libPage >= pages - 1));
+    st.after(p);
+  }
+  function showLibFilterMenu(x, y) {
+    const kind = state.loc.which;
+    const set = (k, v) => () => { state[k] = v; state.libPage = 0; if (k === 'libFilter') ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
+    showMenu(x, y, [
+      { label: 'Everything', checked: state.libFilter === 'all', run: set('libFilter', 'all') },
+      { label: 'Not in a Folder', checked: state.libFilter === 'unfiled', run: set('libFilter', 'unfiled') },
+      { label: 'In a Folder', checked: state.libFilter === 'filed', run: set('libFilter', 'filed') },
+      { label: 'Archived', checked: state.libFilter === 'archived', run: set('libFilter', 'archived') },
+      '-',
+      ...Object.keys(WHEN).map(k => ({ label: WHEN[k], checked: state.libWhen === k, run: set('libWhen', k) })),
+      kind === 'chats' && '-',
+      kind === 'chats' && { label: 'With or Without Artifacts', checked: state.libArts === 'any', run: set('libArts', 'any') },
+      kind === 'chats' && { label: 'With Artifacts', checked: state.libArts === 'with', run: set('libArts', 'with') },
+      kind === 'chats' && { label: 'Without Artifacts', checked: state.libArts === 'without', run: set('libArts', 'without') },
+      kind === 'chats' && '-',
+      kind === 'chats' && { label: 'Starred Only', checked: state.libStarred, run: set('libStarred', !state.libStarred) },
+      '-',
+      { label: 'Reset Filters', disabled: !activeFilterCount(), run: () => { Object.assign(state, { libFilter: 'all', libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0 }); ls.set(LIB_FILTER_STORE, 'all'); renderMain(); renderToolbar(); } },
+    ]);
+  }
+  // Archive: only in this app (Claude has no chat archive to sync with).
+  function archiveItems(items, on) {
+    const before = (lib.archived || []).slice();
+    const keys = new Set(items.map(x => normUrl(x.url)));
+    lib.archived = on ? [...new Set(before.concat([...keys]))] : before.filter(k => !keys.has(k));
+    libSel.clear();
+    saveLib();
+    renderAll();
+    toast(`${on ? 'Archived' : 'Unarchived'} ${items.length} item${items.length === 1 ? '' : 's'}${on ? '. Find them under Filter, Archived.' : ''}`, {
+      label: 'Undo', run: () => { lib.archived = before; saveLib(); renderAll(); },
+    });
+  }
+  async function deleteFromClaude(items) {
+    const chats = items.filter(x => /\/chat\//.test(x.url));
+    if (!chats.length || !isApp) return toast('Only chats can be deleted from Claude here');
+    const n = chats.length;
+    if (!confirm(`Delete ${n} chat${n === 1 ? '' : 's'} from Claude?\n\nThis deletes ${n === 1 ? 'it' : 'them'} from your Claude account for good, and removes ${n === 1 ? 'it' : 'them'} from your folders here. It cannot be undone.`)) return;
+    if (n > 10 && !confirm(`Really delete all ${n} chats from your Claude account?`)) return;
+    toast(`Deleting ${n} chat${n === 1 ? '' : 's'} from Claude\u2026`);
+    const res = await window.navigatorApp.deleteChats(chats.map(x => ({ url: x.url, org: x.org || null })));
+    const gone = new Set(res.deleted.map(normUrl));
+    lib.chats = (lib.chats || []).filter(x => !gone.has(normUrl(x.url)));
+    for (const k of gone) delete lib.related[k];
+    lib.archived = (lib.archived || []).filter(k => !gone.has(k));
+    const drop = [];
+    walk(state.tree, x => { if (x.type === 'link' && gone.has(normUrl(x.url))) drop.push(x.id); });
+    for (const id of drop) { const l = locate(id); if (l) { if (l.node.children && l.node.children.length) l.list.splice(l.index, 1, ...l.node.children); else l.list.splice(l.index, 1); } }
+    libSel.clear();
+    saveLib();
+    commit();
+    if (res.failed.length) {
+      const why = [...new Set(res.failed.map(f => f.status))].join(', ');
+      toast(`Deleted ${res.deleted.length} of ${n}. ${res.failed.length} could not be deleted (${why}).`);
+    } else toast(`Deleted ${res.deleted.length} chat${res.deleted.length === 1 ? '' : 's'} from Claude`);
   }
 
   function renderLibPathbar(kind, idx, shown) {
@@ -1335,6 +1521,7 @@
     st.id = 'status';
     bar.append(s, st);
     applyLibSel();
+    renderLibPager((state.libFiltered || []).length);
   }
 
   // ---------- List columns (choose them by right-clicking the header; drag edges to resize) ----------
@@ -1718,6 +1905,12 @@
     $('viewSeg').hidden = page || !!state.query || inLib;
     $('libSeg').hidden = !inLib;
     $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
+    $('libFilterBtn').hidden = !inLib;
+    $('libSelectBtn').hidden = !inLib;
+    const fc = activeFilterCount();
+    $('libFilterText').textContent = fc ? `Filter (${fc})` : 'Filter';
+    $('libFilterBtn').classList.toggle('on', fc > 0);
+    $('libSelectBtn').classList.toggle('on', !!state.libSelectMode);
     $('libAttachedBtn').classList.toggle('on', !!state.libShowAttached);
     $('bRefreshLib').hidden = !inLib;
     $('bRefreshLib').disabled = lib.busy;
@@ -1787,7 +1980,7 @@
     }
     if (loc.kind !== 'page') closeFind();
     if (loc.kind === 'library') {
-      libSel.clear(); libAnchor = null; state.lastFolderId = null; refreshLibrary(false);
+      libSel.clear(); libAnchor = null; state.lastFolderId = null; state.libPage = 0; refreshLibrary(false);
       if (CLAUDE_OTHER.includes(loc.which) && ls.get('claudeNavigator.claudeOtherOpen') !== '1') { ls.set('claudeNavigator.claudeOtherOpen', '1'); renderSide(); }
     }
     if (loc.kind === 'folder') {
@@ -2965,7 +3158,14 @@
   // ---------- Main area events ----------
   const libKeys = () => [...browseEl.querySelectorAll('.item.lib')].map(r => r.dataset.key);
   const libItem = key => libRowItems.get(key) || libList(state.loc.which).find(x => x.url === key);
-  const selectedLibItems = () => libKeys().filter(k => libSel.has(k)).map(libItem).filter(Boolean);
+  // Everything selected, including on other pages of the list.
+  const selectedLibItems = () => {
+    const out = [], seen = new Set();
+    for (const x of (state.libFiltered || []).concat([...libRowItems.values()])) {
+      if (libSel.has(x.url) && !seen.has(x.url)) { seen.add(x.url); out.push(x); }
+    }
+    return out;
+  };
   function openLib(url, newWindow = false) {
     if (newWindow) return openNewWindow(url);
     go({ kind: 'page', url });
@@ -2973,6 +3173,13 @@
   function libMouseDown(e) {
     const it = e.target.closest('.item.lib');
     libPendingSingle = null;
+    if (it && e.target.closest('.lchk')) {
+      e.preventDefault();
+      if (libSel.has(it.dataset.key)) libSel.delete(it.dataset.key); else libSel.add(it.dataset.key);
+      libAnchor = it.dataset.key;
+      return applyLibSel();
+    }
+    if (e.target.closest('.libbar, .lchk-all')) return;
     if (!it) {
       if (!e.target.closest('.lhead')) { libSel.clear(); applyLibSel(); }
       return;
@@ -3017,6 +3224,9 @@
       sel.length > 0 && { label: sel.length > 1 ? `File ${sel.length} Items in Folder\u2026` : 'File in Folder\u2026', run: () => fileLibPrompt(sel) },
       saved.length > 0 && { label: 'Show in Folder', run: () => revealInFolder(saved[0].id) },
       one && { label: 'Copy Link', run: () => navigator.clipboard.writeText(one.url).then(() => toast('Link copied')) },
+      sel.length > 0 && { label: state.libFilter === 'archived' ? `Unarchive${sel.length > 1 ? ` ${sel.length} Items` : ''}` : `Archive${sel.length > 1 ? ` ${sel.length} Items` : ''}`, run: () => archiveItems(sel, state.libFilter !== 'archived') },
+      sel.length > 0 && state.loc.which === 'chats' && { label: `Delete ${sel.length > 1 ? `${sel.length} Chats` : 'Chat'} from Claude\u2026`, run: () => deleteFromClaude(sel) },
+      one && state.loc.which !== 'chats' && { label: 'Open in Claude to Delete', run: () => openLib(one.url) },
       one && { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, libKind(one, state.loc.which), k => {
         lib.kinds[normUrl(one.url)] = k;
         savedLinksFor(one.url).forEach(n => { n.as = k; });
@@ -3056,7 +3266,7 @@
   }
 
   browseEl.addEventListener('mousedown', e => {
-    if (e.target.closest('input, button, .banner')) return;
+    if (e.target.closest('input:not(.lchk), button, .banner')) return;
     if (state.loc.kind === 'library') return libMouseDown(e);
     const it = e.target.closest('.item');
     multi.pending = null;
@@ -3449,10 +3659,12 @@
       isApp && { label: 'Show Claude\u2019s Own Menu', run: () => { setHideClaudeSidebar(false); showClaudeSidebar(); } },
     ], { above: true });
   });
-  const setLibFilter = v => { state.libFilter = v; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
+  const setLibFilter = v => { state.libFilter = v; state.libPage = 0; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
   $('libAll').addEventListener('click', () => setLibFilter('all'));
   $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
   $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
+  $('libFilterBtn').addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); showLibFilterMenu(b.left, b.bottom + 4); });
+  $('libSelectBtn').addEventListener('click', () => { state.libSelectMode = !state.libSelectMode; renderMain(); renderToolbar(); });
   $('libAttachedBtn').addEventListener('click', () => {
     state.libShowAttached = !state.libShowAttached;
     ls.set('claudeNavigator.libShowAttached', state.libShowAttached ? 'on' : 'off');
@@ -3462,6 +3674,7 @@
 
   searchEl.addEventListener('input', () => {
     state.query = searchEl.value.trim();
+    state.libPage = 0;
     state.browseSel = null;
     renderMain();
     renderToolbar();

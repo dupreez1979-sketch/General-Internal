@@ -89,11 +89,22 @@ The first time you open this version, your old layout is converted once: Work �
 
 ## The Claude section
 
-**New Chat**, **Recent Chats** and **Artifacts**, then **Other** (closed until you open it) with **Design Systems**, **Code** and **Scheduled**. The numbers show what is not in a folder yet.
+**New Chat**, **All Chats** and **Artifacts**, then **Other** (closed until you open it) with **Design Systems**, **Code** and **Scheduled**. The numbers show what is not in a folder yet.
 
-**Recent Chats** shows chats and artifacts together: each chat's artifacts under it, then the artifacts not linked to any chat at the end. Drag one of those onto its chat to link them. The Artifacts button at the top shows or hides them.
+**All Chats** shows chats and artifacts together: each chat's artifacts under it, then the artifacts not linked to any chat at the end. Drag one of those onto its chat to link them. The Artifacts button at the top shows or hides them.
 
 Items get the right icon where Claude says what they are, or where the name makes it clear (for example "… Design System" or "… Slides"). Right-click anything and choose **Change Icon…** to correct it.
+
+## Managing your chats
+
+**All Chats** is a full list of every chat in your Claude account, 100 per page (Previous and Next at the bottom right).
+
+- **Search**: type in the search box at the top right.
+- **Filter** (top bar): everything, not in a folder, in a folder, or archived; any time, today, last 7 days, last 30 days, or older; with or without artifacts; starred only. "Filter (2)" means two filters are on; Reset Filters clears them.
+- **Select** (top bar): adds checkboxes, with a box in the Name heading that selects everything that matches, across all pages. The bar above the list then offers **File in Folder**, **Archive**, **Delete from Claude** and **Clear Selection**. ⌘-click, ⇧-click and right-click work too.
+- **Delete from Claude** deletes the chats from your Claude account for good (the same as deleting them in Claude), and removes them from your folders here. It always asks first, and twice for more than 10. It cannot be undone.
+- **Archive** hides chats from the list in this app only; Claude has no archive to sync with, so nothing changes there. See them with Filter, Archived, and Unarchive them from there.
+- Artifacts can't be deleted from here yet; right-click one and choose **Open in Claude to Delete**.
 
 ## Artifacts stay with the chat they came from
 

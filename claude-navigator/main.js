@@ -399,6 +399,7 @@ const API_SCRIPT = `(async () => {
             url: 'https://claude.ai/chat/' + c.uuid,
             updated: c.updated_at || c.created_at || null,
             starred: !!c.is_starred,
+            org: o.uuid,
           });
           if (page.length < 200 || !fresh.length) break;
         }
@@ -527,6 +528,48 @@ async function fetchLibrary(opts = {}) {
   }
   return result;
 }
+
+// Deletes chats from your Claude account, using the same request Claude's own website sends
+// when you delete a chat there. Only chat addresses are accepted.
+const deleteScript = (items) => `(async () => {
+  const items = ${JSON.stringify(items)};
+  const out = { deleted: [], failed: [] };
+  let orgs = null;
+  const allOrgs = async () => {
+    if (orgs) return orgs;
+    try { const r = await fetch('/api/organizations', { credentials: 'include' }); const x = await r.json(); orgs = (Array.isArray(x) ? x : (x.data || [])).map(o => o.uuid); } catch (e) { orgs = []; }
+    return orgs;
+  };
+  for (const it of items) {
+    const m = /\\/chat\\/([0-9a-fA-F-]{8,})/.exec(it.url);
+    if (!m) { out.failed.push({ url: it.url, status: 'not a chat' }); continue; }
+    let status = 'no account';
+    for (const o of it.org ? [it.org] : await allOrgs()) {
+      try {
+        const r = await fetch('/api/organizations/' + o + '/chat_conversations/' + m[1], { method: 'DELETE', credentials: 'include' });
+        status = r.status;
+        if (r.ok || r.status === 204) break;
+      } catch (e) { status = String(e.message || e); }
+    }
+    if (status === 204 || (typeof status === 'number' && status >= 200 && status < 300)) out.deleted.push(it.url); else out.failed.push({ url: it.url, status });
+  }
+  return out;
+})()`;
+
+ipcMain.handle('claude-delete-chats', async (_e, items) => {
+  items = (Array.isArray(items) ? items : []).filter(x => x && typeof x.url === 'string' && /^https:\/\/claude\.ai\/chat\/[0-9a-fA-F-]{8,}/.test(x.url));
+  if (!items.length) return { deleted: [], failed: [] };
+  const win = new BrowserWindow({ show: false, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  try {
+    await openHidden(win, 'https://claude.ai/recents');
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { deleted: [], failed: items.map(i => ({ url: i.url, status: 'not signed in' })) };
+    return await win.webContents.executeJavaScript(deleteScript(items), true);
+  } catch (e) {
+    return { deleted: [], failed: items.map(i => ({ url: i.url, status: String(e && e.message || e) })) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
 
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
