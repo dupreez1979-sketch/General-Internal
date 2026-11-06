@@ -84,6 +84,8 @@ It behaves like a Finder window:
 | Expand or collapse everything inside a folder | Hover over it in the sidebar and click the small double arrow, or ⌥-click its arrow, or ⌥→ and ⌥← |
 | Choose list columns | Right-click the column headings. Options include Last Edited, Date Added, Last Opened, Items, Where, In Folder and Address |
 | Resize a column | Drag the thin line between headings. Double-click the line to reset it |
+| Sort a list | Click a column heading; click again to reverse. Folders stay on top. Right-click the headings and choose Sort by Your Own Order to go back. Sorting never changes your own arrangement |
+| See what a button does | Hover over it. Tooltips name every button and icon, with its shortcut |
 | New folder | ⌘⇧N (in the folder you are looking at), or New Folder at the bottom of the sidebar |
 | Save the Claude page you are looking at | ⌘S |
 | Add a link by pasting | ⌘L |

@@ -164,6 +164,17 @@
   .row:hover .xall { opacity: .7; }
   .row .xall:hover { opacity: 1; background: var(--hover); color: var(--text); }
   #menu .ck { width: 14px; flex: none; }
+  #tip {
+    position: fixed; z-index: 80; max-width: 320px; pointer-events: none; opacity: 0; transition: opacity .1s;
+    background: var(--menu); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 12px; line-height: 1.35;
+    box-shadow: var(--shadow); white-space: pre-line; -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  }
+  #tip.show { opacity: 1; }
+  .lhead .hc { cursor: default; }
+  .lhead .hc:hover { color: var(--text); }
+  .lhead .hc.sorted { color: var(--text); font-weight: 600; }
+  .lhead .sa { display: inline-block; margin-left: 4px; vertical-align: -1px; }
+  .lhead .sa svg { display: inline; }
   .lhead { color: var(--muted); font-size: 11px; font-weight: 500; padding: 0 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
   .lrow { height: 26px; padding: 0 10px; border-radius: 6px; }
   .lrow:nth-child(odd) { background: var(--hover); }
@@ -253,11 +264,11 @@
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
-    <button class="tb" id="sMore" title="More"><span data-icon="more"></span></button>
+    <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
   </div>
 </aside>
 
-<div id="splitter" title="Drag to resize"></div>
+<div id="splitter" title="Drag to resize the sidebar. Double-click to reset."></div>
 
 <main id="main">
   <div id="bar">
@@ -281,20 +292,20 @@
     <button class="tb" id="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
     <div class="search">
-      <span data-icon="search"></span>
-      <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false">
+      <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
+      <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)">
     </div>
   </div>
   <div id="progress"></div>
   <div id="findbar" hidden>
-    <div class="search"><span data-icon="search"></span><input id="findInput" type="search" placeholder="Find on this page" autocomplete="off" spellcheck="false"></div>
+    <div class="search"><span data-icon="search" title="Find text on this Claude page (Ctrl+F)"></span><input id="findInput" type="search" placeholder="Find on this page" autocomplete="off" spellcheck="false" title="Find text on this Claude page. Return for next, Shift-Return for previous."></div>
     <div class="seg">
       <button class="tb" id="findPrev" title="Previous (Ctrl+Shift+G)"><span data-icon="back"></span></button>
       <button class="tb" id="findNext" title="Next (Ctrl+G)"><span data-icon="fwd"></span></button>
     </div>
     <span id="findCount"></span>
     <span class="spacer"></span>
-    <button class="btn" id="findDone">Done</button>
+    <button class="btn" id="findDone" title="Close the find bar (Esc)">Done</button>
   </div>
   <div id="content">
     <div id="browse" tabindex="0" aria-label="Folder contents"></div>
@@ -318,7 +329,7 @@
   </form>
 </dialog>
 
-<div id="toast" role="status"><span id="toastMsg"></span><button id="toastUndo">Undo</button></div>
+<div id="toast" role="status"><span id="toastMsg"></span><button id="toastUndo" title="Undo (Ctrl+Z)">Undo</button></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 
 <script>
@@ -387,6 +398,8 @@
     starFilled: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="#F5B400" stroke="#E0A200" stroke-width="1.1" stroke-linejoin="round"/></svg>',
     external: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     compose: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.3 1.9a1.1 1.1 0 011.6 1.6L8.2 9.2l-2.1.5.5-2.1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    sortUp: '<svg width="9" height="9" viewBox="0 0 16 16"><path d="M3 10.5L8 5.5l5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    sortDown: '<svg width="9" height="9" viewBox="0 0 16 16"><path d="M3 5.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
@@ -568,6 +581,8 @@
         const r = document.createElement('div');
         r.className = 'row lib';
         r.dataset.lib = k;
+        r.title = { chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account', artifacts: 'Artifacts listed on Claude\u2019s Artifacts page' }[k] +
+          (unfiledCount(k, idx) ? `. ${unfiledCount(k, idx)} not in one of your folders yet.` : '. All are filed.');
         r.innerHTML = `<span class="twisty"></span><span class="icon">${small(LIB_ICON[k])}</span><span class="label"></span>`;
         r.querySelector('.label').textContent = LIB_KINDS[k];
         const c = unfiledCount(k, idx);
@@ -589,7 +604,7 @@
         r.draggable = true;
         r.setAttribute('role', 'treeitem');
         r.setAttribute('aria-expanded', String(!!n.open));
-        r.innerHTML = `<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev">${UI.chev}</span>`;
+        r.innerHTML = `<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev" title="${n.open ? 'Hide' : 'Show'} this section">${UI.chev}</span>`;
         r.querySelector('.label').textContent = n.name;
         r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
         frag.appendChild(r);
@@ -637,7 +652,8 @@
     r.style.setProperty('--depth', depth);
     const hasKids = n.type === 'folder' && n.children.length > 0;
     if (n.type === 'folder') r.setAttribute('aria-expanded', String(open));
-    r.innerHTML = `<span class="twisty${open ? ' open' : ''}">${hasKids ? UI.chev : ''}</span>` +
+    const twTip = hasKids ? ` title="${open ? 'Collapse' : 'Expand'}${isMac ? ' (\u2325-click: everything inside)' : ' (Alt-click: everything inside)'}"` : '';
+    r.innerHTML = `<span class="twisty${open ? ' open' : ''}"${twTip}>${hasKids ? UI.chev : ''}</span>` +
       `<span class="icon">${small(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
     r.querySelector('.label').textContent = n.name;
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
@@ -745,12 +761,13 @@
     } else {
       items = childrenOf(state.loc.id);
     }
+    items = sortItems(items, where ? 'search' : 'folder', { updated: libUpdatedIndex() });
     const frag = document.createDocumentFragment();
 
     if (!isApp && !state.query && !ls.get(BANNER_STORE)) {
       const b = document.createElement('div');
       b.className = 'banner';
-      b.innerHTML = '<span>Links open Claude in a separate tab here. Use the desktop app to keep Claude inside this window.</span><button class="tb">Got it</button>';
+      b.innerHTML = '<span>Links open Claude in a separate tab here. Use the desktop app to keep Claude inside this window.</span><button class="tb" title="Hide this tip">Got it</button>';
       b.querySelector('button').addEventListener('click', () => { ls.set(BANNER_STORE, '1'); renderMain(); });
       frag.appendChild(b);
     }
@@ -788,7 +805,7 @@
       const q = state.query.toLowerCase();
       items = items.filter(x => (x.name || '').toLowerCase().includes(q));
     }
-    return { kind, idx, items };
+    return { kind, idx, items: sortItems(items, 'library', { idx }) };
   }
 
   function emptyMsg(title, text) {
@@ -807,7 +824,7 @@
     if (!ls.get(LIB_TIP_STORE) && all.length) {
       const b = document.createElement('div');
       b.className = 'banner';
-      b.innerHTML = `<span>Drag items onto your folders to file them. Select several with ${isMac ? '\u2318' : 'Ctrl'}-click or ${isMac ? '\u21e7' : 'Shift'}-click first, or right-click and choose File in Folder. Choose Not Filed to see what is left.</span><button class="tb">Got it</button>`;
+      b.innerHTML = `<span>Drag items onto your folders to file them. Select several with ${isMac ? '\u2318' : 'Ctrl'}-click or ${isMac ? '\u21e7' : 'Shift'}-click first, or right-click and choose File in Folder. Choose Not Filed to see what is left.</span><button class="tb" title="Hide this tip">Got it</button>`;
       b.querySelector('button').addEventListener('click', () => { ls.set(LIB_TIP_STORE, '1'); renderLibrary(); });
       frag.appendChild(b);
     }
@@ -902,17 +919,90 @@
   const saveCols = () => ls.set(COL_STORE, JSON.stringify(colPrefs));
   const listView = () => (state.loc.kind === 'library' ? 'library' : state.query ? 'search' : 'folder');
 
+  // ---------- Sorting (display only: your own order is never changed) ----------
+  const DATE_COLS = new Set(['edited', 'added', 'opened']);
+  const DEFAULT_SORT = { folder: null, search: null, library: { col: 'edited', dir: 'desc' } };
+  function sortFor(view) {
+    const p = colsFor(view);
+    return p.sort === undefined ? DEFAULT_SORT[view] : p.sort;
+  }
+  function sortWords(k, dir) {
+    if (DATE_COLS.has(k)) return dir === 'desc' ? 'newest first' : 'oldest first';
+    if (k === 'items') return dir === 'desc' ? 'most first' : 'fewest first';
+    return dir === 'asc' ? 'A to Z' : 'Z to A';
+  }
+  function setSort(view, col) {
+    const cur = sortFor(view);
+    const p = colsFor(view);
+    p.sort = cur && cur.col === col
+      ? { col, dir: cur.dir === 'asc' ? 'desc' : 'asc' }
+      : { col, dir: DATE_COLS.has(col) || col === 'items' ? 'desc' : 'asc' };
+    saveCols();
+    renderMain();
+  }
+  function editedOf(n, updated) {
+    if (n.type === 'link') return updated.get(normUrl(n.url)) || '';
+    let latest = '';
+    walk(n.children, c => { const u = c.type === 'link' && updated.get(normUrl(c.url)); if (u && u > latest) latest = u; });
+    return latest;
+  }
+  const toTime = v => (v ? new Date(v).getTime() || 0 : 0);
+  // The value a column sorts by, for a folder item (n) or a Library item (x).
+  function sortValue(view, k, it, ctx) {
+    if (view === 'library') {
+      if (k === 'name') return (it.name || '').toLowerCase();
+      if (k === 'edited') return toTime(it.updated);
+      if (k === 'filed') return (ctx.idx.get(normUrl(it.url)) || []).join(', ').toLowerCase();
+      if (k === 'address') return it.url;
+      return '';
+    }
+    switch (k) {
+      case 'name': return it.name.toLowerCase();
+      case 'kind': return KIND_NAME[kindOf(it)];
+      case 'edited': return toTime(editedOf(it, ctx.updated));
+      case 'added': return it.added || 0;
+      case 'opened': return it.opened || 0;
+      case 'items': return it.type === 'folder' ? it.children.length : -1;
+      case 'where': return pathTo(it.id).slice(0, -1).map(p => p.name).join(' ').toLowerCase();
+      case 'address': return it.url || '';
+      default: return '';
+    }
+  }
+  function sortItems(items, view, ctx) {
+    const sort = sortFor(view);
+    if (!sort) return items;
+    const dir = sort.dir === 'asc' ? 1 : -1;
+    const empty = v => v === '' || v === 0 || v === -1;
+    return items.slice().sort((a, b) => {
+      if (view !== 'library' && a.type !== b.type) return a.type === 'folder' ? -1 : 1;   // folders on top
+      const va = sortValue(view, sort.col, a, ctx), vb = sortValue(view, sort.col, b, ctx);
+      if (empty(va) !== empty(vb)) return empty(va) ? 1 : -1;                           // blanks last
+      const c = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb), undefined, { numeric: true });
+      return c * dir || a.name.localeCompare(b.name, undefined, { numeric: true });
+    });
+  }
+
   function listHeader(view) {
     const head = document.createElement('div');
     head.className = 'lhead';
-    head.title = 'Right-click to choose columns. Drag a column edge to resize it.';
+    const sort = sortFor(view);
     for (const k of colsFor(view).cols) {
       const c = document.createElement('span');
-      c.className = 'hc';
+      c.className = 'hc' + (sort && sort.col === k ? ' sorted' : '');
       c.dataset.col = k;
       c.textContent = COLS[k].label;
+      c.title = sort && sort.col === k
+        ? `Sorted by ${COLS[k].label}, ${sortWords(k, sort.dir)}. Click to reverse.\nRight-click to choose columns.`
+        : `Click to sort by ${COLS[k].label}.\nRight-click to choose columns.`;
+      if (sort && sort.col === k) {
+        const a = document.createElement('span');
+        a.className = 'sa';
+        a.innerHTML = sort.dir === 'asc' ? UI.sortUp : UI.sortDown;
+        c.appendChild(a);
+      }
       const rz = document.createElement('i');
       rz.className = 'rz';
+      rz.title = 'Drag to resize. Double-click to reset.';
       c.appendChild(rz);
       head.appendChild(c);
     }
@@ -956,9 +1046,17 @@
         },
       })),
       '-',
-      { label: 'Reset Columns', run: () => { delete colPrefs[view]; saveCols(); renderMain(); } },
+      view !== 'library' && { label: 'Sort by Your Own Order', checked: !sortFor(view), run: () => { colsFor(view).sort = null; saveCols(); renderMain(); } },
+      { label: 'Reset Columns and Sorting', run: () => { delete colPrefs[view]; saveCols(); renderMain(); } },
     ]);
   }
+
+  let lastResize = 0;
+  browseEl.addEventListener('click', e => {
+    const hc = e.target.closest('.lhead .hc');
+    if (!hc || e.target.closest('.rz') || Date.now() - lastResize < 300) return;
+    setSort(hc.closest('.list').dataset.view, hc.dataset.col);
+  });
 
   // Drag a header edge to resize; double-click it to reset that column.
   browseEl.addEventListener('mousedown', e => {
@@ -977,6 +1075,7 @@
       list.style.setProperty('--cols', gridCols(view));
     };
     const stop = () => {
+      lastResize = Date.now();
       document.body.classList.remove('col-resizing');
       removeEventListener('mousemove', move);
       removeEventListener('mouseup', stop);
@@ -1013,9 +1112,7 @@
     r.dataset.id = n.id;
     r.draggable = true;
     const k = kindOf(n);
-    let edited = '';
-    if (n.type === 'link') edited = updated.get(normUrl(n.url)) || '';
-    else walk(n.children, c => { const u = c.type === 'link' && updated.get(normUrl(c.url)); if (u && u > edited) edited = u; });
+    const edited = editedOf(n, updated);
     fillRow(r, view, small(k), n.name, {
       kind: KIND_NAME[k],
       edited: fmtDate(edited),
@@ -1044,6 +1141,7 @@
       b.className = 'crumb';
       b.innerHTML = icon;
       b.appendChild(document.createTextNode(label));
+      b.title = id ? `Go to ${label}` : 'Go to the top level';
       b.addEventListener('click', () => go({ kind: 'folder', id }));
       return b;
     };
@@ -1102,7 +1200,8 @@
         add('ts', '\u203a');
       }
       add('tn', title);
-      if (c.status === 'pending') add('chip', `Saves in ${nodeOf(c.folderId).name} once created`);
+      if (c.status === 'pending') add('chip', `Saves in ${nodeOf(c.folderId).name} once created`).title =
+        `This ${state.autoFile.kind} appears in \u201c${nodeOf(c.folderId).name}\u201d as soon as Claude creates it`;
     } else {
       tEl.textContent = title;
     }
@@ -2314,6 +2413,51 @@
       });
     });
   }
+
+  // ---------- Tooltips ----------
+  // Any element with a title shows it after a short pause; once one is showing,
+  // moving to the next shows it straight away, as on a Mac.
+  const tipBox = document.createElement('div');
+  tipBox.id = 'tip';
+  tipBox.setAttribute('role', 'tooltip');
+  document.body.appendChild(tipBox);
+  let tipTimer = null, tipFor = null, tipHiddenAt = 0;
+  function hideTip() {
+    clearTimeout(tipTimer);
+    if (tipBox.classList.contains('show')) tipHiddenAt = Date.now();
+    tipBox.classList.remove('show');
+    tipFor = null;
+  }
+  function placeTip(el) {
+    if (!document.contains(el) || !el.dataset.tip) return;
+    tipBox.textContent = el.dataset.tip;
+    const r = el.getBoundingClientRect();
+    tipBox.style.left = '0px';
+    tipBox.style.top = '0px';
+    const t = tipBox.getBoundingClientRect();
+    let x = Math.min(Math.max(6, r.left + r.width / 2 - t.width / 2), innerWidth - t.width - 6);
+    if (r.width > 260) x = Math.min(Math.max(6, lastMouseX + 8), innerWidth - t.width - 6);
+    let y = r.bottom + 6;
+    if (y + t.height > innerHeight - 6) y = r.top - t.height - 6;
+    tipBox.style.left = x + 'px';
+    tipBox.style.top = y + 'px';
+    tipBox.classList.add('show');
+  }
+  let lastMouseX = 0;
+  document.addEventListener('mousemove', e => { lastMouseX = e.clientX; }, { passive: true });
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest && e.target.closest('[title], [data-tip]');
+    if (el === tipFor) return;
+    hideTip();
+    if (!el || menu.contains(el)) return;
+    if (el.hasAttribute('title')) { el.dataset.tip = el.getAttribute('title'); el.removeAttribute('title'); }
+    if (!el.dataset.tip) return;
+    tipFor = el;
+    tipTimer = setTimeout(() => placeTip(el), Date.now() - tipHiddenAt < 600 ? 0 : 550);
+  });
+  document.addEventListener('mouseleave', hideTip);
+  ['mousedown', 'keydown', 'dragstart', 'wheel'].forEach(ev => document.addEventListener(ev, hideTip, true));
+  addEventListener('blur', hideTip);
 
   // ---------- Toast ----------
   const toastEl = $('toast');
