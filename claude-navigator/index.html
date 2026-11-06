@@ -2499,10 +2499,12 @@
     });
   }
 
-  function newItemsMenu(folderId, suffix = '') {
+  // `folderItem` (New Folder) sits right under New Chat.
+  function newItemsMenu(folderId, suffix = '', folderItem = null) {
     const add = kind => ({ label: `New ${NEW_KINDS[kind].label}${suffix}`, icon: NEW_KINDS[kind].icon, key: kind === 'chat' ? K.mod + 'N' : undefined, run: () => newInFolder(kind, folderId) });
     return [
       add('chat'),
+      folderItem,
       isApp && '-',
       isApp && add('doc'), isApp && add('slides'), isApp && add('design'), isApp && add('dashboard'),
       isApp && '-',
@@ -2669,8 +2671,7 @@
     const f = nodeOf(folderId);
     const where = f ? ` in “${f.name}”` : '';
     showMenu(x, y, [
-      ...newItemsMenu(folderId, where),
-      { label: `New Folder${where}`, icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) },
+      ...newItemsMenu(folderId, where, { label: `New Folder${where}`, icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) }),
       { label: `Add Link${where}…`, icon: 'link', key: K.mod + 'L', run: () => promptNewLink(folderId) },
     ]);
   }
@@ -3442,9 +3443,7 @@
     if (!n) {
       const here = scope === browseEl ? hereFolder() : null;
       return [
-        ...newItemsMenu(here, ' Here'),
-        '-',
-        { label: 'New Folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) },
+        ...newItemsMenu(here, ' Here', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) }),
         { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
         '-',
@@ -3478,9 +3477,7 @@
         finder,
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
-        ...newItemsMenu(n.id, ' Here'),
-        '-',
-        { label: 'New Folder Inside', run: () => newFolder(n.id) },
+        ...newItemsMenu(n.id, ' Here', { label: 'New Folder Inside', icon: 'folder', run: () => newFolder(n.id) }),
         { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Inside`, run: () => { state.lastFolderId = n.id; saveCurrent(n.id); } },
         '-',
