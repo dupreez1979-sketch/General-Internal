@@ -158,6 +158,85 @@
   .sl-row.child { padding-left: 30px; color: var(--muted); }
   .sl-foot { font-size: 11px; color: var(--muted); padding: 8px 12px 10px; border-top: 1px solid var(--line); }
   #splitBtn.on { color: var(--text); background: var(--sel); }
+
+  /* ---------- Apps and Chief of Staff ---------- */
+  .app-btn { -webkit-app-region: no-drag; color: var(--muted); }
+  #appPop { position: fixed; z-index: 60; background: var(--win); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 420px; }
+  #appPop[hidden] { display: none; }
+  .app-tile { display: grid; justify-items: start; gap: 4px; text-align: left; padding: 12px; border-radius: 10px; border: 1.5px solid transparent; background: none; color: var(--text); }
+  .app-tile:hover { background: var(--hover); }
+  .app-tile.on { border-color: var(--accent); }
+  .app-tile b { font-size: 14px; }
+  .app-tile span:last-child { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+  .app-ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+  .app-ic.nav { background: #3D8BE6; }
+  .app-ic.cos { background: #1B5A68; }
+  .app-ic svg { width: 20px; height: 20px; }
+  body.cos-mode #tree, body.cos-mode #sNewFolder, body.cos-mode #content, body.cos-mode #pathbar, body.cos-mode #bar, body.cos-mode #findbar, body.cos-mode #tbPalette { display: none !important; }
+  #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
+  #cosSide[hidden], #cosMain[hidden] { display: none; }
+  #cosMain { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cos-head { height: 52px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--line); -webkit-app-region: drag; }
+  .cos-head > * { -webkit-app-region: no-drag; }
+  .cos-head h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-app-region: drag; }
+  .cos-head .sp { flex: 1; -webkit-app-region: drag; }
+  .cos-body { flex: 1; min-height: 0; display: flex; }
+  .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
+  .cos-chart { display: inline-block; min-width: 100%; padding: 36px 40px 60px; transform-origin: top left; }
+  .oc ul { display: flex; justify-content: center; padding: 22px 0 0; margin: 0; position: relative; }
+  .oc > ul { padding-top: 0; }
+  .oc li { list-style: none; text-align: center; position: relative; padding: 22px 8px 0; }
+  .oc > ul > li { padding-top: 0; }
+  .oc li::before, .oc li::after { content: ''; position: absolute; top: 0; right: 50%; width: 50%; height: 22px; border-top: 1.5px solid var(--oc-line); }
+  .oc li::after { right: auto; left: 50%; border-left: 1.5px solid var(--oc-line); }
+  .oc li:only-child::before, .oc li:only-child::after, .oc > ul > li::before, .oc > ul > li::after { display: none; }
+  .oc li:only-child { padding-top: 22px; }
+  .oc > ul > li:only-child { padding-top: 0; }
+  .oc li:only-child::after { display: block; border-top: 0; height: 22px; }
+  .oc li:first-child::before, .oc li:last-child::after { border: 0 none; }
+  .oc li:last-child::before { border-right: 1.5px solid var(--oc-line); border-radius: 0 7px 0 0; }
+  .oc li:first-child::after { border-radius: 7px 0 0 0; }
+  .oc li > ul::before { content: ''; position: absolute; top: 0; left: 50%; height: 22px; border-left: 1.5px solid var(--oc-line); }
+  :root { --oc-line: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .ocbox { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; width: 176px; padding: 12px 10px 11px; border-radius: 14px; background: var(--win); border: 1.5px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: default; user-select: none; position: relative; }
+  .ocbox:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .ocbox.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .ocbox.drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--win)); }
+  .ocbox.chief { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); }
+  .ocbox.dept { background: color-mix(in srgb, var(--accent) 7%, var(--win)); border-style: dashed; }
+  .ocbox .av { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+  .ocbox.dept .av { border-radius: 10px; }
+  .ocbox .nm { font-weight: 650; font-size: 13px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ocbox .rl { font-size: 11.5px; color: var(--muted); line-height: 1.25; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ocbox .tag { position: absolute; top: -9px; right: 10px; font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 8px; padding: 1px 7px; }
+  .ocbox .kids { font-size: 10.5px; color: var(--muted); }
+  .cos-detail { width: 300px; flex: none; border-left: 1px solid var(--line); overflow: auto; padding: 16px; display: grid; align-content: start; gap: 12px; background: var(--win); }
+  .cos-detail h2 { margin: 0; font-size: 15px; }
+  .cos-detail label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .cos-detail input, .cos-detail textarea, .cos-detail select { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 0; border-radius: 7px; padding: 7px 9px; }
+  .cos-detail textarea { min-height: 76px; resize: vertical; }
+  .cos-detail .row2 { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cos-detail .soon { font-size: 12px; color: var(--muted); background: var(--field); border-radius: 8px; padding: 10px; line-height: 1.45; }
+  .cos-swatches { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cos-swatches button { width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .cos-swatches button.on { outline: 2px solid var(--text); outline-offset: 2px; }
+  .cos-list { flex: 1; overflow: auto; padding: 14px 18px; }
+  .cos-list .crow { display: grid; grid-template-columns: minmax(220px, 2fr) 2fr 1.2fr 1.2fr; gap: 10px; align-items: center; padding: 7px 10px; border-radius: 7px; font-size: 13px; }
+  .cos-list .crow.h { color: var(--muted); font-size: 11.5px; font-weight: 600; border-bottom: 1px solid var(--line); border-radius: 0; }
+  .cos-list .crow:not(.h):hover { background: var(--hover); }
+  .cos-list .crow.sel { background: var(--sel); }
+  .cos-list .cn { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .cos-list .cn .av { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; font-size: 9.5px; font-weight: 700; }
+  .cos-list .cn span:last-child, .cos-list .crow > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-empty { margin: auto; text-align: center; max-width: 380px; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
+  .cos-empty b { color: var(--text); font-size: 15px; }
+  .cos-side-row { display: flex; align-items: center; gap: 7px; padding: 4px 8px; padding-left: calc(8px + var(--d, 0) * 14px); border-radius: 6px; font-size: 13px; cursor: default; }
+  .cos-side-row:hover { background: var(--hover); }
+  .cos-side-row.sel { background: var(--sel); }
+  .cos-side-row .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+  .cos-side-row.dept .dot { border-radius: 4px; }
+  .cos-side-row span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-side-h { font-size: 11px; font-weight: 600; color: var(--muted); padding: 10px 8px 4px; }
   #browse.drop-here { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, 104px); gap: 6px; align-content: start; }
@@ -409,9 +488,11 @@
 
 <aside id="side" aria-label="Sidebar">
   <div class="side-top"><span class="brand">Claude Navigator</span>
+    <button class="tb app-btn" id="appBtn" title="Apps: Navigator and Chief of Staff"><span data-icon="apps"></span></button>
     <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="pname">All Profiles</span><span class="pchev" data-icon="chev"></span></button>
   </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
+  <div id="cosSide" hidden aria-label="Team"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
@@ -475,7 +556,12 @@
     <div id="pane" hidden></div>
   </div>
   <div id="pathbar"></div>
+  <div id="cosMain" hidden></div>
 </main>
+<div id="appPop" hidden role="dialog" aria-label="Apps">
+  <button class="app-tile" data-app="navigator"><span class="app-ic nav"></span><b>Navigator</b><span>Your folders, Claude chats and artifacts, monday.com boards and files</span></button>
+  <button class="app-tile" data-app="cos"><span class="app-ic cos"></span><b>Chief of Staff</b><span>Your AI team: who does what, their projects, functions and routines</span></button>
+</div>
 
 <div id="menu" role="menu"></div>
 
@@ -669,6 +755,8 @@
     more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="5.2" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="10.8" cy="8" r=".9" fill="currentColor"/></svg>',
     back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    apps: '<svg width="16" height="16" viewBox="0 0 16 16">' + [3, 8, 13].map(y => [3, 8, 13].map(x => `<circle cx="${x}" cy="${y}" r="1.45" fill="currentColor"/>`).join('')).join('') + '</svg>',
+    team: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 5.5v2.5M3.5 10.5V8h9v2.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>',
     split: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3.6 5.5h2.6M3.6 8h2.6M9.8 5.5h2.6M9.8 8h2.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
     grid: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
     list: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M5.5 4h8.5M5.5 8h8.5M5.5 12h8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="2.5" cy="4" r="1" fill="currentColor"/><circle cx="2.5" cy="8" r="1" fill="currentColor"/><circle cx="2.5" cy="12" r="1" fill="currentColor"/></svg>',
@@ -5189,6 +5277,338 @@
     onDrop(e);
   });
 
+  // ---------- Apps: Navigator and Chief of Staff ----------
+  // The nine-dot button switches between the apps. Each keeps its own place.
+  var currentApp = ls.get('claudeNavigator.app') === 'cos' ? 'cos' : 'navigator';
+  function setApp(a) {
+    currentApp = a === 'cos' ? 'cos' : 'navigator';
+    ls.set('claudeNavigator.app', currentApp);
+    document.body.classList.toggle('cos-mode', currentApp === 'cos');
+    $('cosSide').hidden = currentApp !== 'cos';
+    $('cosMain').hidden = currentApp !== 'cos';
+    $('appPop').hidden = true;
+    if (currentApp === 'cos') renderCos(); else renderAll();
+  }
+  $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
+  $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
+  $('appBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    const pop = $('appPop');
+    if (!pop.hidden) { pop.hidden = true; return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    pop.style.left = Math.max(8, r.left) + 'px';
+    pop.style.top = (r.bottom + 6) + 'px';
+    pop.querySelectorAll('.app-tile').forEach(t => t.classList.toggle('on', t.dataset.app === currentApp));
+    pop.hidden = false;
+  });
+  $('appPop').addEventListener('click', e => { const t = e.target.closest('.app-tile'); if (t) setApp(t.dataset.app); });
+  document.addEventListener('mousedown', e => { if (!$('appPop').hidden && !e.target.closest('#appPop, #appBtn')) $('appPop').hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('appPop').hidden = true; });
+
+  // ---------- Chief of Staff: the team ----------
+  // One team per profile: the Chief of Staff at the top, then AI staff and departments below.
+  // A node: { id, kind: 'staff' | 'dept', name, role, about, color, parent, lead (staff who leads its department) }
+  const COS_STORE = 'claudeNavigator.cos.v1';
+  var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
+  const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
+  const cosUi = { view: ls.get('claudeNavigator.cosView') === 'list' ? 'list' : 'chart', sel: null, zoom: 1, dragId: null };
+  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
+  function cosTeam(p = activeProfile()) {
+    if (!p) return null;
+    if (!cos.teams[p.id]) {
+      cos.teams[p.id] = { nodes: [{ id: uid(), kind: 'staff', chief: true, name: 'Chief of Staff', role: 'Leads the team and keeps everything moving', about: '', color: p.color || COS_COLOURS[0], parent: null }] };
+      saveCos();
+    }
+    return cos.teams[p.id];
+  }
+  const cosNode = (t, id) => t && t.nodes.find(n => n.id === id);
+  const cosKids = (t, id) => t.nodes.filter(n => n.parent === id);
+  const cosInitials = n => (n.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+  function cosUnder(t, aId, bId) { for (let n = cosNode(t, bId); n; n = cosNode(t, n.parent)) if (n.id === aId) return true; return false; }
+  function cosChange(fn, msg) {
+    const before = JSON.stringify(cos);
+    fn();
+    saveCos();
+    renderCos();
+    if (msg) toast(msg, { label: 'Undo', run: () => { cos = JSON.parse(before); saveCos(); renderCos(); } });
+  }
+  function cosAdd(kind, parentId) {
+    const t = cosTeam();
+    if (!t) return;
+    const parent = cosNode(t, parentId) || t.nodes.find(n => n.chief);
+    const n = { id: uid(), kind, name: kind === 'dept' ? 'New department' : 'New staff member', role: kind === 'dept' ? '' : 'What they do', about: '',
+      color: COS_COLOURS[(t.nodes.length + 1) % COS_COLOURS.length], parent: parent.id };
+    cosChange(() => { t.nodes.push(n); cosUi.sel = n.id; }, null);
+    setTimeout(() => { const f = document.querySelector('.cos-detail input[name="name"]'); if (f) { f.focus(); f.select(); } }, 30);
+  }
+  function cosRemove(id) {
+    const t = cosTeam();
+    const n = cosNode(t, id);
+    if (!n || n.chief) return;
+    const kids = cosKids(t, id);
+    if (!confirm(`Remove ${n.kind === 'dept' ? 'the department' : ''} “${n.name}”?${kids.length ? ` The ${kids.length} ${kids.length === 1 ? 'member' : 'members'} below ${kids.length === 1 ? 'moves' : 'move'} up to ${(cosNode(t, n.parent) || {}).name}.` : ''}`)) return;
+    cosChange(() => {
+      for (const k of kids) { k.parent = n.parent; if (n.kind === 'dept') k.lead = false; }
+      t.nodes = t.nodes.filter(x => x.id !== id);
+      if (cosUi.sel === id) cosUi.sel = n.parent;
+    }, `Removed “${n.name}”`);
+  }
+  function cosMove(id, newParent) {
+    const t = cosTeam();
+    const n = cosNode(t, id), p = cosNode(t, newParent);
+    if (!n || !p || n.chief || id === newParent || cosUnder(t, id, newParent) || n.parent === newParent) return;
+    cosChange(() => { n.parent = newParent; n.lead = false; }, `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}`);
+  }
+  function cosMenu(x, y, id) {
+    const t = cosTeam();
+    const n = cosNode(t, id);
+    if (!n) return;
+    const parent = cosNode(t, n.parent);
+    showMenu(x, y, [
+      { label: 'Add Staff Below', run: () => cosAdd('staff', n.id) },
+      { label: 'Add Department Below', run: () => cosAdd('dept', n.id) },
+      '-',
+      { label: 'Edit…', run: () => { cosUi.sel = n.id; renderCos(); } },
+      n.kind === 'staff' && parent && parent.kind === 'dept' && { label: n.lead ? 'Stop Leading the Department' : `Lead “${parent.name}”`, run: () => cosChange(() => {
+        const was = n.lead;
+        cosKids(t, parent.id).forEach(k => { k.lead = false; });
+        n.lead = !was;
+      }, null) },
+      !n.chief && '-',
+      !n.chief && { label: 'Remove…', run: () => cosRemove(n.id) },
+    ]);
+  }
+
+  // ----- Drawing -----
+  function cosBox(t, n) {
+    const b = document.createElement('div');
+    b.className = 'ocbox' + (n.kind === 'dept' ? ' dept' : '') + (n.chief ? ' chief' : '') + (cosUi.sel === n.id ? ' sel' : '');
+    b.dataset.cid = n.id;
+    b.draggable = !n.chief;
+    const kids = cosKids(t, n.id);
+    const lead = n.kind === 'dept' ? kids.find(k => k.lead) : null;
+    b.innerHTML = `<span class="av"></span><span class="nm"></span><span class="rl"></span>${kids.length ? `<span class="kids">${kids.length} below</span>` : ''}`;
+    b.querySelector('.av').style.background = n.color || COS_COLOURS[0];
+    b.querySelector('.av').textContent = n.kind === 'dept' ? '' : cosInitials(n);
+    if (n.kind === 'dept') b.querySelector('.av').innerHTML = small('folder', '#fff', 18);
+    b.querySelector('.nm').textContent = n.name;
+    b.querySelector('.rl').textContent = n.kind === 'dept' ? (lead ? `Led by ${lead.name}` : 'Department') : (n.role || '');
+    if (n.chief) b.insertAdjacentHTML('afterbegin', '<span class="tag">Chief of Staff</span>');
+    else if (n.lead) b.insertAdjacentHTML('afterbegin', '<span class="tag">Lead</span>');
+    b.title = `${n.name}${n.role ? `\n${n.role}` : ''}\nClick to edit; drag onto someone to move; right-click for more.`;
+    return b;
+  }
+  function cosTree(t, n) {
+    const li = document.createElement('li');
+    li.appendChild(cosBox(t, n));
+    const kids = cosKids(t, n.id);
+    // Leaders first in a department, then departments, then everyone else, by name.
+    kids.sort((a, b) => (b.lead ? 1 : 0) - (a.lead ? 1 : 0) || (a.kind === b.kind ? 0 : a.kind === 'dept' ? 1 : -1) || (a.name || '').localeCompare(b.name || ''));
+    if (kids.length) { const ul = document.createElement('ul'); for (const k of kids) ul.appendChild(cosTree(t, k)); li.appendChild(ul); }
+    return li;
+  }
+  function renderCosSide(t, p) {
+    const side = $('cosSide');
+    side.replaceChildren();
+    const h = document.createElement('div');
+    h.className = 'cos-side-h';
+    h.textContent = p ? `${p.name} team` : 'Chief of Staff';
+    side.appendChild(h);
+    if (!t) return;
+    const walkN = (n, d) => {
+      const r = document.createElement('div');
+      r.className = 'cos-side-row' + (n.kind === 'dept' ? ' dept' : '') + (cosUi.sel === n.id ? ' sel' : '');
+      r.style.setProperty('--d', d);
+      r.dataset.cid = n.id;
+      r.innerHTML = '<span class="dot"></span><span></span>';
+      r.firstChild.style.background = n.color;
+      r.lastChild.textContent = n.name;
+      r.title = n.role || n.name;
+      side.appendChild(r);
+      for (const k of cosKids(t, n.id).sort((a, b) => (a.name || '').localeCompare(b.name || ''))) walkN(k, d + 1);
+    };
+    for (const r of t.nodes.filter(n => !n.parent)) walkN(r, 0);
+  }
+  function renderCosDetail(t) {
+    const n = cosNode(t, cosUi.sel);
+    if (!n) return null;
+    const d = document.createElement('div');
+    d.className = 'cos-detail';
+    const parentOpts = t.nodes.filter(x => x.id !== n.id && !cosUnder(t, n.id, x.id));
+    d.innerHTML = `<h2></h2>
+      <label>Name<input name="name"></label>
+      ${n.kind === 'staff' ? '<label>Role<input name="role" placeholder="e.g. Finance officer: budgets, reconciliations"></label>' : ''}
+      <label>${n.kind === 'dept' ? 'What this department does' : 'What they do and how (for you and for Claude)'}<textarea name="about"></textarea></label>
+      ${n.chief ? '' : `<label>${n.kind === 'dept' ? 'Sits under' : 'Reports to'}<select name="parent"></select></label>`}
+      <label>Colour<div class="cos-swatches"></div></label>
+      <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
+      ${n.kind === 'staff' ? '<div class="soon">Projects, actions, functions and routines for this staff member come in the next steps.</div>' : ''}`;
+    d.querySelector('h2').textContent = n.chief ? 'Chief of Staff' : n.kind === 'dept' ? 'Department' : 'Staff member';
+    const f = name => d.querySelector(`[name="${name}"]`);
+    f('name').value = n.name || '';
+    if (f('role')) f('role').value = n.role || '';
+    f('about').value = n.about || '';
+    if (f('parent')) {
+      for (const o of parentOpts) { const e = document.createElement('option'); e.value = o.id; e.textContent = (o.kind === 'dept' ? 'Department: ' : '') + o.name; f('parent').appendChild(e); }
+      f('parent').value = n.parent;
+      f('parent').addEventListener('change', () => cosMove(n.id, f('parent').value));
+    }
+    const commitField = (k, v) => { if ((n[k] || '') === v) return; n[k] = v; saveCos(); renderCosChartOnly(); };
+    for (const k of ['name', 'role', 'about']) if (f(k)) f(k).addEventListener('input', () => commitField(k, f(k).value.trim() || (k === 'name' ? 'Untitled' : '')));
+    const sw = d.querySelector('.cos-swatches');
+    for (const c of COS_COLOURS) {
+      const b = document.createElement('button');
+      b.style.background = c;
+      b.title = c;
+      if ((n.color || '').toLowerCase() === c.toLowerCase()) b.classList.add('on');
+      b.addEventListener('click', () => { n.color = c; saveCos(); renderCos(); });
+      sw.appendChild(b);
+    }
+    d.querySelector('[data-a="staff"]').addEventListener('click', () => cosAdd('staff', n.id));
+    d.querySelector('[data-a="dept"]').addEventListener('click', () => cosAdd('dept', n.id));
+    const rm = d.querySelector('[data-a="remove"]');
+    if (rm) rm.addEventListener('click', () => cosRemove(n.id));
+    return d;
+  }
+  // Redraw the chart and sidebar without rebuilding the editing panel (keeps typing focus).
+  function renderCosChartOnly() {
+    const t = cosTeam();
+    const holder = document.querySelector('#cosMain .cos-chart, #cosMain .cos-list');
+    if (holder) holder.replaceWith(cosUi.view === 'list' ? cosListEl(t) : cosChartEl(t));
+    renderCosSide(t, activeProfile());
+  }
+  function cosChartEl(t) {
+    const c = document.createElement('div');
+    c.className = 'cos-chart oc';
+    c.style.transform = `scale(${cosUi.zoom})`;
+    const ul = document.createElement('ul');
+    for (const r of t.nodes.filter(n => !n.parent)) ul.appendChild(cosTree(t, r));
+    c.appendChild(ul);
+    return c;
+  }
+  function cosListEl(t) {
+    const l = document.createElement('div');
+    l.className = 'cos-list';
+    l.innerHTML = '<div class="crow h"><span>Name</span><span>Role</span><span>Department</span><span>Reports to</span></div>';
+    const deptOf = n => { for (let p = cosNode(t, n.parent); p; p = cosNode(t, p.parent)) if (p.kind === 'dept') return p.name; return ''; };
+    const walkN = (n, d) => {
+      const r = document.createElement('div');
+      r.className = 'crow' + (cosUi.sel === n.id ? ' sel' : '');
+      r.dataset.cid = n.id;
+      r.innerHTML = `<span class="cn" style="padding-left:${d * 18}px"><span class="av"></span><span></span></span><span></span><span></span><span></span>`;
+      const av = r.querySelector('.av');
+      av.style.background = n.color;
+      av.style.borderRadius = n.kind === 'dept' ? '5px' : '50%';
+      av.textContent = n.kind === 'dept' ? '' : cosInitials(n);
+      r.querySelector('.cn span:last-child').textContent = n.name + (n.lead ? ' (lead)' : '');
+      const cells = r.children;
+      cells[1].textContent = n.kind === 'dept' ? 'Department' : (n.role || '');
+      cells[2].textContent = n.kind === 'dept' ? '' : deptOf(n);
+      cells[3].textContent = (cosNode(t, n.parent) || {}).name || '';
+      l.appendChild(r);
+      for (const k of cosKids(t, n.id).sort((a, b) => (a.name || '').localeCompare(b.name || ''))) walkN(k, d + 1);
+    };
+    for (const r of t.nodes.filter(n => !n.parent)) walkN(r, 0);
+    return l;
+  }
+  function renderCos() {
+    if (currentApp !== 'cos') return;
+    const p = activeProfile();
+    const main = $('cosMain');
+    main.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'cos-head';
+    const t = cosTeam(p);
+    head.innerHTML = `<h1></h1><span class="sp"></span>`;
+    head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
+    if (t) {
+      const seg = document.createElement('div');
+      seg.className = 'seg';
+      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button>`;
+      seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { cosUi.view = b.dataset.v; ls.set('claudeNavigator.cosView', cosUi.view); renderCos(); } });
+      const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
+      head.append(
+        btn('Add Staff', 'Add a staff member under the one selected (or under the Chief of Staff)', () => cosAdd('staff', cosUi.sel)),
+        btn('Add Department', 'Add a department under the one selected', () => cosAdd('dept', cosUi.sel)),
+        ...(cosUi.view === 'chart' ? [
+          btn('', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); }, '<span class="t">−</span>'),
+          btn('', 'Fit to window', () => cosFit(), '<span class="t">Fit</span>'),
+          btn('', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); }, '<span class="t">+</span>'),
+        ] : []),
+        seg);
+    }
+    main.appendChild(head);
+    renderCosSide(t, p);
+    const body = document.createElement('div');
+    body.className = 'cos-body';
+    if (!p) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.innerHTML = '<b>Choose a profile</b><span>Each profile has its own team. Pick one to see or build its team.</span><div class="row2"></div>';
+      for (const pr of profiles()) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = pr.name; b.addEventListener('click', () => { setProfile(pr.id); renderCos(); }); e.querySelector('.row2').appendChild(b); }
+      body.appendChild(e);
+    } else {
+      if (cosUi.sel && !cosNode(t, cosUi.sel)) cosUi.sel = null;
+      if (cosUi.view === 'list') body.appendChild(cosListEl(t));
+      else { const cv = document.createElement('div'); cv.className = 'cos-canvas'; cv.appendChild(cosChartEl(t)); body.appendChild(cv); }
+      const det = renderCosDetail(t);
+      if (det) body.appendChild(det);
+    }
+    main.appendChild(body);
+  }
+  function cosFit() {
+    const cv = document.querySelector('#cosMain .cos-canvas'), ch = cv && cv.querySelector('.cos-chart');
+    if (!ch) return;
+    cosUi.zoom = 1;
+    ch.style.transform = 'scale(1)';
+    const z = Math.min(1, (cv.clientWidth - 20) / ch.scrollWidth, (cv.clientHeight - 20) / ch.scrollHeight);
+    cosUi.zoom = Math.max(0.4, +z.toFixed(2));
+    renderCos();
+  }
+  // Clicks, right-clicks and drags on boxes, list rows and sidebar rows.
+  const cosTarget = e => e.target.closest('[data-cid]');
+  for (const el of [$('cosMain'), $('cosSide')]) {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.cos-detail, .cos-head')) return;
+      const x = cosTarget(e);
+      cosUi.sel = x ? x.dataset.cid : null;
+      renderCos();
+    });
+    el.addEventListener('contextmenu', e => {
+      const x = cosTarget(e);
+      if (!x) return;
+      e.preventDefault();
+      cosUi.sel = x.dataset.cid;
+      renderCos();
+      cosMenu(e.clientX, e.clientY, x.dataset.cid);
+    });
+  }
+  $('cosMain').addEventListener('dragstart', e => {
+    const b = e.target.closest('.ocbox');
+    if (!b) return;
+    cosUi.dragId = b.dataset.cid;
+    e.dataTransfer.setData('application/x-navigator-cos', b.dataset.cid);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  $('cosMain').addEventListener('dragover', e => {
+    const b = e.target.closest('.ocbox');
+    document.querySelectorAll('.ocbox.drop').forEach(x => x.classList.remove('drop'));
+    if (!b || !cosUi.dragId || ![...e.dataTransfer.types].includes('application/x-navigator-cos')) return;
+    const t = cosTeam();
+    if (b.dataset.cid === cosUi.dragId || cosUnder(t, cosUi.dragId, b.dataset.cid)) return;
+    e.preventDefault();
+    b.classList.add('drop');
+  });
+  $('cosMain').addEventListener('drop', e => {
+    const b = e.target.closest('.ocbox');
+    document.querySelectorAll('.ocbox.drop').forEach(x => x.classList.remove('drop'));
+    if (!b || !cosUi.dragId) return;
+    e.preventDefault();
+    cosMove(cosUi.dragId, b.dataset.cid);
+    cosUi.dragId = null;
+  });
+  document.addEventListener('dragend', () => { cosUi.dragId = null; });
+
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
   //   cape town            both words, in any order
@@ -5542,6 +5962,7 @@
       fsState.pullAfter = true;         // and anything on disk that is not in the backup comes back in
       go({ kind: 'folder', id: null });
       commit();
+      if (data && data.cos && data.cos.teams) { cos = data.cos; saveCos(); }
       // The app's own notes about chats and artifacts come back too (added to what is there now).
       const x = data && data.links;
       if (x) {
@@ -5565,7 +5986,7 @@
     if (!isApp || !window.navigatorApp.backupWrite) return;
     if (!force && ls.get(LAST_BACKUP) === todayKey()) return;
     const data = { app: 'claude-navigator', version: 2, saved: new Date().toISOString(), tree: state.tree,
-      links: { related: lib.related, detached: lib.detached, archived: lib.archived, kinds: lib.kinds } };
+      links: { related: lib.related, detached: lib.detached, archived: lib.archived, kinds: lib.kinds }, cos };
     try {
       const res = await window.navigatorApp.backupWrite(JSON.stringify(data));
       if (res && res.name) ls.set(LAST_BACKUP, todayKey());
@@ -5743,6 +6164,7 @@
     }
     lastRevealed = null;
     renderAll();
+    if (currentApp === 'cos') renderCos();
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
   }
   // Profiles keep the order you give them: in the sidebar, the switcher and the shortcuts.
@@ -6049,6 +6471,7 @@
   renderSide();
   state.lastFolderId = startFolder;
   go(start);
+  if (currentApp === 'cos') setApp('cos');
   if (isApp) {
     setTimeout(() => refreshLibrary(false), 4000);
     setInterval(() => refreshLibrary(false), 10 * 60e3);

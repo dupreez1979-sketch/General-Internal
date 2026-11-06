@@ -62,10 +62,14 @@ Four tabs:
 
 Each phase is tried in Live Preview before it goes into a release.
 
-## 8. Questions to settle first
+## 8. Decisions (settled)
 
-1. **Who are the staff?** AI staff (each one a set of Claude chats, skills and schedules acting for you), real people, or both?
-2. **One team per profile**, or can a staff member appear in more than one profile?
-3. **Routines**: link existing Claude schedules only, or also start new ones from here?
-4. **Design-system look**: is colour and fonts enough, or should layouts change too?
-5. **monday.com's app switcher**: send the screenshot so the nine-dot panel matches what you have in mind.
+1. Staff are **AI staff**, not real people.
+2. **One team per profile.**
+3. Routines: **both** link existing Claude schedules and start new ones from here.
+4. Design-system look: **colours and fonts** are enough.
+5. App switcher: a nine-dot panel (Claude's call).
+
+## 9. Progress
+
+- Phase 1 (shell and team): **done**. App switcher, one team per profile, Chief of Staff at the top, staff and departments with leaders, org chart and list views, editing panel, drag to restructure, undo, backups.

@@ -96,6 +96,20 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## Chief of Staff (second app)
+
+Click the **nine dots** at the top of the sidebar to switch between **Navigator** and **Chief of Staff**. Each remembers where you were.
+
+Chief of Staff is your AI team, one team per profile (switch profile to see another team):
+
+- The **Chief of Staff** sits at the top. **Add Staff** and **Add Department** (toolbar, the right-hand panel, or right-click a box) build the team below.
+- **Org chart** view draws the team as boxes and lines; **List** view shows name, role, department and who they report to. Zoom with **−**, **Fit** and **+**.
+- Click anyone to edit their name, role, what they do (written for you and for Claude), colour and who they report to. Drag a box onto another to move them under it.
+- In a department, right-click a staff member and choose **Lead** to make them its leader.
+- Changes can be undone from the message that appears. The team is included in the automatic daily backups.
+
+Coming next: each staff member's projects, actions, functions and routines (see CHIEF-OF-STAFF-PLAN.md).
+
 ## Systems: Claude and monday.com
 
 The top of the sidebar is **Systems**: the places your folders draw from. **Claude** and **monday.com** each start closed; click one to open it (the app remembers).
