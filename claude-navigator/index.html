@@ -285,6 +285,7 @@
   dialog label { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: 13px; text-align: right; }
   dialog { width: min(480px, calc(100vw - 32px)); }
   .pick { display: grid; gap: 6px; }
+  .pick[hidden] { display: none; }
   .pick-head { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
   #pickPath { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #picker { height: 240px; overflow: auto; background: var(--win); border: .5px solid var(--line); border-radius: 6px; padding: 4px; outline: none; }
@@ -3314,8 +3315,9 @@
     });
     input.addEventListener('blur', () => finish(true));
   });
-  function openDialog({ title, name = '', url = '', folderId = null, excludeId = null, folderOnly = false, nameOnly = false, okLabel = 'Save', onSave }) {
+  function openDialog({ title, name = '', url = '', folderId = null, excludeId = null, folderOnly = false, nameOnly = false, noPicker = false, okLabel = 'Save', onSave }) {
     $('linkDlgTitle').textContent = title;
+    dlg.querySelector('.pick').hidden = noPicker;
     $('lblName').hidden = folderOnly;
     $('lblUrl').hidden = folderOnly || nameOnly;
     fUrl.required = !folderOnly && !nameOnly;
@@ -3336,6 +3338,34 @@
     if (dlg.returnValue !== 'ok' || !done) return;
     done({ name: fName.value.trim(), url: fixUrl(fUrl.value), folderId: pick.value || null });
   });
+
+  // Renames a chat in Claude, then everywhere here: the All Chats list and every copy in your folders
+  // that still uses Claude's name (copies you named yourself keep your name).
+  function renameChatInClaude(url, current) {
+    const chat = (lib.chats || []).find(c => normUrl(c.url) === normUrl(url));
+    const old = (chat && chat.name) || current || '';
+    openDialog({
+      title: 'Rename Chat', name: old, nameOnly: true, noPicker: true, okLabel: 'Rename',
+      onSave: async ({ name }) => {
+        if (!name || name === old) return;
+        toast('Renaming in Claude\u2026');
+        const res = await window.navigatorApp.renameChat({ url, name, org: (chat && chat.org) || null });
+        if (!res || !res.ok) {
+          const why = res && res.status === 'not signed in' ? 'you are not signed in to Claude' : `Claude said ${res ? res.status : 'nothing'}`;
+          return toast(`Could not rename it in Claude (${why}). Nothing was changed.`);
+        }
+        if (chat) chat.name = name;
+        saveLib();
+        let copies = 0;
+        walk(state.tree, n => {
+          if (n.type === 'link' && normUrl(n.url) === normUrl(url) && (n.autoName !== false || n.name === old || n.name === current)) { n.name = name; n.autoName = true; copies++; }
+        });
+        if (copies) save();
+        renderAll();
+        toast(`Renamed to \u201c${name}\u201d in Claude${copies ? ' and in your folders' : ''}`);
+      },
+    });
+  }
 
   function promptNewLink(folderId = hereFolder()) {
     openDialog({
@@ -3554,6 +3584,7 @@
       searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
       '-',
       { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
+      isApp && kindOf(n) === 'chat' && /claude\.ai\/chat\//.test(n.url) && { label: 'Rename Here and in Claude\u2026', run: () => renameChatInClaude(n.url, n.name) },
       { label: 'Edit Link…', run: () => editLink(n.id) },
       { label: 'Move To…', run: () => moveTo(n.id) },
       { label: 'Duplicate', run: () => duplicate(n.id) },
@@ -3761,6 +3792,7 @@
       sel.length > 0 && { label: sel.length > 1 ? `File ${sel.length} Items in Folder\u2026` : 'File in Folder\u2026', run: () => fileLibPrompt(sel) },
       saved.length > 0 && { label: 'Show in Folder', run: () => revealInFolder(saved[0].id) },
       one && { label: 'Copy Link', run: () => navigator.clipboard.writeText(one.url).then(() => toast('Link copied')) },
+      one && isApp && /claude\.ai\/chat\//.test(one.url) && { label: 'Rename\u2026', run: () => renameChatInClaude(one.url, one.name) },
       sel.length > 0 && { label: state.libFilter === 'archived' ? `Unarchive${sel.length > 1 ? ` ${sel.length} Items` : ''}` : `Archive${sel.length > 1 ? ` ${sel.length} Items` : ''}`, run: () => archiveItems(sel, state.libFilter !== 'archived') },
       sel.length > 0 && state.loc.which === 'chats' && { label: `Delete ${sel.length > 1 ? `${sel.length} Chats` : 'Chat'} from Claude\u2026`, run: () => deleteFromClaude(sel) },
       one && state.loc.which !== 'chats' && { label: 'Open in Claude to Delete', run: () => openLib(one.url) },

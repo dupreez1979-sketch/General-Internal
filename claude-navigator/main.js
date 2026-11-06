@@ -612,6 +612,46 @@ ipcMain.handle('claude-delete-chats', async (_e, items) => {
   }
 });
 
+// Renames a chat in Claude (the same as Rename in Claude's own menu).
+const renameScript = (url, name, org) => `(async () => {
+  const m = /\\/chat\\/([0-9a-fA-F-]{8,})/.exec(${JSON.stringify(url)});
+  if (!m) return { ok: false, status: 'not a chat' };
+  let orgs = ${JSON.stringify(org ? [org] : null)};
+  if (!orgs) {
+    try { const r = await fetch('/api/organizations', { credentials: 'include' }); const x = await r.json(); orgs = (Array.isArray(x) ? x : (x.data || [])).map(o => o.uuid); } catch (e) { orgs = []; }
+  }
+  let status = 'no account';
+  for (const o of orgs) {
+    for (const method of ['PUT', 'PATCH']) {
+      try {
+        const r = await fetch('/api/organizations/' + o + '/chat_conversations/' + m[1], {
+          method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: ${JSON.stringify(name)} }),
+        });
+        status = r.status;
+        if (r.ok) return { ok: true, status };
+        if (r.status !== 405 && r.status !== 400) break;
+      } catch (e) { status = String(e.message || e); }
+    }
+  }
+  return { ok: false, status };
+})()`;
+
+ipcMain.handle('claude-rename-chat', async (_e, item) => {
+  const url = item && typeof item.url === 'string' ? item.url : '';
+  const name = item && typeof item.name === 'string' ? item.name.trim().slice(0, 300) : '';
+  if (!/^https:\/\/claude\.ai\/chat\/[0-9a-fA-F-]{8,}/.test(url) || !name) return { ok: false, status: 'not a chat' };
+  const win = new BrowserWindow({ show: false, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  try {
+    await openHidden(win, 'https://claude.ai/recents');
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
+    return await win.webContents.executeJavaScript(renameScript(url, name, item.org || null), true);
+  } catch (e) {
+    return { ok: false, status: String(e && e.message || e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
+
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 

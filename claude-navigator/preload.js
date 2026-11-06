@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('navigatorApp', {
   onDownload: (fn) => ipcRenderer.on('download', (_e, info) => fn(info)),
   refreshLibrary: (opts) => ipcRenderer.invoke('library-refresh', opts),
   deleteChats: (items) => ipcRenderer.invoke('claude-delete-chats', items),
+  renameChat: (item) => ipcRenderer.invoke('claude-rename-chat', item),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
   // Folders on this computer

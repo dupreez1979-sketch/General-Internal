@@ -130,6 +130,7 @@ Items get the right icon where Claude says what they are, or where the name make
 - **Search**: type in the search box at the top right.
 - **Filter** (top bar): everything, not in a folder, in a folder, or archived; any time, today, last 7 days, last 30 days, or older; with or without artifacts; starred only. "Filter (2)" means two filters are on; Reset Filters clears them.
 - **Select** (top bar): adds checkboxes, with a box in the Name heading that selects everything that matches, across all pages. The bar above the list then offers **File in Folder**, **Archive**, **Delete from Claude** and **Clear Selection**. ⌘-click, ⇧-click and right-click work too.
+- **Rename…** (right-click a chat) renames it in Claude too. Copies of the chat in your folders take the new name, unless you gave a copy your own name. In a folder, right-click a chat and choose **Rename Here and in Claude…** to do the same; plain **Rename** there only changes the name in that folder.
 - **Delete from Claude** deletes the chats from your Claude account for good (the same as deleting them in Claude), and removes them from your folders here. It always asks first, and twice for more than 10. It cannot be undone.
 - **Archive** hides chats from the list in this app only; Claude has no archive to sync with, so nothing changes there. See them with Filter, Archived, and Unarchive them from there.
 - Artifacts can't be deleted from here yet; right-click one and choose **Open in Claude to Delete**.
