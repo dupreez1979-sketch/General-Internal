@@ -10,42 +10,31 @@ Folders can nest as deep as you like. Each link points at a Claude chat, project
 
 Claude sits inside the app, next to your folders.
 
-**One-time setup**
+**First install (about 15 minutes, once)**
 
-1. Install Node.js: go to nodejs.org, download the **LTS** version for macOS, and run the installer.
-2. Open **Terminal** (press ⌘Space, type Terminal, press Return).
-3. Type `cd ` (with a space after it), drag the `claude-navigator` folder from Finder into the Terminal window, and press Return.
-4. Run:
+1. **Install Node.js.** Go to nodejs.org, download the **LTS** version for macOS, and run the installer.
+2. **Install GitHub Desktop** from desktop.github.com and sign in with your GitHub account.
+3. **Get the code.** In GitHub Desktop choose File, Clone Repository, pick `General-Internal`, and click Clone. Then use the Current Branch menu at the top to switch to the branch that holds the app.
+4. **Install the app.** In GitHub Desktop choose Repository, Show in Finder. Open the `claude-navigator` folder and double-click **Install or Update.command**. A Terminal window builds the app (a few minutes the first time), puts it in Applications and opens it.
+   - If macOS says the file cannot be opened, right-click it, choose Open, then Open again.
+5. **Sign in to Claude** in the right-hand pane. If Google sign-in will not work there, use "Continue with email". You stay signed in from then on.
 
-```bash
-npm install
-```
+Claude Navigator is now in Applications, Launchpad and Spotlight. Right-click its Dock icon and choose Options, Keep in Dock.
 
-**Try it**
+**Updating to a new version**
 
-```bash
-npm start
-```
+1. In GitHub Desktop, click Fetch origin, then Pull origin.
+2. Double-click **Install or Update.command** again.
 
-Sign in to Claude in the right-hand pane. You stay signed in between launches. Quit with ⌘Q.
+Your folders and Claude sign-in are kept. They live in `~/Library/Application Support/Claude Navigator`, separate from the app. For extra safety, use the ... menu, "Back Up Folders to a File", before updating.
 
-**Make it a proper app in your Applications folder**
+macOS may ask again for microphone permission after an update, because each build counts as a new app until it is signed with an Apple developer certificate.
 
-```bash
-npm run build:mac
-```
-
-This makes two installers in the `dist` folder: one ending `-arm64.dmg` (for M1, M2, M3, M4 Macs) and one without it (for older Intel Macs). Open the right one and drag Claude Navigator into Applications. From then on it opens from Launchpad or Spotlight like any other app, and you can keep it in the Dock.
-
-The first time you open it, macOS may say it cannot check the app for malicious software, because it is not signed with an Apple developer certificate. Go to **System Settings, Privacy & Security**, scroll down, and click **Open Anyway**. If it says the app "is damaged", run this once, then open it again:
-
-```bash
-xattr -cr "/Applications/Claude Navigator.app"
-```
+**For developers:** `npm start` runs it straight from the folder, and `npm run build:mac` makes installer disk images in `dist`.
 
 **Sign-in tip:** if Google sign-in refuses to work inside the app, use "Continue with email" instead. Claude emails you a code.
 
-(Windows: same steps, using `npm run build:win`.)
+(Windows: install Node.js, run `npm install`, then `npm run build:win`.)
 
 ### 2. Browser only
 
