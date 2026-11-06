@@ -163,6 +163,9 @@
   @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
   .tbgroup { display: flex; align-items: center; flex: none; }
+  #bNewMenu svg { width: 19px; height: 19px; }
+  .mi-plus { display: inline-grid; place-items: center; color: var(--accent); }
+  .mi-plus svg { width: 15px; height: 15px; }
   #liveBadge { order: 9999; flex: none; font-size: 11px; font-weight: 600; color: #fff; background: #FF7552; border-radius: 10px; padding: 2px 9px; margin-left: 4px; -webkit-app-region: no-drag; }
   #bar > .tb-off, body.tb-customizing #bar > .tb-off { display: none !important; }
   .tb-gap { flex: none; width: 24px; height: 28px; }
@@ -412,7 +415,7 @@
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
-    <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
+    <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
     <div class="search" data-tb="search">
       <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
       <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)">
@@ -2007,12 +2010,12 @@
       label: 'Undo', run: () => { lib.archived = before; saveLib(); renderAll(); },
     });
   }
-  async function deleteFromClaude(items) {
+  async function deleteFromClaude(items, { asked = false } = {}) {
     const chats = items.filter(x => /\/chat\//.test(x.url));
     if (!chats.length || !isApp) return toast('Only chats can be deleted from Claude here');
     const n = chats.length;
-    if (!confirm(`Delete ${n} chat${n === 1 ? '' : 's'} from Claude?\n\nThis deletes ${n === 1 ? 'it' : 'them'} from your Claude account for good, and removes ${n === 1 ? 'it' : 'them'} from your folders here. It cannot be undone.`)) return;
-    if (n > 10 && !confirm(`Really delete all ${n} chats from your Claude account?`)) return;
+    if (!asked && !confirm(`Delete ${n} chat${n === 1 ? '' : 's'} from Claude?\n\nThis deletes ${n === 1 ? 'it' : 'them'} from your Claude account for good, and removes ${n === 1 ? 'it' : 'them'} from your folders here. It cannot be undone.`)) return;
+    if (!asked && n > 10 && !confirm(`Really delete all ${n} chats from your Claude account?`)) return;
     toast(`Deleting ${n} chat${n === 1 ? '' : 's'} from Claude\u2026`);
     const res = await window.navigatorApp.deleteChats(chats.map(x => ({ url: x.url, org: x.org || null })));
     const gone = new Set(res.deleted.map(normUrl));
@@ -2682,7 +2685,7 @@
       return [
         add('chat'),
         folderItem,
-        { label: 'New', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, rest) },
+        { label: 'New', key: '\u25B8', iconHtml: `<span class="mi-plus">${UI.plus}</span>`, run: () => showMenu(lastMenuX, lastMenuY, rest) },
         '-',
       ];
     }
@@ -2856,7 +2859,6 @@
     const where = f ? ` in “${f.name}”` : '';
     showMenu(x, y, [
       ...newItemsMenu(folderId, where, { label: `New Folder${where}`, icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) }),
-      { label: `Add Link${where}…`, icon: 'link', key: K.mod + 'L', run: () => promptNewLink(folderId) },
     ]);
   }
 
@@ -3139,15 +3141,15 @@
     return l;
   }
 
-  function removeNode(id) {
+  function removeNode(id, { asked = false } = {}) {
     const loc = locate(id);
     if (!loc) return;
     const n = loc.node;
     const files = [];
     walk([n], x => { if (x.type === 'file') files.push(x); });
     const askedAboutFiles = !!(fsState.enabled && files.length);
-    if (askedAboutFiles && !confirm(n.type === 'file' ? `Move \u201c${n.name}\u201d to the Trash?` : `Delete \u201c${n.name}\u201d? The ${files.length} file${files.length === 1 ? '' : 's'} in it will be moved to the Trash.`)) return;
-    if (!askedAboutFiles && n.children && n.children.length) {
+    if (!asked && askedAboutFiles && !confirm(n.type === 'file' ? `Move \u201c${n.name}\u201d to the Trash?` : `Delete \u201c${n.name}\u201d? The ${files.length} file${files.length === 1 ? '' : 's'} in it will be moved to the Trash.`)) return;
+    if (!asked && !askedAboutFiles && n.children && n.children.length) {
       let c = 0;
       walk(n.children, () => c++);
       const what = n.type === 'folder' ? `the ${c} item${c === 1 ? '' : 's'} inside it` : `its ${c} attached item${c === 1 ? '' : 's'}`;
@@ -3194,6 +3196,36 @@
     if (moveNodes([id], { id: chatId, zone: 'into' })) { commit(); toast(`Attached \u201c${n.name}\u201d to \u201c${chat.name}\u201d`, true); }
   }
 
+  // One Delete for everything in your folders:
+  //  - a chat is deleted in Claude and removed here (asks first: it cannot be undone);
+  //  - your own files go to the Trash; folders are deleted (the chats inside them are NOT deleted from Claude);
+  //  - artifacts and other links are removed here (Claude does not let other apps delete artifacts yet).
+  async function deleteNodes(ids) {
+    ids = outermost(ids);
+    if (!ids.length) return;
+    const nodes = ids.map(nodeOf).filter(Boolean);
+    const chats = isApp ? nodes.filter(isClaudeChat) : [];
+    const others = nodes.filter(n => !chats.includes(n));
+    if (!chats.length) {
+      if (others.length === 1) {
+        const n = others[0];
+        const claudeItem = n.type === 'link' && /claude\.ai\//.test(n.url || '');
+        removeNode(n.id);
+        if (claudeItem && !nodeOf(n.id)) toast(`Removed \u201c${n.name}\u201d. Artifacts can only be deleted inside Claude.`, { label: 'Open in Claude', run: () => go({ kind: 'page', url: n.url }) });
+        return;
+      }
+      return removeNodes(others.map(n => n.id));
+    }
+    const c = chats.length, o = others.length;
+    const msg = `Delete ${c === 1 ? `\u201c${chats[0].name}\u201d` : `${c} chats`} from Claude?\n\n` +
+      `${c === 1 ? 'It is' : 'They are'} deleted from your Claude account for good and removed from your folders. This cannot be undone.` +
+      (o ? `\n\nThe other ${o} selected item${o === 1 ? '' : 's'} ${o === 1 ? 'is' : 'are'} deleted here too.` : '');
+    if (!confirm(msg)) return;
+    if (c > 10 && !confirm(`Really delete all ${c} chats from your Claude account?`)) return;
+    if (o) removeNodes(others.map(n => n.id), { asked: true });
+    await deleteFromClaude(chats.map(chatItem), { asked: true });
+  }
+
   // An artifact you take out from under its chat stays out: it is not filed under the chat again.
   // Also for an artifact filed in an ordinary folder, or inside a deleted folder: if its chat is still filed,
   // removing the artifact must not bring it straight back under the chat.
@@ -3215,17 +3247,17 @@
   }
   // Claude items are only taken out of your folders, so they are "removed". Folders and files really go, so they are "deleted".
   const removeWord = ids => ids.every(id => { const n = nodeOf(id); return n && n.type === 'link'; }) ? 'Remove' : 'Delete';
-  function removeNodes(ids) {
+  function removeNodes(ids, { asked = false } = {}) {
     ids = outermost(ids);
     if (!ids.length) return;
-    if (ids.length === 1) return removeNode(ids[0]);
+    if (ids.length === 1) return removeNode(ids[0], { asked });
     let inside = 0;
     ids.forEach(id => { const n = nodeOf(id); if (n.type === 'folder') walk(n.children, () => inside++); });
     const word = removeWord(ids);
     let files = 0;
     ids.forEach(id => walk([nodeOf(id)], x => { if (x.type === 'file') files++; }));
     const trashNote = fsState.enabled && files ? ` The ${files} file${files === 1 ? '' : 's'} among them will be moved to the Trash.` : '';
-    if ((inside || trashNote) && !confirm(`${word} these ${ids.length} items${inside ? `, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders` : ''}?${trashNote} Chats and artifacts stay in Claude.`)) return;
+    if (!asked && (inside || trashNote) && !confirm(`${word} these ${ids.length} items${inside ? `, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders` : ''}?${trashNote} Chats and artifacts stay in Claude.`)) return;
     snap();
     for (const id of ids) {
       const l = locate(id);
@@ -3293,24 +3325,51 @@
       links.length > 0 && { label: `Copy ${links.length} Link${links.length === 1 ? '' : 's'}`, run: () => navigator.clipboard.writeText(links.map(l => l.url).join('\n')).then(() => toast('Links copied')) },
       links.length > 0 && links.length <= 8 && { label: `Open ${links.length} in New Windows`, run: () => links.forEach(l => openNewWindow(l.url)) },
       '-',
-      { label: removeWord(ids) === 'Remove' ? `Remove ${n} Items from Folder` : `Delete ${n} Items`, key: K.del, run: () => removeNodes(ids) },
-      ...(() => {
-        const chats = ids.map(nodeOf).filter(isClaudeChat);
-        return isApp && chats.length ? [{ label: `Delete ${chats.length} Chat${chats.length === 1 ? '' : 's'} from Claude\u2026`, run: () => deleteFromClaude(chats.map(chatItem)) }] : [];
-      })(),
+      { label: `Delete ${n} Items\u2026`, key: K.del, run: () => deleteNodes(ids) },
     ];
   }
 
-  function duplicate(id) {
+  // Duplicate makes a real copy: a file is copied on your Mac; a folder is copied with everything in it
+  // (its files copied on your Mac too, its chats and artifacts as links to the same Claude items).
+  // Claude itself cannot duplicate chats or artifacts, so they have no Duplicate.
+  async function duplicate(id) {
     const loc = locate(id);
     if (!loc) return;
+    const n = loc.node;
+    if (n.type === 'file') {
+      if (!fsState.enabled || !n.path) return toast('Files can only be copied while your folders are kept on this Mac');
+      const res = await window.navigatorApp.fsCopy(n.path, null);
+      if (!res || res.error) return toast(`Could not copy it: ${res ? res.error : 'unknown error'}`);
+      await pullFromDisk();
+      return toast(`Made a copy of \u201c${n.name}\u201d`);
+    }
+    if (n.type !== 'folder') return;
     snap();
-    const copy = JSON.parse(JSON.stringify(loc.node));
-    const reid = x => { x.id = uid(); if (x.children) x.children.forEach(reid); };
-    reid(copy);
+    const copy = JSON.parse(JSON.stringify(n));
+    const files = [];
+    const prep = (x, parent) => {
+      x.id = uid();
+      delete x.path; delete x.ino;
+      if (x.children) x.children = x.children.filter(c => {
+        if (c.type === 'file') { if (c.path) files.push([c.path, x.id]); return false; }
+        prep(c, x); return true;
+      });
+    };
+    prep(copy, null);
     copy.name += ' copy';
     loc.list.splice(loc.index + 1, 0, copy);
     commit();
+    if (fsState.enabled && files.length) {
+      await runApply();                                    // make the new folders on disk first
+      let failed = 0;
+      for (const [src, folderId] of files) {
+        const f = nodeOf(folderId);
+        const res = f && f.path ? await window.navigatorApp.fsCopy(src, f.path, true) : null;
+        if (!res || res.error) failed++;
+      }
+      await pullFromDisk();
+      toast(`Made a copy of \u201c${n.name}\u201d${failed ? `, but ${failed} file${failed === 1 ? '' : 's'} could not be copied` : ', with its files'}`);
+    } else toast(`Made a copy of \u201c${n.name}\u201d`);
   }
 
   function sortFolder(id) {
@@ -3339,8 +3398,17 @@
       if (done) return;
       done = true;
       const v = input.value.trim();
-      if (ok && v && v !== n.name) { snap(); n.name = v; n.autoName = false; }
+      const old = n.name;
+      const changed = ok && v && v !== n.name;
+      if (changed) { snap(); n.name = v; n.autoName = false; }
       commit();
+      // A chat is renamed in Claude as well, so its name is the same everywhere.
+      if (changed && isApp && isClaudeChat(n)) {
+        renameInClaude(n.url, v, old).then(res => {
+          if (res.ok) toast(`Renamed to \u201c${v}\u201d here and in Claude`);
+          else toast(`Renamed here, but not in Claude (${res.why}).`, { label: 'Try Again', run: () => renameInClaude(n.url, v, old).then(r => toast(r.ok ? 'Renamed in Claude' : `Still could not rename it in Claude (${r.why})`)) });
+        });
+      }
       (scope === browseEl ? browseEl : treeEl).focus({ preventScroll: true });
     };
     input.addEventListener('keydown', e => {
@@ -3495,47 +3563,32 @@
       title: 'Rename Chat', name: old, nameOnly: true, noPicker: true, okLabel: 'Rename',
       onSave: async ({ name }) => {
         if (!name || name === old) return;
-        toast('Renaming in Claude\u2026');
-        const res = await window.navigatorApp.renameChat({ url, name, org: (chat && chat.org) || null });
-        if (!res || !res.ok) {
-          const why = res && res.status === 'not signed in' ? 'you are not signed in to Claude' : `Claude said ${res ? res.status : 'nothing'}`;
-          return toast(`Could not rename it in Claude (${why}). Nothing was changed.`);
-        }
-        if (chat) chat.name = name;
-        saveLib();
-        let copies = 0;
-        walk(state.tree, n => {
-          if (n.type === 'link' && normUrl(n.url) === normUrl(url) && (n.autoName !== false || n.name === old || n.name === current)) { n.name = name; n.autoName = true; copies++; }
-        });
-        if (copies) save();
-        renderAll();
-        toast(`Renamed to \u201c${name}\u201d in Claude${copies ? ' and in your folders' : ''}`);
+        const res = await renameInClaude(url, name, old);
+        if (!res.ok) return toast(`Could not rename it in Claude (${res.why}). Nothing was changed.`);
+        toast(`Renamed to \u201c${name}\u201d in Claude${res.copies ? ' and in your folders' : ''}`);
       },
     });
+  }
+  // Renames a chat in Claude, then the All Chats list and every copy in your folders that still has the old name.
+  async function renameInClaude(url, name, old) {
+    const chat = (lib.chats || []).find(c => normUrl(c.url) === normUrl(url));
+    const res = await window.navigatorApp.renameChat({ url, name, org: (chat && chat.org) || null });
+    if (!res || !res.ok) {
+      return { ok: false, why: res && res.status === 'not signed in' ? 'you are not signed in to Claude' : `Claude said ${res ? res.status : 'nothing'}` };
+    }
+    if (chat) chat.name = name;
+    saveLib();
+    let copies = 0;
+    walk(state.tree, n => {
+      if (n.type === 'link' && normUrl(n.url) === normUrl(url) && (n.autoName !== false || n.name === old)) { n.name = name; n.autoName = true; copies++; }
+    });
+    if (copies) save();
+    renderAll();
+    return { ok: true, copies };
   }
 
-  function promptNewLink(folderId = hereFolder()) {
-    openDialog({
-      title: 'Add Link', folderId,
-      onSave: ({ name, url, folderId }) => { if (url) addLink(folderId, name, url); },
-    });
-  }
-  function editLink(id) {
-    const loc = locate(id);
-    if (!loc) return;
-    openDialog({
-      title: 'Edit Link', name: loc.node.name, url: loc.node.url, folderId: loc.parent ? loc.parent.id : null,
-      onSave: ({ name, url, folderId }) => {
-        if (!url) return;
-        snap();
-        const cur = locate(id);
-        if (name && name !== cur.node.name) { cur.node.name = name; cur.node.autoName = false; }
-        cur.node.url = url;
-        moveNode(cur, folderId);
-        commit();
-      },
-    });
-  }
+
+
   function moveTo(id) {
     const loc = locate(id);
     if (!loc) return;
@@ -3608,7 +3661,7 @@
 
   // Save As: choose a name and browse to the folder (also used whenever the page is not in a folder yet).
   function saveAs() {
-    if (!isApp || state.loc.kind !== 'page') return promptNewLink();
+    if (!isApp || state.loc.kind !== 'page') return toast('Open a Claude chat or page first, then Save As puts it in a folder.');
     if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
     if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
     const url = state.pageUrl;
@@ -3630,7 +3683,7 @@
   function saveCurrent(folderId) {
     const explicit = folderId !== undefined;       // "Save … Inside" a chosen folder always saves there
     if (!explicit) folderId = state.lastFolderId;
-    if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
+    if (!isApp || state.loc.kind !== 'page') return toast('Open a Claude chat or page first, then save it to a folder.');
     if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
     if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
     const ctx = pageContext();
@@ -3654,13 +3707,13 @@
     lastMenuY = y;
     menu.replaceChildren();
     const checks = items.some(it => it && it !== '-' && it.checked !== undefined);
-    const icons = items.some(it => it && it !== '-' && (it.icon || it.dot));
+    const icons = items.some(it => it && it !== '-' && (it.icon || it.dot || it.iconHtml));
     for (const it of items) {
       if (!it) continue;
       if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.dot ? `<span class="pdot${it.dot === 'all' ? ' all' : ''}" style="${it.dot === 'all' ? '' : `background:${it.dot}`}"></span>` : it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.dot ? `<span class="pdot${it.dot === 'all' ? ' all' : ''}" style="${it.dot === 'all' ? '' : `background:${it.dot}`}"></span>` : it.iconHtml ? it.iconHtml : it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
       b.querySelector('.lb').textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
@@ -3684,7 +3737,6 @@
       const here = scope === browseEl ? hereFolder() : null;
       return [
         ...newItemsMenu(here, ' Here', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) }, true),
-        { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
         '-',
         scope === browseEl && { label: 'as Icons', key: K.mod + '1', run: () => setView('icons') },
@@ -3706,6 +3758,7 @@
         '-',
         { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
         { label: 'Move To\u2026', run: () => moveTo(n.id) },
+        { label: 'Duplicate', run: () => duplicate(n.id) },
         { label: 'Copy Path', run: () => window.navigatorApp.fsAbs(n.path).then(p => navigator.clipboard.writeText(p)).then(() => toast('Path copied')) },
         '-',
         { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
@@ -3718,7 +3771,6 @@
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
         ...newItemsMenu(n.id, ' Here', { label: 'New Folder Inside', icon: 'folder', run: () => newFolder(n.id) }, true),
-        { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Inside`, run: () => { state.lastFolderId = n.id; saveCurrent(n.id); } },
         '-',
         { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
@@ -3738,10 +3790,7 @@
       searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
       '-',
       { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
-      isApp && kindOf(n) === 'chat' && /claude\.ai\/chat\//.test(n.url) && { label: 'Rename Here and in Claude\u2026', run: () => renameChatInClaude(n.url, n.name) },
-      { label: 'Edit Link…', run: () => editLink(n.id) },
       { label: 'Move To…', run: () => moveTo(n.id) },
-      { label: 'Duplicate', run: () => duplicate(n.id) },
       { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
       { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
       '-',
@@ -3751,12 +3800,7 @@
       kindOf(n) === 'chat' && n.children && n.children.length > 0 && { label: `Detach ${n.children.length} Attached Item${n.children.length === 1 ? '' : 's'}`, run: () => n.children.slice().forEach(c => detach(c.id)) },
       savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
-      { label: 'Remove from Folder', key: K.del, run: () => removeNode(n.id) },
-      isApp && isClaudeChat(n) && { label: 'Delete from Claude\u2026', run: () => deleteFromClaude([chatItem(n)]) },
-      isApp && !isClaudeChat(n) && /claude\.ai\//.test(n.url || '') && { label: 'Delete in Claude\u2026', run: () => {
-        openNode(n);
-        toast('Delete it from Claude\u2019s own menu on this page. Then remove it from the folder here (or it will show as missing).');
-      } },
+      { label: 'Delete\u2026', key: K.del, run: () => deleteNodes([n.id]) },
     ];
   }
   // A chat filed here, as the item deleteFromClaude expects (with its Claude account, if known).
@@ -3880,7 +3924,7 @@
       case 'Enter': case ' ': if (n) (isSection ? toggle(n) : openNode(n)); break;
       case 'F2': if (n) startRename(n.id, treeEl); break;
       case 'Delete': case 'Backspace':
-        if (n && (mod || !isMac || e.key === 'Delete')) { if (multi.side.size > 1) removeNodes(selectedSide()); else removeNode(n.id); }
+        if (n && (mod || !isMac || e.key === 'Delete')) { deleteNodes(multi.side.size > 1 ? selectedSide() : [n.id]); }
         break;
       case 'Escape': multi.side.clear(); applySideSel(false); break;
       default: return;
@@ -4124,7 +4168,7 @@
       case 'Enter': if (n) (isMac ? startRename(n.id, browseEl) : openNode(n)); break;
       case 'F2': if (n) startRename(n.id, browseEl); break;
       case 'o': case 'O': if (!(mod && n)) return; openNode(n); break;
-      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNodes(selectedBrowse()); break;
+      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) deleteNodes(selectedBrowse()); break;
       case 'a': case 'A':
         if (!mod || !ids.length) return;
         ids.forEach(id => multi.browse.add(id));
@@ -4895,7 +4939,6 @@
     else if (k === 'p' && pageShowing()) view.print();
     else if (k === 'n' && e.shiftKey) newFolder();
     else if (k === 'n') newChat();
-    else if (k === 'l') promptNewLink();
     else if (k === 's' && e.shiftKey) saveAs();
     else if (k === 's') saveCurrent();
     else if (k === 'z' && !typing) undo();
@@ -4912,7 +4955,6 @@
     const actions = {
       'new-chat': newChat,
       'new-folder': () => newFolder(),
-      'add-link': () => promptNewLink(),
       save: () => saveCurrent(),
       'save-as': saveAs,
       find: openFind,

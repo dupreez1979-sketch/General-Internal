@@ -200,7 +200,6 @@ app.on('web-contents-created', (_event, contents) => {
       f: input.shift ? null : 'find',
       g: input.shift ? 'find-prev' : 'find-next',
       p: input.shift ? null : 'print',
-      l: input.shift ? null : 'add-link',
       '[': 'back',
       ']': 'forward',
     };
@@ -269,7 +268,6 @@ function buildMenu() {
       submenu: [
         { label: 'New Chat', accelerator: 'Cmd+N', click: act('new-chat') },
         { label: 'New Folder', accelerator: 'Cmd+Shift+N', click: act('new-folder') },
-        { label: 'Add Link…', accelerator: 'Cmd+L', click: act('add-link') },
         { type: 'separator' },
         { label: 'Save Page to Folder', accelerator: 'Cmd+S', click: act('save') },
         { label: 'Save As\u2026', accelerator: 'Cmd+Shift+S', click: act('save-as') },
@@ -767,6 +765,10 @@ ipcMain.handle('fs-apply', async (_e, payload) => {
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
 ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
+ipcMain.handle('fs-copy', (_e, srcRel, destDirRel, keepName) => {
+  if (!folderSync) return { error: 'Folders on this Mac are not turned on' };
+  try { return folderSync.copy(srcRel, destDirRel, !!keepName); } catch (e) { return { error: e.message }; }
+});
 ipcMain.handle('fs-import', (_e, paths, destRel) => (folderSync ? folderSync.importFiles(paths, destRel) : []));
 // New Word / Excel / PowerPoint / text file from a blank template, then open it in its own app.
 const NEW_FILE_TYPES = { word: 'docx', excel: 'xlsx', powerpoint: 'pptx', text: 'txt' };

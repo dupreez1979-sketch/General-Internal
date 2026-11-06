@@ -201,6 +201,21 @@ class FolderSync {
     return { map: result, errors };
   }
 
+  // Copies a file or folder: next to itself as "Name copy", or into another folder keeping its name.
+  copy(srcRel, destDirRel, keepName) {
+    const src = this.abs(srcRel);
+    if (!exists(src)) return { error: 'it is no longer there' };
+    const dir = destDirRel != null ? this.abs(destDirRel) : path.dirname(src);
+    const base = path.basename(src);
+    const ext = fs.lstatSync(src).isDirectory() ? '' : path.extname(base);
+    const stem = base.slice(0, base.length - ext.length);
+    let name = keepName ? base : `${stem} copy${ext}`;
+    for (let i = 2; exists(path.join(dir, name)); i++) name = `${stem}${keepName ? '' : ' copy'} ${i}${ext}`;
+    fs.mkdirSync(dir, { recursive: true });
+    fs.cpSync(src, path.join(dir, name), { recursive: true });
+    return { rel: this.rel(path.join(dir, name)) };
+  }
+
   // Copies files dropped into the app (from Finder or the desktop) into a folder.
   async importFiles(paths, destRel) {
     const dest = this.abs(destRel || '');

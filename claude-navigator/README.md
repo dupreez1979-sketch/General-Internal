@@ -96,6 +96,14 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## One Rename, one Delete
+
+Right-click anything in your folders:
+
+- **Rename**: a chat is renamed here and in Claude. Artifacts and your own files are renamed here (Claude does not let other apps rename artifacts).
+- **Delete…**: a chat is deleted in Claude for good and removed from your folders (it asks first; this cannot be undone). Your own files (Word, Excel, PDF…) go to the Trash. Artifacts are removed here, with a button to open them in Claude to delete them there. Deleting a folder never deletes the chats inside it from Claude.
+- **Duplicate** (folders and files): makes a real copy, including the files on your Mac. Chats and artifacts have no Duplicate, because Claude cannot copy them.
+
 ## Your folders on your Mac
 
 Safety: only what you delete in the app ever goes to the Trash. Undo, restoring a backup and Reset never send anything there. If your folder cannot be found or read (moved, renamed, an unplugged drive, or macOS not allowing access to Documents), the app tells you and changes nothing until it is back. **Change Folder Location…** moves your folders and files to the new place (choose an empty folder).
@@ -150,7 +158,7 @@ Items get the right icon where Claude says what they are, or where the name make
 - **Search**: type in the search box at the top right.
 - **Filter** (top bar): everything, not in a folder, in a folder, or archived; any time, today, last 7 days, last 30 days, or older; with or without artifacts; starred only. "Filter (2)" means two filters are on; Reset Filters clears them.
 - **Select** (top bar): adds checkboxes, with a box in the Name heading that selects everything that matches, across all pages. The bar above the list then offers **File in Folder**, **Archive**, **Delete from Claude** and **Clear Selection**. ⌘-click, ⇧-click and right-click work too.
-- **Rename…** (right-click a chat) renames it in Claude too. Copies of the chat in your folders take the new name, unless you gave a copy your own name. In a folder, right-click a chat and choose **Rename Here and in Claude…** to do the same; plain **Rename** there only changes the name in that folder.
+- **Rename…** (right-click a chat) renames it in Claude too. Copies of the chat in your folders take the new name, unless you gave a copy your own name.
 - **Delete from Claude** deletes the chats from your Claude account for good (the same as deleting them in Claude), and removes them from your folders here. It always asks first, and twice for more than 10. It cannot be undone.
 - **Archive** hides chats from the list in this app only; Claude has no archive to sync with, so nothing changes there. See them with Filter, Archived, and Unarchive them from there.
 - Artifacts can't be deleted from here yet; right-click one and choose **Open in Claude to Delete**.
@@ -160,7 +168,7 @@ Items get the right icon where Claude says what they are, or where the name make
 Folders, search results and the Claude section all have the same tools in the top bar:
 
 - **Filter**: in folders, by kind (folders, chats, artifacts, code, projects, other links), by date, or archived only. In the Claude lists, also filed or not filed, with or without artifacts, and starred.
-- **Select**: checkboxes on every row (and on icons in icon view), with a box in the Name heading that selects everything that matches, across all pages. In folders the bar offers **Move To**, **New Folder with Items**, **Archive**, **Copy Links**, **Remove from Folder** (nothing changes in Claude) and **Delete from Claude** for chats.
+- **Select**: checkboxes on every row (and on icons in icon view), with a box in the Name heading that selects everything that matches, across all pages. In folders the bar offers **Move To**, **New Folder with Items**, **Archive**, **Copy Links**, and **Delete**.
 - **Pages** of 100, with Previous and Next at the bottom right.
 - **Narrow windows**: columns that do not fit drop out (Name always stays), and the top-bar buttons shrink to icons; hover for their names.
 
@@ -203,7 +211,6 @@ It behaves like a Finder window:
 | See what a button does | Hover over it. Tooltips name every button and icon, with its shortcut |
 | New folder | ⌘⇧N (in the folder you are looking at), or New Folder at the bottom of the sidebar |
 | Save the Claude page you are looking at | ⌘S |
-| Add a link by pasting | ⌘L |
 | Rename | Select it, press Return (like Finder) |
 | Remove or delete | ⌘⌫. Chats and artifacts are only **removed** from the folder (they stay in Claude); folders and your own files are **deleted** (files go to the Trash). Undo with ⌘Z or the Undo button |
 | Move things | Drag onto any folder, in the sidebar or the main window. Drag between sidebar rows to reorder |
@@ -236,7 +243,7 @@ Folders are stored on your computer only, inside the app.
 
 ## Chats deleted in Claude
 
-When a chat you filed is deleted in Claude itself (on the website or another device), it stays in your folder, crossed out, with a **Deleted in Claude** label, so nothing disappears without you knowing. Remove it with right-click, **Remove from Folder**, or remove them all at once from the `...` menu, **Remove … Chats Deleted in Claude…**. Artifacts attached to them stay in the folder.
+When a chat you filed is deleted in Claude itself (on the website or another device), it stays in your folder, crossed out, with a **Deleted in Claude** label, so nothing disappears without you knowing. Remove it with right-click, **Delete…**, or remove them all at once from the `...` menu, **Remove … Chats Deleted in Claude…**. Artifacts attached to them stay in the folder.
 
 ## Files
 
