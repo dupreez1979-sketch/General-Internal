@@ -3294,6 +3294,10 @@
       links.length > 0 && links.length <= 8 && { label: `Open ${links.length} in New Windows`, run: () => links.forEach(l => openNewWindow(l.url)) },
       '-',
       { label: removeWord(ids) === 'Remove' ? `Remove ${n} Items from Folder` : `Delete ${n} Items`, key: K.del, run: () => removeNodes(ids) },
+      ...(() => {
+        const chats = ids.map(nodeOf).filter(isClaudeChat);
+        return isApp && chats.length ? [{ label: `Delete ${chats.length} Chat${chats.length === 1 ? '' : 's'} from Claude\u2026`, run: () => deleteFromClaude(chats.map(chatItem)) }] : [];
+      })(),
     ];
   }
 
@@ -3748,7 +3752,18 @@
       savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
       { label: 'Remove from Folder', key: K.del, run: () => removeNode(n.id) },
+      isApp && isClaudeChat(n) && { label: 'Delete from Claude\u2026', run: () => deleteFromClaude([chatItem(n)]) },
+      isApp && !isClaudeChat(n) && /claude\.ai\//.test(n.url || '') && { label: 'Delete in Claude\u2026', run: () => {
+        openNode(n);
+        toast('Delete it from Claude\u2019s own menu on this page. Then remove it from the folder here (or it will show as missing).');
+      } },
     ];
+  }
+  // A chat filed here, as the item deleteFromClaude expects (with its Claude account, if known).
+  const isClaudeChat = n => !!n && n.type === 'link' && /claude\.ai\/chat\//.test(n.url || '');
+  function chatItem(n) {
+    const c = (lib.chats || []).find(x => normUrl(x.url) === normUrl(n.url));
+    return { name: n.name, url: n.url, org: (c && c.org) || null };
   }
 
   function revealInFolder(id) {
