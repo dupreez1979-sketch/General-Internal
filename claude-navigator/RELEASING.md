@@ -80,13 +80,13 @@ Claude does this for you. For the record, these are the steps:
 
 1. Raise `version` in `claude-navigator/package.json` (for example 0.2.0 to 0.2.1) and commit it.
 2. Push it. GitHub notices the new version number and starts the release (a version that is already published is skipped).
-3. GitHub builds, signs and notarises the app (about 15 minutes), then publishes it to `claude-navigator-releases`. You can watch it under **Actions** in `General-Internal`.
+3. GitHub builds, signs and notarises the app (usually 6 to 10 minutes), then publishes it to `claude-navigator-releases`. You can watch it under **Actions** in `General-Internal`.
 4. Every installed copy picks it up within a few hours, or straight away with **… › Check for Updates…**
 
 ## Switching from the install script to the signed app (once)
 
 1. Open the latest release at github.com/dupreez1979-sketch/claude-navigator-releases/releases.
-2. Download the `.dmg`: **arm64** for an Apple-silicon Mac (M1 or later), **x64** for an older Intel Mac. To check, choose Apple menu › About This Mac.
+2. Download the `.dmg` (built for Apple-silicon Macs: M1 or later).
 3. Quit Claude Navigator. Open the `.dmg` and drag the app to **Applications**, choosing **Replace**.
 4. Open it. Your folders, profiles and Claude sign-in are all kept. macOS may ask once for access to Documents; allow it.
 

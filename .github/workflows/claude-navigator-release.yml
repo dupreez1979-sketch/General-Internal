@@ -19,7 +19,11 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-latest      # GitHub's current Mac (Apple silicon); builds both arm64 and x64
+    runs-on: macos-latest      # GitHub's current Mac (Apple silicon)
+    # One release at a time: a second push waits, then skips if the version is already published.
+    concurrency:
+      group: claude-navigator-release
+      cancel-in-progress: false
     timeout-minutes: 60
     defaults:
       run:
@@ -77,4 +81,4 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: 484VNWY9P3          # your Apple Developer Team ID (not a secret)
           GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-        run: npx electron-builder --mac --arm64 --x64 --publish always
+        run: npx electron-builder --mac --arm64 --publish always   # Apple-silicon Macs (M1 and later)
