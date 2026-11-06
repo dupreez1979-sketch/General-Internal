@@ -152,7 +152,7 @@
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
   @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #bSaveText { display: none; } }
-  @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } #libSeg { display: none !important; } }
+  @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
   #bSaveMore { min-width: 18px; padding: 0 3px; margin-left: -4px; }
   .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
@@ -367,10 +367,6 @@
     <div class="seg" id="viewSeg" role="group" aria-label="View">
       <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
       <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
-    </div>
-    <div class="seg" id="libSeg" role="group" aria-label="Show" hidden>
-      <button class="tb" id="libAll" title="Show everything"><span class="t">All</span></button>
-      <button class="tb" id="libUnfiled" title="Show only items not yet in one of your folders"><span class="t">Not Filed</span></button>
     </div>
     <button class="tb" id="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
     <button class="tb" id="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
@@ -1106,9 +1102,11 @@
   }
 
   // Which of your folders already hold each address.
-  function filedIndex() {
+  // Where each address is filed. Inside a profile, only that profile's folders count.
+  function filedIndex(all = false) {
     const map = new Map();
-    walk(state.tree, (n, depth, path) => {
+    const ap = all ? null : activeProfile();
+    walk(ap ? [ap] : state.tree, (n, depth, path) => {
       if (n.type !== 'link') return;
       const k = normUrl(n.url);
       const folders = path.filter(p => p.type === 'folder');
@@ -1118,7 +1116,17 @@
     });
     return map;
   }
-  const unfiledCount = (kind, idx = filedIndex()) => libList(kind).filter(x => !idx.has(normUrl(x.url)) && !(lib.archived || []).includes(normUrl(x.url))).length;
+  let allFiledCache = null;
+  // In a profile, a Claude item shows if it is filed in this profile, or not filed anywhere yet.
+  function inThisProfileOrUnfiled(url, idx) {
+    if (!activeProfile()) return true;
+    const k = normUrl(url);
+    if (idx.has(k)) return true;
+    if (!allFiledCache) allFiledCache = filedIndex(true);
+    return !allFiledCache.has(k);
+  }
+  // "Not in a folder" counts mean not filed in any profile.
+  const unfiledCount = (kind) => { const all = filedIndex(true); return libList(kind).filter(x => !all.has(normUrl(x.url)) && !(lib.archived || []).includes(normUrl(x.url))).length; };
   function fmtDate(s) {
     if (!s) return '';
     const d = new Date(s);
@@ -1317,6 +1325,8 @@
     let items = libList(kind);
     // Archived items (kept only in this app) show only when you ask for them.
     items = items.filter(x => (state.libFilter === 'archived') === isArchived(x.url));
+    const ap = activeProfile();
+    if (ap) items = items.filter(x => inThisProfileOrUnfiled(x.url, idx));
     if (state.libFilter === 'unfiled') items = items.filter(x => !idx.has(normUrl(x.url)));
     if (state.libFilter === 'filed') items = items.filter(x => idx.has(normUrl(x.url)));
     if (state.libWhen !== 'any') {
@@ -1347,6 +1357,7 @@
   }
 
   function renderLibrary() {
+    allFiledCache = null;
     const { kind, idx, items } = libVisible();
     state.libFiltered = items;
     const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
@@ -1414,7 +1425,7 @@
         const linked = new Set();
         for (const c of lib.chats || []) for (const a of relatedFor(c.url)) linked.add(normUrl(a.url));
         const q = (state.query || '').toLowerCase();
-        const loose = libList('artifacts').filter(a => !linked.has(normUrl(a.url)) && !libRowItems.has(a.url) &&
+        const loose = libList('artifacts').filter(a => !linked.has(normUrl(a.url)) && !libRowItems.has(a.url) && inThisProfileOrUnfiled(a.url, idx) &&
           (state.libFilter !== 'unfiled' || !idx.has(normUrl(a.url))) && (!q || (a.name || '').toLowerCase().includes(q)));
         if (loose.length) {
           const h = document.createElement('div');
@@ -2052,7 +2063,6 @@
     }
     document.title = title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || !!state.query || inLib;
-    $('libSeg').hidden = !inLib;
     $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
     const listView = !page;
     $('libFilterBtn').hidden = !listView;
@@ -2064,8 +2074,6 @@
     $('libAttachedBtn').classList.toggle('on', !!state.libShowAttached);
     $('bRefreshLib').hidden = !inLib;
     $('bRefreshLib').disabled = lib.busy;
-    $('libAll').classList.toggle('on', state.libFilter === 'all');
-    $('libUnfiled').classList.toggle('on', state.libFilter === 'unfiled');
     $('vIcons').classList.toggle('on', state.view === 'icons');
     $('vList').classList.toggle('on', state.view === 'list');
     $('bReload').hidden = !page;
@@ -2087,7 +2095,8 @@
     $('bNewChat').title = `New Chat${here ? ` in \u201c${nodeOf(here).name}\u201d` : ''} (${K.mod}N)`;
   }
 
-  function renderAll() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
+  function renderAll() { allFiledCache = null; renderAllInner(); }
+  function renderAllInner() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
 
   // ---------- Navigation (Finder-style back and forward) ----------
   const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id
@@ -3851,8 +3860,6 @@
     ], { above: true });
   });
   const setLibFilter = v => { state.libFilter = v; state.libPage = 0; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
-  $('libAll').addEventListener('click', () => setLibFilter('all'));
-  $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
   $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
   $('libFilterBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();

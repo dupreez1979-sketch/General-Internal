@@ -57,14 +57,16 @@ While it waits, the top bar shows "Saves in Board once created". Click the ✕ o
 
 **Claude's own sidebar is hidden** so your folders are the only navigation. Claude's own button still opens it when you need it. To keep it showing, untick "Hide Claude's Own Sidebar" in the ... menu at the bottom of the sidebar.
 
-## The Claude section: file your existing chats
+## The Claude section
+
+In a profile, the Claude lists show only what is filed in that profile, plus anything not filed anywhere yet; things filed only in another profile are left out. All Profiles shows everything. The numbers beside the lists count what is not filed in any profile.: file your existing chats
 
 At the top of the sidebar, the **Claude** section has **New Chat** and lists everything in your Claude account: **Recent Chats**, **Projects** and **Artifacts**. The number beside each shows how many are not in one of your folders yet.
 
 - Click Recent Chats to see every chat, newest first, with a column showing which folder it is filed in.
 - Drag a chat onto any folder in the sidebar to file it. Select several first with ⌘-click, or ⇧-click for a range, and drag them together.
 - Or right-click and choose File in Folder.
-- Switch to **Not Filed** at the top to see only what is left, like an inbox.
+- Choose **Filter, Not in a Folder** to see only what is left, like an inbox.
 - Double-click to open it in Claude.
 - The list refreshes when you open it (at most every five minutes), every ten minutes in the background, and when you click Refresh.
 
