@@ -861,6 +861,12 @@ ipcMain.handle('monday-connect', async (_e, token) => {
   }
 });
 ipcMain.handle('monday-disconnect', () => { monday.clearToken(); return { ok: true }; });
+ipcMain.handle('monday-create-board', async (_e, opts) => {
+  const name = opts && typeof opts.name === 'string' ? opts.name.trim() : '';
+  if (!name) return { error: 'Give the board a name' };
+  try { return { board: await monday.createBoard({ name, kind: opts.kind, workspace: opts.workspace, folder: opts.folder }) }; }
+  catch (e) { return { error: e.code === 'token' ? 'monday.com no longer accepts your token; reconnect it' : e.message }; }
+});
 let mondayRun = null;
 ipcMain.handle('monday-fetch', () => mondayRun || (mondayRun = monday.fetchAll()
   .catch(e => ({ connected: monday.hasToken(), error: e.code === 'token' ? 'token' : e.message }))

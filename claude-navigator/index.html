@@ -363,7 +363,8 @@
   .mdl-tip { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 420px; }
   .mdl-steps { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
   .mdl-msg { min-height: 18px; font-size: 12.5px; color: #99351E; }
-  #mondayForm { gap: 12px; }
+  #mondayForm, #mbForm { gap: 12px; }
+  #mbForm select { width: 100%; margin-top: 4px; }
 
   /* Profile editor */
   #profileDlg form { gap: 14px; }
@@ -468,6 +469,25 @@
     <div class="dlg-actions">
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
       <button class="btn-primary" value="ok" id="mondayOk">Connect</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="mbDlg">
+  <form method="dialog" id="mbForm">
+    <h2>New monday.com Board</h2>
+    <label>Name:<input id="mbName" placeholder="e.g. Regional tour 2027" required></label>
+    <label>Workspace:<select id="mbWs"></select></label>
+    <label>Folder:<select id="mbFolder"></select></label>
+    <label>Who can see it:<select id="mbKind">
+      <option value="public">Everyone in the workspace (main board)</option>
+      <option value="private">Only people I invite (private)</option>
+      <option value="share">Shareable with guests</option>
+    </select></label>
+    <div id="mbMsg" class="mdl-msg" role="status"></div>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn-primary" value="ok" id="mbOk">Create Board</button>
     </div>
   </form>
 </dialog>
@@ -2756,6 +2776,8 @@
       isApp && add('project'), isApp && add('artifactChat'),
       '-',
       ...(isApp ? Object.keys(NEW_FILES).map(k => ({ label: `New ${NEW_FILES[k]}${suffix}`, icon: k, run: () => newFileIn(k, folderId) })) : []),
+      isApp && mondayData.connected && '-',
+      isApp && mondayData.connected && { label: `New monday.com Board${suffix}`, icon: 'monday', run: () => openNewBoard({ fileInto: folderId || null }) },
       isApp && '-',
     ];
   }
@@ -3891,6 +3913,8 @@
     if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
     if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
+    if (row.dataset.action === 'monday-all') return go({ kind: 'monday', key: 'all' });
+    if (row.dataset.action === 'monday-new') return openNewBoard();
     if (row.dataset.action === 'monday-open') {
       if (e.target.closest('.twisty')) return toggleMondayOpen(row.dataset.key);
       return go({ kind: 'monday', key: row.dataset.key });
@@ -3946,7 +3970,7 @@
       showNewMenu(e.clientX, e.clientY);
       return;
     }
-    if (row && (row.dataset.action === 'sys-monday' || row.classList.contains('monday-node') || row.classList.contains('monday-board') || row.dataset.action === 'monday-connect')) {
+    if (row && (row.dataset.action === 'sys-monday' || row.dataset.action === 'monday-all' || row.dataset.action === 'monday-new' || row.classList.contains('monday-node') || row.classList.contains('monday-board') || row.dataset.action === 'monday-connect')) {
       if (row.classList.contains('monday-board')) {
         const url = row.dataset.url;
         return showMenu(e.clientX, e.clientY, [
@@ -4664,47 +4688,18 @@
       r.dataset.action = 'monday-connect';
       return;
     }
-    if (!mondayData.workspaces) { row('lib-action', 1, '', mondayBusy ? 'Loading from monday.com\u2026' : 'Nothing loaded yet'); return; }
-    const boards = mondayData.boards || [], folders = mondayData.folders || [];
-    const tw = (r, key) => { const open = mondayOpen.has(key); r.querySelector('.twisty').innerHTML = UI.chev; r.querySelector('.twisty').classList.toggle('open', open); r.setAttribute('aria-expanded', String(open)); return open; };
-    const boardRow = (b, depth) => {
-      const kind = b.type === 'document' ? 'mondaydoc' : 'monday';
-      const filed = savedLinksFor(b.url).length;
-      const r = row('monday-board', depth, small(kind, KIND_COLOUR[kind]), b.name,
-        `${b.name}\n${KIND_NAME[kind]}${b.private ? ' (private)' : ''}. Click to open it here; drag it into one of your folders to file it.${filed ? '\nAlready in your folders.' : ''}`);
-      r.dataset.url = b.url;
-      r.dataset.name = b.name;
-      r.draggable = true;
-      if (state.loc.kind === 'page' && normUrl(state.loc.url || '') === normUrl(b.url)) r.classList.add('selected');
-    };
-    const folderRows = (wsId, parentId, depth) => {
-      for (const f of folders.filter(f => f.workspace === wsId && (f.parent || null) === parentId).sort(byName)) {
-        const r = row('lib-action monday-node', depth, small('folder', KIND_COLOUR.mondayws), f.name, f.name);
-        r.dataset.action = 'monday-open';
-        r.dataset.key = 'f:' + f.id;
-        if (state.loc.kind === 'monday' && state.loc.key === 'f:' + f.id) r.classList.add('selected');
-        if (tw(r, 'f:' + f.id)) {
-          folderRows(wsId, f.id, depth + 1);
-          for (const b of boards.filter(b => b.folder === f.id).sort(byName)) boardRow(b, depth + 1);
-        }
-      }
-    };
-    const known = new Set(folders.map(f => f.id));
-    for (const w of (mondayData.workspaces || []).slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b)))) {
-      const inWs = boards.filter(b => b.workspace === w.id);
-      if (!inWs.length && !folders.some(f => f.workspace === w.id)) continue;
-      const r = row('lib-action monday-node', 1, small('mondayws', KIND_COLOUR.mondayws), w.name, `${w.name}: ${inWs.length} board${inWs.length === 1 ? '' : 's'}`);
-      r.dataset.action = 'monday-open';
-      r.dataset.key = 'w:' + w.id;
-      if (state.loc.kind === 'monday' && state.loc.key === 'w:' + w.id) r.classList.add('selected');
+    const nb = row('lib-action', 1, `<span class="mi-plus">${UI.plus}</span>`, 'New Board', 'Make a new monday.com board');
+    nb.dataset.action = 'monday-new';
+    const all = row('lib-action', 1, small('mondayws', KIND_COLOUR.mondayws), 'All Workspaces',
+      mondayData.workspaces ? `${mondayData.workspaces.length} workspaces, ${(mondayData.boards || []).length} boards. Open to browse them and drag boards into your folders.` : (mondayBusy ? 'Loading from monday.com\u2026' : 'Nothing loaded yet'));
+    all.dataset.action = 'monday-all';
+    if (state.loc.kind === 'monday') all.classList.add('selected');
+    if (mondayData.boards) {
       const c = document.createElement('span');
       c.className = 'count';
-      c.textContent = inWs.length;
-      r.appendChild(c);
-      if (tw(r, 'w:' + w.id)) {
-        folderRows(w.id, null, 2);
-        for (const b of inWs.filter(b => !b.folder || !known.has(b.folder)).sort(byName)) boardRow(b, 2);
-      }
+      c.textContent = mondayData.boards.length;
+      c.title = 'Boards';
+      all.appendChild(c);
     }
     if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
   }
@@ -4713,33 +4708,46 @@
     const boards = mondayData.boards || [], folders = mondayData.folders || [];
     const [t, id] = String(key || '').split(/:(.*)/s);
     const known = new Set(folders.map(f => f.id));
+    const ALL = { key: 'all', name: 'All Workspaces' };
+    if (t === 'all') {
+      const ws = (mondayData.workspaces || []).filter(w => boards.some(b => b.workspace === w.id) || folders.some(f => f.workspace === w.id));
+      return { name: ALL.name, path: [], workspaces: ws, folders: [], boards: [] };
+    }
     if (t === 'w') {
       const w = (mondayData.workspaces || []).find(x => x.id === id);
-      return { name: w ? w.name : 'Workspace', path: [], folders: folders.filter(f => f.workspace === id && !f.parent),
+      return { name: w ? w.name : 'Workspace', path: [ALL], workspace: id, folders: folders.filter(f => f.workspace === id && !f.parent),
         boards: boards.filter(b => b.workspace === id && (!b.folder || !known.has(b.folder))) };
     }
     const f = folders.find(x => x.id === id);
-    if (!f) return { name: 'Folder', path: [], folders: [], boards: [] };
+    if (!f) return { name: 'Folder', path: [ALL], folders: [], boards: [] };
     const path = [];
     for (let p = f.parent && folders.find(x => x.id === f.parent); p; p = p.parent && folders.find(x => x.id === p.parent)) path.unshift({ key: 'f:' + p.id, name: p.name });
     const w = (mondayData.workspaces || []).find(x => x.id === f.workspace);
     if (w) path.unshift({ key: 'w:' + w.id, name: w.name });
-    return { name: f.name, path, folders: folders.filter(x => x.parent === id), boards: boards.filter(b => b.folder === id) };
+    path.unshift(ALL);
+    return { name: f.name, path, workspace: f.workspace, folder: id, folders: folders.filter(x => x.parent === id), boards: boards.filter(b => b.folder === id) };
   }
   function renderMonday() {
     const place = mondayPlace(state.loc.key);
     const frag = document.createDocumentFragment();
-    const items = [...place.folders.slice().sort(byName).map(f => ({ folder: f })), ...place.boards.slice().sort(byName).map(b => ({ board: b }))];
+    const items = [...(place.workspaces || []).slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b))).map(w => ({ ws: w })),
+      ...place.folders.slice().sort(byName).map(f => ({ folder: f })), ...place.boards.slice().sort(byName).map(b => ({ board: b }))];
     if (!items.length) {
       const e = document.createElement('div');
       e.className = 'empty';
-      e.innerHTML = mondayData.workspaces ? '<b>Nothing here</b>This workspace or folder has no boards.' : '<b>Not loaded yet</b>Open monday.com under Systems to connect or refresh.';
+      e.innerHTML = mondayData.workspaces ? '<b>Nothing here</b>No boards yet. Click New Board in the sidebar to make one here.' : '<b>Not loaded yet</b>Open monday.com under Systems to connect or refresh.';
       frag.appendChild(e);
     } else {
       const l = makeList('folder');
       for (const it of items) {
         const r = document.createElement('div');
-        if (it.folder) {
+        if (it.ws) {
+          const n = (mondayData.boards || []).filter(b => b.workspace === it.ws.id).length;
+          r.className = 'lrow item';
+          r.dataset.mkey = 'w:' + it.ws.id;
+          fillRow(r, 'folder', small('mondayws', KIND_COLOUR.mondayws), it.ws.name, { kind: 'monday.com workspace', items: `${n} board${n === 1 ? '' : 's'}` });
+          r.title = `${it.ws.name}: double-click to open`;
+        } else if (it.folder) {
           const n = (mondayData.boards || []).filter(b => b.folder === it.folder.id).length;
           r.className = 'lrow item';
           r.dataset.mkey = 'f:' + it.folder.id;
@@ -4774,6 +4782,7 @@
       bar.appendChild(sep);
     };
     crumb('monday.com', null);
+    // (All Workspaces is the first step of every path below it.)
     for (const p of place.path) crumb(p.name, p.key);
     const here = document.createElement('span');
     here.textContent = `${place.name} \u00b7 ${items.length} item${items.length === 1 ? '' : 's'}`;
@@ -4823,8 +4832,65 @@
     toast(`Connected to monday.com as ${res.me.name}${res.me.account ? ` (${res.me.account})` : ''}`);
     mondayRefresh(true);
   });
+  // New Board: in the monday.com workspace/folder you are looking at (or one you pick). Made from one of your
+  // folders (New ▸ monday.com Board), it is also filed in that folder.
+  let mbFileInto = undefined;
+  function openNewBoard({ fileInto } = {}) {
+    if (!mondayData.connected || !mondayData.workspaces) return openMondayConnect();
+    mbFileInto = fileInto;
+    const here = state.loc.kind === 'monday' ? mondayPlace(state.loc.key) : {};
+    const wsSel = $('mbWs');
+    wsSel.replaceChildren();
+    for (const w of mondayData.workspaces.slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b)))) {
+      const o = document.createElement('option'); o.value = w.id; o.textContent = w.name; wsSel.appendChild(o);
+    }
+    wsSel.value = here.workspace || (mondayData.workspaces[0] || {}).id;
+    const fillFolders = (pick) => {
+      const fs = $('mbFolder');
+      fs.replaceChildren();
+      const none = document.createElement('option'); none.value = ''; none.textContent = 'No folder'; fs.appendChild(none);
+      const add = (parent, depth) => {
+        for (const f of (mondayData.folders || []).filter(f => f.workspace === wsSel.value && (f.parent || null) === parent).sort(byName)) {
+          const o = document.createElement('option'); o.value = f.id; o.textContent = '\u00a0\u00a0'.repeat(depth) + f.name; fs.appendChild(o);
+          add(f.id, depth + 1);
+        }
+      };
+      add(null, 0);
+      fs.value = pick || '';
+    };
+    wsSel.onchange = () => fillFolders('');
+    fillFolders(here.folder || '');
+    $('mbName').value = '';
+    $('mbMsg').textContent = '';
+    $('mbKind').value = 'public';
+    $('mbDlg').showModal();
+    $('mbName').focus();
+  }
+  $('mbForm').addEventListener('submit', async e => {
+    if (e.submitter && e.submitter.value === 'cancel') return;
+    e.preventDefault();
+    const name = $('mbName').value.trim();
+    if (!name) return;
+    $('mbOk').disabled = true;
+    $('mbMsg').style.color = 'var(--muted)';
+    $('mbMsg').textContent = 'Creating it in monday.com\u2026';
+    const res = await window.navigatorApp.mondayCreateBoard({ name, workspace: $('mbWs').value, folder: $('mbFolder').value || null, kind: $('mbKind').value });
+    $('mbOk').disabled = false;
+    if (!res || res.error) { $('mbMsg').style.color = ''; $('mbMsg').textContent = res ? res.error : 'Could not create the board.'; return; }
+    $('mbDlg').close();
+    const b = res.board;
+    (mondayData.boards || (mondayData.boards = [])).push(b);
+    ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
+    if (mbFileInto !== undefined) { addLink(mbFileInto, b.name, b.url); }
+    renderSide();
+    go({ kind: 'page', url: b.url });
+    toast(`Created \u201c${b.name}\u201d in monday.com${mbFileInto !== undefined ? ' and filed it here' : ''}`);
+  });
   function mondayMenu(x, y) {
     showMenu(x, y, [
+      mondayData.connected && { label: 'New Board\u2026', run: () => openNewBoard() },
+      mondayData.connected && { label: 'All Workspaces', run: () => go({ kind: 'monday', key: 'all' }) },
+      mondayData.connected && '-',
       mondayData.connected && { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
       { label: mondayData.connected ? 'Change API Token\u2026' : 'Connect monday.com\u2026', run: openMondayConnect },
       mondayData.connected && { label: 'Disconnect monday.com', run: async () => {

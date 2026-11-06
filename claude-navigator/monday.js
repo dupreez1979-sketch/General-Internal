@@ -84,4 +84,19 @@ async function fetchAll() {
   return { connected: true, me, workspaces, folders, boards, fetchedAt: Date.now() };
 }
 
-module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll };
+// Makes a new board (in a workspace, and optionally a folder) and returns it in the same shape as fetchAll's boards.
+async function createBoard({ name, kind, workspace, folder }) {
+  const token = readToken();
+  if (!token) throw new Error('monday.com is not connected');
+  const d = await gql(token, `mutation ($n: String!, $k: BoardKind!, $w: ID, $f: ID) {
+    create_board(board_name: $n, board_kind: $k, workspace_id: $w, folder_id: $f) { id name url type workspace_id board_folder_id } }`,
+  { n: String(name).slice(0, 255), k: ['public', 'private', 'share'].includes(kind) ? kind : 'public',
+    w: workspace && workspace !== 'main' ? workspace : null, f: folder || null });
+  const b = d.create_board;
+  if (!b) throw new Error('monday.com did not create the board');
+  return { id: String(b.id), name: b.name, type: b.type || 'board', private: kind === 'private',
+    workspace: b.workspace_id != null ? String(b.workspace_id) : 'main', folder: b.board_folder_id != null ? String(b.board_folder_id) : null,
+    url: b.url, updated: new Date().toISOString() };
+}
+
+module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll, createBoard };

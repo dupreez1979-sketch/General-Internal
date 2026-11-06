@@ -26,6 +26,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   mondayConnect: (token) => ipcRenderer.invoke('monday-connect', token),
   mondayDisconnect: () => ipcRenderer.invoke('monday-disconnect'),
   mondayFetch: () => ipcRenderer.invoke('monday-fetch'),
+  mondayCreateBoard: (opts) => ipcRenderer.invoke('monday-create-board', opts),
   onLiveStatus: (fn) => ipcRenderer.on('live-status', (_e, info) => fn(info)),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),

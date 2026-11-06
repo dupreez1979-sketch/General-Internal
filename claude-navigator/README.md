@@ -106,10 +106,12 @@ The top of the sidebar is **Systems**: the places your folders draw from. **Clau
 2. In monday.com, click your profile picture, then **Developers › My access tokens**, then **Show** and **Copy**.
 3. Paste the token into the box and click **Connect**.
 
-The token is stored encrypted in your Mac's Keychain and only ever sent to monday.com. Your workspaces appear, with their folders and boards (each board marked with monday.com's red, yellow and green mark):
+The token is stored encrypted in your Mac's Keychain and only ever sent to monday.com. Under monday.com you then have, like Claude's section:
 
-- **Click a board** to open it on the right, inside the app (sign in to monday.com there once).
-- **Drag a board** into any of your folders to file it, next to your Claude chats and files.
+- **All Workspaces**: opens in the main window. Double-click a workspace, then its folders, to reach the boards (each marked with monday.com's red, yellow and green mark). The path bar and Back/Forward take you back up.
+- **Open a board** (double-click) to use it on the right, inside the app (sign in to monday.com there once).
+- **Drag boards** from the list into any of your folders to file them, next to your Claude chats and files.
+- **New Board**: makes a board in monday.com, in the workspace and folder you are looking at (or ones you pick), and opens it. From one of your own folders, **New ▸ New monday.com Board** also files it there.
 - Right-click monday.com for **Refresh**, **Change API Token…** or **Disconnect**. The list also refreshes by itself every so often.
 
 Deleting a board from your folders only removes it from the folder; nothing is changed in monday.com.
