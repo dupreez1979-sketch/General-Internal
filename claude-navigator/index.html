@@ -2467,6 +2467,7 @@
     : a.kind === 'library' ? a.which === b.which : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
+    if (loc.kind === 'page' && !/^https?:\/\//i.test(loc.url || '')) { toast('That link is not a web address, so it was not opened'); return; }
     state.autoFile = null;
     state.pendingClick = null;
     if (loc.kind === 'page') {
@@ -5036,6 +5037,10 @@
   });
 
   addEventListener('storage', e => { if (e.key === STORE) { state.tree = load(); renderAll(); } });
+
+  // Anything dropped outside the places that accept drops does nothing (it never opens in the window).
+  document.addEventListener('dragover', e => { if (!e.defaultPrevented) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } });
+  document.addEventListener('drop', e => { if (!e.defaultPrevented) e.preventDefault(); });
 
   // ---------- Start where you left off ----------
   let start = isApp ? { kind: 'page', url: HOME } : { kind: 'folder', id: null };

@@ -1,7 +1,8 @@
 // Bridges the folder page to the desktop app. Only these functions are exposed.
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
-contextBridge.exposeInMainWorld('navigatorApp', {
+// Only the app's own folder page gets these: never a web page, even if one were somehow loaded here.
+if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp', {
   isElectron: true,
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   openWindow: (url) => ipcRenderer.invoke('open-window', url),

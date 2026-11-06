@@ -22,6 +22,9 @@ let mainWindow = null;
 const send = (channel, payload) => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload);
 };
+// Only ordinary web links ever go to the web browser (never file:, smb: or links that start other apps).
+const httpUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u);
+const openInBrowser = u => { if (httpUrl(u)) shell.openExternal(u); };
 const isClaudeHost = (url) => {
   try { const h = new URL(url).hostname; return h === 'claude.ai' || h.endsWith('.claude.ai') || h.endsWith('.anthropic.com'); } catch (e) { return false; }
 };
@@ -71,9 +74,13 @@ function createWindow() {
 
   // Links clicked in the folder page itself (not the Claude pane) go to the browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    openInBrowser(url);
     return { action: 'deny' };
   });
+  // The folder page never turns into another page (for example if a link or file is dropped on it).
+  const stay = (e, url) => { if (url !== mainWindow.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
+  mainWindow.webContents.on('will-navigate', stay);
+  mainWindow.webContents.on('will-redirect', stay);
 }
 
 // ---------- Right-click menus ----------
@@ -97,7 +104,7 @@ function contextMenuFor(contents, p) {
   if (p.linkURL && !isMain) {
     items.push({ label: 'Open Link', click: () => contents.loadURL(p.linkURL) });
     items.push({ label: 'Open Link in New Window', click: () => openChildWindow(p.linkURL) });
-    items.push({ label: 'Open Link in Web Browser', click: () => shell.openExternal(p.linkURL) });
+    items.push({ label: 'Open Link in Web Browser', click: () => openInBrowser(p.linkURL) });
     items.push({ label: 'Copy Link', click: () => clipboard.writeText(p.linkURL) });
     if (isPane) items.push({ label: 'Save Link to a Folder…', click: () => send('context-action', { action: 'save-link', url: p.linkURL, text: (p.linkText || '').trim() }) });
     sep();
@@ -135,7 +142,7 @@ function contextMenuFor(contents, p) {
     if (isPane) items.push({ label: 'Save As\u2026', accelerator: 'CmdOrCtrl+Shift+S', click: () => send('shortcut', 'save-as') });
     if (isPane) items.push({ label: 'Find…', accelerator: 'CmdOrCtrl+F', click: () => send('shortcut', 'find') });
     items.push({ label: 'Print or Save as PDF…', accelerator: 'CmdOrCtrl+P', click: () => contents.print() });
-    items.push({ label: 'Open Page in Web Browser', click: () => shell.openExternal(contents.getURL()) });
+    items.push({ label: 'Open Page in Web Browser', click: () => openInBrowser(contents.getURL()) });
   }
 
   while (items.length && items[items.length - 1].type === 'separator') items.pop();
@@ -229,12 +236,14 @@ function setUpSession() {
     });
   });
 
-  // Let Claude use the microphone (voice mode), clipboard and notifications.
+  // Let Claude (and only Claude) use the microphone (voice mode), clipboard and notifications.
+  // Other sites opened from a chat get none of these, apart from going full screen.
   const allowed = new Set(['media', 'clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen', 'pointerLock']);
+  const anySite = new Set(['fullscreen', 'clipboard-sanitized-write']);
   ses.setPermissionRequestHandler((_wc, permission, callback, details) => {
     const url = details.requestingUrl || '';
     if (!allowed.has(permission)) return callback(false);
-    if (permission === 'media' && !isClaudeHost(url)) return callback(false);
+    if (!anySite.has(permission) && !isClaudeHost(url)) return callback(false);
     if (permission === 'media' && isMac) {
       const wantsCamera = (details.mediaTypes || []).includes('video');
       const asks = [systemPreferences.askForMediaAccess('microphone')];
@@ -245,7 +254,7 @@ function setUpSession() {
   });
   ses.setPermissionCheckHandler((_wc, permission, origin) => {
     if (!allowed.has(permission)) return false;
-    return permission !== 'media' || isClaudeHost(origin);
+    return anySite.has(permission) || isClaudeHost(origin);
   });
 }
 
@@ -432,14 +441,20 @@ const discoverPage = (labelPattern) => `(() => {
   return null;
 })()`;
 
+// Opens a Claude page in a hidden window. Returns false if Claude's security check ("Just a moment")
+// never finished, so that is not mistaken for being signed out.
 async function openHidden(win, url) {
   await win.loadURL(url).catch(() => {}); // redirects can reject; the page still loads
+  let cleared = false;
   for (let i = 0; i < 40 && !win.isDestroyed(); i++) {
-    if (!/just a moment|checking your browser/i.test(win.webContents.getTitle())) break;
+    if (!/just a moment|checking your browser/i.test(win.webContents.getTitle())) { cleared = true; break; }
     await sleep(500);
   }
   await sleep(1500);
+  return cleared;
 }
+// Gives up on a hidden window's work after a while instead of leaving it open forever.
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_r, reject) => setTimeout(() => reject(new Error(`${what} took too long`)), ms))]);
 
 // Reads chats (as Claude's own page does) and notes which of your artifacts each one mentions,
 // so an artifact can be attached to the chat it was made in.
@@ -482,8 +497,9 @@ async function fetchLibrary(opts = {}) {
   win.webContents.setAudioMuted(true);
   const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 600000);
   try {
-    await openHidden(win, 'https://claude.ai/recents');
+    const cleared = await openHidden(win, 'https://claude.ai/recents');
     if (/\/(login|logout|signup)/.test(win.webContents.getURL())) { result.signedIn = false; return result; }
+    if (!cleared) { result.notes.push('Claude\u2019s security check did not finish, so the lists were not read this time'); result.blocked = true; return result; }
 
     const api = await win.webContents.executeJavaScript(API_SCRIPT, true);
     result.chats = api.chats;
@@ -602,9 +618,10 @@ ipcMain.handle('claude-delete-chats', async (_e, items) => {
   if (!items.length) return { deleted: [], failed: [] };
   const win = new BrowserWindow({ show: false, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   try {
-    await openHidden(win, 'https://claude.ai/recents');
+    const cleared = await openHidden(win, 'https://claude.ai/recents');
     if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { deleted: [], failed: items.map(i => ({ url: i.url, status: 'not signed in' })) };
-    return await win.webContents.executeJavaScript(deleteScript(items), true);
+    if (!cleared) return { deleted: [], failed: items.map(i => ({ url: i.url, status: 'Claude\u2019s security check did not finish; try again' })) };
+    return await withTimeout(win.webContents.executeJavaScript(deleteScript(items), true), 30000 + items.length * 5000, 'Deleting');
   } catch (e) {
     return { deleted: [], failed: items.map(i => ({ url: i.url, status: String(e && e.message || e) })) };
   } finally {
@@ -642,9 +659,10 @@ ipcMain.handle('claude-rename-chat', async (_e, item) => {
   if (!/^https:\/\/claude\.ai\/chat\/[0-9a-fA-F-]{8,}/.test(url) || !name) return { ok: false, status: 'not a chat' };
   const win = new BrowserWindow({ show: false, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   try {
-    await openHidden(win, 'https://claude.ai/recents');
+    const cleared = await openHidden(win, 'https://claude.ai/recents');
     if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
-    return await win.webContents.executeJavaScript(renameScript(url, name, item.org || null), true);
+    if (!cleared) return { ok: false, status: 'Claude\u2019s security check did not finish; try again' };
+    return await withTimeout(win.webContents.executeJavaScript(renameScript(url, name, item.org || null), true), 30000, 'Renaming');
   } catch (e) {
     return { ok: false, status: String(e && e.message || e) };
   } finally {
@@ -765,14 +783,18 @@ ipcMain.handle('fs-new-file', async (_e, kind, destRel, name) => {
 });
 
 // ---------- Messages from the folder page ----------
-const httpUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u);
 ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.openExternal(url); });
+const inDownloads = f => {
+  if (typeof f !== 'string') return false;
+  const d = path.resolve(app.getPath('downloads')), p = path.resolve(f);
+  if (d === path.resolve(app.getPath('home'))) return false;     // no real Downloads folder: allow nothing
+  return p.startsWith(d + path.sep);
+};
 ipcMain.handle('open-window', (_e, url) => { if (httpUrl(url)) openChildWindow(url); });
-ipcMain.handle('show-in-folder', (_e, file) => {
-  if (typeof file === 'string' && file.startsWith(app.getPath('downloads'))) shell.showItemInFolder(file);
-});
+ipcMain.handle('show-in-folder', (_e, file) => { if (inDownloads(file)) shell.showItemInFolder(path.resolve(file)); });
 ipcMain.handle('open-file', (_e, file) => {
-  if (typeof file === 'string' && file.startsWith(app.getPath('downloads'))) return shell.openPath(file);
+  if (!inDownloads(file) || /\.(app|command|sh|pkg|terminal|workflow|scpt)$/i.test(file)) return;   // never start programs
+  return shell.openPath(path.resolve(file));
 });
 
 // ---------- Start ----------
