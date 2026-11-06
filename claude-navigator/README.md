@@ -69,6 +69,9 @@ It behaves like a Finder window:
 | Open a chat, project or artifact | Click it in the sidebar, double-click it in the main window, or ⌘↓ |
 | Go back, forward, up a level | ⌘[ , ⌘] , ⌘↑ |
 | Icons or list | ⌘1 , ⌘2 |
+| Expand or collapse everything inside a folder | Hover over it in the sidebar and click the small double arrow, or ⌥-click its arrow, or ⌥→ and ⌥← |
+| Choose list columns | Right-click the column headings. Options include Last Edited, Date Added, Last Opened, Items, Where, In Folder and Address |
+| Resize a column | Drag the thin line between headings. Double-click the line to reset it |
 | New folder | ⌘⇧N (in the folder you are looking at), or New Folder at the bottom of the sidebar |
 | Save the Claude page you are looking at | ⌘S |
 | Add a link by pasting | ⌘L |

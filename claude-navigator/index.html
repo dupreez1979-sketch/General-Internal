@@ -142,7 +142,17 @@
   .tile .rename-input { text-align: center; }
 
   .list { width: 100%; }
-  .lhead, .lrow { display: grid; grid-template-columns: minmax(180px, 1fr) 130px var(--col3, 170px); align-items: center; }
+  .lhead, .lrow { display: grid; grid-template-columns: var(--cols); align-items: center; }
+  .list { width: max-content; min-width: 100%; }
+  .lhead .hc { position: relative; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+  .lhead .rz { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize; z-index: 1; }
+  .lhead .rz::after { content: ""; position: absolute; right: 3px; top: 2px; bottom: 2px; width: 1px; background: var(--line); }
+  .lhead .rz:hover::after, body.col-resizing .lhead .rz::after { background: var(--accent); width: 2px; }
+  body.col-resizing { cursor: col-resize; }
+  .xall { opacity: 0; width: 18px; height: 18px; flex: none; display: grid; place-items: center; color: var(--muted); border-radius: 4px; margin-left: 2px; transition: opacity .12s; }
+  .row:hover .xall { opacity: .7; }
+  .row .xall:hover { opacity: 1; background: var(--hover); color: var(--text); }
+  #menu .ck { width: 14px; flex: none; }
   .lhead { color: var(--muted); font-size: 11px; font-weight: 500; padding: 0 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
   .lrow { height: 26px; padding: 0 10px; border-radius: 6px; }
   .lrow:nth-child(odd) { background: var(--hover); }
@@ -153,7 +163,6 @@
   .list .item.selected .muted, .list .item.selected .icon { color: inherit; }
   .lrow.drop-into { box-shadow: inset 0 0 0 2px var(--accent); }
   .row .count { color: var(--muted); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; }
-  .list.lib-list .lhead, .list.lib-list .lrow { grid-template-columns: minmax(200px, 1fr) 140px minmax(120px, 220px); }
   .list.lib-list .lrow.filed .label { color: var(--muted); }
   .list.lib-list .item.selected .label { color: inherit; }
   .drag-badge { position: fixed; top: -100px; left: -100px; background: var(--accent); color: #fff; border-radius: 12px; padding: 3px 10px; font: 600 12px -apple-system, system-ui, sans-serif; }
@@ -366,6 +375,8 @@
     starFilled: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="#F5B400" stroke="#E0A200" stroke-width="1.1" stroke-linejoin="round"/></svg>',
     external: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     compose: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.3 1.9a1.1 1.1 0 011.6 1.6L8.2 9.2l-2.1.5.5-2.1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
   };
@@ -373,8 +384,8 @@
 
   // ---------- Data ----------
   const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
-  const Folder = (name, children = [], open = false) => ({ id: uid(), type: 'folder', name, open, children });
-  const Link = (name, url) => ({ id: uid(), type: 'link', name, url });
+  const Folder = (name, children = [], open = false) => ({ id: uid(), type: 'folder', name, open, children, added: Date.now() });
+  const Link = (name, url) => ({ id: uid(), type: 'link', name, url, added: Date.now() });
 
   const seed = () => [
     Folder('Claude', [
@@ -565,7 +576,7 @@
         r.draggable = true;
         r.setAttribute('role', 'treeitem');
         r.setAttribute('aria-expanded', String(!!n.open));
-        r.innerHTML = `<span class="label"></span><span class="sec-chev">${UI.chev}</span>`;
+        r.innerHTML = `<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev">${UI.chev}</span>`;
         r.querySelector('.label').textContent = n.name;
         r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
         frag.appendChild(r);
@@ -584,6 +595,26 @@
     applySideSel(false);
   }
 
+  // Expand or collapse a folder and everything inside it.
+  const hasSubfolders = n => n.type === 'folder' && n.children.some(c => c.type === 'folder');
+  function subtreeOpen(n) {
+    let all = true;
+    walk([n], f => { if (f.type === 'folder' && f.children.length && !f.open) all = false; });
+    return all;
+  }
+  function setSubtree(n, open, keepSelfOpen = false) {
+    walk([n], f => { if (f.type === 'folder') f.open = open; });
+    if (keepSelfOpen) n.open = true;
+    save();
+    renderSide();
+  }
+  function xallButton(n) {
+    if (!hasSubfolders(n)) return '';
+    const all = subtreeOpen(n);
+    const tip = all ? 'Collapse everything inside' : 'Expand everything inside';
+    return `<span class="xall" data-all="${all ? 1 : 0}" title="${tip}${isMac ? ' (\u2325-click an arrow does the same)' : ''}">${all ? UI.collapseAll : UI.expandAll}</span>`;
+  }
+
   function sideRow(n, depth, open) {
     const r = document.createElement('div');
     r.className = 'row';
@@ -594,7 +625,7 @@
     const hasKids = n.type === 'folder' && n.children.length > 0;
     if (n.type === 'folder') r.setAttribute('aria-expanded', String(open));
     r.innerHTML = `<span class="twisty${open ? ' open' : ''}">${hasKids ? UI.chev : ''}</span>` +
-      `<span class="icon">${small(kindOf(n))}</span><span class="label"></span>`;
+      `<span class="icon">${small(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
     r.querySelector('.label').textContent = n.name;
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     return r;
@@ -699,14 +730,10 @@
       for (const n of items) g.appendChild(tileFor(n));
       frag.appendChild(g);
     } else {
-      const l = document.createElement('div');
-      l.className = 'list';
-      l.style.setProperty('--col3', where ? '220px' : '170px');
-      const head = document.createElement('div');
-      head.className = 'lhead';
-      head.innerHTML = `<span>Name</span><span>Kind</span><span>${where ? 'Where' : 'Contents'}</span>`;
-      frag.appendChild(head);
-      for (const n of items) l.appendChild(listRowFor(n, where));
+      const view = where ? 'search' : 'folder';
+      const l = makeList(view);
+      const updated = libUpdatedIndex();
+      for (const n of items) l.appendChild(listRowFor(n, view, updated));
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
@@ -757,12 +784,7 @@
       else if (lib.error) frag.appendChild(emptyMsg('Could not read your list from Claude', `Click Refresh to try again. Details: ${lib.error}`));
       else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
     } else {
-      const l = document.createElement('div');
-      l.className = 'list lib-list';
-      const head = document.createElement('div');
-      head.className = 'lhead';
-      head.innerHTML = '<span>Name</span><span>Last edited</span><span>In folder</span>';
-      l.appendChild(head);
+      const l = makeList('library', 'lib-list');
       for (const x of items) l.appendChild(libRow(x, kind, idx));
       frag.appendChild(l);
     }
@@ -778,10 +800,11 @@
     r.className = 'lrow item lib' + (where ? ' filed' : '');
     r.dataset.key = x.url;
     r.draggable = true;
-    r.innerHTML = `<span class="nm"><span class="icon">${small(LIB_ICON[kind])}</span><span class="label"></span></span><span class="muted"></span><span class="muted"></span>`;
-    r.querySelector('.label').textContent = x.name || 'Untitled';
-    r.children[1].textContent = fmtDate(x.updated);
-    r.children[2].textContent = where ? where.join(', ') : '';
+    fillRow(r, 'library', small(LIB_ICON[kind]), x.name || 'Untitled', {
+      edited: fmtDate(x.updated),
+      filed: where ? where.join(', ') : '',
+      address: x.url.replace(/^https?:\/\//, ''),
+    });
     r.title = x.url;
     return r;
   }
@@ -809,6 +832,131 @@
     applyLibSel();
   }
 
+  // ---------- List columns (choose them by right-clicking the header; drag edges to resize) ----------
+  const COLS = {
+    name: { label: 'Name', w: 320, min: 140 },
+    kind: { label: 'Kind', w: 110 },
+    edited: { label: 'Last Edited', w: 140 },
+    added: { label: 'Date Added', w: 140 },
+    opened: { label: 'Last Opened', w: 140 },
+    items: { label: 'Items', w: 80 },
+    where: { label: 'Where', w: 220 },
+    filed: { label: 'In Folder', w: 180 },
+    address: { label: 'Address', w: 260 },
+  };
+  const VIEW_COLS = {
+    folder: ['name', 'kind', 'edited', 'added', 'opened', 'items', 'address'],
+    search: ['name', 'kind', 'where', 'edited', 'added', 'opened', 'address'],
+    library: ['name', 'edited', 'filed', 'address'],
+  };
+  const DEFAULT_COLS = { folder: ['name', 'kind', 'edited', 'items'], search: ['name', 'kind', 'where'], library: ['name', 'edited', 'filed'] };
+  const COL_STORE = 'claudeNavigator.columns.v1';
+  const colPrefs = (() => { try { return JSON.parse(ls.get(COL_STORE)) || {}; } catch (e) { return {}; } })();
+  function colsFor(view) {
+    const p = colPrefs[view] || (colPrefs[view] = {});
+    if (!Array.isArray(p.cols)) p.cols = DEFAULT_COLS[view].slice();
+    p.cols = ['name', ...VIEW_COLS[view].filter(k => k !== 'name' && p.cols.includes(k))];
+    p.widths = p.widths || {};
+    return p;
+  }
+  const colWidth = (view, k) => colsFor(view).widths[k] || COLS[k].w;
+  const gridCols = view => colsFor(view).cols.map((k, i, a) => i === a.length - 1 ? `minmax(${colWidth(view, k)}px, 1fr)` : `${colWidth(view, k)}px`).join(' ');
+  const saveCols = () => ls.set(COL_STORE, JSON.stringify(colPrefs));
+  const listView = () => (state.loc.kind === 'library' ? 'library' : state.query ? 'search' : 'folder');
+
+  function listHeader(view) {
+    const head = document.createElement('div');
+    head.className = 'lhead';
+    head.title = 'Right-click to choose columns. Drag a column edge to resize it.';
+    for (const k of colsFor(view).cols) {
+      const c = document.createElement('span');
+      c.className = 'hc';
+      c.dataset.col = k;
+      c.textContent = COLS[k].label;
+      const rz = document.createElement('i');
+      rz.className = 'rz';
+      c.appendChild(rz);
+      head.appendChild(c);
+    }
+    return head;
+  }
+  function makeList(view, extraClass = '') {
+    const l = document.createElement('div');
+    l.className = 'list' + (extraClass ? ' ' + extraClass : '');
+    l.dataset.view = view;
+    l.style.setProperty('--cols', gridCols(view));
+    l.appendChild(listHeader(view));
+    return l;
+  }
+  // Fills a list row: the name cell plus one cell per chosen column.
+  function fillRow(r, view, iconHtml, name, values) {
+    const cells = [`<span class="nm"><span class="icon">${iconHtml}</span><span class="label"></span></span>`];
+    const cols = colsFor(view).cols;
+    for (let i = 1; i < cols.length; i++) cells.push('<span class="muted"></span>');
+    r.innerHTML = cells.join('');
+    r.querySelector('.label').textContent = name;
+    cols.forEach((k, i) => { if (i) r.children[i].textContent = values[k] || ''; });
+  }
+  function libUpdatedIndex() {
+    const m = new Map();
+    for (const k of Object.keys(LIB_KINDS)) for (const x of lib[k] || []) if (x.updated) m.set(normUrl(x.url), x.updated);
+    return m;
+  }
+
+  function showColumnMenu(x, y) {
+    const view = listView();
+    const p = colsFor(view);
+    showMenu(x, y, [
+      ...VIEW_COLS[view].filter(k => k !== 'name').map(k => ({
+        label: COLS[k].label, checked: p.cols.includes(k),
+        run: () => {
+          const set = new Set(p.cols);
+          if (set.has(k)) set.delete(k); else set.add(k);
+          p.cols = [...set];
+          saveCols();
+          renderMain();
+        },
+      })),
+      '-',
+      { label: 'Reset Columns', run: () => { delete colPrefs[view]; saveCols(); renderMain(); } },
+    ]);
+  }
+
+  // Drag a header edge to resize; double-click it to reset that column.
+  browseEl.addEventListener('mousedown', e => {
+    const rz = e.target.closest('.lhead .rz');
+    if (!rz) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const list = rz.closest('.list');
+    const view = list.dataset.view;
+    const k = rz.parentElement.dataset.col;
+    const startX = e.clientX;
+    const startW = rz.parentElement.getBoundingClientRect().width;
+    document.body.classList.add('col-resizing');
+    const move = ev => {
+      colsFor(view).widths[k] = Math.round(Math.max(COLS[k].min || 60, startW + ev.clientX - startX));
+      list.style.setProperty('--cols', gridCols(view));
+    };
+    const stop = () => {
+      document.body.classList.remove('col-resizing');
+      removeEventListener('mousemove', move);
+      removeEventListener('mouseup', stop);
+      saveCols();
+    };
+    addEventListener('mousemove', move);
+    addEventListener('mouseup', stop);
+  }, true);
+  browseEl.addEventListener('dblclick', e => {
+    const rz = e.target.closest('.lhead .rz');
+    if (!rz) return;
+    e.stopImmediatePropagation();
+    const list = rz.closest('.list');
+    delete colsFor(list.dataset.view).widths[rz.parentElement.dataset.col];
+    saveCols();
+    list.style.setProperty('--cols', gridCols(list.dataset.view));
+  }, true);
+
   function tileFor(n) {
     const t = document.createElement('div');
     t.className = 'tile item';
@@ -821,20 +969,24 @@
     return t;
   }
 
-  function listRowFor(n, where) {
+  function listRowFor(n, view, updated) {
     const r = document.createElement('div');
     r.className = 'lrow item';
     r.dataset.id = n.id;
     r.draggable = true;
     const k = kindOf(n);
-    const third = where
-      ? pathTo(n.id).slice(0, -1).map(p => p.name).join(' › ') || 'Top level'
-      : (n.type === 'folder' ? `${n.children.length} item${n.children.length === 1 ? '' : 's'}` : (n.url || '').replace(/^https?:\/\//, ''));
-    r.innerHTML = `<span class="nm"><span class="icon">${small(k)}</span><span class="label"></span></span>` +
-      `<span class="muted"></span><span class="muted"></span>`;
-    r.querySelector('.label').textContent = n.name;
-    r.children[1].textContent = KIND_NAME[k];
-    r.children[2].textContent = third;
+    let edited = '';
+    if (n.type === 'link') edited = updated.get(normUrl(n.url)) || '';
+    else walk(n.children, c => { const u = c.type === 'link' && updated.get(normUrl(c.url)); if (u && u > edited) edited = u; });
+    fillRow(r, view, small(k), n.name, {
+      kind: KIND_NAME[k],
+      edited: fmtDate(edited),
+      added: fmtDate(n.added),
+      opened: fmtDate(n.opened),
+      items: n.type === 'folder' ? `${n.children.length} item${n.children.length === 1 ? '' : 's'}` : '',
+      where: pathTo(n.id).slice(0, -1).map(p => p.name).join(' \u203a ') || 'Top level',
+      address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
+    });
     r.title = n.type === 'link' ? n.url : n.name;
     return r;
   }
@@ -916,6 +1068,10 @@
     : a.kind === 'library' ? a.which === b.which : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
+    if (loc.kind === 'page') {
+      const opened = savedLinksFor(loc.url);
+      if (opened.length) { opened.forEach(n => { n.opened = Date.now(); }); save(); }
+    }
     if (loc.kind === 'page' && !isApp) {
       // A browser cannot show Claude inside this page, so use one reusable tab.
       const w = window.open(loc.url, 'claude-pane');
@@ -1366,15 +1522,19 @@
 
   // ---------- Context menus ----------
   const menu = $('menu');
+  let lastMenuX = 0, lastMenuY = 0;
   function showMenu(x, y, items, { above = false } = {}) {
+    lastMenuX = x;
+    lastMenuY = y;
     menu.replaceChildren();
+    const checks = items.some(it => it && it !== '-' && it.checked !== undefined);
     for (const it of items) {
       if (!it) continue;
       if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `<span></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
-      b.firstChild.textContent = it.label;
+      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.querySelector('.lb').textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
       menu.appendChild(b);
@@ -1402,6 +1562,7 @@
         '-',
         scope === browseEl && { label: 'as Icons', key: K.mod + '1', run: () => setView('icons') },
         scope === browseEl && { label: 'as List', key: K.mod + '2', run: () => setView('list') },
+        scope === browseEl && state.view === 'list' && { label: 'Choose Columns\u2026', run: () => showColumnMenu(lastMenuX, lastMenuY) },
         { label: 'Sort by Name', run: () => sortFolder(here) },
         '-',
         { label: 'Expand All in Sidebar', run: () => setAllOpen(true) },
@@ -1466,11 +1627,15 @@
     if (row.dataset.lib) return go({ kind: 'library', which: row.dataset.lib });
     const n = nodeOf(row.dataset.id);
     if (!n) return;
+    const xa = e.target.closest('.xall');
+    if (xa) return xa.dataset.all === '1' ? setSubtree(n, false, true) : setSubtree(n, true);
+    if (e.altKey && n.type === 'folder' && (e.target.closest('.twisty') || row.classList.contains('section'))) return setSubtree(n, !n.open);
     if (row.classList.contains('section')) { state.sideSel = n.id; applySideSel(false); return toggle(n); }
     if (n.type === 'folder' && e.target.closest('.twisty')) return toggle(n);
     openNode(n, { newWindow: e.metaKey || e.ctrlKey });
   });
   treeEl.addEventListener('dblclick', e => {
+    if (e.target.closest('.xall')) return;
     const row = e.target.closest('.row.section');
     if (row) openNode(nodeOf(row.dataset.id));
   });
@@ -1509,8 +1674,15 @@
     switch (e.key) {
       case 'ArrowDown': if (mod) { if (n) openNode(n); } else pick(ids[Math.min(ids.length - 1, i + 1)]); break;
       case 'ArrowUp': if (mod) up(); else pick(ids[i <= 0 ? 0 : i - 1]); break;
-      case 'ArrowRight': if (n && n.type === 'folder') { if (!n.open) toggle(n, true); else pick(ids[i + 1]); } break;
+      case 'ArrowRight':
+        if (n && n.type === 'folder') {
+          if (e.altKey) setSubtree(n, true);
+          else if (!n.open) toggle(n, true);
+          else pick(ids[i + 1]);
+        }
+        break;
       case 'ArrowLeft':
+        if (n && e.altKey && n.type === 'folder') { setSubtree(n, false, isSection); break; }
         if (n) {
           if (n.type === 'folder' && n.open && (isSection || n.children.length)) toggle(n, false);
           else if (loc.parent) pick(loc.parent.id);
@@ -1630,6 +1802,7 @@
   });
   browseEl.addEventListener('contextmenu', e => {
     e.preventDefault();
+    if (e.target.closest('.lhead')) return showColumnMenu(e.clientX, e.clientY);
     if (state.loc.kind === 'library') return libContextMenu(e);
     const it = e.target.closest('.item');
     state.browseSel = it ? it.dataset.id : null;
