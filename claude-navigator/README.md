@@ -70,6 +70,20 @@ At the top of the sidebar, the **Claude** section has **New Chat** and lists eve
 
 How it works: Claude has no official way for other apps to read your chat list, so the app asks claude.ai for it the same way Claude's own Recents page does, using your signed-in session. If Anthropic changes that, the app falls back to reading the Recents and Artifacts pages directly. If the list ever comes up empty, click Refresh, and tell Claude Code what the message at the bottom says.
 
+## Saving anything to a folder
+
+When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
+
+## More groups: App Code, Design Systems, Schedules, Other
+
+Below your own folders are four more sections that work exactly the same way (folders inside, drag things in). The **Claude** section at the top has matching lists to fill them from: **Code** (Claude Code sessions), **Design** (designs and design systems) and **Scheduled** (scheduled tasks).
+
+Items get the right icon where Claude says what they are, or where the name makes it clear (for example "… Design System" or "… Slides"). Right-click anything and choose **Change Icon…** to correct it.
+
+## Your Claude account
+
+Claude's own sidebar is hidden, so its account menu lives in the person button at the bottom of the sidebar: Settings, Usage, Language, Help, Upgrade, Apps, API keys and Log out.
+
 ## How it works
 
 It behaves like a Finder window:

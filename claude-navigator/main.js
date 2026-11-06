@@ -131,6 +131,7 @@ function contextMenuFor(contents, p) {
     items.push({ label: 'Reload', click: () => contents.reload() });
     sep();
     if (isPane) items.push({ label: 'Save Page to Folder', accelerator: 'CmdOrCtrl+S', click: () => send('shortcut', 'save') });
+    if (isPane) items.push({ label: 'Save As\u2026', accelerator: 'CmdOrCtrl+Shift+S', click: () => send('shortcut', 'save-as') });
     if (isPane) items.push({ label: 'Find…', accelerator: 'CmdOrCtrl+F', click: () => send('shortcut', 'find') });
     items.push({ label: 'Print or Save as PDF…', accelerator: 'CmdOrCtrl+P', click: () => contents.print() });
     items.push({ label: 'Open Page in Web Browser', click: () => shell.openExternal(contents.getURL()) });
@@ -181,7 +182,7 @@ app.on('web-contents-created', (_event, contents) => {
     const key = input.key.toLowerCase();
     const map = {
       n: input.shift ? 'new-folder' : 'new-chat',
-      s: input.shift ? null : 'save',
+      s: input.shift ? 'save-as' : 'save',
       f: input.shift ? null : 'find',
       g: input.shift ? 'find-prev' : 'find-next',
       p: input.shift ? null : 'print',
@@ -255,6 +256,7 @@ function buildMenu() {
         { label: 'Add Link…', accelerator: 'Cmd+L', click: act('add-link') },
         { type: 'separator' },
         { label: 'Save Page to Folder', accelerator: 'Cmd+S', click: act('save') },
+        { label: 'Save As\u2026', accelerator: 'Cmd+Shift+S', click: act('save-as') },
         { type: 'separator' },
         { label: 'Print or Save as PDF…', accelerator: 'Cmd+P', click: act('print') },
         { type: 'separator' },
@@ -286,6 +288,7 @@ function buildMenu() {
         { label: 'as List', accelerator: 'Cmd+2', click: act('view-list') },
         { type: 'separator' },
         { label: 'Reload Page', accelerator: 'Cmd+R', click: act('reload') },
+        { label: 'Claude Settings', accelerator: 'Cmd+Shift+,', click: act('claude-settings') },
         { label: 'Hide or Show Claude\u2019s Own Sidebar', click: act('toggle-claude-sidebar') },
         { type: 'separator' },
         { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
@@ -311,6 +314,7 @@ function buildMenu() {
 // falls back to reading the links Claude shows on its Recents and Artifacts pages.
 
 const LIB_PATTERNS = {
+  code: '^/code/session_[A-Za-z0-9_-]{6,}',
   chats: '^/chat/[0-9a-fA-F-]{8,}$',
   artifacts: '^/(artifact|artifacts|public/artifacts)/[^/]+',
 };
@@ -329,7 +333,11 @@ const COLLECT_FN = `function (pattern) {
     seen.add(url);
     const lines = (a.getAttribute('aria-label') || a.innerText || a.textContent || '')
       .split('\\n').map(s => s.trim()).filter(Boolean);
-    out.push({ url, name: (lines[0] || '').slice(0, 200) });
+    // Anything else the card says about itself (for example "Slides" or "Doc"), to pick the right icon.
+    const hints = [lines.slice(1).join(' '), a.getAttribute('title') || '', a.getAttribute('data-testid') || '']
+      .concat([...a.querySelectorAll('[aria-label], img[alt], [title], [data-testid]')].slice(0, 12)
+        .map(e => e.getAttribute('aria-label') || e.getAttribute('alt') || e.getAttribute('title') || e.getAttribute('data-testid') || ''));
+    out.push({ url, name: (lines[0] || '').slice(0, 200), meta: hints.join(' ').replace(/\\s+/g, ' ').slice(0, 300) });
   }
   return out;
 }`;
@@ -340,7 +348,8 @@ const scrollHarvest = (pattern) => `(async () => {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const found = new Map();
   let stable = 0;
-  for (let i = 0; i < 90 && stable < 4; i++) {
+  // Waits at least ~7 seconds and for the list to stop growing, so a slow page is read in full.
+  for (let i = 0; i < 90 && stable < 6; i++) {
     const before = found.size;
     for (const x of collect(${JSON.stringify(pattern)})) {
       const prev = found.get(x.url);
@@ -354,7 +363,8 @@ const scrollHarvest = (pattern) => `(async () => {
     }
     window.scrollTo(0, document.body.scrollHeight);
     await sleep(700);
-    if (found.size === before && (found.size > 0 || i > 15)) stable++; else stable = 0;
+    if (found.size !== before) stable = 0;
+    else if (i >= 10 && (found.size > 0 || i > 18)) stable++;
   }
   return [...found.values()];
 })()`;
@@ -401,6 +411,19 @@ const API_SCRIPT = `(async () => {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Finds the address of one of Claude's own pages (for example "Scheduled") from its navigation links.
+const discoverPage = (labelPattern) => `(() => {
+  const re = new RegExp(${JSON.stringify(labelPattern)}, 'i');
+  for (const a of document.querySelectorAll('a[href]')) {
+    const t = [(a.innerText || '').split('\\n')[0], a.getAttribute('aria-label') || '', a.getAttribute('title') || ''].map(s => s.trim());
+    if (!t.some(x => re.test(x))) continue;
+    let u;
+    try { u = new URL(a.getAttribute('href'), location.href); } catch (e) { continue; }
+    if (u.origin === location.origin && u.pathname.length > 1) return u.pathname.replace(/\\/+$/, '');
+  }
+  return null;
+})()`;
+
 async function openHidden(win, url) {
   await win.loadURL(url).catch(() => {}); // redirects can reject; the page still loads
   for (let i = 0; i < 40 && !win.isDestroyed(); i++) {
@@ -435,6 +458,19 @@ async function fetchLibrary() {
     if (!win.isDestroyed()) {
       await openHidden(win, 'https://claude.ai/artifacts');
       result.artifacts = await win.webContents.executeJavaScript(scrollHarvest(LIB_PATTERNS.artifacts), true);
+    }
+    // Code, Design and Scheduled: find each page from Claude's own navigation, then read what it lists.
+    for (const [kind, label, fallback] of [['code', '^code$', '/code'], ['design', '^design$', '/design'], ['scheduled', '^(scheduled|schedules?)$', '/scheduled']]) {
+      if (win.isDestroyed()) break;
+      const found = await win.webContents.executeJavaScript(discoverPage(label), true).catch(() => null);
+      const prefix = found || fallback;
+      await openHidden(win, 'https://claude.ai' + prefix);
+      if (win.isDestroyed()) break;
+      const pattern = kind === 'code'
+        ? LIB_PATTERNS.code
+        : '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(?!(new|create|edit)$)[A-Za-z0-9_-]{6,}';
+      result[kind] = await win.webContents.executeJavaScript(scrollHarvest(pattern), true).catch(() => []);
+      result.notes.push(`${kind}: read ${result[kind].length} from ${prefix}`);
     }
   } catch (e) {
     result.notes.push(String(e && e.message || e));

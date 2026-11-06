@@ -113,7 +113,7 @@
   #title .tc svg { color: var(--accent); flex: none; }
   #title .tc:hover { background: var(--hover); color: var(--text); }
   #title .tc.none { font-style: italic; }
-  #title .tc.none:hover { background: none; color: var(--muted); }
+  #title .tc.none:hover { background: var(--hover); color: var(--text); }
   #title .ts { color: var(--muted); font-weight: 400; font-size: 13px; flex: none; }
   #title .tn { flex: 1 1 auto; min-width: 60px; overflow: hidden; text-overflow: ellipsis; }
   #title .chip .chip-x { margin-left: 6px; opacity: .7; cursor: default; }
@@ -232,6 +232,21 @@
   dialog form { padding: 18px 20px 16px; display: grid; gap: 12px; }
   dialog h2 { margin: 0; font-size: 13px; font-weight: 700; }
   dialog label { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: 13px; text-align: right; }
+  dialog { width: min(480px, calc(100vw - 32px)); }
+  .pick { display: grid; gap: 6px; }
+  .pick-head { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+  #pickPath { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #picker { height: 240px; overflow: auto; background: var(--win); border: .5px solid var(--line); border-radius: 6px; padding: 4px; outline: none; }
+  #picker:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .pk { --d: 0; display: flex; align-items: center; gap: 5px; height: 24px; padding: 0 6px 0 calc(4px + var(--d) * 16px); border-radius: 4px; white-space: nowrap; }
+  .pk .tw { width: 14px; height: 14px; display: grid; place-items: center; color: var(--muted); flex: none; }
+  .pk .tw svg { transition: transform .12s; }
+  .pk .tw.open svg { transform: rotate(90deg); }
+  .pk .nm2 { overflow: hidden; text-overflow: ellipsis; }
+  .pk.sel { background: var(--accent); color: var(--accent-text); }
+  .pk.sel .tw { color: inherit; }
+  .pk input { font: inherit; border: 0; border-radius: 3px; padding: 0 3px; outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent); }
+  .pick-foot { display: flex; }
   dialog input, dialog select {
     font: inherit; color: var(--text); background: var(--win); border: .5px solid var(--line);
     border-radius: 5px; padding: 4px 7px; outline: none; text-align: left;
@@ -270,6 +285,7 @@
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
+    <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
     <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
   </div>
 </aside>
@@ -327,7 +343,11 @@
     <h2 id="linkDlgTitle">Add Link</h2>
     <label id="lblName">Name:<input id="linkName" placeholder="e.g. Board paper draft"></label>
     <label id="lblUrl">Address:<input id="linkUrl" placeholder="Paste a Claude chat, project or artifact link" required></label>
-    <label>Where:<select id="linkFolder"></select></label>
+    <div class="pick">
+      <div class="pick-head"><span>Where:</span><span id="pickPath"></span></div>
+      <div id="picker" tabindex="0" role="tree" aria-label="Choose a folder"></div>
+      <div class="pick-foot"><button type="button" class="btn" id="pickNew" title="Make a new folder inside the selected one">New Folder</button></div>
+    </div>
     <div class="dlg-actions">
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
       <button class="btn-primary" value="ok" id="linkOk">Save</button>
@@ -382,17 +402,24 @@
     link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
   G.canva = G.design;
+  G.code = C => `<path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5M9 3l-2 10" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.schedule = C => `<circle cx="8" cy="8.5" r="5.8" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 5.3v3.4l2.2 1.5" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.designsystem = C => `<rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="5.7" r="1.3" fill="${C}"/><circle cx="10.3" cy="5.7" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="5.7" cy="10.3" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="10.3" cy="10.3" r="1.3" fill="${C}"/>`;
+  G.account = C => `<circle cx="8" cy="5.6" r="2.8" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round"/>`;
   // Brighter versions in dark mode so every icon stays easy to see.
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
     doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
+    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
+    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
+    code: 'Code', schedule: 'Schedule', designsystem: 'Design system',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
 
@@ -427,6 +454,7 @@
     sortDown: '<svg width="9" height="9" viewBox="0 0 16 16"><path d="M3 5.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    account: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5.6" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
   };
@@ -437,6 +465,7 @@
   const Folder = (name, children = [], open = false) => ({ id: uid(), type: 'folder', name, open, children, added: Date.now() });
   const Link = (name, url) => ({ id: uid(), type: 'link', name, url, added: Date.now() });
 
+  const EXTRA_SECTIONS = ['App Code', 'Design Systems', 'Schedules', 'Other'];
   const seed = () => [
     Folder('Work', [
       Folder('Monkey Baa', [
@@ -446,6 +475,7 @@
       ], true),
     ], true),
     Folder('Personal', [], true),
+    ...EXTRA_SECTIONS.map(n => Folder(n, [], true)),
   ];
 
   function load() {
@@ -469,8 +499,20 @@
     return kept;
   }
 
+  // Adds the App Code, Design Systems, Schedules and Other sections once (skipping any you already have).
+  function addExtraSections(tree) {
+    if (ls.get('claudeNavigator.extraSections.v1')) return tree;
+    ls.set('claudeNavigator.extraSections.v1', '1');
+    const have = new Set(tree.filter(n => n.type === 'folder').map(n => n.name.toLowerCase()));
+    const add = EXTRA_SECTIONS.filter(n => !have.has(n.toLowerCase())).map(n => Folder(n, [], true));
+    if (!add.length) return tree;
+    const out = tree.concat(add);
+    ls.set(STORE, JSON.stringify(out));
+    return out;
+  }
+
   const state = {
-    tree: dropOldClaudeSection(load()),
+    tree: addExtraSections(dropOldClaudeSection(load())),
     loc: { kind: 'folder', id: null },   // what the main area shows: a folder, or a Claude page
     pageUrl: '',                          // what the Claude pane is actually showing
     pageTitle: '',
@@ -487,10 +529,15 @@
   const LIB_STORE = 'claudeNavigator.library.v1';
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
-  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts' };
-  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact' };
+  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts', code: 'Code', design: 'Design', scheduled: 'Scheduled' };
+  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', code: 'code', design: 'design', scheduled: 'schedule' };
+  const LIB_TIPS = {
+    chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account',
+    artifacts: 'Artifacts listed on Claude\u2019s Artifacts page', code: 'Claude Code sessions listed on Claude\u2019s Code page',
+    design: 'Designs and design systems on Claude\u2019s Design page', scheduled: 'Scheduled tasks on Claude\u2019s Scheduled page',
+  };
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -498,8 +545,8 @@
     return Object.assign(base, { busy: false });
   })();
   const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
-    chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts,
-    fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
+    kinds: lib.kinds, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
   }));
   state.libFilter = ls.get(LIB_FILTER_STORE) === 'unfiled' ? 'unfiled' : 'all';
   const libSel = new Set();
@@ -562,6 +609,7 @@
     if (n.as && G[n.as]) return n.as;
     const u = n.url || '';
     if (/claude\.ai\/chat\//.test(u)) return 'chat';
+    if (/claude\.ai\/code\/session_/.test(u)) return 'code';
     if (/claude\.ai\/project\//.test(u)) return 'project';
     if (/artifact/i.test(u)) return 'artifact';
     if (/canva\.com/.test(u)) return 'canva';
@@ -625,7 +673,7 @@
         const r = document.createElement('div');
         r.className = 'row lib';
         r.dataset.lib = k;
-        r.title = { chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account', artifacts: 'Artifacts listed on Claude\u2019s Artifacts page' }[k] +
+        r.title = LIB_TIPS[k] +
           (unfiledCount(k, idx) ? `. ${unfiledCount(k, idx)} not in one of your folders yet.` : '. All are filed.');
         r.innerHTML = `<span class="twisty"></span><span class="icon">${small(LIB_ICON[k])}</span><span class="label"></span>`;
         r.querySelector('.label').textContent = LIB_KINDS[k];
@@ -895,7 +943,30 @@
   }
 
   const hasWords = t => /[\p{L}\p{N}]/u.test(t || '');
-  const libName = (x, kind) => hasWords(x.name) ? x.name : { chats: 'Untitled chat', projects: 'Untitled project', artifacts: 'Untitled artifact' }[kind];
+  const libName = (x, kind) => hasWords(x.name) ? x.name : `Untitled ${KIND_NAME[libKind(x, kind)].toLowerCase()}`;
+  // What kind of thing a Library item is: your own choice first, then what Claude's page says, then clear words in its name.
+  function libKind(x, list) {
+    const mine = lib.kinds && lib.kinds[normUrl(x.url)];
+    if (mine) return mine;
+    if (list === 'chats') return 'chat';
+    if (list === 'projects') return 'project';
+    if (list === 'code') return 'code';
+    if (list === 'scheduled') return 'schedule';
+    const meta = (x.meta || '').toLowerCase(), name = (x.name || '').toLowerCase(), both = meta + ' ' + name;
+    if (/design system/.test(both)) return 'designsystem';
+    if (list === 'design') return 'design';
+    if (/\b(slides?|deck|presentation)\b/.test(meta)) return 'slides';
+    if (/\bdashboard\b/.test(meta)) return 'dashboard';
+    if (/\b(docs?|document)\b/.test(meta)) return 'doc';
+    if (/\bdesign\b/.test(meta)) return 'design';
+    if (/\b(slides|deck|presentation)\b/.test(name)) return 'slides';
+    if (/\bdashboard\b/.test(name)) return 'dashboard';
+    return 'artifact';
+  }
+  const CHOOSABLE_KINDS = ['chat', 'doc', 'slides', 'design', 'designsystem', 'dashboard', 'artifact', 'project', 'code', 'schedule', 'link'];
+  function chooseKindMenu(x, y, current, onPick) {
+    showMenu(x, y, CHOOSABLE_KINDS.map(k => ({ label: KIND_NAME[k], icon: k, checked: k === current, run: () => onPick(k) })));
+  }
 
   function libRow(x, kind, idx) {
     const r = document.createElement('div');
@@ -903,7 +974,9 @@
     r.className = 'lrow item lib' + (where ? ' filed' : '');
     r.dataset.key = x.url;
     r.draggable = true;
-    fillRow(r, 'library', colourIcon(LIB_ICON[kind]), libName(x, kind), {
+    const k = libKind(x, kind);
+    fillRow(r, 'library', colourIcon(k), libName(x, kind), {
+      kind: KIND_NAME[k],
       edited: fmtDate(x.updated),
       filed: where ? where.join(', ') : '',
       address: x.url.replace(/^https?:\/\//, ''),
@@ -950,9 +1023,9 @@
   const VIEW_COLS = {
     folder: ['name', 'kind', 'edited', 'added', 'opened', 'items', 'address'],
     search: ['name', 'kind', 'where', 'edited', 'added', 'opened', 'address'],
-    library: ['name', 'edited', 'filed', 'address'],
+    library: ['name', 'kind', 'edited', 'filed', 'address'],
   };
-  const DEFAULT_COLS = { folder: ['name', 'kind', 'edited', 'items'], search: ['name', 'kind', 'where'], library: ['name', 'edited', 'filed'] };
+  const DEFAULT_COLS = { folder: ['name', 'kind', 'edited', 'items'], search: ['name', 'kind', 'where'], library: ['name', 'kind', 'edited', 'filed'] };
   const COL_STORE = 'claudeNavigator.columns.v1';
   const colPrefs = (() => { try { return JSON.parse(ls.get(COL_STORE)) || {}; } catch (e) { return {}; } })();
   function colsFor(view) {
@@ -999,6 +1072,7 @@
   function sortValue(view, k, it, ctx) {
     if (view === 'library') {
       if (k === 'name') return (it.name || '').toLowerCase();
+      if (k === 'kind') return KIND_NAME[libKind(it, state.loc.which)];
       if (k === 'edited') return toTime(it.updated);
       if (k === 'filed') return (ctx.idx.get(normUrl(it.url)) || []).join(', ').toLowerCase();
       if (k === 'address') return it.url;
@@ -1274,7 +1348,9 @@
           add('ts', '\u203a');
         }
       } else {
-        add('tc none', 'Not in a folder').title = `Press ${K.mod}S to save this page in a folder`;
+        const nf = add('tc none', 'Not in a folder');
+        nf.title = `Click (or press ${K.mod}S) to choose a folder to save this in`;
+        nf.addEventListener('click', saveAs);
         add('ts', '\u203a');
       }
       add('tn', title);
@@ -1659,6 +1735,15 @@
     if (!isApp || !hideClaudeSidebar() || !/^https:\/\/claude\.ai\//.test(state.pageUrl || '')) return;
     view.executeJavaScript(COLLAPSE_SCRIPT).catch(() => {});
   }
+  function showClaudeSidebar() {
+    if (!isApp) return;
+    view.executeJavaScript(`(() => {
+      const label = b => (b.getAttribute('aria-label') || b.getAttribute('title') || '') + ' ' + (b.getAttribute('data-testid') || '');
+      const btn = [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)) && /open|expand|show|toggle/i.test(label(b)))
+        || [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)));
+      if (btn) btn.click();
+    })()`).catch(() => {});
+  }
   function setHideClaudeSidebar(on) {
     ls.set(HIDE_SIDEBAR_STORE, on ? 'on' : 'off');
     if (on) collapseClaudeSidebar();
@@ -1675,7 +1760,18 @@
       const r = await window.navigatorApp.refreshLibrary();
       lib.signedIn = r.signedIn !== false;
       if (lib.signedIn) {
-        for (const k of Object.keys(LIB_KINDS)) if (Array.isArray(r[k]) && r[k].length) lib[k] = r[k];
+        for (const k of Object.keys(LIB_KINDS)) {
+          if (!Array.isArray(r[k]) || !r[k].length) continue;
+          if (k === 'chats' || k === 'projects') { lib[k] = r[k]; continue; }   // complete lists from Claude
+          // Lists read from Claude's pages can come back short if a page is slow, so add to what we
+          // have instead of replacing it: new items first, and nothing already known is dropped.
+          const fresh = new Map(r[k].map(x => [normUrl(x.url), x]));
+          const keep = (lib[k] || []).filter(x => !fresh.has(normUrl(x.url)));
+          lib[k] = r[k].map(x => {
+            const old = (lib[k] || []).find(o => normUrl(o.url) === normUrl(x.url));
+            return old && !hasWords(x.name) && hasWords(old.name) ? Object.assign({}, x, { name: old.name }) : x;
+          }).concat(keep);
+        }
         lib.fetchedAt = Date.now();
       }
       lib.error = r.chats && r.chats.length ? null : ((r.notes || []).join('; ') || null);
@@ -1975,36 +2071,135 @@
   }
 
   // ---------- Link dialog ----------
-  const dlg = $('linkDlg'), fName = $('linkName'), fUrl = $('linkUrl'), fFolder = $('linkFolder');
+  const dlg = $('linkDlg'), fName = $('linkName'), fUrl = $('linkUrl'), picker = $('picker');
   let dlgDone = null;
+
+  // A folder browser, like the one in a Mac Save dialog: open folders, pick one, or make a new one.
+  const pick = { value: null, open: new Set(), exclude: [] };
+  const pickable = n => n.type === 'folder' && !pick.exclude.includes(n.id) && !pick.exclude.some(x => contains(x, n.id));
   function folderOptions(selectedId, excludeId) {
-    fFolder.replaceChildren(new Option('Top level', ''));
-    walk(state.tree, (n, depth, path) => {
-      if (n.type !== 'folder') return;
-      const ex = [].concat(excludeId || []);
-      if (ex.includes(n.id) || path.some(p => ex.includes(p.id))) return;
-      fFolder.add(new Option('   '.repeat(depth + 1) + n.name, n.id));
-    });
-    fFolder.value = selectedId || '';
+    pick.exclude = [].concat(excludeId || []);
+    pick.value = selectedId && nodeOf(selectedId) && pickable(nodeOf(selectedId)) ? selectedId : null;
+    pick.open = new Set();
+    for (const p of pathTo(pick.value)) pick.open.add(p.id);   // show where it currently is
+    renderPicker();
   }
-  function openDialog({ title, name = '', url = '', folderId = null, excludeId = null, folderOnly = false, onSave }) {
+  function renderPicker(scroll = true) {
+    const frag = document.createDocumentFragment();
+    const row = (id, name, depth, hasKids, open, icon) => {
+      const d = document.createElement('div');
+      d.className = 'pk' + (pick.value === id ? ' sel' : '');
+      d.dataset.id = id || '';
+      d.style.setProperty('--d', depth);
+      d.innerHTML = `<span class="tw${open ? ' open' : ''}">${hasKids ? UI.chev : ''}</span>${icon}<span class="nm2"></span>`;
+      d.querySelector('.nm2').textContent = name;
+      frag.appendChild(d);
+    };
+    row(null, 'Top level', 0, false, false, small('folder', KIND_COLOUR.folder));
+    const add = (nodes, depth) => {
+      for (const n of nodes) {
+        if (!pickable(n)) continue;
+        const kids = n.children.filter(pickable);
+        const open = pick.open.has(n.id);
+        row(n.id, n.name, depth, kids.length > 0, open, SMALL_FOLDER);
+        if (open) add(kids, depth + 1);
+      }
+    };
+    add(state.tree, 0);
+    picker.replaceChildren(frag);
+    const path = pathTo(pick.value).map(p => p.name).join(' \u203a ');
+    $('pickPath').textContent = path || 'Top level';
+    const sel = picker.querySelector('.pk.sel');
+    if (sel && scroll) sel.scrollIntoView({ block: 'nearest' });
+  }
+  picker.addEventListener('mousedown', e => {
+    const r = e.target.closest('.pk');
+    if (!r || e.target.closest('input')) return;
+    const id = r.dataset.id || null;
+    if (e.target.closest('.tw') && id) {
+      if (pick.open.has(id)) pick.open.delete(id); else pick.open.add(id);
+      return renderPicker(false);
+    }
+    // Just selecting: update in place so a double-click still lands on the same row.
+    pick.value = id;
+    picker.querySelectorAll('.pk.sel').forEach(x => x.classList.remove('sel'));
+    r.classList.add('sel');
+    $('pickPath').textContent = pathTo(id).map(p => p.name).join(' \u203a ') || 'Top level';
+  });
+  picker.addEventListener('dblclick', e => {
+    const r = e.target.closest('.pk');
+    if (!r || !r.dataset.id || e.target.closest('.tw')) return;
+    const id = r.dataset.id;
+    if (pick.open.has(id)) pick.open.delete(id); else pick.open.add(id);
+    renderPicker(false);
+  });
+  picker.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const ids = [...picker.querySelectorAll('.pk')].map(r => r.dataset.id || null);
+    const i = ids.indexOf(pick.value);
+    if (e.key === 'ArrowDown') pick.value = ids[Math.min(ids.length - 1, i + 1)];
+    else if (e.key === 'ArrowUp') pick.value = ids[Math.max(0, i - 1)];
+    else if (e.key === 'ArrowRight' && pick.value) pick.open.add(pick.value);
+    else if (e.key === 'ArrowLeft' && pick.value) {
+      if (pick.open.has(pick.value)) pick.open.delete(pick.value);
+      else { const l = locate(pick.value); pick.value = l && l.parent ? l.parent.id : null; }
+    } else return;
+    e.preventDefault();
+    renderPicker();
+  });
+  // New Folder inside the selected one, named straight away.
+  $('pickNew').addEventListener('click', () => {
+    snap();
+    const f = Folder('untitled folder');
+    insertInto(pick.value, f);
+    if (pick.value) pick.open.add(pick.value);
+    commit();
+    pick.value = f.id;
+    renderPicker();
+    const r = picker.querySelector('.pk.sel .nm2');
+    if (!r) return;
+    const input = document.createElement('input');
+    input.value = f.name;
+    r.replaceChildren(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const finish = ok => {
+      if (done) return;
+      done = true;
+      const v = input.value.trim();
+      if (ok && v) { f.name = v; commit(); }
+      renderPicker();
+      picker.focus();
+    };
+    input.addEventListener('keydown', ev => {
+      ev.stopPropagation();
+      if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(true));
+  });
+  function openDialog({ title, name = '', url = '', folderId = null, excludeId = null, folderOnly = false, nameOnly = false, okLabel = 'Save', onSave }) {
     $('linkDlgTitle').textContent = title;
     $('lblName').hidden = folderOnly;
-    $('lblUrl').hidden = folderOnly;
-    fUrl.required = !folderOnly;
+    $('lblUrl').hidden = folderOnly || nameOnly;
+    fUrl.required = !folderOnly && !nameOnly;
+    $('linkOk').textContent = okLabel;
     fName.value = name;
     fUrl.value = url;
     folderOptions(folderId, excludeId);
     dlgDone = onSave;
     dlg.returnValue = '';
     dlg.showModal();
-    (folderOnly ? fFolder : url ? fName : fUrl).focus();
+    if (folderOnly) picker.focus();
+    else if (url) { fName.focus(); fName.select(); }
+    else fUrl.focus();
   }
   dlg.addEventListener('close', () => {
     const done = dlgDone;
     dlgDone = null;
     if (dlg.returnValue !== 'ok' || !done) return;
-    done({ name: fName.value.trim(), url: fixUrl(fUrl.value), folderId: fFolder.value || null });
+    done({ name: fName.value.trim(), url: fixUrl(fUrl.value), folderId: pick.value || null });
   });
 
   function promptNewLink(folderId = hereFolder()) {
@@ -2050,6 +2245,8 @@
     snap();
     const nodes = items.map(x => {
       const l = Link(hasWords(x.name) ? x.name : guessName(x.url), x.url);
+      const k = libKind(x, state.loc.kind === 'library' ? state.loc.which : 'artifacts');
+      if (!['chat', 'project', 'link'].includes(k)) l.as = k;
       l.autoName = true;
       return l;
     });
@@ -2071,11 +2268,32 @@
     });
   }
 
+  // Save As: choose a name and browse to the folder (also used whenever the page is not in a folder yet).
+  function saveAs() {
+    if (!isApp || state.loc.kind !== 'page') return promptNewLink();
+    if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
+    if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
+    const url = state.pageUrl;
+    const c = pageContext();
+    openDialog({
+      title: 'Save As', name: realTitle(state.pageTitle) || guessName(url), url,
+      folderId: c.folderId || state.lastFolderId, nameOnly: true,
+      onSave: ({ name, folderId }) => {
+        const typed = name && name !== realTitle(state.pageTitle);
+        addLink(folderId, name || realTitle(state.pageTitle) || guessName(url), url, { autoName: !typed });
+        state.lastFolderId = folderId;
+        renderToolbar();
+        syncSideSel();
+        toast(`Saved in ${folderId ? nodeOf(folderId).name : 'the top level'}`, true);
+      },
+    });
+  }
+
   function saveCurrent(folderId = state.lastFolderId) {
     if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
     if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
     if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
-    if (pageContext().status === 'none' && !folderId) folderId = state.lastFolderId;
+    if (pageContext().status === 'none') return saveAs();      // not in a folder: ask where
     const url = state.pageUrl;
     const name = realTitle(state.pageTitle) || guessName(url);
     addLink(folderId, name, url, { autoName: true });
@@ -2166,6 +2384,7 @@
       { label: 'Move To…', run: () => moveTo(n.id) },
       { label: 'Duplicate', run: () => duplicate(n.id) },
       { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
+      { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
       savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
       { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
@@ -2341,6 +2560,11 @@
       sel.length > 0 && { label: sel.length > 1 ? `File ${sel.length} Items in Folder\u2026` : 'File in Folder\u2026', run: () => fileLibPrompt(sel) },
       saved.length > 0 && { label: 'Show in Folder', run: () => revealInFolder(saved[0].id) },
       one && { label: 'Copy Link', run: () => navigator.clipboard.writeText(one.url).then(() => toast('Link copied')) },
+      one && { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, libKind(one, state.loc.which), k => {
+        lib.kinds[normUrl(one.url)] = k;
+        savedLinksFor(one.url).forEach(n => { n.as = k; });
+        saveLib(); save(); renderAll();
+      }) },
       '-',
       { label: 'Select All', key: K.mod + 'A', run: () => { libKeys().forEach(k => libSel.add(k)); applyLibSel(); } },
       { label: 'Refresh from Claude', run: () => refreshLibrary(true) },
@@ -2679,6 +2903,13 @@
   $('vList').addEventListener('click', () => setView('list'));
   $('bReload').addEventListener('click', () => view && view.reload());
   $('bSave').addEventListener('click', () => saveCurrent());
+  $('bSave').addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showMenu(e.clientX, e.clientY, [
+      { label: 'Save', key: K.mod + 'S', run: () => saveCurrent() },
+      { label: 'Save As\u2026', key: K.shift + K.mod + 'S', run: saveAs },
+    ]);
+  });
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
   $('bNewMenu').addEventListener('click', e => {
@@ -2686,6 +2917,35 @@
     showNewMenu(b.left, b.bottom + 4);
   });
   $('sNewFolder').addEventListener('click', () => newFolder());
+  // The menu Claude shows under your name, which is hidden along with Claude's sidebar.
+  const ACCOUNT_LINKS = [
+    { label: 'Settings', url: 'https://claude.ai/settings', key: K.shift + K.mod + ',' },
+    { label: 'Usage', url: 'https://claude.ai/settings/usage' },
+    { label: 'Language', url: 'https://claude.ai/settings/general' },
+    { label: 'Get Help', url: 'https://support.claude.com', external: true },
+    '-',
+    { label: 'Upgrade Plan', url: 'https://claude.ai/upgrade' },
+    { label: 'Get Apps and Extensions', url: 'https://claude.ai/download' },
+    { label: 'Learn More', url: 'https://www.anthropic.com', external: true },
+    '-',
+    { label: 'Get API Keys', url: 'https://console.anthropic.com/settings/keys', external: true },
+    '-',
+    { label: 'Log Out', url: 'https://claude.ai/logout', confirm: true },
+  ];
+  function openAccountLink(a) {
+    if (a.confirm && !confirm('Log out of Claude in this app?')) return;
+    if (a.external || !isApp) return openExternal(a.url);
+    state.lastFolderId = null;
+    go({ kind: 'page', url: a.url });
+  }
+  $('sAccount').addEventListener('click', e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    showMenu(r.left, r.top - 4, [
+      ...ACCOUNT_LINKS.map(a => a === '-' ? '-' : { label: a.label + (a.external ? ' \u2197' : ''), key: a.key, run: () => openAccountLink(a) }),
+      isApp && '-',
+      isApp && { label: 'Show Claude\u2019s Own Menu', run: () => { setHideClaudeSidebar(false); showClaudeSidebar(); } },
+    ], { above: true });
+  });
   const setLibFilter = v => { state.libFilter = v; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
   $('libAll').addEventListener('click', () => setLibFilter('all'));
   $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
@@ -2768,6 +3028,7 @@
     else if (k === 'n' && e.shiftKey) newFolder();
     else if (k === 'n') newChat();
     else if (k === 'l') promptNewLink();
+    else if (k === 's' && e.shiftKey) saveAs();
     else if (k === 's') saveCurrent();
     else if (k === 'z' && !typing) undo();
     else if (k === '[') back();
@@ -2785,6 +3046,7 @@
       'new-folder': () => newFolder(),
       'add-link': () => promptNewLink(),
       save: () => saveCurrent(),
+      'save-as': saveAs,
       find: openFind,
       'find-next': () => findStep(true),
       'find-prev': () => findStep(false),
@@ -2792,6 +3054,7 @@
       reload: () => { if (pageShowing()) view.reload(); },
       back, forward, up,
       'toggle-claude-sidebar': () => setHideClaudeSidebar(!hideClaudeSidebar()),
+      'claude-settings': () => openAccountLink(ACCOUNT_LINKS[0]),
       'view-icons': () => setView('icons'),
       'view-list': () => setView('list'),
     };
