@@ -40,6 +40,19 @@ macOS may ask again for microphone permission after an update, because each buil
 
 Double-click `index.html`. The folder tree works the same, but links open Claude in a separate browser tab, because claude.ai does not allow itself to be shown inside another web page.
 
+## Claude Library: file your existing chats
+
+At the top of the sidebar, **Claude Library** lists everything in your Claude account: **Recent Chats**, **Projects** and **Artifacts**. The number beside each shows how many are not in one of your folders yet.
+
+- Click Recent Chats to see every chat, newest first, with a column showing which folder it is filed in.
+- Drag a chat onto any folder in the sidebar to file it. Select several first with ⌘-click, or ⇧-click for a range, and drag them together.
+- Or right-click and choose File in Folder.
+- Switch to **Not Filed** at the top to see only what is left, like an inbox.
+- Double-click to open it in Claude.
+- The list refreshes when you open it (at most every five minutes), every ten minutes in the background, and when you click Refresh.
+
+How it works: Claude has no official way for other apps to read your chat list, so the app asks claude.ai for it the same way Claude's own Recents page does, using your signed-in session. If Anthropic changes that, the app falls back to reading the Recents and Artifacts pages directly. If the list ever comes up empty, click Refresh, and tell Claude Code what the message at the bottom says.
+
 ## How it works
 
 It behaves like a Finder window:

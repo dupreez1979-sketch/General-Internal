@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -293,6 +293,156 @@ function buildMenu() {
     { role: 'windowMenu' },
   ]));
 }
+
+// ---------- Claude Library: read your chats, projects and artifacts ----------
+// Claude has no public API for this, so the app asks claude.ai the same way its own
+// Recents page does, using your signed-in session. If that ever stops working, it
+// falls back to reading the links Claude shows on its Recents and Artifacts pages.
+
+const LIB_PATTERNS = {
+  chats: '^/chat/[0-9a-fA-F-]{8,}$',
+  artifacts: '^/(artifact|artifacts|public/artifacts)/[^/]+',
+};
+
+// Runs inside a claude.ai page: returns [{ url, name }] for links matching a pattern.
+const COLLECT_FN = `function (pattern) {
+  const re = new RegExp(pattern);
+  const out = [];
+  const seen = new Set();
+  for (const a of document.querySelectorAll('a[href]')) {
+    let u;
+    try { u = new URL(a.getAttribute('href'), location.href); } catch (e) { continue; }
+    if (u.origin !== location.origin || !re.test(u.pathname)) continue;
+    const url = u.origin + u.pathname.replace(/\\/+$/, '');
+    if (seen.has(url)) continue;
+    seen.add(url);
+    const lines = (a.getAttribute('aria-label') || a.innerText || a.textContent || '')
+      .split('\\n').map(s => s.trim()).filter(Boolean);
+    out.push({ url, name: (lines[0] || '').slice(0, 200) });
+  }
+  return out;
+}`;
+
+// Scrolls a claude.ai list page to the bottom (clicking "Show more") while collecting links.
+const scrollHarvest = (pattern) => `(async () => {
+  const collect = ${COLLECT_FN};
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const found = new Map();
+  let stable = 0;
+  for (let i = 0; i < 90 && stable < 4; i++) {
+    const before = found.size;
+    for (const x of collect(${JSON.stringify(pattern)})) {
+      const prev = found.get(x.url);
+      if (!prev || (!prev.name && x.name)) found.set(x.url, x);
+    }
+    for (const b of document.querySelectorAll('button')) {
+      if (/^(show|load|view) (more|all)/i.test((b.innerText || '').trim())) b.click();
+    }
+    for (const el of document.querySelectorAll('*')) {
+      if (el.scrollHeight > el.clientHeight + 40 && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) el.scrollTop = el.scrollHeight;
+    }
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(700);
+    if (found.size === before && (found.size > 0 || i > 15)) stable++; else stable = 0;
+  }
+  return [...found.values()];
+})()`;
+
+// Asks claude.ai for the full lists, as its own pages do.
+const API_SCRIPT = `(async () => {
+  const out = { chats: [], projects: [], notes: [], status: 0 };
+  const get = async (u) => {
+    const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } });
+    if (!r.ok) { out.status = r.status; throw new Error(u.split('?')[0] + ' answered ' + r.status); }
+    return r.json();
+  };
+  const list = (x) => Array.isArray(x) ? x : (x && (x.data || x.conversations || x.projects || x.items)) || [];
+  try {
+    const orgs = list(await get('/api/organizations'));
+    for (const o of orgs) {
+      if (!o || !o.uuid) continue;
+      const seen = new Set();
+      try {
+        for (let off = 0, n = 0; n < 50; n++, off += 200) {
+          const page = list(await get('/api/organizations/' + o.uuid + '/chat_conversations?limit=200&offset=' + off));
+          const fresh = page.filter(c => c && c.uuid && !seen.has(c.uuid));
+          fresh.forEach(c => seen.add(c.uuid));
+          for (const c of fresh) out.chats.push({
+            name: c.name || 'Untitled chat',
+            url: 'https://claude.ai/chat/' + c.uuid,
+            updated: c.updated_at || c.created_at || null,
+            starred: !!c.is_starred,
+          });
+          if (page.length < 200 || !fresh.length) break;
+        }
+      } catch (e) { out.notes.push('chats: ' + e.message); }
+      try {
+        for (const p of list(await get('/api/organizations/' + o.uuid + '/projects'))) {
+          if (p && p.uuid) out.projects.push({ name: p.name || 'Untitled project', url: 'https://claude.ai/project/' + p.uuid, updated: p.updated_at || p.created_at || null });
+        }
+      } catch (e) { out.notes.push('projects: ' + e.message); }
+    }
+  } catch (e) { out.notes.push(e.message); }
+  out.chats.sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
+  out.projects.sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
+  return out;
+})()`;
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function openHidden(win, url) {
+  await win.loadURL(url).catch(() => {}); // redirects can reject; the page still loads
+  for (let i = 0; i < 40 && !win.isDestroyed(); i++) {
+    if (!/just a moment|checking your browser/i.test(win.webContents.getTitle())) break;
+    await sleep(500);
+  }
+  await sleep(1500);
+}
+
+async function fetchLibrary() {
+  const result = { signedIn: true, chats: [], projects: [], artifacts: [], notes: [] };
+  const win = new BrowserWindow({
+    show: false, width: 1280, height: 900,
+    webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
+  });
+  win.webContents.setAudioMuted(true);
+  const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 150000);
+  try {
+    await openHidden(win, 'https://claude.ai/recents');
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) { result.signedIn = false; return result; }
+
+    const api = await win.webContents.executeJavaScript(API_SCRIPT, true);
+    result.chats = api.chats;
+    result.projects = api.projects;
+    result.notes.push(...api.notes);
+    if ((api.status === 401 || api.status === 403) && !api.chats.length) result.signedIn = false;
+
+    if (!result.chats.length) {
+      result.chats = await win.webContents.executeJavaScript(scrollHarvest(LIB_PATTERNS.chats), true);
+      result.notes.push(`read ${result.chats.length} chats from the Recents page`);
+    }
+    if (!win.isDestroyed()) {
+      await openHidden(win, 'https://claude.ai/artifacts');
+      result.artifacts = await win.webContents.executeJavaScript(scrollHarvest(LIB_PATTERNS.artifacts), true);
+    }
+  } catch (e) {
+    result.notes.push(String(e && e.message || e));
+  } finally {
+    clearTimeout(guard);
+    if (!win.isDestroyed()) win.destroy();
+  }
+  return result;
+}
+
+let libraryRun = null;
+ipcMain.handle('library-refresh', () => libraryRun || (libraryRun = fetchLibrary().finally(() => { libraryRun = null; })));
+
+// Quick look at the links Claude is showing in the visible pane (its sidebar of recent chats).
+ipcMain.handle('harvest-pane', async (_e, id, kind) => {
+  const wc = webContents.fromId(id);
+  if (!wc || wc.isDestroyed() || !isClaudeHost(wc.getURL()) || !LIB_PATTERNS[kind]) return [];
+  return wc.executeJavaScript(`(${COLLECT_FN})(${JSON.stringify(LIB_PATTERNS[kind])})`, true).catch(() => []);
+});
 
 // ---------- Messages from the folder page ----------
 const httpUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u);

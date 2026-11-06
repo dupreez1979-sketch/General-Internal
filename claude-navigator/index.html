@@ -152,6 +152,11 @@
   .list .item.selected { background: var(--accent); color: var(--accent-text); }
   .list .item.selected .muted, .list .item.selected .icon { color: inherit; }
   .lrow.drop-into { box-shadow: inset 0 0 0 2px var(--accent); }
+  .row .count { color: var(--muted); font-size: 11px; margin-left: 6px; font-variant-numeric: tabular-nums; }
+  .list.lib-list .lhead, .list.lib-list .lrow { grid-template-columns: minmax(200px, 1fr) 140px minmax(120px, 220px); }
+  .list.lib-list .lrow.filed .label { color: var(--muted); }
+  .list.lib-list .item.selected .label { color: inherit; }
+  .drag-badge { position: fixed; top: -100px; left: -100px; background: var(--accent); color: #fff; border-radius: 12px; padding: 3px 10px; font: 600 12px -apple-system, system-ui, sans-serif; }
 
   .empty { color: var(--muted); text-align: center; margin: 18vh auto 0; max-width: 360px; font-size: 13px; }
   .empty b { display: block; color: var(--text); font-size: 15px; margin-bottom: 6px; }
@@ -245,6 +250,11 @@
       <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
       <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
     </div>
+    <div class="seg" id="libSeg" role="group" aria-label="Show" hidden>
+      <button class="tb" id="libAll" title="Show everything"><span class="t">All</span></button>
+      <button class="tb" id="libUnfiled" title="Show only items not yet in one of your folders"><span class="t">Not Filed</span></button>
+    </div>
+    <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
     <button class="tb" id="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
@@ -405,6 +415,28 @@
   const nav = { hist: [], pos: -1 };
   const undoStack = [];
 
+  // ---------- Claude Library: your chats, projects and artifacts as Claude lists them ----------
+  const LIB_STORE = 'claudeNavigator.library.v1';
+  const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
+  const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
+  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts' };
+  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact' };
+  const lib = (() => {
+    const base = { chats: [], projects: [], artifacts: [], fetchedAt: 0, error: null, signedIn: true };
+    try {
+      const x = JSON.parse(ls.get(LIB_STORE));
+      if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
+    } catch (e) { /* ignore */ }
+    return Object.assign(base, { busy: false });
+  })();
+  const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
+    chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts,
+    fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+  }));
+  state.libFilter = ls.get(LIB_FILTER_STORE) === 'unfiled' ? 'unfiled' : 'all';
+  const libSel = new Set();
+  let libAnchor = null, libPendingSingle = null;
+
   function save() { ls.set(STORE, JSON.stringify(state.tree)); }
   function snap() { undoStack.push(JSON.stringify(state.tree)); if (undoStack.length > 60) undoStack.shift(); }
   function undo() {
@@ -502,6 +534,29 @@
         if (open) addChildren(n.children, depth + 1);
       }
     };
+    if (isApp) {
+      const h = document.createElement('div');
+      h.className = 'row section open lib-head';
+      h.innerHTML = '<span class="label">Claude Library</span>';
+      frag.appendChild(h);
+      const idx = filedIndex();
+      for (const k of Object.keys(LIB_KINDS)) {
+        const r = document.createElement('div');
+        r.className = 'row lib';
+        r.dataset.lib = k;
+        r.innerHTML = `<span class="twisty"></span><span class="icon">${small(LIB_ICON[k])}</span><span class="label"></span>`;
+        r.querySelector('.label').textContent = LIB_KINDS[k];
+        const c = unfiledCount(k, idx);
+        if (c) {
+          const b = document.createElement('span');
+          b.className = 'count';
+          b.textContent = c;
+          b.title = `${c} not in a folder yet`;
+          r.appendChild(b);
+        }
+        frag.appendChild(r);
+      }
+    }
     for (const n of state.tree) {
       if (n.type === 'folder') {
         const r = document.createElement('div');
@@ -545,7 +600,9 @@
     return r;
   }
 
-  const sideRowEl = id => id && treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
+  const sideRowEl = id => id && (id.startsWith('lib:')
+    ? treeEl.querySelector(`.row[data-lib="${CSS.escape(id.slice(4))}"]`)
+    : treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`));
 
   function applySideSel(scroll = true) {
     treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
@@ -557,12 +614,46 @@
   function syncSideSel() {
     if (state.query) return;
     if (state.loc.kind === 'folder') state.sideSel = state.loc.id;
+    else if (state.loc.kind === 'library') state.sideSel = 'lib:' + state.loc.which;
     else {
       const hits = savedLinksFor(state.pageUrl || state.loc.url);
       const inFolder = hits.find(h => ((locate(h.id) || {}).parent || {}).id === state.lastFolderId);
       state.sideSel = (inFolder || hits[0] || {}).id || null;
     }
     applySideSel();
+  }
+
+  // Which of your folders already hold each address.
+  function filedIndex() {
+    const map = new Map();
+    walk(state.tree, (n, depth, path) => {
+      if (n.type !== 'link') return;
+      const k = normUrl(n.url);
+      const where = path.length ? path[path.length - 1].name : 'Top level';
+      if (!map.has(k)) map.set(k, []);
+      if (!map.get(k).includes(where)) map.get(k).push(where);
+    });
+    return map;
+  }
+  const unfiledCount = (kind, idx = filedIndex()) => (lib[kind] || []).filter(x => !idx.has(normUrl(x.url))).length;
+  function fmtDate(s) {
+    if (!s) return '';
+    const d = new Date(s);
+    if (isNaN(d)) return '';
+    const now = new Date();
+    const time = d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    if (d.toDateString() === now.toDateString()) return `Today ${time}`;
+    if (d.toDateString() === new Date(now - 864e5).toDateString()) return `Yesterday ${time}`;
+    return d.toLocaleDateString('en-AU', d.getFullYear() === now.getFullYear()
+      ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function ago(t) {
+    if (!t) return 'not yet';
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return `${m} min ago`;
+    if (m < 1440) return `${Math.round(m / 60)} h ago`;
+    return `${Math.round(m / 1440)} days ago`;
   }
 
   // ---------- Main area ----------
@@ -572,6 +663,7 @@
     browseEl.hidden = showPage;
     $('pathbar').hidden = showPage;
     if (showPage) return;
+    if (state.loc.kind === 'library') return renderLibrary();
 
     let items, where = false;
     if (state.query) {
@@ -620,6 +712,101 @@
     browseEl.replaceChildren(frag);
     applyBrowseSel(false);
     renderPathbar(items.length);
+  }
+
+  function libVisible() {
+    const kind = state.loc.which;
+    const idx = filedIndex();
+    let items = lib[kind] || [];
+    if (state.libFilter === 'unfiled') items = items.filter(x => !idx.has(normUrl(x.url)));
+    if (state.query) {
+      const q = state.query.toLowerCase();
+      items = items.filter(x => (x.name || '').toLowerCase().includes(q));
+    }
+    return { kind, idx, items };
+  }
+
+  function emptyMsg(title, text) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    const b = document.createElement('b');
+    b.textContent = title;
+    e.append(b, document.createTextNode(text));
+    return e;
+  }
+
+  function renderLibrary() {
+    const { kind, idx, items } = libVisible();
+    const all = lib[kind] || [];
+    const frag = document.createDocumentFragment();
+    if (!ls.get(LIB_TIP_STORE) && all.length) {
+      const b = document.createElement('div');
+      b.className = 'banner';
+      b.innerHTML = `<span>Drag items onto your folders to file them. Select several with ${isMac ? '\u2318' : 'Ctrl'}-click or ${isMac ? '\u21e7' : 'Shift'}-click first, or right-click and choose File in Folder. Choose Not Filed to see what is left.</span><button class="tb">Got it</button>`;
+      b.querySelector('button').addEventListener('click', () => { ls.set(LIB_TIP_STORE, '1'); renderLibrary(); });
+      frag.appendChild(b);
+    }
+    if (!isApp) {
+      frag.appendChild(emptyMsg('Desktop app only', 'Your Claude Library appears in the desktop app, which is signed in to Claude.'));
+    } else if (lib.signedIn === false) {
+      frag.appendChild(emptyMsg('Sign in to Claude first', 'Open New Chat, sign in to Claude, then click Refresh at the top right.'));
+    } else if (!items.length) {
+      if (lib.busy && !all.length) frag.appendChild(emptyMsg('Loading from Claude\u2026', 'This takes a few seconds the first time.'));
+      else if (state.query) frag.appendChild(emptyMsg('No matches', 'Try a different word.'));
+      else if (state.libFilter === 'unfiled' && all.length) frag.appendChild(emptyMsg('All filed', 'Every item here is in one of your folders.'));
+      else if (lib.error) frag.appendChild(emptyMsg('Could not read your list from Claude', `Click Refresh to try again. Details: ${lib.error}`));
+      else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
+    } else {
+      const l = document.createElement('div');
+      l.className = 'list lib-list';
+      const head = document.createElement('div');
+      head.className = 'lhead';
+      head.innerHTML = '<span>Name</span><span>Last edited</span><span>In folder</span>';
+      l.appendChild(head);
+      for (const x of items) l.appendChild(libRow(x, kind, idx));
+      frag.appendChild(l);
+    }
+    browseEl.replaceChildren(frag);
+    for (const k of [...libSel]) if (!items.some(x => x.url === k)) libSel.delete(k);
+    applyLibSel();
+    renderLibPathbar(kind, idx, items.length);
+  }
+
+  function libRow(x, kind, idx) {
+    const r = document.createElement('div');
+    const where = idx.get(normUrl(x.url));
+    r.className = 'lrow item lib' + (where ? ' filed' : '');
+    r.dataset.key = x.url;
+    r.draggable = true;
+    r.innerHTML = `<span class="nm"><span class="icon">${small(LIB_ICON[kind])}</span><span class="label"></span></span><span class="muted"></span><span class="muted"></span>`;
+    r.querySelector('.label').textContent = x.name || 'Untitled';
+    r.children[1].textContent = fmtDate(x.updated);
+    r.children[2].textContent = where ? where.join(', ') : '';
+    r.title = x.url;
+    return r;
+  }
+
+  function applyLibSel() {
+    browseEl.querySelectorAll('.item.lib').forEach(r => r.classList.toggle('selected', libSel.has(r.dataset.key)));
+    const st = $('status');
+    if (st && state.loc.kind === 'library') {
+      const shown = browseEl.querySelectorAll('.item.lib').length;
+      st.textContent = libSel.size ? `${libSel.size} of ${shown} selected` : `${shown} shown`;
+    }
+  }
+
+  function renderLibPathbar(kind, idx, shown) {
+    const bar = $('pathbar');
+    bar.replaceChildren();
+    const s = document.createElement('span');
+    const all = (lib[kind] || []).length;
+    s.textContent = lib.busy
+      ? 'Checking Claude for changes\u2026'
+      : `${all} in Claude, ${unfiledCount(kind, idx)} not in a folder. Updated ${ago(lib.fetchedAt)}.`;
+    const st = document.createElement('span');
+    st.id = 'status';
+    bar.append(s, st);
+    applyLibSel();
   }
 
   function tileFor(n) {
@@ -694,12 +881,19 @@
     $('bBack').disabled = nav.pos <= 0;
     $('bFwd').disabled = nav.pos >= nav.hist.length - 1;
     let title;
-    if (state.query) title = 'Search';
+    const inLib = state.loc.kind === 'library';
+    if (inLib) title = LIB_KINDS[state.loc.which];
+    else if (state.query) title = 'Search';
     else if (page) title = cleanTitle(state.pageTitle) || 'Claude';
     else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : 'Folders';
     $('title').textContent = title;
     document.title = title + ' – Claude Navigator';
-    $('viewSeg').hidden = page || !!state.query;
+    $('viewSeg').hidden = page || !!state.query || inLib;
+    $('libSeg').hidden = !inLib;
+    $('bRefreshLib').hidden = !inLib;
+    $('bRefreshLib').disabled = lib.busy;
+    $('libAll').classList.toggle('on', state.libFilter === 'all');
+    $('libUnfiled').classList.toggle('on', state.libFilter === 'unfiled');
     $('vIcons').classList.toggle('on', state.view === 'icons');
     $('vList').classList.toggle('on', state.view === 'list');
     $('bReload').hidden = !page;
@@ -718,7 +912,8 @@
   function renderAll() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
 
   // ---------- Navigation (Finder-style back and forward) ----------
-  const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id : normUrl(a.url) === normUrl(b.url)));
+  const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id
+    : a.kind === 'library' ? a.which === b.which : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
     if (loc.kind === 'page' && !isApp) {
@@ -744,6 +939,7 @@
   function show() {
     const loc = state.loc;
     if (loc.kind !== 'page') closeFind();
+    if (loc.kind === 'library') { libSel.clear(); libAnchor = null; refreshLibrary(false); }
     if (loc.kind === 'folder') {
       state.lastFolderId = loc.id;
       if (state.browseSel && !childrenOf(loc.id).some(c => c.id === state.browseSel)) state.browseSel = null;
@@ -824,6 +1020,66 @@
     ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => view.addEventListener(ev, update));
     view.addEventListener('did-start-loading', () => $('progress').classList.add('on'));
     view.addEventListener('did-stop-loading', () => { $('progress').classList.remove('on'); update(); });
+    ['did-stop-loading', 'did-navigate-in-page'].forEach(ev => view.addEventListener(ev, () => harvestPaneSoon()));
+  }
+
+  // ---------- Claude Library: loading ----------
+  async function refreshLibrary(force = false) {
+    if (!isApp || lib.busy) return;
+    if (!force && lib.fetchedAt && Date.now() - lib.fetchedAt < 5 * 60e3) return;
+    lib.busy = true;
+    libChanged();
+    try {
+      const r = await window.navigatorApp.refreshLibrary();
+      lib.signedIn = r.signedIn !== false;
+      if (lib.signedIn) {
+        for (const k of Object.keys(LIB_KINDS)) if (Array.isArray(r[k]) && r[k].length) lib[k] = r[k];
+        lib.fetchedAt = Date.now();
+      }
+      lib.error = r.chats && r.chats.length ? null : ((r.notes || []).join('; ') || null);
+    } catch (err) {
+      lib.error = String((err && err.message) || err);
+    }
+    lib.busy = false;
+    saveLib();
+    libChanged();
+  }
+  function libChanged() {
+    renderSide();
+    if (state.loc.kind === 'library') renderMain();
+    renderToolbar();
+  }
+  // Add chats Claude shows in its own sidebar, and pick up renamed ones, between full refreshes.
+  function mergeLib(kind, found) {
+    if (!Array.isArray(found) || !found.length) return;
+    const byUrl = new Map(lib[kind].map(x => [normUrl(x.url), x]));
+    let changed = false;
+    for (const f of found) {
+      const k = normUrl(f.url);
+      const ex = byUrl.get(k);
+      if (ex) {
+        if (f.name && ex.name !== f.name && !/^untitled/i.test(f.name)) { ex.name = f.name; changed = true; }
+      } else {
+        const x = { name: f.name || 'Untitled', url: f.url, updated: null };
+        lib[kind].unshift(x);
+        byUrl.set(k, x);
+        changed = true;
+      }
+    }
+    if (changed) { saveLib(); libChanged(); }
+  }
+  let harvestTimer = null;
+  function harvestPaneSoon() {
+    if (!isApp) return;
+    clearTimeout(harvestTimer);
+    harvestTimer = setTimeout(async () => {
+      try {
+        if (!/^https:\/\/claude\.ai\//.test(state.pageUrl)) return;
+        const id = view.getWebContentsId();
+        mergeLib('chats', await window.navigatorApp.harvestPane(id, 'chats'));
+        if (/^\/artifacts?(\/|$)/.test(new URL(state.pageUrl).pathname)) mergeLib('artifacts', await window.navigatorApp.harvestPane(id, 'artifacts'));
+      } catch (e) { /* page not ready yet */ }
+    }, 2000);
   }
 
   // When Claude gives a chat its title, or you rename it in Claude, saved links follow.
@@ -1071,6 +1327,34 @@
     insertInto(folderId, cur.node);
   }
 
+  // File Library items into a folder (or before or after a sidebar row).
+  function fileLibItems(items, t) {
+    items = (items || []).filter(x => x && x.url);
+    if (!items.length || !t) return;
+    snap();
+    const nodes = items.map(x => {
+      const l = Link(x.name || guessName(x.url), x.url);
+      l.autoName = true;
+      return l;
+    });
+    if (t.zone === 'into' || !t.id) nodes.forEach(n => insertInto(t.id, n));
+    else {
+      const tgt = locate(t.id);
+      tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, ...nodes);
+    }
+    commit();
+    const f = t.zone === 'into' || !t.id ? nodeOf(t.id) : (locate(t.id) || {}).parent;
+    toast(`Filed ${nodes.length === 1 ? `\u201c${nodes[0].name}\u201d` : `${nodes.length} items`} in ${f ? f.name : 'the top level'}`, true);
+  }
+  function fileLibPrompt(items) {
+    if (!items.length) return;
+    openDialog({
+      title: items.length === 1 ? `File \u201c${items[0].name}\u201d in:` : `File ${items.length} items in:`,
+      folderId: state.lastFolderId, folderOnly: true,
+      onSave: ({ folderId }) => fileLibItems(items, { id: folderId, zone: 'into' }),
+    });
+  }
+
   function saveCurrent(folderId = state.lastFolderId) {
     if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
     const url = state.pageUrl;
@@ -1179,6 +1463,7 @@
   treeEl.addEventListener('click', e => {
     const row = e.target.closest('.row');
     if (!row) return;
+    if (row.dataset.lib) return go({ kind: 'library', which: row.dataset.lib });
     const n = nodeOf(row.dataset.id);
     if (!n) return;
     if (row.classList.contains('section')) { state.sideSel = n.id; applySideSel(false); return toggle(n); }
@@ -1197,13 +1482,17 @@
   treeEl.addEventListener('contextmenu', e => {
     e.preventDefault();
     const row = e.target.closest('.row');
+    if (row && (row.dataset.lib || row.classList.contains('lib-head'))) {
+      showMenu(e.clientX, e.clientY, [{ label: 'Refresh from Claude', run: () => refreshLibrary(true) }]);
+      return;
+    }
     const n = row && nodeOf(row.dataset.id);
     if (n) { state.sideSel = n.id; applySideSel(false); }
     showMenu(e.clientX, e.clientY, menuFor(n, treeEl));
   });
   treeEl.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
-    const ids = [...treeEl.querySelectorAll('.row')].map(r => r.dataset.id);
+    const ids = [...treeEl.querySelectorAll('.row[data-id]')].map(r => r.dataset.id);
     if (!ids.length) return;
     const i = ids.indexOf(state.sideSel);
     const loc = locate(state.sideSel);
@@ -1236,18 +1525,112 @@
   });
 
   // ---------- Main area events ----------
+  const libKeys = () => [...browseEl.querySelectorAll('.item.lib')].map(r => r.dataset.key);
+  const libItem = key => (lib[state.loc.which] || []).find(x => x.url === key);
+  const selectedLibItems = () => libKeys().filter(k => libSel.has(k)).map(libItem).filter(Boolean);
+  function openLib(url, newWindow = false) {
+    if (newWindow) return openNewWindow(url);
+    go({ kind: 'page', url });
+  }
+  function libMouseDown(e) {
+    const it = e.target.closest('.item.lib');
+    libPendingSingle = null;
+    if (!it) {
+      if (!e.target.closest('.lhead')) { libSel.clear(); applyLibSel(); }
+      return;
+    }
+    const key = it.dataset.key;
+    const keys = libKeys();
+    if (e.metaKey || e.ctrlKey) {
+      if (libSel.has(key)) libSel.delete(key); else libSel.add(key);
+      libAnchor = key;
+    } else if (e.shiftKey && libAnchor && keys.includes(libAnchor)) {
+      const [a, b] = [keys.indexOf(libAnchor), keys.indexOf(key)].sort((x, y) => x - y);
+      libSel.clear();
+      keys.slice(a, b + 1).forEach(k => libSel.add(k));
+    } else if (libSel.has(key)) {
+      if (e.button === 0) libPendingSingle = key; // keep the group for dragging
+    } else {
+      libSel.clear();
+      libSel.add(key);
+      libAnchor = key;
+    }
+    applyLibSel();
+  }
+  browseEl.addEventListener('click', e => {
+    if (state.loc.kind !== 'library' || !libPendingSingle) return;
+    const k = libPendingSingle;
+    libPendingSingle = null;
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    libSel.clear();
+    libSel.add(k);
+    libAnchor = k;
+    applyLibSel();
+  });
+  function libContextMenu(e) {
+    const it = e.target.closest('.item.lib');
+    if (it && !libSel.has(it.dataset.key)) { libSel.clear(); libSel.add(it.dataset.key); libAnchor = it.dataset.key; applyLibSel(); }
+    const sel = it ? selectedLibItems() : [];
+    const one = sel.length === 1 ? sel[0] : null;
+    const saved = one ? savedLinksFor(one.url) : [];
+    showMenu(e.clientX, e.clientY, [
+      one && { label: 'Open', key: K.open, run: () => openLib(one.url) },
+      one && { label: 'Open in New Window', run: () => openNewWindow(one.url) },
+      sel.length > 0 && { label: sel.length > 1 ? `File ${sel.length} Items in Folder\u2026` : 'File in Folder\u2026', run: () => fileLibPrompt(sel) },
+      saved.length > 0 && { label: 'Show in Folder', run: () => revealInFolder(saved[0].id) },
+      one && { label: 'Copy Link', run: () => navigator.clipboard.writeText(one.url).then(() => toast('Link copied')) },
+      '-',
+      { label: 'Select All', key: K.mod + 'A', run: () => { libKeys().forEach(k => libSel.add(k)); applyLibSel(); } },
+      { label: 'Refresh from Claude', run: () => refreshLibrary(true) },
+    ]);
+  }
+  function libKeyDown(e) {
+    const keys = libKeys();
+    if (!keys.length) return;
+    const cur = libAnchor && keys.includes(libAnchor) ? keys.indexOf(libAnchor) : -1;
+    const mod = e.metaKey || e.ctrlKey;
+    const move = j => {
+      j = Math.max(0, Math.min(keys.length - 1, j));
+      if (!e.shiftKey) libSel.clear();
+      libSel.add(keys[j]);
+      libAnchor = keys[j];
+      applyLibSel();
+      const el = browseEl.querySelector(`.item.lib[data-key="${CSS.escape(keys[j])}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest' });
+    };
+    const first = () => selectedLibItems()[0];
+    switch (e.key) {
+      case 'ArrowDown': if (mod) { if (first()) openLib(first().url); } else move(cur + 1); break;
+      case 'ArrowUp': move(cur <= 0 ? 0 : cur - 1); break;
+      case 'Home': move(0); break;
+      case 'End': move(keys.length - 1); break;
+      case 'Enter': if (first()) openLib(first().url); break;
+      case 'a': case 'A': if (!mod) return; keys.forEach(k => libSel.add(k)); applyLibSel(); break;
+      case 'Escape': libSel.clear(); applyLibSel(); break;
+      default: return;
+    }
+    e.preventDefault();
+  }
+
   browseEl.addEventListener('mousedown', e => {
     if (e.target.closest('input, button, .banner')) return;
+    if (state.loc.kind === 'library') return libMouseDown(e);
     const it = e.target.closest('.item');
     state.browseSel = it ? it.dataset.id : null;
     applyBrowseSel(false);
   });
   browseEl.addEventListener('dblclick', e => {
+    if (state.loc.kind === 'library') {
+      const it = e.target.closest('.item.lib');
+      if (it) openLib(it.dataset.key, e.metaKey || e.ctrlKey);
+      return;
+    }
     const it = e.target.closest('.item');
     if (it) openNode(nodeOf(it.dataset.id), { newWindow: e.metaKey || e.ctrlKey });
   });
   browseEl.addEventListener('contextmenu', e => {
     e.preventDefault();
+    if (state.loc.kind === 'library') return libContextMenu(e);
     const it = e.target.closest('.item');
     state.browseSel = it ? it.dataset.id : null;
     applyBrowseSel(false);
@@ -1255,6 +1638,7 @@
   });
   browseEl.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
+    if (state.loc.kind === 'library') return libKeyDown(e);
     const ids = [...browseEl.querySelectorAll('.item')].map(x => x.dataset.id);
     const i = ids.indexOf(state.browseSel);
     const n = nodeOf(state.browseSel);
@@ -1281,6 +1665,7 @@
 
   // ---------- Drag and drop (sidebar and main area) ----------
   const NAV_TYPE = 'application/x-claude-nav-id';
+  const LIB_TYPE = 'application/x-claude-library';
   let dropTarget = null, hoverId = null, hoverTimer = null, dragId = null;
 
   function clearDrop() {
@@ -1298,6 +1683,27 @@
   const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain');
 
   function onDragStart(e) {
+    const libEl = e.target.closest('.item.lib');
+    if (libEl) {
+      libPendingSingle = null;
+      if (!libSel.has(libEl.dataset.key)) { libSel.clear(); libSel.add(libEl.dataset.key); libAnchor = libEl.dataset.key; applyLibSel(); }
+      const items = selectedLibItems();
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData(LIB_TYPE, JSON.stringify(items.map(x => ({ name: x.name, url: x.url }))));
+      e.dataTransfer.setData('text/uri-list', items.map(x => x.url).join('\r\n'));
+      e.dataTransfer.setData('text/plain', items.map(x => x.url).join('\n'));
+      if (items.length > 1) {
+        const badge = document.createElement('div');
+        badge.className = 'drag-badge';
+        badge.textContent = `${items.length} items`;
+        document.body.appendChild(badge);
+        e.dataTransfer.setDragImage(badge, 12, 12);
+        setTimeout(() => badge.remove(), 0);
+      }
+      dragId = null;
+      hideMenu();
+      return;
+    }
     const el = e.target.closest('[data-id]');
     if (!el) return;
     const n = nodeOf(el.dataset.id);
@@ -1333,6 +1739,7 @@
   treeEl.addEventListener('dragover', e => {
     if (accept(e) === null) return;
     const row = e.target.closest('.row');
+    if (row && !row.dataset.id) { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
     if (!row) { treeEl.classList.add('drop-root'); dropTarget = { id: null, zone: 'into' }; return; }
     const id = row.dataset.id;
     const n = nodeOf(id);
@@ -1356,6 +1763,7 @@
 
   browseEl.addEventListener('dragover', e => {
     if (accept(e) === null) return;
+    if (state.loc.kind === 'library') { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
     const it = e.target.closest('.item');
     const n = it && nodeOf(it.dataset.id);
     if (n && n.type === 'folder' && n.id !== dragId) {
@@ -1379,6 +1787,12 @@
     dropTarget = null;
     clearDrop();
     if (!t) return;
+    const libData = e.dataTransfer.getData(LIB_TYPE);
+    if (libData) {
+      let items = [];
+      try { items = JSON.parse(libData); } catch (err) { /* ignore */ }
+      return fileLibItems(items, t);
+    }
     const srcId = e.dataTransfer.getData(NAV_TYPE);
     let node, isNew = false;
     if (srcId) {
@@ -1422,6 +1836,10 @@
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
   $('sNewFolder').addEventListener('click', () => newFolder());
+  const setLibFilter = v => { state.libFilter = v; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
+  $('libAll').addEventListener('click', () => setLibFilter('all'));
+  $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
+  $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
 
   searchEl.addEventListener('input', () => {
     state.query = searchEl.value.trim();
@@ -1595,6 +2013,10 @@
   renderSide();
   state.lastFolderId = startFolder;
   go(start);
+  if (isApp) {
+    setTimeout(() => refreshLibrary(false), 4000);
+    setInterval(() => refreshLibrary(false), 10 * 60e3);
+  }
 })();
 </script>
 </body>
