@@ -163,6 +163,7 @@
   @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
   .tbgroup { display: flex; align-items: center; flex: none; }
+  #liveBadge { order: 9999; flex: none; font-size: 11px; font-weight: 600; color: #fff; background: #FF7552; border-radius: 10px; padding: 2px 9px; margin-left: 4px; -webkit-app-region: no-drag; }
   #bar > .tb-off, body.tb-customizing #bar > .tb-off { display: none !important; }
   .tb-gap { flex: none; width: 24px; height: 28px; }
   .tb-gap.flex { flex: 1 1 0; min-width: 12px; }
@@ -4825,6 +4826,24 @@
     ]);
   }
   if (isApp) { setTimeout(() => autoBackup(), 8000); setInterval(() => autoBackup(), 60 * 60e3); }
+
+  // ---------- Live preview ----------
+  // A small badge in the top bar while running from the code folder, so it is clear this is the preview.
+  if (isApp && window.navigatorApp.liveInfo) {
+    window.navigatorApp.liveInfo().then(info => {
+      if (!info || !info.live) return;
+      const b = document.createElement('span');
+      b.id = 'liveBadge';
+      b.textContent = 'Live preview';
+      b.title = 'Running from the code folder. New changes appear here automatically within about 20 seconds.';
+      $('bar').appendChild(b);
+      try { if (!sessionStorage.getItem('liveShown')) { sessionStorage.setItem('liveShown', '1'); } else toast('Updated to the latest changes'); } catch (e) { /* ignore */ }
+    });
+    window.navigatorApp.onLiveStatus(s => {
+      const b = $('liveBadge');
+      if (b && s && !s.autoPull) b.title = 'Running from the code folder. To get new changes, click Fetch origin then Pull origin in GitHub Desktop; this window refreshes by itself.';
+    });
+  }
 
   // ---------- Updates ----------
   let updateReady = null;

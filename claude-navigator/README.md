@@ -4,6 +4,18 @@ Your own front end for Claude, laid out like the Mac Finder: a sidebar of folder
 
 Folders can nest as deep as you like. Each link points at a Claude chat, project, artifact, or any other page (Canva designs, Google Docs). Clicking a link opens it in Claude, signed in as you, so every Claude feature still works: projects, artifacts, connectors, Canva, design systems.
 
+## Trying changes straight away (Live Preview)
+
+To see a change from Claude within seconds instead of waiting for a release:
+
+1. Quit Claude Navigator.
+2. In the `claude-navigator` folder, double-click **Live Preview.command**. It runs the app straight from the code, with your usual folders and Claude sign-in, and an orange **Live preview** badge in the top bar.
+3. Leave it running. It checks GitHub for new changes every 20 seconds and refreshes itself when they arrive (the window reloads; bigger changes restart the app).
+
+If your Mac cannot fetch from GitHub on its own (the badge's tooltip tells you), click **Fetch origin** then **Pull origin** in GitHub Desktop when Claude says a change is ready: the app refreshes the moment the files change. GitHub Desktop must be on the branch Claude is working on.
+
+When you are happy with the changes, Claude publishes a signed release and your installed app updates itself. Close the Terminal window to stop the preview, then open the app from Applications as usual.
+
 ## Updates
 
 Signed versions update themselves: the app checks for a new version on start-up and every few hours, downloads it quietly, and tells you when it is ready ("Restart Now"). It also installs next time you quit. **… › Check for Updates…** checks straight away. Setting this up (an Apple Developer account and a few GitHub settings, done once) is explained step by step in [RELEASING.md](RELEASING.md).

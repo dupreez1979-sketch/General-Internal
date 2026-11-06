@@ -783,6 +783,38 @@ ipcMain.handle('fs-new-file', async (_e, kind, destRel, name) => {
   return { rel: folderSync.rel(target), error: err || null };
 });
 
+// ---------- Live preview ----------
+// Started by "Live Preview.command": the app runs from this folder, fetches new changes from GitHub every
+// 20 seconds, and refreshes itself as soon as any of its files change (the window reloads; changes to the
+// app's core restart it). Your folders and Claude sign-in are the same as in the installed app.
+const LIVE = process.env.CLAUDE_NAV_LIVE === '1' && !app.isPackaged;
+function setUpLivePreview() {
+  if (!LIVE) return;
+  const { execFile } = require('child_process');
+  const repo = path.join(__dirname, '..');
+  let lastPull = 'starting';
+  const pull = () => execFile('git', ['-C', repo, 'pull', '--ff-only', '--quiet'], { env: Object.assign({}, process.env, { GIT_TERMINAL_PROMPT: '0' }), timeout: 60000 },
+    (err) => {
+      const now = err ? 'manual' : 'auto';
+      if (now !== lastPull) send('live-status', { autoPull: now === 'auto' });
+      lastPull = now;
+    });
+  pull();
+  setInterval(pull, 20000);
+  let timer = null, restart = false;
+  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'package.json'];
+  fs.watch(__dirname, (_ev, name) => {
+    if (!name || !files.includes(String(name))) return;
+    if (!['index.html'].includes(String(name))) restart = true;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      if (restart) { app.relaunch(); app.exit(0); return; }
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.reloadIgnoringCache();
+    }, 700);
+  });
+}
+ipcMain.handle('live-info', () => ({ live: LIVE }));
+
 // ---------- Updates ----------
 // Signed releases check for a newer version on start-up and every few hours, download it in the background,
 // and install it when you restart (or quit). Builds made on this Mac by the install script do not update
@@ -791,7 +823,7 @@ const pkg = require('./package.json');
 let updater = null;
 const update = { state: 'idle', version: null, error: null };
 function setUpUpdates() {
-  if (!app.isPackaged || pkg.localBuild) { update.state = 'unavailable'; return; }
+  if (!app.isPackaged || pkg.localBuild || LIVE) { update.state = 'unavailable'; return; }
   try { updater = require('electron-updater').autoUpdater; } catch (e) { update.state = 'unavailable'; return; }
   updater.autoDownload = true;
   updater.autoInstallOnAppQuit = true;
@@ -873,6 +905,7 @@ if (!app.requestSingleInstanceLock()) {
     buildMenu();
     createWindow();
     setUpUpdates();
+    setUpLivePreview();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
   app.on('window-all-closed', () => { if (!isMac) app.quit(); });
