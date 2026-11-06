@@ -85,6 +85,8 @@ app.on('web-contents-created', (_event, contents) => {
     let action = null;
     if (key === 'n' && input.shift) action = 'new-folder';
     else if (key === 's' && !input.shift) action = 'save';
+    else if (key === '[') action = 'back';
+    else if (key === ']') action = 'forward';
     if (action && mainWindow) {
       event.preventDefault();
       mainWindow.webContents.send('shortcut', action);

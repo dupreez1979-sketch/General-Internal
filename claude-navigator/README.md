@@ -1,6 +1,6 @@
 # Claude Navigator
 
-Your own front end for Claude: a Windows Explorer style folder tree on the left, the real claude.ai on the right.
+Your own front end for Claude, laid out like the Mac Finder: a sidebar of folders on the left, and a main window that shows either a folder's contents (as icons or a list) or Claude itself.
 
 Folders can nest as deep as you like. Each link points at a Claude chat, project, artifact, or any other page (Canva designs, Google Docs). Clicking a link opens it in Claude, signed in as you, so every Claude feature still works: projects, artifacts, connectors, Canva, design systems.
 
@@ -51,23 +51,32 @@ xattr -cr "/Applications/Claude Navigator.app"
 
 Double-click `index.html`. The folder tree works the same, but links open Claude in a separate browser tab, because claude.ai does not allow itself to be shown inside another web page.
 
-## Using it
+## How it works
+
+It behaves like a Finder window:
+
+- **Sidebar.** Your top-level folders are the grey section headings (like Favourites in Finder). Click a heading to hide or show it. Everything inside is a tree you can open with the small arrows.
+- **Main window.** Click a folder and its contents appear as big icons or a list, with a path bar along the bottom. Double-click a folder to go into it. Double-click a chat, project or artifact and Claude opens in the main window, signed in, with all its features.
+- **Back and forward** move between folders and Claude pages, just like Finder.
+- **Saving.** While you are looking at a Claude page, the toolbar shows "Save to [folder]", meaning the folder you came from. Click it (or press ⌘S) to file the page there. The star turns gold once a page is saved somewhere.
+- **New chat** (the pencil button, or ⌘N) starts a chat. Start it from inside a folder and ⌘S will save it into that folder.
 
 | To do this | Do this |
 | --- | --- |
-| Open a chat, project or artifact | Click it, or ⌘↓ |
-| Expand or collapse a folder | Click it, or use the arrow keys |
-| New folder | Folder button, right-click a folder, or ⌘⇧N |
-| Save the Claude page you are looking at | Select a folder, then Save page (or ⌘S) |
-| Start a chat that belongs in a folder | Right-click the folder, "New chat, then save here", then Save page once the chat has a title |
-| Add a link by pasting | Link button or ⌘L |
-| Move things | Drag onto a folder (drops inside) or between rows (reorders). Hovering over a closed folder opens it |
+| Open a folder | Click it in the sidebar, or double-click it in the main window |
+| Open a chat, project or artifact | Click it in the sidebar, double-click it in the main window, or ⌘↓ |
+| Go back, forward, up a level | ⌘[ , ⌘] , ⌘↑ |
+| Icons or list | ⌘1 , ⌘2 |
+| New folder | ⌘⇧N (in the folder you are looking at), or New Folder at the bottom of the sidebar |
+| Save the Claude page you are looking at | ⌘S |
+| Add a link by pasting | ⌘L |
+| Rename | Select it, press Return (like Finder) |
+| Delete | ⌘⌫. Undo with ⌘Z or the Undo button |
+| Move things | Drag onto any folder, in the sidebar or the main window. Drag between sidebar rows to reorder |
 | Save a link from your browser | Drag it from the address bar onto a folder |
-| Rename | Return, like Finder (or right-click) |
-| Delete | ⌫. Undo with ⌘Z or the Undo button |
-| Find something | ⌘F, then type |
+| Find anything | ⌘F, then type. Results show which folder each item is in |
 | Open in a separate window | ⌘-click |
-| Resize the tree | Drag the divider. Double-click it to reset |
+| More options | Right-click anything, or empty space |
 
 On Windows the same shortcuts use Ctrl, F2 renames and Enter opens.
 

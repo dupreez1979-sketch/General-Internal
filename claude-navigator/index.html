@@ -6,28 +6,30 @@
 <title>Claude Navigator</title>
 <style>
   :root {
-    --side-w: 300px;
-    --bg: #ffffff;
-    --side: #f3f3f3;
-    --line: #e1e1e1;
-    --text: #1b1b1b;
-    --muted: #6b6b6b;
-    --hover: #e5e5e5;
-    --sel: #d9e6f5;
-    --sel-line: #8db4e2;
-    --accent: #c96442;
+    --side-w: 240px;
+    --win: #ffffff;
+    --side: #ececec;
+    --line: #dedede;
+    --text: #1d1d1f;
+    --muted: #86868b;
+    --hover: rgba(0,0,0,.045);
+    --sel: rgba(0,0,0,.085);
+    --accent: #007aff;
     --accent-text: #ffffff;
-    --input: #ffffff;
-    --menu: #fbfbfb;
-    --drop: #2f7de1;
-    --shadow: 0 8px 28px rgba(0,0,0,.16);
+    --field: rgba(0,0,0,.05);
+    --menu: rgba(244,244,244,.94);
+    --menu-line: rgba(0,0,0,.1);
+    --shadow: 0 10px 34px rgba(0,0,0,.2), 0 0 0 .5px rgba(0,0,0,.18);
+    --tile-sel: rgba(0,0,0,.075);
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #1e1e1e; --side: #252525; --line: #383838; --text: #ececec; --muted: #9e9e9e;
-      --hover: #323232; --sel: #2b3d52; --sel-line: #4f7cb0; --input: #1a1a1a; --menu: #2a2a2a;
-      --shadow: 0 8px 28px rgba(0,0,0,.55);
+      --win: #1e1e1e; --side: #2b2b2b; --line: #3a3a3a; --text: #f5f5f7; --muted: #98989d;
+      --hover: rgba(255,255,255,.05); --sel: rgba(255,255,255,.11); --accent: #0a84ff;
+      --field: rgba(255,255,255,.08); --menu: rgba(42,42,42,.94); --menu-line: rgba(255,255,255,.12);
+      --shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.14);
+      --tile-sel: rgba(255,255,255,.1);
       color-scheme: dark;
     }
   }
@@ -35,146 +37,178 @@
   [hidden] { display: none !important; }
   html, body { height: 100%; margin: 0; }
   body {
-    background: var(--bg); color: var(--text);
-    font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
-    display: grid; grid-template-columns: var(--side-w) 5px 1fr; overflow: hidden;
+    background: var(--win); color: var(--text);
+    font: 13px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: grid; grid-template-columns: var(--side-w) 1px 1fr; overflow: hidden;
+    user-select: none; -webkit-user-select: none; cursor: default;
   }
-  body.resizing { cursor: col-resize; user-select: none; }
+  body.resizing { cursor: col-resize; }
   body.resizing webview { pointer-events: none; }
   button { font: inherit; color: inherit; }
   svg { display: block; }
+  input { user-select: text; -webkit-user-select: text; }
 
   /* ---------- Sidebar ---------- */
-  #side { background: var(--side); display: flex; flex-direction: column; min-width: 0; position: relative; }
-  .side-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; }
-  .mac body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
-  .mac-app .side-head { padding-top: 44px; -webkit-app-region: drag; }
-  .mac-app .pane-bar { min-height: 44px; -webkit-app-region: drag; }
-  .mac-app .side-head button, .mac-app .pane-bar button { -webkit-app-region: no-drag; }
-  /* Frosted sidebar like Finder and Notes. */
-  .mac-app body { background: transparent; }
-  .mac-app #side { background: color-mix(in srgb, var(--side) 55%, transparent); }
-  .mac-app #main { background: var(--bg); }
-  .brand { font-weight: 600; font-size: 14px; flex: 1; display: flex; align-items: center; gap: 8px; }
-  .brand-dot { width: 18px; height: 18px; border-radius: 5px; background: var(--accent); }
-  .btn-primary {
-    background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px;
-    padding: 6px 10px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; font-weight: 500;
-  }
-  .btn-primary:hover { filter: brightness(1.06); }
-  .search { margin: 0 12px 8px; position: relative; }
-  .search input {
-    width: 100%; padding: 6px 10px 6px 30px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--input); color: var(--text); font: inherit; outline: none;
-  }
-  .search input:focus { border-color: var(--sel-line); }
-  .search svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-  .toolbar { display: flex; gap: 2px; padding: 0 8px 6px; border-bottom: 1px solid var(--line); }
-  .tool {
-    background: none; border: 0; border-radius: 5px; padding: 5px 7px; cursor: pointer; color: var(--muted);
-    display: inline-flex; align-items: center; gap: 5px;
-  }
-  .tool:hover { background: var(--hover); color: var(--text); }
-  .tool:disabled { opacity: .4; cursor: default; background: none; }
-  .tool .t { font-size: 12px; white-space: nowrap; }
-  .spacer { flex: 1; }
-
-  #tree { flex: 1; overflow: auto; padding: 4px 4px 40px; outline: none; }
-  #tree.drop-root { box-shadow: inset 0 0 0 2px var(--drop); }
+  #side { background: var(--side); display: flex; flex-direction: column; min-width: 0; }
+  .side-top { height: 52px; flex: none; display: flex; align-items: center; padding: 0 16px; color: var(--muted); font-weight: 600; font-size: 12px; }
+  #tree { flex: 1; overflow: auto; padding: 0 10px 24px; outline: none; }
+  #tree.drop-root { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
   .row {
     --depth: 0;
-    display: flex; align-items: center; height: 28px; padding-left: calc(4px + var(--depth) * 16px); padding-right: 8px;
-    border-radius: 5px; cursor: default; position: relative; white-space: nowrap; border: 1px solid transparent;
+    display: flex; align-items: center; height: 28px; padding-left: calc(2px + var(--depth) * 14px); padding-right: 6px;
+    border-radius: 6px; position: relative; white-space: nowrap;
   }
-  .row:hover { background: var(--hover); }
   .row.selected { background: var(--sel); }
-  #tree:focus-within .row.selected, #tree:focus .row.selected { border-color: var(--sel-line); }
-  .row.active .label { font-weight: 600; }
-  .row.active::before {
-    content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--accent);
-  }
-  .row.dragging { opacity: .45; }
-  .row.drop-into { background: var(--sel); box-shadow: inset 0 0 0 2px var(--drop); }
+  .row.dragging { opacity: .4; }
+  .row.drop-into { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
   .row.drop-before::after, .row.drop-after::after {
-    content: ""; position: absolute; left: calc(24px + var(--depth) * 16px); right: 4px; height: 2px; background: var(--drop); border-radius: 1px;
+    content: ""; position: absolute; left: calc(20px + var(--depth) * 14px); right: 4px; height: 2px; background: var(--accent); border-radius: 1px;
   }
   .row.drop-before::after { top: -1px; }
   .row.drop-after::after { bottom: -1px; }
-  .twisty { width: 18px; height: 18px; flex: none; display: grid; place-items: center; color: var(--muted); border-radius: 4px; }
-  .twisty svg { transition: transform .12s ease; }
+  .row.section { height: 26px; margin-top: 10px; padding-left: 8px; color: var(--muted); font-size: 11px; font-weight: 600; }
+  .row.section:first-child { margin-top: 0; }
+  .row.section .label { flex: 1; }
+  .sec-chev { opacity: 0; color: var(--muted); transition: opacity .12s; }
+  .sec-chev svg { transition: transform .15s ease; }
+  .row.section.open .sec-chev svg { transform: rotate(90deg); }
+  .row.section:hover .sec-chev, .row.section.selected .sec-chev { opacity: 1; }
+  .twisty { width: 16px; height: 16px; flex: none; display: grid; place-items: center; color: var(--muted); }
+  .twisty svg { transition: transform .15s ease; }
   .twisty.open svg { transform: rotate(90deg); }
-  .twisty:hover:not(:empty) { color: var(--text); }
-  .icon { width: 18px; height: 18px; flex: none; display: grid; place-items: center; margin-right: 6px; }
-  .label { overflow: hidden; text-overflow: ellipsis; flex: 1; }
-  .count { color: var(--muted); font-size: 11px; margin-left: 6px; }
-  .label input {
-    width: 100%; font: inherit; color: var(--text); background: var(--input); border: 1px solid var(--sel-line);
-    border-radius: 3px; padding: 1px 4px; outline: none; margin-left: -5px;
+  .row .icon { width: 18px; height: 18px; flex: none; display: grid; place-items: center; margin-right: 7px; color: var(--accent); }
+  .label { overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+  .rename-input {
+    width: 100%; font: inherit; color: var(--text); background: var(--win); border: 0; border-radius: 3px;
+    padding: 1px 3px; outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
   }
-  .empty-hint { color: var(--muted); padding: 16px 12px; text-align: center; }
+  .side-foot { flex: none; display: flex; align-items: center; gap: 2px; padding: 6px 10px 8px; }
+  .empty-hint { color: var(--muted); padding: 16px 8px; text-align: center; }
 
-  .side-foot { border-top: 1px solid var(--line); padding: 6px 8px; display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+  #splitter { background: var(--line); position: relative; }
+  #splitter::after { content: ""; position: absolute; inset: 0 -4px; cursor: col-resize; z-index: 3; }
 
-  #splitter { cursor: col-resize; background: var(--side); border-right: 1px solid var(--line); }
-  #splitter:hover, body.resizing #splitter { background: var(--sel-line); }
+  /* ---------- Buttons ---------- */
+  .tb {
+    background: none; border: 0; border-radius: 6px; height: 28px; min-width: 28px; padding: 0 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted);
+  }
+  .tb:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+  .tb:active:not(:disabled) { background: var(--sel); }
+  .tb:disabled { opacity: .35; }
+  .tb .t { font-size: 12px; white-space: nowrap; }
+  .seg { display: inline-flex; background: var(--field); border-radius: 7px; padding: 2px; gap: 2px; }
+  .seg .tb { height: 24px; min-width: 30px; border-radius: 5px; }
+  .seg .tb.on { background: var(--win); color: var(--text); box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.1); }
+  .btn-primary { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 6px; padding: 4px 14px; font-weight: 500; }
+  .btn { background: var(--win); border: .5px solid var(--line); border-radius: 6px; padding: 4px 14px; box-shadow: 0 .5px 1px rgba(0,0,0,.1); }
 
-  /* ---------- Main pane ---------- */
-  #main { display: flex; flex-direction: column; min-width: 0; position: relative; }
-  .pane-bar { display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid var(--line); background: var(--bg); }
-  .pane-title { flex: 1; min-width: 0; padding: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-  .pane-title small { color: var(--muted); font-weight: 400; margin-left: 8px; }
-  #progress { position: absolute; left: 0; top: 0; height: 2px; width: 0; background: var(--accent); transition: width .3s ease, opacity .4s; opacity: 0; z-index: 2; }
+  /* ---------- Main ---------- */
+  #main { display: flex; flex-direction: column; min-width: 0; background: var(--win); position: relative; }
+  #bar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-bottom: 1px solid var(--line); }
+  .nav-btns { display: flex; gap: 2px; }
+  #title { font-size: 15px; font-weight: 700; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  .search { position: relative; width: 170px; transition: width .2s ease; flex: none; }
+  .search:focus-within { width: 220px; }
+  .search > span { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+  .search input {
+    width: 100%; height: 28px; border: 0; border-radius: 7px; background: var(--field); color: var(--text);
+    padding: 0 8px 0 27px; font: inherit; outline: none;
+  }
+  .search input:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 40%, transparent); }
+  #progress { position: absolute; left: 0; top: 51px; height: 2px; width: 0; background: var(--accent); transition: width .4s ease, opacity .4s; opacity: 0; z-index: 2; }
   #progress.on { width: 70%; opacity: 1; }
-  #pane { flex: 1; position: relative; display: flex; }
+
+  #content { flex: 1; position: relative; min-height: 0; display: flex; }
+  #pane { flex: 1; display: flex; }
   #pane webview { flex: 1; border: 0; }
-  .welcome { margin: auto; max-width: 520px; padding: 32px; text-align: center; }
-  .welcome h1 { font-size: 22px; margin: 0 0 10px; font-weight: 600; }
-  .welcome p { color: var(--muted); margin: 0 0 14px; font-size: 14px; }
-  .welcome kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font: 12px ui-monospace, monospace; }
+  #browse { flex: 1; overflow: auto; outline: none; padding: 14px 18px 30px; }
+  #browse.drop-here { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, 104px); gap: 6px; align-content: start; }
+  .tile { display: flex; flex-direction: column; align-items: center; padding: 6px 4px 4px; border-radius: 8px; }
+  .tile .big { width: 72px; height: 66px; display: grid; place-items: center; border-radius: 6px; }
+  .tile .label { margin-top: 4px; text-align: center; max-width: 100%; padding: 1px 5px; border-radius: 4px; line-height: 1.3; flex: none;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; }
+  .item.selected .big { background: var(--tile-sel); }
+  .tile.selected .label { background: var(--accent); color: var(--accent-text); }
+  .tile.drop-into .big { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: inset 0 0 0 2px var(--accent); }
+  .item.dragging { opacity: .4; }
+  .tile .rename-input { text-align: center; }
+
+  .list { width: 100%; }
+  .lhead, .lrow { display: grid; grid-template-columns: minmax(180px, 1fr) 130px var(--col3, 170px); align-items: center; }
+  .lhead { color: var(--muted); font-size: 11px; font-weight: 500; padding: 0 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .lrow { height: 26px; padding: 0 10px; border-radius: 6px; }
+  .lrow:nth-child(odd) { background: var(--hover); }
+  .lrow .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .lrow .icon { color: var(--accent); display: grid; }
+  .lrow .muted { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+  .list .item.selected { background: var(--accent); color: var(--accent-text); }
+  .list .item.selected .muted, .list .item.selected .icon { color: inherit; }
+  .lrow.drop-into { box-shadow: inset 0 0 0 2px var(--accent); }
+
+  .empty { color: var(--muted); text-align: center; margin: 18vh auto 0; max-width: 360px; font-size: 13px; }
+  .empty b { display: block; color: var(--text); font-size: 15px; margin-bottom: 6px; }
+  .banner { display: flex; gap: 10px; align-items: center; background: var(--field); border-radius: 8px; padding: 8px 12px; margin-bottom: 14px; color: var(--muted); }
+  .banner span { flex: 1; }
+
+  #pathbar { height: 26px; flex: none; border-top: 1px solid var(--line); display: flex; align-items: center; padding: 0 10px; gap: 2px; font-size: 11px; color: var(--muted); overflow: hidden; white-space: nowrap; }
+  .crumb { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px; border-radius: 4px; color: var(--text); }
+  .crumb:hover { background: var(--hover); }
+  .crumb svg { color: var(--accent); }
+  #status { margin-left: auto; padding-left: 12px; }
 
   /* ---------- Menus, dialogs, toast ---------- */
   #menu {
-    position: fixed; z-index: 50; min-width: 210px; background: var(--menu); border: 1px solid var(--line);
-    border-radius: 8px; box-shadow: var(--shadow); padding: 4px; display: none;
+    position: fixed; z-index: 50; min-width: 220px; background: var(--menu); border-radius: 8px;
+    -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+    box-shadow: var(--shadow); padding: 5px; display: none;
   }
   #menu.show { display: block; }
   #menu button {
-    display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-radius: 5px;
-    padding: 6px 10px; text-align: left; cursor: default;
+    display: flex; width: 100%; align-items: center; background: none; border: 0; border-radius: 4px;
+    height: 22px; padding: 0 10px 0 8px; text-align: left; font-size: 13px; outline: none;
   }
-  #menu button:hover:not(:disabled) { background: var(--hover); }
-  #menu button:disabled { opacity: .4; }
-  #menu button:focus-visible { outline: none; background: var(--hover); }
-  #menu .k { margin-left: auto; color: var(--muted); font-size: 11px; padding-left: 16px; }
-  #menu .mi { width: 16px; display: grid; place-items: center; color: var(--muted); }
-  #menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
-  #menu.danger-last button.danger { color: #c0392b; }
+  #menu button:hover:not(:disabled), #menu button:focus-visible { background: var(--accent); color: var(--accent-text); }
+  #menu button:hover .k, #menu button:focus-visible .k { color: inherit; opacity: .8; }
+  #menu button:disabled { opacity: .35; }
+  #menu .k { margin-left: auto; color: var(--muted); padding-left: 22px; letter-spacing: .5px; }
+  #menu hr { border: 0; border-top: 1px solid var(--menu-line); margin: 5px 8px; }
 
   dialog {
-    border: 1px solid var(--line); border-radius: 10px; padding: 0; background: var(--menu); color: var(--text);
-    box-shadow: var(--shadow); width: min(460px, calc(100vw - 32px));
+    border: 0; border-radius: 12px; padding: 0; background: var(--menu); color: var(--text);
+    -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    box-shadow: var(--shadow); width: min(420px, calc(100vw - 32px));
   }
-  dialog::backdrop { background: rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(0,0,0,.18); }
   dialog form { padding: 18px 20px 16px; display: grid; gap: 12px; }
-  dialog h2 { margin: 0; font-size: 16px; font-weight: 600; }
-  dialog label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+  dialog h2 { margin: 0; font-size: 13px; font-weight: 700; }
+  dialog label { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: 13px; text-align: right; }
   dialog input, dialog select {
-    font: inherit; font-size: 13px; color: var(--text); background: var(--input); border: 1px solid var(--line);
-    border-radius: 6px; padding: 7px 9px; outline: none;
+    font: inherit; color: var(--text); background: var(--win); border: .5px solid var(--line);
+    border-radius: 5px; padding: 4px 7px; outline: none; text-align: left;
   }
-  dialog input:focus, dialog select:focus { border-color: var(--sel-line); }
+  dialog input:focus, dialog select:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 40%, transparent); }
   .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-  .btn { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 14px; cursor: pointer; }
-  .btn:hover { background: var(--hover); }
 
   #toast {
-    position: absolute; left: 10px; right: 10px; bottom: 44px; background: #2b2b2b; color: #fff; border-radius: 8px;
-    padding: 9px 12px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow);
-    opacity: 0; transform: translateY(8px); transition: .18s ease; pointer-events: none; z-index: 20;
+    position: fixed; left: 50%; bottom: 40px; transform: translate(-50%, 8px); background: rgba(40,40,40,.92); color: #fff;
+    border-radius: 10px; padding: 8px 14px; display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow);
+    opacity: 0; transition: .18s ease; pointer-events: none; z-index: 60; max-width: min(460px, calc(100vw - 32px));
+    -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
   }
-  #toast.show { opacity: 1; transform: none; pointer-events: auto; }
-  #toast span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #toast button { background: none; border: 0; color: #ffb59c; font-weight: 600; cursor: pointer; padding: 0; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #toast button { background: none; border: 0; color: #6cb6ff; font-weight: 600; padding: 0; }
+
+  /* ---------- Mac desktop app: traffic lights, draggable title areas, frosted sidebar ---------- */
+  .mac-app body { background: transparent; }
+  .mac-app #side { background: color-mix(in srgb, var(--side) 50%, transparent); }
+  .mac-app .side-top { -webkit-app-region: drag; color: transparent; }
+  .mac-app #bar { -webkit-app-region: drag; }
+  .mac-app #bar button, .mac-app #bar input { -webkit-app-region: no-drag; }
 
   @media (max-width: 640px) {
     body { grid-template-columns: 1fr; }
@@ -184,54 +218,54 @@
 </head>
 <body>
 
-<aside id="side" aria-label="Folders">
-  <div class="side-head">
-    <div class="brand"><span class="brand-dot"></span>Claude Navigator</div>
-    <button class="btn-primary" id="newChatBtn" title="Start a new chat (Ctrl+N)">
-      <svg width="14" height="14" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      New chat
-    </button>
+<aside id="side" aria-label="Sidebar">
+  <div class="side-top">Claude Navigator</div>
+  <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
+  <div class="side-foot">
+    <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
+    <span style="flex:1"></span>
+    <button class="tb" id="sMore" title="More"><span data-icon="more"></span></button>
   </div>
-  <div class="search">
-    <svg width="14" height="14" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    <input id="search" type="search" placeholder="Search folders and links (Ctrl+F)" autocomplete="off">
-  </div>
-  <div class="toolbar">
-    <button class="tool" id="tNewFolder" title="New folder (Ctrl+Shift+N)"><span data-icon="folderPlus"></span><span class="t">Folder</span></button>
-    <button class="tool" id="tNewLink" title="Add a link (Ctrl+L)"><span data-icon="linkPlus"></span><span class="t">Link</span></button>
-    <button class="tool" id="tSaveCurrent" title="Save the page you are viewing into the selected folder (Ctrl+S)"><span data-icon="star"></span><span class="t">Save page</span></button>
-    <span class="spacer"></span>
-    <button class="tool" id="tCollapse" title="Collapse all"><span data-icon="collapse"></span></button>
-    <button class="tool" id="tMore" title="More"><span data-icon="more"></span></button>
-  </div>
-  <div id="tree" role="tree" tabindex="0" aria-label="Folder tree"></div>
-  <div class="side-foot"><span id="footInfo"></span></div>
-  <div id="toast" role="status"><span id="toastMsg"></span><button id="toastUndo">Undo</button></div>
 </aside>
 
 <div id="splitter" title="Drag to resize"></div>
 
 <main id="main">
-  <div id="progress"></div>
-  <div class="pane-bar">
-    <button class="tool" id="pBack" title="Back"><span data-icon="back"></span></button>
-    <button class="tool" id="pFwd" title="Forward"><span data-icon="fwd"></span></button>
-    <button class="tool" id="pReload" title="Reload"><span data-icon="reload"></span></button>
-    <div class="pane-title" id="paneTitle">Claude</div>
-    <button class="tool" id="pSave" title="Save this page to the selected folder"><span data-icon="star"></span><span class="t">Save to folder</span></button>
-    <button class="tool" id="pExternal" title="Open this page in your web browser"><span data-icon="external"></span></button>
+  <div id="bar">
+    <div class="nav-btns">
+      <button class="tb" id="bBack" title="Back (Ctrl+[)"><span data-icon="back"></span></button>
+      <button class="tb" id="bFwd" title="Forward (Ctrl+])"><span data-icon="fwd"></span></button>
+    </div>
+    <div id="title">Folders</div>
+    <div class="seg" id="viewSeg" role="group" aria-label="View">
+      <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
+      <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
+    </div>
+    <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
+    <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
+    <button class="tb" id="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
+    <button class="tb" id="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
+    <div class="search">
+      <span data-icon="search"></span>
+      <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false">
+    </div>
   </div>
-  <div id="pane"></div>
+  <div id="progress"></div>
+  <div id="content">
+    <div id="browse" tabindex="0" aria-label="Folder contents"></div>
+    <div id="pane" hidden></div>
+  </div>
+  <div id="pathbar"></div>
 </main>
 
 <div id="menu" role="menu"></div>
 
 <dialog id="linkDlg">
   <form method="dialog" id="linkForm">
-    <h2 id="linkDlgTitle">Add link</h2>
-    <label>Name<input id="linkName" placeholder="e.g. Board paper draft"></label>
-    <label>Address<input id="linkUrl" placeholder="Paste a Claude chat, project or artifact link" required></label>
-    <label>Folder<select id="linkFolder"></select></label>
+    <h2 id="linkDlgTitle">Add Link</h2>
+    <label id="lblName">Name:<input id="linkName" placeholder="e.g. Board paper draft"></label>
+    <label id="lblUrl">Address:<input id="linkUrl" placeholder="Paste a Claude chat, project or artifact link" required></label>
+    <label>Where:<select id="linkFolder"></select></label>
     <div class="dlg-actions">
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
       <button class="btn-primary" value="ok" id="linkOk">Save</button>
@@ -239,53 +273,79 @@
   </form>
 </dialog>
 
+<div id="toast" role="status"><span id="toastMsg"></span><button id="toastUndo">Undo</button></div>
 <input type="file" id="importFile" accept="application/json,.json" hidden>
 
 <script>
 (() => {
   'use strict';
 
-  // ---------- Constants and icons ----------
-  const STORE = 'claudeNavigator.tree.v1';
-  const WIDTH_STORE = 'claudeNavigator.sideWidth';
-  const LAST_URL = 'claudeNavigator.lastUrl';
-  const HOME = 'https://claude.ai/new';
+  // ---------- Platform ----------
   const isApp = !!(window.navigatorApp && window.navigatorApp.isElectron);
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-  const K = isMac
-    ? { mod: '\u2318', shift: '\u21e7', del: '\u232b', enter: 'Return', rename: 'Return', open: '\u2318\u2193' }
-    : { mod: 'Ctrl+', shift: 'Shift+', del: 'Del', enter: 'Enter', rename: 'F2', open: 'Enter' };
   if (isMac) document.documentElement.classList.add('mac');
   if (isApp && isMac) document.documentElement.classList.add('mac-app');
-  // Show the right shortcut symbols in tooltips and placeholders.
-  document.querySelectorAll('[title], [placeholder]').forEach(el => {
-    for (const a of ['title', 'placeholder']) {
-      const v = el.getAttribute(a);
-      if (v && v.includes('Ctrl+')) el.setAttribute(a, v.replace(/Ctrl\+Shift\+/g, K.mod + K.shift).replace(/Ctrl\+/g, K.mod));
-    }
+  const K = isMac
+    ? { mod: '⌘', shift: '⇧', del: '⌘⌫', rename: 'Return', open: '⌘↓' }
+    : { mod: 'Ctrl+', shift: 'Shift+', del: 'Del', rename: 'F2', open: 'Enter' };
+  document.querySelectorAll('[title]').forEach(el => {
+    const v = el.getAttribute('title');
+    if (v.includes('Ctrl+')) el.setAttribute('title', v.replace(/Ctrl\+Shift\+/g, K.mod + K.shift).replace(/Ctrl\+/g, K.mod));
   });
 
-  const I = {
-    chev: '<svg width="12" height="12" viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    folder: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 011-1h3.3l1.4 1.5h6.3a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1z" fill="#F5C142" stroke="#D49B14" stroke-width=".8"/></svg>',
-    folderOpen: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 011-1h3.3l1.4 1.5h6.3a1 1 0 011 1V6H3.6L1.5 12z" fill="#E3A925" stroke="#C48A0E" stroke-width=".8"/><path d="M3.4 6.5h11.2l-1.9 6H1.6z" fill="#F7CD5B" stroke="#D49B14" stroke-width=".8" stroke-linejoin="round"/></svg>',
-    chat: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5.5A1.5 1.5 0 0112 11H7l-3 2.5V11a1.5 1.5 0 01-1.5-1.5z" fill="none" stroke="#C96442" stroke-width="1.4" stroke-linejoin="round"/></svg>',
-    project: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="4.5" width="12" height="9" rx="1.5" fill="none" stroke="#5B7FBF" stroke-width="1.4"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1M2 8h12" fill="none" stroke="#5B7FBF" stroke-width="1.4"/></svg>',
-    artifact: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="#3E9A7E" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="#3E9A7E" stroke-width="1.4"/></svg>',
-    design: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#8A5CD1" stroke-width="1.4"/><circle cx="5.7" cy="6.3" r="1" fill="#8A5CD1"/><circle cx="9.8" cy="5.6" r="1" fill="#8A5CD1"/><circle cx="10.8" cy="9.2" r="1" fill="#8A5CD1"/></svg>',
-    claude: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 1.8v12.4M1.8 8h12.4M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8" stroke="#C96442" stroke-width="1.6" stroke-linecap="round"/></svg>',
-    link: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="#7A7A7A" stroke-width="1.3"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="#7A7A7A" stroke-width="1.1"/></svg>',
-    folderPlus: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.5 4a1 1 0 011-1h3.3l1.4 1.5h6.3a1 1 0 011 1V12a1 1 0 01-1 1h-11a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 7v4M6 9h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    linkPlus: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6.5 9.5l3-3M5 7.5L3.8 8.7a2.3 2.3 0 003.3 3.3L8.3 10.8M11 8.5l1.2-1.2a2.3 2.3 0 00-3.3-3.3L7.7 5.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    star: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
-    collapse: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M4.5 6L8 3l3.5 3M4.5 10L8 13l3.5-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" transform="rotate(180 8 8)"/></svg>',
-    more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="3.5" cy="8" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="12.5" cy="8" r="1.2" fill="currentColor"/></svg>',
-    back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 3L5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    reload: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    external: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  const STORE = 'claudeNavigator.tree.v1';
+  const WIDTH_STORE = 'claudeNavigator.sideWidth.v2';
+  const LOC_STORE = 'claudeNavigator.location';
+  const VIEW_STORE = 'claudeNavigator.viewMode';
+  const BANNER_STORE = 'claudeNavigator.bannerDismissed';
+  const HOME = 'https://claude.ai/new';
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
   };
-  document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = I[el.dataset.icon] || ''; });
+
+  // ---------- Icons ----------
+  // Small glyphs share a 16px grid and draw with colour C, so they can be reused at large sizes.
+  const G = {
+    folder: C => `<path d="M1.75 4.25a1 1 0 011-1h3.2l1.5 1.5h5.8a1 1 0 011 1v6.5a1 1 0 01-1 1H2.75a1 1 0 01-1-1z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
+    chat: C => `<path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5.5A1.5 1.5 0 0112 11H7l-3 2.5V11a1.5 1.5 0 01-1.5-1.5z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
+    project: C => `<rect x="2" y="4.5" width="12" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1M2 8h12" fill="none" stroke="${C}" stroke-width="1.3"/>`,
+    artifact: C => `<path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="${C}" stroke-width="1.3"/>`,
+    design: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="6.3" r="1" fill="${C}"/><circle cx="9.8" cy="5.6" r="1" fill="${C}"/><circle cx="10.8" cy="9.2" r="1" fill="${C}"/>`,
+    claude: C => `<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" stroke="${C}" stroke-width="1.5" stroke-linecap="round"/>`,
+    link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
+  };
+  const KIND_COLOUR = { chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', design: '#8A5CD1', link: '#7A7A7A' };
+  const KIND_NAME = { folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', design: 'Canva design', claude: 'Claude page', link: 'Web link' };
+  const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
+
+  const BIG_FOLDER = `<svg width="64" height="54" viewBox="0 0 64 54">
+    <path d="M3 6a4 4 0 014-4h15.5a3 3 0 012.1.9L28.5 7H57a4 4 0 014 4v37a4 4 0 01-4 4H7a4 4 0 01-4-4z" fill="#56A6E8"/>
+    <path d="M3 15.5a4 4 0 014-4h50a4 4 0 014 4V48a4 4 0 01-4 4H7a4 4 0 01-4-4z" fill="#8ACBFA"/>
+    <path d="M7 11.5h50a4 4 0 014 4v1H3v-1a4 4 0 014-4z" fill="#A7D8FC"/></svg>`;
+  const bigFile = k => `<svg width="48" height="60" viewBox="0 0 48 60">
+    <path d="M5 1.5h26l15 15V55a3.5 3.5 0 01-3.5 3.5h-37A3.5 3.5 0 012 55V5a3.5 3.5 0 013-3.5z" fill="#fff" stroke="#cfcfcf"/>
+    <path d="M31 1.5V13a3.5 3.5 0 003.5 3.5H46" fill="#f2f2f2" stroke="#cfcfcf"/>
+    <g transform="translate(12 24) scale(1.5)">${G[k](KIND_COLOUR[k])}</g></svg>`;
+
+  const UI = {
+    chev: '<svg width="10" height="10" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    plus: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="5.2" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="10.8" cy="8" r=".9" fill="currentColor"/></svg>',
+    back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    grid: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
+    list: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M5.5 4h8.5M5.5 8h8.5M5.5 12h8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="2.5" cy="4" r="1" fill="currentColor"/><circle cx="2.5" cy="8" r="1" fill="currentColor"/><circle cx="2.5" cy="12" r="1" fill="currentColor"/></svg>',
+    reload: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    star: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    starFilled: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="#F5B400" stroke="#E0A200" stroke-width="1.1" stroke-linejoin="round"/></svg>',
+    external: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    compose: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.3 1.9a1.1 1.1 0 011.6 1.6L8.2 9.2l-2.1.5.5-2.1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+    root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
+  };
+  document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = UI[el.dataset.icon] || ''; });
 
   // ---------- Data ----------
   const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4);
@@ -306,41 +366,44 @@
         Folder('NCTI'),
       ], true),
     ], true),
-    Folder('Personal'),
+    Folder('Personal', [], true),
   ];
-
-  const state = {
-    tree: load(),
-    selectedId: null,
-    activeUrl: null,
-    filter: '',
-  };
-  const history = [];
 
   function load() {
     try {
-      const t = JSON.parse(localStorage.getItem(STORE));
+      const t = JSON.parse(ls.get(STORE));
       if (Array.isArray(t)) return t;
     } catch (e) { /* ignore */ }
     return seed();
   }
-  function save() {
-    try { localStorage.setItem(STORE, JSON.stringify(state.tree)); } catch (e) { /* ignore */ }
-  }
-  function snap() {
-    history.push(JSON.stringify(state.tree));
-    if (history.length > 60) history.shift();
-  }
+
+  const state = {
+    tree: load(),
+    loc: { kind: 'folder', id: null },   // what the main area shows: a folder, or a Claude page
+    pageUrl: '',                          // what the Claude pane is actually showing
+    pageTitle: '',
+    lastFolderId: null,                   // the folder Save puts pages in
+    sideSel: null,
+    browseSel: null,
+    query: '',
+    view: ls.get(VIEW_STORE) === 'list' ? 'list' : 'icons',
+  };
+  const nav = { hist: [], pos: -1 };
+  const undoStack = [];
+
+  function save() { ls.set(STORE, JSON.stringify(state.tree)); }
+  function snap() { undoStack.push(JSON.stringify(state.tree)); if (undoStack.length > 60) undoStack.shift(); }
   function undo() {
-    const prev = history.pop();
+    const prev = undoStack.pop();
     if (!prev) return toast('Nothing to undo');
     state.tree = JSON.parse(prev);
     commit();
-    toast('Undone', false);
+    toast('Undone');
   }
-  function commit() { save(); render(); }
+  function commit() { save(); renderAll(); }
 
   function locate(id, nodes = state.tree, parent = null) {
+    if (!id) return null;
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       if (n.id === id) return { node: n, list: nodes, index: i, parent };
@@ -351,7 +414,7 @@
     }
     return null;
   }
-  // True if `aId` is `bId` or contains it.
+  const nodeOf = id => (locate(id) || {}).node || null;
   function contains(aId, bId) {
     if (aId === bId) return true;
     const a = locate(aId);
@@ -363,11 +426,13 @@
       if (n.type === 'folder') walk(n.children, fn, depth + 1, path.concat(n));
     }
   }
-  function countLinks(n) {
-    let c = 0;
-    walk(n.children, x => { if (x.type === 'link') c++; });
-    return c;
+  function pathTo(id) {
+    const out = [];
+    let loc = locate(id);
+    while (loc) { out.unshift(loc.node); loc = loc.parent ? locate(loc.parent.id) : null; }
+    return out;
   }
+  const childrenOf = id => (id ? (nodeOf(id) || { children: [] }).children : state.tree);
 
   // ---------- URL helpers ----------
   function normUrl(u) {
@@ -375,8 +440,7 @@
   }
   function fixUrl(u) {
     u = (u || '').trim();
-    if (!u) return '';
-    if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
+    if (u && !/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
     return u;
   }
   function kindOf(n) {
@@ -389,14 +453,7 @@
     if (/claude\.ai/.test(u)) return 'claude';
     return 'link';
   }
-  function iconFor(n, open) {
-    const k = kindOf(n);
-    if (k === 'folder') return open ? I.folderOpen : I.folder;
-    return I[k];
-  }
-  function cleanTitle(t) {
-    return (t || '').replace(/\s*[-|–]\s*Claude\s*$/i, '').trim();
-  }
+  const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude\s*$/i, '').trim();
   function guessName(url) {
     const k = kindOf({ type: 'link', url });
     if (k === 'chat') return 'Untitled chat';
@@ -404,136 +461,392 @@
     if (k === 'artifact') return 'Untitled artifact';
     try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
   }
-
-  // ---------- Rendering ----------
-  const treeEl = document.getElementById('tree');
-
-  function matches(n, f) {
-    if (n.name.toLowerCase().includes(f)) return true;
-    if (n.type === 'link') return (n.url || '').toLowerCase().includes(f);
-    return n.children.some(c => matches(c, f));
+  function savedLinksFor(url) {
+    const out = [];
+    if (!url) return out;
+    const u = normUrl(url);
+    walk(state.tree, n => { if (n.type === 'link' && normUrl(n.url) === u) out.push(n); });
+    return out;
   }
 
-  function render() {
-    const f = state.filter.trim().toLowerCase();
+  // ---------- Elements ----------
+  const $ = id => document.getElementById(id);
+  const treeEl = $('tree'), browseEl = $('browse'), pane = $('pane'), searchEl = $('search');
+
+  // ---------- Sidebar ----------
+  // Top-level folders become Finder-style sections; everything inside is a tree.
+  function renderSide() {
     const frag = document.createDocumentFragment();
-    let shown = 0;
-    const build = (nodes, depth) => {
+    const addChildren = (nodes, depth) => {
       for (const n of nodes) {
-        if (f && !matches(n, f)) continue;
-        const open = n.type === 'folder' && (n.open || !!f);
-        frag.appendChild(rowFor(n, depth, open));
-        shown++;
-        if (open) build(n.children, depth + 1);
+        const open = n.type === 'folder' && n.open && n.children.length > 0;
+        frag.appendChild(sideRow(n, depth, open));
+        if (open) addChildren(n.children, depth + 1);
       }
     };
-    build(state.tree, 0);
-    treeEl.replaceChildren(frag);
-    if (!shown) {
+    for (const n of state.tree) {
+      if (n.type === 'folder') {
+        const r = document.createElement('div');
+        r.className = 'row section' + (n.open ? ' open' : '');
+        r.dataset.id = n.id;
+        r.draggable = true;
+        r.setAttribute('role', 'treeitem');
+        r.setAttribute('aria-expanded', String(!!n.open));
+        r.innerHTML = `<span class="label"></span><span class="sec-chev">${UI.chev}</span>`;
+        r.querySelector('.label').textContent = n.name;
+        r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
+        frag.appendChild(r);
+        if (n.open) addChildren(n.children, 0);
+      } else {
+        frag.appendChild(sideRow(n, 0, false));
+      }
+    }
+    if (!state.tree.length) {
       const d = document.createElement('div');
       d.className = 'empty-hint';
-      d.textContent = f ? 'No matches.' : 'No folders yet. Right-click here or use the Folder button.';
-      treeEl.appendChild(d);
+      d.textContent = 'No folders yet. Click New Folder below.';
+      frag.appendChild(d);
     }
-    let folders = 0, links = 0;
-    walk(state.tree, n => n.type === 'folder' ? folders++ : links++);
-    document.getElementById('footInfo').textContent =
-      `${folders} folder${folders === 1 ? '' : 's'}, ${links} link${links === 1 ? '' : 's'}`;
+    treeEl.replaceChildren(frag);
+    applySideSel(false);
   }
 
-  function rowFor(n, depth, open) {
+  function sideRow(n, depth, open) {
     const r = document.createElement('div');
     r.className = 'row';
     r.dataset.id = n.id;
     r.draggable = true;
     r.setAttribute('role', 'treeitem');
     r.style.setProperty('--depth', depth);
-    if (n.id === state.selectedId) r.classList.add('selected');
-    if (n.type === 'link' && state.activeUrl && normUrl(n.url) === state.activeUrl) r.classList.add('active');
     const hasKids = n.type === 'folder' && n.children.length > 0;
     if (n.type === 'folder') r.setAttribute('aria-expanded', String(open));
-    r.innerHTML =
-      `<span class="twisty${open ? ' open' : ''}">${hasKids ? I.chev : ''}</span>` +
-      `<span class="icon">${iconFor(n, open && hasKids)}</span><span class="label"></span>`;
+    r.innerHTML = `<span class="twisty${open ? ' open' : ''}">${hasKids ? UI.chev : ''}</span>` +
+      `<span class="icon">${small(kindOf(n))}</span><span class="label"></span>`;
     r.querySelector('.label').textContent = n.name;
-    if (n.type === 'folder' && !open && hasKids) {
-      const c = countLinks(n);
-      if (c) {
-        const s = document.createElement('span');
-        s.className = 'count';
-        s.textContent = c;
-        r.appendChild(s);
-      }
-    }
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     return r;
   }
 
-  function rowEl(id) { return treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`); }
+  const sideRowEl = id => id && treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`);
 
-  function select(id, { scroll = true } = {}) {
-    state.selectedId = id;
+  function applySideSel(scroll = true) {
     treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
-    const r = id && rowEl(id);
-    if (r) {
-      r.classList.add('selected');
-      if (scroll) r.scrollIntoView({ block: 'nearest' });
+    const r = sideRowEl(state.sideSel);
+    if (r) { r.classList.add('selected'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
+  }
+
+  // The sidebar highlights where you are, like Finder.
+  function syncSideSel() {
+    if (state.query) return;
+    if (state.loc.kind === 'folder') state.sideSel = state.loc.id;
+    else {
+      const hits = savedLinksFor(state.pageUrl || state.loc.url);
+      const inFolder = hits.find(h => ((locate(h.id) || {}).parent || {}).id === state.lastFolderId);
+      state.sideSel = (inFolder || hits[0] || {}).id || null;
+    }
+    applySideSel();
+  }
+
+  // ---------- Main area ----------
+  function renderMain() {
+    const showPage = isApp && state.loc.kind === 'page' && !state.query;
+    pane.hidden = !showPage;
+    browseEl.hidden = showPage;
+    $('pathbar').hidden = showPage;
+    if (showPage) return;
+
+    let items, where = false;
+    if (state.query) {
+      const q = state.query.toLowerCase();
+      items = [];
+      walk(state.tree, n => {
+        if (n.name.toLowerCase().includes(q) || (n.url || '').toLowerCase().includes(q)) items.push(n);
+      });
+      where = true;
+    } else {
+      items = childrenOf(state.loc.id);
+    }
+    const frag = document.createDocumentFragment();
+
+    if (!isApp && !state.query && !ls.get(BANNER_STORE)) {
+      const b = document.createElement('div');
+      b.className = 'banner';
+      b.innerHTML = '<span>Links open Claude in a separate tab here. Use the desktop app to keep Claude inside this window.</span><button class="tb">Got it</button>';
+      b.querySelector('button').addEventListener('click', () => { ls.set(BANNER_STORE, '1'); renderMain(); });
+      frag.appendChild(b);
+    }
+
+    if (!items.length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.innerHTML = state.query
+        ? '<b>No results</b>Try a different word.'
+        : `<b>This folder is empty</b>Open a Claude chat and press ${K.mod}S to save it here, drag links in, or right-click for more.`;
+      frag.appendChild(e);
+    } else if (state.view === 'icons' && !where) {
+      const g = document.createElement('div');
+      g.className = 'grid';
+      for (const n of items) g.appendChild(tileFor(n));
+      frag.appendChild(g);
+    } else {
+      const l = document.createElement('div');
+      l.className = 'list';
+      l.style.setProperty('--col3', where ? '220px' : '170px');
+      const head = document.createElement('div');
+      head.className = 'lhead';
+      head.innerHTML = `<span>Name</span><span>Kind</span><span>${where ? 'Where' : 'Contents'}</span>`;
+      frag.appendChild(head);
+      for (const n of items) l.appendChild(listRowFor(n, where));
+      frag.appendChild(l);
+    }
+    browseEl.replaceChildren(frag);
+    applyBrowseSel(false);
+    renderPathbar(items.length);
+  }
+
+  function tileFor(n) {
+    const t = document.createElement('div');
+    t.className = 'tile item';
+    t.dataset.id = n.id;
+    t.draggable = true;
+    const k = kindOf(n);
+    t.innerHTML = `<div class="big">${k === 'folder' ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
+    t.querySelector('.label').textContent = n.name;
+    t.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    return t;
+  }
+
+  function listRowFor(n, where) {
+    const r = document.createElement('div');
+    r.className = 'lrow item';
+    r.dataset.id = n.id;
+    r.draggable = true;
+    const k = kindOf(n);
+    const third = where
+      ? pathTo(n.id).slice(0, -1).map(p => p.name).join(' › ') || 'Top level'
+      : (n.type === 'folder' ? `${n.children.length} item${n.children.length === 1 ? '' : 's'}` : (n.url || '').replace(/^https?:\/\//, ''));
+    r.innerHTML = `<span class="nm"><span class="icon">${small(k)}</span><span class="label"></span></span>` +
+      `<span class="muted"></span><span class="muted"></span>`;
+    r.querySelector('.label').textContent = n.name;
+    r.children[1].textContent = KIND_NAME[k];
+    r.children[2].textContent = third;
+    r.title = n.type === 'link' ? n.url : n.name;
+    return r;
+  }
+
+  const browseItemEl = id => id && browseEl.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
+  function applyBrowseSel(scroll = true) {
+    browseEl.querySelectorAll('.item.selected').forEach(r => r.classList.remove('selected'));
+    const r = browseItemEl(state.browseSel);
+    if (r) { r.classList.add('selected'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
+  }
+
+  function renderPathbar(count) {
+    const bar = $('pathbar');
+    bar.replaceChildren();
+    const crumb = (label, icon, id) => {
+      const b = document.createElement('span');
+      b.className = 'crumb';
+      b.innerHTML = icon;
+      b.appendChild(document.createTextNode(label));
+      b.addEventListener('click', () => go({ kind: 'folder', id }));
+      return b;
+    };
+    if (state.query) {
+      const s = document.createElement('span');
+      s.textContent = `Searching all folders for “${state.query}”`;
+      bar.appendChild(s);
+    } else {
+      bar.appendChild(crumb('Folders', UI.root, null));
+      for (const p of pathTo(state.loc.id)) {
+        const sep = document.createElement('span');
+        sep.textContent = '›';
+        bar.appendChild(sep);
+        bar.appendChild(crumb(p.name, small('folder', 'currentColor', 12), p.id));
+      }
+    }
+    const st = document.createElement('span');
+    st.id = 'status';
+    st.textContent = `${count} item${count === 1 ? '' : 's'}`;
+    bar.appendChild(st);
+  }
+
+  function renderToolbar() {
+    const page = isApp && state.loc.kind === 'page' && !state.query;
+    $('bBack').disabled = nav.pos <= 0;
+    $('bFwd').disabled = nav.pos >= nav.hist.length - 1;
+    let title;
+    if (state.query) title = 'Search';
+    else if (page) title = cleanTitle(state.pageTitle) || 'Claude';
+    else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : 'Folders';
+    $('title').textContent = title;
+    document.title = title + ' – Claude Navigator';
+    $('viewSeg').hidden = page || !!state.query;
+    $('vIcons').classList.toggle('on', state.view === 'icons');
+    $('vList').classList.toggle('on', state.view === 'list');
+    $('bReload').hidden = !page;
+    $('bExternal').hidden = !page;
+    $('bSave').hidden = !page;
+    if (page) {
+      const f = nodeOf(state.lastFolderId);
+      const saved = savedLinksFor(state.pageUrl).length > 0;
+      $('bSave').firstElementChild.innerHTML = saved ? UI.starFilled : UI.star;
+      $('bSaveText').textContent = f ? `Save to ${f.name}` : 'Save';
+      $('bSave').title = (saved ? 'Already saved. Click to save another copy' : 'Save this page') +
+        (f ? ` in “${f.name}”` : '') + ` (${K.mod}S)`;
     }
   }
 
-  function reveal(id) {
-    const loc = locate(id);
-    if (!loc) return;
-    let p = loc.parent;
-    while (p) { p.open = true; p = locate(p.id).parent; }
-    commit();
-    select(id);
+  function renderAll() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
+
+  // ---------- Navigation (Finder-style back and forward) ----------
+  const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id : normUrl(a.url) === normUrl(b.url)));
+
+  function go(loc, { push = true } = {}) {
+    if (loc.kind === 'page' && !isApp) {
+      // A browser cannot show Claude inside this page, so use one reusable tab.
+      const w = window.open(loc.url, 'claude-pane');
+      if (w) w.focus();
+      const hit = savedLinksFor(loc.url)[0];
+      if (hit) { state.sideSel = hit.id; applySideSel(); }
+      return;
+    }
+    if (loc.kind === 'folder' && loc.id && !nodeOf(loc.id)) loc = { kind: 'folder', id: null };
+    if (loc.kind === 'page') loc.folderId = state.lastFolderId; // remember where Save should go
+    clearQuery();
+    if (push && !sameLoc(nav.hist[nav.pos], loc)) {
+      nav.hist = nav.hist.slice(0, nav.pos + 1);
+      nav.hist.push(loc);
+      nav.pos = nav.hist.length - 1;
+    }
+    state.loc = loc;
+    show();
   }
 
-  function markActive() {
-    treeEl.querySelectorAll('.row.active').forEach(r => r.classList.remove('active'));
-    if (!state.activeUrl) return;
-    walk(state.tree, n => {
-      if (n.type === 'link' && normUrl(n.url) === state.activeUrl) {
-        const r = rowEl(n.id);
-        if (r) r.classList.add('active');
+  function show() {
+    const loc = state.loc;
+    if (loc.kind === 'folder') {
+      state.lastFolderId = loc.id;
+      if (state.browseSel && !childrenOf(loc.id).some(c => c.id === state.browseSel)) state.browseSel = null;
+    } else if (view) {
+      if (loc.folderId !== undefined) state.lastFolderId = nodeOf(loc.folderId) ? loc.folderId : null;
+      let cur = '';
+      try { cur = view.getURL(); } catch (e) { /* not attached yet */ }
+      if (normUrl(cur) !== normUrl(loc.url)) {
+        state.pageUrl = loc.url;
+        state.pageTitle = '';
+        if (viewReady) view.loadURL(loc.url); else view.setAttribute('src', loc.url);
       }
-    });
+    }
+    ls.set(LOC_STORE, JSON.stringify({ loc, lastFolderId: state.lastFolderId }));
+    renderMain();
+    renderToolbar();
+    syncSideSel();
   }
 
-  // ---------- Tree actions ----------
-  function targetFolder() {
-    const s = state.selectedId && locate(state.selectedId);
-    if (!s) return null;
-    return s.node.type === 'folder' ? s.node : s.parent;
+  function clearQuery() { if (state.query) { state.query = ''; searchEl.value = ''; } }
+  function back() { if (nav.pos > 0) { nav.pos--; state.loc = nav.hist[nav.pos]; clearQuery(); show(); } }
+  function forward() { if (nav.pos < nav.hist.length - 1) { nav.pos++; state.loc = nav.hist[nav.pos]; clearQuery(); show(); } }
+  function up() {
+    if (state.loc.kind === 'page') return go({ kind: 'folder', id: state.lastFolderId });
+    const loc = locate(state.loc.id);
+    if (!loc) return;
+    go({ kind: 'folder', id: loc.parent ? loc.parent.id : null });
+    state.browseSel = loc.node.id;
+    applyBrowseSel();
   }
-  function insertInto(folder, node) {
-    (folder ? folder.children : state.tree).push(node);
-    if (folder) folder.open = true;
+
+  function openNode(n, { newWindow = false } = {}) {
+    if (!n) return;
+    if (n.type === 'folder') return go({ kind: 'folder', id: n.id });
+    if (newWindow) return openNewWindow(n.url);
+    const loc = locate(n.id);
+    state.lastFolderId = loc && loc.parent ? loc.parent.id : null;
+    go({ kind: 'page', url: n.url });
+  }
+  function openNewWindow(url) {
+    if (isApp) window.navigatorApp.openWindow(url);
+    else window.open(url, '_blank');
+  }
+  function openExternal(url) {
+    if (isApp) window.navigatorApp.openExternal(url);
+    else window.open(url, '_blank');
+  }
+  function newChat() {
+    if (state.loc.kind === 'folder') state.lastFolderId = state.loc.id;
+    go({ kind: 'page', url: HOME });
+  }
+
+  // ---------- Claude pane (desktop app only) ----------
+  let view = null, viewReady = false;
+  if (isApp) {
+    view = document.createElement('webview');
+    view.setAttribute('partition', 'persist:claude');
+    view.setAttribute('allowpopups', '');
+    pane.appendChild(view);
+    const update = () => {
+      let url = '', title = '';
+      try { url = view.getURL(); title = view.getTitle(); } catch (e) { return; }
+      if (!url || url === 'about:blank') return;
+      state.pageUrl = url;
+      state.pageTitle = title;
+      // Moving around inside Claude updates the current history entry rather than adding one.
+      if (state.loc.kind === 'page') {
+        state.loc.url = url;
+        ls.set(LOC_STORE, JSON.stringify({ loc: state.loc, lastFolderId: state.lastFolderId }));
+      }
+      renderToolbar();
+      syncSideSel();
+    };
+    view.addEventListener('dom-ready', () => { viewReady = true; update(); });
+    ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => view.addEventListener(ev, update));
+    view.addEventListener('did-start-loading', () => $('progress').classList.add('on'));
+    view.addEventListener('did-stop-loading', () => { $('progress').classList.remove('on'); update(); });
+  }
+
+  // ---------- Editing ----------
+  // New things go where you are: the folder on screen, or the folder you came from.
+  function hereFolder() {
+    if (state.query) return null;
+    return state.loc.kind === 'folder' ? state.loc.id : state.lastFolderId;
+  }
+  function insertInto(folderId, node) {
+    const f = folderId ? nodeOf(folderId) : null;
+    (f ? f.children : state.tree).push(node);
+    if (f) f.open = true;
   }
   function toggle(n, force) {
-    if (n.type !== 'folder') return;
+    if (!n || n.type !== 'folder') return;
     n.open = force === undefined ? !n.open : force;
-    commit();
+    save();
+    renderSide();
   }
+  const showingFolder = id => state.loc.kind === 'folder' && state.loc.id === id && !state.query;
 
-  function newFolder(parent = targetFolder()) {
+  function newFolder(parentId = hereFolder()) {
     snap();
-    const f = Folder('New folder');
-    insertInto(parent, f);
-    state.selectedId = f.id;
+    const f = Folder('untitled folder');
+    insertInto(parentId, f);
     commit();
-    startRename(f.id);
+    if (showingFolder(parentId)) {
+      state.browseSel = f.id;
+      applyBrowseSel();
+      startRename(f.id, browseEl);
+    } else {
+      state.sideSel = f.id;
+      applySideSel();
+      startRename(f.id, treeEl);
+    }
   }
 
-  function addLink(parent, name, url, { rename = false } = {}) {
+  function addLink(parentId, name, url, { rename = false } = {}) {
     snap();
     const l = Link(name || guessName(url), url);
-    insertInto(parent, l);
-    state.selectedId = l.id;
+    insertInto(parentId, l);
     commit();
-    select(l.id);
-    if (rename) startRename(l.id);
+    const inView = showingFolder(parentId);
+    if (inView) { state.browseSel = l.id; applyBrowseSel(); }
+    if (rename) startRename(l.id, inView ? browseEl : treeEl);
     return l;
   }
 
@@ -542,15 +855,19 @@
     if (!loc) return;
     const n = loc.node;
     if (n.type === 'folder' && n.children.length) {
-      const c = countLinks(n);
-      if (!confirm(`Delete the folder "${n.name}" and everything inside it${c ? ` (${c} link${c === 1 ? '' : 's'})` : ''}?`)) return;
+      let c = 0;
+      walk(n.children, () => c++);
+      if (!confirm(`Delete “${n.name}” and the ${c} item${c === 1 ? '' : 's'} inside it?`)) return;
     }
     snap();
+    if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
+      state.loc = { kind: 'folder', id: loc.parent ? loc.parent.id : null };
+      nav.hist[nav.pos] = state.loc;
+    }
     loc.list.splice(loc.index, 1);
-    const next = loc.list[loc.index] || loc.list[loc.index - 1] || loc.parent;
-    state.selectedId = next ? next.id : null;
+    if (state.browseSel === id) state.browseSel = null;
     commit();
-    toast(`Deleted "${n.name}"`, true);
+    toast(`Deleted “${n.name}”`, true);
   }
 
   function duplicate(id) {
@@ -560,35 +877,30 @@
     const copy = JSON.parse(JSON.stringify(loc.node));
     const reid = x => { x.id = uid(); if (x.children) x.children.forEach(reid); };
     reid(copy);
-    copy.name += ' (copy)';
+    copy.name += ' copy';
     loc.list.splice(loc.index + 1, 0, copy);
-    state.selectedId = copy.id;
     commit();
   }
 
-  function sortFolder(folder) {
+  function sortFolder(id) {
     snap();
-    const list = folder ? folder.children : state.tree;
-    list.sort((a, b) => (a.type === b.type ? 0 : a.type === 'folder' ? -1 : 1) ||
+    childrenOf(id).sort((a, b) => (a.type === b.type ? 0 : a.type === 'folder' ? -1 : 1) ||
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     commit();
   }
+  function setAllOpen(open) { walk(state.tree, n => { if (n.type === 'folder') n.open = open; }); save(); renderSide(); }
 
-  function setAllOpen(open) {
-    walk(state.tree, n => { if (n.type === 'folder') n.open = open; });
-    commit();
-  }
-
-  function startRename(id) {
-    const r = rowEl(id);
-    const loc = locate(id);
-    if (!r || !loc) return;
-    r.scrollIntoView({ block: 'nearest' });
-    const label = r.querySelector('.label');
+  function startRename(id, scope) {
+    const el = scope === browseEl ? browseItemEl(id) : sideRowEl(id);
+    const n = nodeOf(id);
+    if (!el || !n) return;
+    el.scrollIntoView({ block: 'nearest' });
+    const label = el.querySelector('.label');
     const input = document.createElement('input');
-    input.value = loc.node.name;
+    input.className = 'rename-input';
+    input.value = n.name;
     label.replaceChildren(input);
-    r.draggable = false;
+    el.draggable = false;
     input.focus();
     input.select();
     let done = false;
@@ -596,10 +908,9 @@
       if (done) return;
       done = true;
       const v = input.value.trim();
-      if (ok && v && v !== loc.node.name) { snap(); loc.node.name = v; }
+      if (ok && v && v !== n.name) { snap(); n.name = v; }
       commit();
-      select(id);
-      treeEl.focus({ preventScroll: true });
+      (scope === browseEl ? browseEl : treeEl).focus({ preventScroll: true });
     };
     input.addEventListener('keydown', e => {
       e.stopPropagation();
@@ -607,337 +918,293 @@
       if (e.key === 'Escape') finish(false);
     });
     input.addEventListener('blur', () => finish(true));
-    input.addEventListener('mousedown', e => e.stopPropagation());
-    input.addEventListener('click', e => e.stopPropagation());
+    ['mousedown', 'click', 'dblclick'].forEach(ev => input.addEventListener(ev, e => e.stopPropagation()));
   }
 
   // ---------- Link dialog ----------
-  const dlg = document.getElementById('linkDlg');
-  const fName = document.getElementById('linkName');
-  const fUrl = document.getElementById('linkUrl');
-  const fFolder = document.getElementById('linkFolder');
+  const dlg = $('linkDlg'), fName = $('linkName'), fUrl = $('linkUrl'), fFolder = $('linkFolder');
   let dlgDone = null;
-
   function folderOptions(selectedId, excludeId) {
-    fFolder.replaceChildren();
-    const top = new Option('(Top level)', '');
-    fFolder.add(top);
+    fFolder.replaceChildren(new Option('Top level', ''));
     walk(state.tree, (n, depth, path) => {
       if (n.type !== 'folder') return;
       if (excludeId && (n.id === excludeId || path.some(p => p.id === excludeId))) return;
-      const o = new Option('   '.repeat(depth + 1) + n.name, n.id);
-      fFolder.add(o);
+      fFolder.add(new Option('   '.repeat(depth + 1) + n.name, n.id));
     });
     fFolder.value = selectedId || '';
   }
-
-  function openLinkDialog({ title = 'Add link', name = '', url = '', folderId = null, onSave }) {
-    document.getElementById('linkDlgTitle').textContent = title;
+  function openDialog({ title, name = '', url = '', folderId = null, excludeId = null, folderOnly = false, onSave }) {
+    $('linkDlgTitle').textContent = title;
+    $('lblName').hidden = folderOnly;
+    $('lblUrl').hidden = folderOnly;
+    fUrl.required = !folderOnly;
     fName.value = name;
     fUrl.value = url;
-    folderOptions(folderId);
+    folderOptions(folderId, excludeId);
     dlgDone = onSave;
+    dlg.returnValue = '';
     dlg.showModal();
-    (url ? fName : fUrl).focus();
+    (folderOnly ? fFolder : url ? fName : fUrl).focus();
   }
   dlg.addEventListener('close', () => {
-    if (dlg.returnValue !== 'ok' || !dlgDone) return;
-    const url = fixUrl(fUrl.value);
-    if (!url) return;
-    const folder = fFolder.value ? locate(fFolder.value).node : null;
-    dlgDone({ name: fName.value.trim() || guessName(url), url, folder });
+    const done = dlgDone;
     dlgDone = null;
+    if (dlg.returnValue !== 'ok' || !done) return;
+    done({ name: fName.value.trim(), url: fixUrl(fUrl.value), folderId: fFolder.value || null });
   });
 
-  function promptNewLink(url = '') {
-    const f = targetFolder();
-    openLinkDialog({
-      title: 'Add link', url, folderId: f ? f.id : null,
-      onSave: ({ name, url, folder }) => addLink(folder, name, url),
+  function promptNewLink(folderId = hereFolder()) {
+    openDialog({
+      title: 'Add Link', folderId,
+      onSave: ({ name, url, folderId }) => { if (url) addLink(folderId, name || guessName(url), url); },
     });
   }
-
   function editLink(id) {
     const loc = locate(id);
-    if (!loc || loc.node.type !== 'link') return;
-    openLinkDialog({
-      title: 'Edit link', name: loc.node.name, url: loc.node.url, folderId: loc.parent ? loc.parent.id : null,
-      onSave: ({ name, url, folder }) => {
+    if (!loc) return;
+    openDialog({
+      title: 'Edit Link', name: loc.node.name, url: loc.node.url, folderId: loc.parent ? loc.parent.id : null,
+      onSave: ({ name, url, folderId }) => {
+        if (!url) return;
         snap();
         const cur = locate(id);
-        cur.node.name = name;
+        cur.node.name = name || cur.node.name;
         cur.node.url = url;
-        if ((cur.parent ? cur.parent.id : null) !== (folder ? folder.id : null)) {
-          cur.list.splice(cur.index, 1);
-          insertInto(folder, cur.node);
-        }
+        moveNode(cur, folderId);
         commit();
-        select(id);
       },
     });
   }
-
   function moveTo(id) {
     const loc = locate(id);
     if (!loc) return;
-    if (loc.node.type === 'link') return editLink(id);
-    // Folder: reuse the dialog's folder picker via a tiny prompt.
-    document.getElementById('linkDlgTitle').textContent = `Move "${loc.node.name}"`;
-    folderOptions(loc.parent ? loc.parent.id : null, id);
-    fName.closest('label').hidden = true;
-    fUrl.closest('label').hidden = true;
-    fUrl.required = false;
-    dlgDone = null;
-    dlg.showModal();
-    fFolder.focus();
-    dlg.addEventListener('close', function once() {
-      dlg.removeEventListener('close', once);
-      fName.closest('label').hidden = false;
-      fUrl.closest('label').hidden = false;
-      fUrl.required = true;
-      if (dlg.returnValue !== 'ok') return;
-      const dest = fFolder.value ? locate(fFolder.value).node : null;
-      snap();
-      const cur = locate(id);
-      cur.list.splice(cur.index, 1);
-      insertInto(dest, cur.node);
-      commit();
-      reveal(id);
+    openDialog({
+      title: `Move “${loc.node.name}” to:`, folderId: loc.parent ? loc.parent.id : null, excludeId: id, folderOnly: true,
+      onSave: ({ folderId }) => { snap(); moveNode(locate(id), folderId); commit(); },
     });
   }
-
-  // ---------- Viewer (desktop app webview or browser fallback) ----------
-  const pane = document.getElementById('pane');
-  const paneTitle = document.getElementById('paneTitle');
-  const progress = document.getElementById('progress');
-  let view = null;
-
-  if (isApp) {
-    view = document.createElement('webview');
-    view.setAttribute('partition', 'persist:claude');
-    view.setAttribute('allowpopups', '');
-    let start = HOME;
-    try { start = localStorage.getItem(LAST_URL) || HOME; } catch (e) { /* ignore */ }
-    view.setAttribute('src', start);
-    pane.appendChild(view);
-
-    const update = () => {
-      let url = '', title = '';
-      try { url = view.getURL(); title = view.getTitle(); } catch (e) { return; }
-      state.activeUrl = normUrl(url);
-      paneTitle.textContent = cleanTitle(title) || 'Claude';
-      paneTitle.title = url;
-      document.title = (cleanTitle(title) ? cleanTitle(title) + ' - ' : '') + 'Claude Navigator';
-      document.getElementById('pBack').disabled = !view.canGoBack();
-      document.getElementById('pFwd').disabled = !view.canGoForward();
-      try { if (/^https:\/\/claude\.ai\//.test(url)) localStorage.setItem(LAST_URL, url); } catch (e) { /* ignore */ }
-      markActive();
-    };
-    ['did-navigate', 'did-navigate-in-page', 'page-title-updated', 'dom-ready'].forEach(ev => view.addEventListener(ev, update));
-    view.addEventListener('did-start-loading', () => progress.classList.add('on'));
-    view.addEventListener('did-stop-loading', () => { progress.classList.remove('on'); update(); });
-  } else {
-    // Plain browser: claude.ai cannot be embedded, so links open in one reusable tab.
-    document.querySelector('.pane-bar').hidden = true;
-    document.getElementById('tSaveCurrent').hidden = true;
-    pane.innerHTML = `
-      <div class="welcome">
-        <h1>Your Claude folders</h1>
-        <p>Click any link in the tree and it opens in Claude in a separate tab, with every Claude feature available.</p>
-        <p>Claude does not allow itself to be shown inside another web page. Run the desktop app version to see Claude right here, next to your folders.</p>
-        <p>Tip: drag a link from the browser address bar onto any folder to save it. Right-click for more options. <kbd>${K.rename}</kbd> renames, <kbd>${K.del}</kbd> deletes, <kbd>${K.mod.replace('+', '')}</kbd>+<kbd>Z</kbd> undoes.</p>
-      </div>`;
+  function moveNode(cur, folderId) {
+    if ((cur.parent ? cur.parent.id : null) === folderId) return;
+    cur.list.splice(cur.index, 1);
+    insertInto(folderId, cur.node);
   }
 
-  function openUrl(url, { newWindow = false } = {}) {
-    if (!url) return;
-    if (isApp && !newWindow) {
-      view.loadURL(url);
-    } else if (isApp && newWindow) {
-      window.navigatorApp.openWindow(url);
-    } else {
-      const w = window.open(url, newWindow ? '_blank' : 'claude-pane');
-      if (w) w.focus();
-      state.activeUrl = normUrl(url);
-      markActive();
-    }
-  }
-  function openExternal(url) {
-    if (isApp) window.navigatorApp.openExternal(url);
-    else window.open(url, '_blank');
+  function saveCurrent(folderId = state.lastFolderId) {
+    if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
+    const url = state.pageUrl;
+    const name = cleanTitle(state.pageTitle) || guessName(url);
+    addLink(folderId, name, url);
+    const f = nodeOf(folderId);
+    toast(`Saved “${name}” to ${f ? f.name : 'top level'}`, true);
   }
 
-  function saveCurrent(folder = targetFolder()) {
-    if (!isApp) return promptNewLink();
-    const url = view.getURL();
-    const name = cleanTitle(view.getTitle()) || guessName(url);
-    const existing = [];
-    walk(state.tree, n => { if (n.type === 'link' && normUrl(n.url) === normUrl(url)) existing.push(n); });
-    addLink(folder, name, url, { rename: true });
-    toast(existing.length ? `Saved. This page is also in ${existing.length} other place${existing.length === 1 ? '' : 's'}.` : `Saved to ${folder ? folder.name : 'top level'}`);
-  }
-
-  // ---------- Context menu ----------
-  const menu = document.getElementById('menu');
-  function showMenu(x, y, items) {
+  // ---------- Context menus ----------
+  const menu = $('menu');
+  function showMenu(x, y, items, { above = false } = {}) {
     menu.replaceChildren();
     for (const it of items) {
       if (!it) continue;
-      if (it === '-') { menu.appendChild(document.createElement('hr')); continue; }
+      if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `<span class="mi">${it.icon ? I[it.icon] : ''}</span><span></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
-      b.children[1].textContent = it.label;
-      if (it.danger) b.style.color = '#c0392b';
+      b.innerHTML = `<span></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.firstChild.textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
       menu.appendChild(b);
     }
+    if (menu.lastChild && menu.lastChild.tagName === 'HR') menu.lastChild.remove();
     menu.classList.add('show');
     const r = menu.getBoundingClientRect();
-    menu.style.left = Math.min(x, innerWidth - r.width - 6) + 'px';
-    menu.style.top = Math.min(y, innerHeight - r.height - 6) + 'px';
-    menu.querySelector('button:not(:disabled)')?.focus();
+    if (above) y -= r.height;
+    menu.style.left = Math.max(4, Math.min(x, innerWidth - r.width - 6)) + 'px';
+    menu.style.top = Math.max(4, Math.min(y, innerHeight - r.height - 6)) + 'px';
   }
   function hideMenu() { menu.classList.remove('show'); }
   document.addEventListener('mousedown', e => { if (!menu.contains(e.target)) hideMenu(); });
   window.addEventListener('blur', hideMenu);
-  menu.addEventListener('keydown', e => {
-    const btns = [...menu.querySelectorAll('button:not(:disabled)')];
-    const i = btns.indexOf(document.activeElement);
-    if (e.key === 'ArrowDown') btns[(i + 1) % btns.length].focus();
-    else if (e.key === 'ArrowUp') btns[(i - 1 + btns.length) % btns.length].focus();
-    else if (e.key === 'Escape') { hideMenu(); treeEl.focus(); }
-    else return;
-    e.preventDefault();
-  });
+  window.addEventListener('resize', hideMenu);
 
-  function menuFor(n) {
+  function menuFor(n, scope) {
+    const savePage = isApp && state.pageUrl;
     if (!n) {
+      const here = scope === browseEl ? hereFolder() : null;
       return [
-        { label: 'New folder', icon: 'folderPlus', run: () => newFolder(null) },
-        { label: 'Add link', icon: 'linkPlus', run: () => { state.selectedId = null; promptNewLink(); } },
-        isApp && { label: 'Save current page here', icon: 'star', run: () => saveCurrent(null) },
+        { label: 'New Folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) },
+        { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
+        savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
         '-',
-        { label: 'Sort top level A to Z', run: () => sortFolder(null) },
-        { label: 'Expand all', run: () => setAllOpen(true) },
-        { label: 'Collapse all', run: () => setAllOpen(false) },
+        scope === browseEl && { label: 'as Icons', key: K.mod + '1', run: () => setView('icons') },
+        scope === browseEl && { label: 'as List', key: K.mod + '2', run: () => setView('list') },
+        { label: 'Sort by Name', run: () => sortFolder(here) },
+        '-',
+        { label: 'Expand All in Sidebar', run: () => setAllOpen(true) },
+        { label: 'Collapse All in Sidebar', run: () => setAllOpen(false) },
       ];
     }
+    const searching = scope === browseEl && state.query;
     if (n.type === 'folder') {
       return [
-        { label: n.open ? 'Collapse' : 'Expand', run: () => toggle(n) },
+        { label: 'Open', key: K.open, run: () => openNode(n) },
+        searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
-        { label: 'New subfolder', icon: 'folderPlus', run: () => newFolder(n) },
-        { label: 'Add link here', icon: 'linkPlus', run: () => { state.selectedId = n.id; promptNewLink(); } },
-        isApp && { label: 'Save current page here', icon: 'star', run: () => saveCurrent(n) },
-        { label: 'New chat, then save here', icon: 'chat', run: () => { state.selectedId = n.id; openUrl(HOME); toast('When the chat has a title, click Save page'); } },
+        { label: 'New Folder Inside', run: () => newFolder(n.id) },
+        { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
+        savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Inside`, run: () => { state.lastFolderId = n.id; saveCurrent(n.id); } },
+        isApp && { label: 'New Chat to Save Here', run: () => { state.lastFolderId = n.id; go({ kind: 'page', url: HOME }); toast(`Press ${K.mod}S once the chat has a title`); } },
         '-',
-        { label: 'Rename', key: K.rename, run: () => startRename(n.id) },
-        { label: 'Move to...', run: () => moveTo(n.id) },
+        { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
+        { label: 'Move To…', run: () => moveTo(n.id) },
         { label: 'Duplicate', run: () => duplicate(n.id) },
-        { label: 'Sort contents A to Z', run: () => sortFolder(n) },
+        { label: 'Sort Contents by Name', run: () => sortFolder(n.id) },
         '-',
-        { label: 'Delete', key: K.del, danger: true, run: () => removeNode(n.id) },
+        { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
       ];
     }
     return [
-      { label: 'Open', key: K.open, run: () => openUrl(n.url) },
-      { label: 'Open in new window', run: () => openUrl(n.url, { newWindow: true }) },
-      { label: 'Open in web browser', icon: 'external', run: () => openExternal(n.url) },
-      { label: 'Copy link', run: () => { navigator.clipboard.writeText(n.url).then(() => toast('Link copied')); } },
+      { label: 'Open', key: K.open, run: () => openNode(n) },
+      { label: 'Open in New Window', run: () => openNewWindow(n.url) },
+      { label: 'Open in Web Browser', run: () => openExternal(n.url) },
+      searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
       '-',
-      { label: 'Rename', key: K.rename, run: () => startRename(n.id) },
-      { label: 'Edit link or move...', run: () => editLink(n.id) },
-      isApp && { label: 'Replace with current page', run: () => { snap(); n.url = view.getURL(); commit(); toast('Link updated'); } },
+      { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
+      { label: 'Edit Link…', run: () => editLink(n.id) },
+      { label: 'Move To…', run: () => moveTo(n.id) },
       { label: 'Duplicate', run: () => duplicate(n.id) },
+      { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
+      savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
-      { label: 'Delete', key: K.del, danger: true, run: () => removeNode(n.id) },
+      { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
     ];
   }
 
-  // ---------- Tree events ----------
+  function revealInFolder(id) {
+    const loc = locate(id);
+    if (!loc) return;
+    go({ kind: 'folder', id: loc.parent ? loc.parent.id : null });
+    state.browseSel = id;
+    applyBrowseSel();
+  }
+
+  function setView(v) {
+    state.view = v;
+    ls.set(VIEW_STORE, v);
+    renderMain();
+    renderToolbar();
+  }
+
+  // ---------- Sidebar events ----------
   treeEl.addEventListener('click', e => {
     const row = e.target.closest('.row');
-    if (!row) { select(null); return; }
-    const loc = locate(row.dataset.id);
-    if (!loc) return;
-    select(loc.node.id, { scroll: false });
-    if (loc.node.type === 'folder') toggle(loc.node);
-    else openUrl(loc.node.url, { newWindow: e.ctrlKey || e.metaKey });
+    if (!row) return;
+    const n = nodeOf(row.dataset.id);
+    if (!n) return;
+    if (row.classList.contains('section')) { state.sideSel = n.id; applySideSel(false); return toggle(n); }
+    if (n.type === 'folder' && e.target.closest('.twisty')) return toggle(n);
+    openNode(n, { newWindow: e.metaKey || e.ctrlKey });
   });
-
+  treeEl.addEventListener('dblclick', e => {
+    const row = e.target.closest('.row.section');
+    if (row) openNode(nodeOf(row.dataset.id));
+  });
   treeEl.addEventListener('auxclick', e => {
-    if (e.button !== 1) return;
-    const row = e.target.closest('.row');
-    const loc = row && locate(row.dataset.id);
-    if (loc && loc.node.type === 'link') openUrl(loc.node.url, { newWindow: true });
+    const row = e.button === 1 && e.target.closest('.row');
+    const n = row && nodeOf(row.dataset.id);
+    if (n && n.type === 'link') openNewWindow(n.url);
   });
-
   treeEl.addEventListener('contextmenu', e => {
     e.preventDefault();
     const row = e.target.closest('.row');
-    const loc = row && locate(row.dataset.id);
-    if (loc) select(loc.node.id, { scroll: false });
-    showMenu(e.clientX, e.clientY, menuFor(loc ? loc.node : null));
+    const n = row && nodeOf(row.dataset.id);
+    if (n) { state.sideSel = n.id; applySideSel(false); }
+    showMenu(e.clientX, e.clientY, menuFor(n, treeEl));
   });
-
   treeEl.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     const ids = [...treeEl.querySelectorAll('.row')].map(r => r.dataset.id);
     if (!ids.length) return;
-    let i = ids.indexOf(state.selectedId);
-    const cur = i >= 0 ? locate(ids[i]) : null;
-    const n = cur && cur.node;
+    const i = ids.indexOf(state.sideSel);
+    const loc = locate(state.sideSel);
+    const n = loc && loc.node;
+    const isSection = !!(n && !loc.parent && n.type === 'folder');
+    const mod = e.metaKey || e.ctrlKey;
+    const pick = id => {
+      if (!id) return;
+      state.sideSel = id;
+      applySideSel();
+      const l = locate(id);
+      if (l && l.node.type === 'folder' && l.parent) go({ kind: 'folder', id });
+    };
     switch (e.key) {
-      case 'ArrowDown':
-        if (e.metaKey && n) { n.type === 'folder' ? toggle(n, true) : openUrl(n.url); break; }
-        select(ids[Math.min(ids.length - 1, i + 1)]);
-        break;
-      case 'ArrowUp': select(ids[i <= 0 ? 0 : i - 1]); break;
-      case 'Home': select(ids[0]); break;
-      case 'End': select(ids[ids.length - 1]); break;
-      case 'ArrowRight':
-        if (n && n.type === 'folder' && n.children.length) {
-          if (!n.open) toggle(n, true);
-          else select(ids[i + 1]);
-        }
-        break;
+      case 'ArrowDown': if (mod) { if (n) openNode(n); } else pick(ids[Math.min(ids.length - 1, i + 1)]); break;
+      case 'ArrowUp': if (mod) up(); else pick(ids[i <= 0 ? 0 : i - 1]); break;
+      case 'ArrowRight': if (n && n.type === 'folder') { if (!n.open) toggle(n, true); else pick(ids[i + 1]); } break;
       case 'ArrowLeft':
         if (n) {
-          if (n.type === 'folder' && n.open && n.children.length) toggle(n, false);
-          else if (cur.parent) select(cur.parent.id);
+          if (n.type === 'folder' && n.open && (isSection || n.children.length)) toggle(n, false);
+          else if (loc.parent) pick(loc.parent.id);
         }
         break;
-      case 'Enter':
-        if (!n) break;
-        if (isMac) startRename(n.id);
-        else n.type === 'folder' ? toggle(n) : openUrl(n.url);
-        break;
-      case 'o': case 'O':
-        if (!(e.metaKey || e.ctrlKey) || !n) return;
-        n.type === 'folder' ? toggle(n, true) : openUrl(n.url);
-        break;
-      case 'F2': if (n) startRename(n.id); break;
-      case 'Delete': case 'Backspace': if (n) removeNode(n.id); break;
-      case 'ContextMenu': {
-        if (!n) return;
-        const r = rowEl(n.id).getBoundingClientRect();
-        showMenu(r.left + 30, r.bottom, menuFor(n));
-        break;
-      }
+      case 'Enter': case ' ': if (n) (isSection ? toggle(n) : openNode(n)); break;
+      case 'F2': if (n) startRename(n.id, treeEl); break;
+      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNode(n.id); break;
       default: return;
     }
     e.preventDefault();
   });
 
-  // ---------- Drag and drop ----------
+  // ---------- Main area events ----------
+  browseEl.addEventListener('mousedown', e => {
+    if (e.target.closest('input, button, .banner')) return;
+    const it = e.target.closest('.item');
+    state.browseSel = it ? it.dataset.id : null;
+    applyBrowseSel(false);
+  });
+  browseEl.addEventListener('dblclick', e => {
+    const it = e.target.closest('.item');
+    if (it) openNode(nodeOf(it.dataset.id), { newWindow: e.metaKey || e.ctrlKey });
+  });
+  browseEl.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const it = e.target.closest('.item');
+    state.browseSel = it ? it.dataset.id : null;
+    applyBrowseSel(false);
+    showMenu(e.clientX, e.clientY, menuFor(it ? nodeOf(it.dataset.id) : null, browseEl));
+  });
+  browseEl.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    const ids = [...browseEl.querySelectorAll('.item')].map(x => x.dataset.id);
+    const i = ids.indexOf(state.browseSel);
+    const n = nodeOf(state.browseSel);
+    const mod = e.metaKey || e.ctrlKey;
+    const grid = browseEl.querySelector('.grid');
+    const cols = grid ? Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').length) : 1;
+    const pick = j => { if (ids.length) { state.browseSel = ids[Math.max(0, Math.min(ids.length - 1, j))]; applyBrowseSel(); } };
+    switch (e.key) {
+      case 'ArrowDown': if (mod) { if (n) openNode(n); } else pick(i < 0 ? 0 : i + cols); break;
+      case 'ArrowUp': if (mod) up(); else pick(i < 0 ? 0 : i - cols); break;
+      case 'ArrowRight': if (!grid) return; pick(i + 1); break;
+      case 'ArrowLeft': if (!grid) return; pick(i - 1); break;
+      case 'Home': pick(0); break;
+      case 'End': pick(ids.length - 1); break;
+      case 'Enter': if (n) (isMac ? startRename(n.id, browseEl) : openNode(n)); break;
+      case 'F2': if (n) startRename(n.id, browseEl); break;
+      case 'o': case 'O': if (!(mod && n)) return; openNode(n); break;
+      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNode(n.id); break;
+      case 'Escape': state.browseSel = null; applyBrowseSel(); break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+
+  // ---------- Drag and drop (sidebar and main area) ----------
   const NAV_TYPE = 'application/x-claude-nav-id';
-  let dropTarget = null, hoverId = null, hoverTimer = null;
+  let dropTarget = null, hoverId = null, hoverTimer = null, dragId = null;
 
   function clearDrop() {
     treeEl.classList.remove('drop-root');
-    treeEl.querySelectorAll('.drop-into,.drop-before,.drop-after').forEach(r => r.classList.remove('drop-into', 'drop-before', 'drop-after'));
+    browseEl.classList.remove('drop-here');
+    document.querySelectorAll('.drop-into,.drop-before,.drop-after').forEach(r => r.classList.remove('drop-into', 'drop-before', 'drop-after'));
   }
   function extractUrl(dt) {
     const list = (dt.getData('text/uri-list') || '').split(/\r?\n/).find(l => l && !l.startsWith('#'));
@@ -945,78 +1212,84 @@
     const t = (dt.getData('text/plain') || '').trim();
     return /^https?:\/\/\S+$/i.test(t) ? t : '';
   }
-  function hasUrl(dt) {
-    const t = [...dt.types];
-    return t.includes('text/uri-list') || t.includes('text/plain');
-  }
+  const isInternal = dt => [...dt.types].includes(NAV_TYPE);
+  const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain');
 
-  treeEl.addEventListener('dragstart', e => {
-    const row = e.target.closest('.row');
-    if (!row) return;
-    const loc = locate(row.dataset.id);
+  function onDragStart(e) {
+    const el = e.target.closest('[data-id]');
+    if (!el) return;
+    const n = nodeOf(el.dataset.id);
+    dragId = n.id;
     e.dataTransfer.effectAllowed = 'copyMove';
-    e.dataTransfer.setData(NAV_TYPE, row.dataset.id);
-    if (loc.node.type === 'link') {
-      e.dataTransfer.setData('text/uri-list', loc.node.url);
-      e.dataTransfer.setData('text/plain', loc.node.url);
+    e.dataTransfer.setData(NAV_TYPE, n.id);
+    if (n.type === 'link') {
+      e.dataTransfer.setData('text/uri-list', n.url);
+      e.dataTransfer.setData('text/plain', n.url);
     }
-    row.classList.add('dragging');
+    el.classList.add('dragging');
     hideMenu();
-  });
-  treeEl.addEventListener('dragend', e => {
-    e.target.closest?.('.row')?.classList.remove('dragging');
+  }
+  function onDragEnd() {
+    document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
     clearDrop();
     clearTimeout(hoverTimer);
-  });
+    dragId = null;
+  }
+  function accept(e) {
+    const internal = isInternal(e.dataTransfer);
+    if (!internal && !hasUrl(e.dataTransfer)) return null;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = internal ? 'move' : 'copy';
+    clearDrop();
+    return internal;
+  }
+  function blocked(e, folderId) {
+    if (dragId && folderId && contains(dragId, folderId)) { e.dataTransfer.dropEffect = 'none'; dropTarget = null; return true; }
+    return false;
+  }
 
   treeEl.addEventListener('dragover', e => {
-    const internal = [...e.dataTransfer.types].includes(NAV_TYPE);
-    if (!internal && !hasUrl(e.dataTransfer)) return;
-    e.preventDefault();
-    clearDrop();
+    if (accept(e) === null) return;
     const row = e.target.closest('.row');
-    if (!row) {
-      treeEl.classList.add('drop-root');
-      dropTarget = { id: null, zone: 'root' };
-      e.dataTransfer.dropEffect = internal ? 'move' : 'copy';
-      return;
-    }
+    if (!row) { treeEl.classList.add('drop-root'); dropTarget = { id: null, zone: 'into' }; return; }
     const id = row.dataset.id;
-    const n = locate(id).node;
-    const dragging = treeEl.querySelector('.row.dragging');
-    if (internal && dragging && contains(dragging.dataset.id, id)) {
-      e.dataTransfer.dropEffect = 'none';
-      dropTarget = null;
-      return;
-    }
+    const n = nodeOf(id);
+    if (blocked(e, id)) return;
     const rect = row.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height;
-    const zone = n.type === 'folder' ? (y < 0.25 ? 'before' : y > 0.75 ? 'after' : 'into') : (y < 0.5 ? 'before' : 'after');
+    const zone = n.type === 'folder'
+      ? (y < 0.25 ? 'before' : y > 0.75 && !row.classList.contains('section') ? 'after' : 'into')
+      : (y < 0.5 ? 'before' : 'after');
     row.classList.add('drop-' + zone);
     dropTarget = { id, zone };
-    e.dataTransfer.dropEffect = internal ? 'move' : 'copy';
-
-    // Hovering over a closed folder opens it, like Explorer.
-    if (zone === 'into' && !n.open && n.children.length) {
+    // Hovering over a closed folder opens it.
+    if (zone === 'into' && !n.open) {
       if (hoverId !== id) {
         clearTimeout(hoverTimer);
         hoverId = id;
-        hoverTimer = setTimeout(() => {
-          n.open = true;
-          save();
-          const dragId = dragging && dragging.dataset.id;
-          render();
-          if (dragId) rowEl(dragId)?.classList.add('dragging');
-        }, 650);
+        hoverTimer = setTimeout(() => { n.open = true; save(); renderSide(); }, 650);
       }
     } else { clearTimeout(hoverTimer); hoverId = null; }
   });
 
-  treeEl.addEventListener('dragleave', e => {
-    if (!treeEl.contains(e.relatedTarget)) { clearDrop(); clearTimeout(hoverTimer); hoverId = null; }
+  browseEl.addEventListener('dragover', e => {
+    if (accept(e) === null) return;
+    const it = e.target.closest('.item');
+    const n = it && nodeOf(it.dataset.id);
+    if (n && n.type === 'folder' && n.id !== dragId) {
+      if (blocked(e, n.id)) return;
+      it.classList.add('drop-into');
+      dropTarget = { id: n.id, zone: 'into' };
+      return;
+    }
+    if (state.query) { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
+    const here = state.loc.kind === 'folder' ? state.loc.id : null;
+    if (blocked(e, here)) return;
+    browseEl.classList.add('drop-here');
+    dropTarget = { id: here, zone: 'into' };
   });
 
-  treeEl.addEventListener('drop', e => {
+  function onDrop(e) {
     e.preventDefault();
     clearTimeout(hoverTimer);
     hoverId = null;
@@ -1024,12 +1297,13 @@
     dropTarget = null;
     clearDrop();
     if (!t) return;
-    const dragId = e.dataTransfer.getData(NAV_TYPE);
+    const srcId = e.dataTransfer.getData(NAV_TYPE);
     let node, isNew = false;
-    if (dragId) {
-      if (t.id && contains(dragId, t.id)) return;
+    if (srcId) {
+      if (t.id && contains(srcId, t.id)) return;
+      const src = locate(srcId);
+      if (t.zone === 'into' && (src.parent ? src.parent.id : null) === t.id) return; // already there
       snap();
-      const src = locate(dragId);
       src.list.splice(src.index, 1);
       node = src.node;
     } else {
@@ -1039,54 +1313,64 @@
       node = Link(guessName(url), url);
       isNew = true;
     }
-    if (!t.id) state.tree.push(node);
+    if (t.zone === 'into') insertInto(t.id, node);
     else {
       const tgt = locate(t.id);
-      if (t.zone === 'into') { tgt.node.children.push(node); tgt.node.open = true; }
-      else tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, node);
+      tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, node);
     }
-    state.selectedId = node.id;
     commit();
-    if (isNew) startRename(node.id);
+    if (isNew) startRename(node.id, browseItemEl(node.id) ? browseEl : treeEl);
+  }
+
+  [treeEl, browseEl].forEach(el => {
+    el.addEventListener('dragstart', onDragStart);
+    el.addEventListener('dragend', onDragEnd);
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) { clearDrop(); clearTimeout(hoverTimer); hoverId = null; } });
+    el.addEventListener('drop', onDrop);
   });
 
   // ---------- Toolbar, search, shortcuts ----------
-  const searchEl = document.getElementById('search');
-  searchEl.addEventListener('input', () => { state.filter = searchEl.value; render(); });
+  $('bBack').addEventListener('click', back);
+  $('bFwd').addEventListener('click', forward);
+  $('vIcons').addEventListener('click', () => setView('icons'));
+  $('vList').addEventListener('click', () => setView('list'));
+  $('bReload').addEventListener('click', () => view && view.reload());
+  $('bSave').addEventListener('click', () => saveCurrent());
+  $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
+  $('bNewChat').addEventListener('click', newChat);
+  $('sNewFolder').addEventListener('click', () => newFolder());
+
+  searchEl.addEventListener('input', () => {
+    state.query = searchEl.value.trim();
+    state.browseSel = null;
+    renderMain();
+    renderToolbar();
+    if (!state.query) syncSideSel();
+  });
   searchEl.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { searchEl.value = ''; state.filter = ''; render(); treeEl.focus(); }
-    if (e.key === 'ArrowDown' || e.key === 'Enter') {
-      const first = treeEl.querySelector('.row');
-      if (first) { select(first.dataset.id); treeEl.focus(); e.preventDefault(); }
+    if (e.key === 'Escape') { searchEl.value = ''; state.query = ''; renderMain(); renderToolbar(); syncSideSel(); browseEl.focus(); }
+    if ((e.key === 'ArrowDown' || e.key === 'Enter') && state.query) {
+      const first = browseEl.querySelector('.item');
+      if (first) { state.browseSel = first.dataset.id; applyBrowseSel(); browseEl.focus(); e.preventDefault(); }
     }
   });
 
-  document.getElementById('newChatBtn').addEventListener('click', () => openUrl(HOME));
-  document.getElementById('tNewFolder').addEventListener('click', () => newFolder());
-  document.getElementById('tNewLink').addEventListener('click', () => promptNewLink());
-  document.getElementById('tSaveCurrent').addEventListener('click', () => saveCurrent());
-  document.getElementById('pSave').addEventListener('click', () => saveCurrent());
-  document.getElementById('tCollapse').addEventListener('click', () => setAllOpen(false));
-  document.getElementById('pBack').addEventListener('click', () => view && view.canGoBack() && view.goBack());
-  document.getElementById('pFwd').addEventListener('click', () => view && view.canGoForward() && view.goForward());
-  document.getElementById('pReload').addEventListener('click', () => view && view.reload());
-  document.getElementById('pExternal').addEventListener('click', () => view && openExternal(view.getURL()));
-
-  document.getElementById('tMore').addEventListener('click', e => {
+  $('sMore').addEventListener('click', e => {
     const r = e.currentTarget.getBoundingClientRect();
-    showMenu(r.left, r.bottom + 4, [
-      { label: 'Expand all', run: () => setAllOpen(true) },
-      { label: 'Collapse all', run: () => setAllOpen(false) },
-      { label: 'Undo', key: K.mod + 'Z', disabled: !history.length, run: undo },
+    showMenu(r.left, r.top - 4, [
+      { label: 'Undo', key: K.mod + 'Z', disabled: !undoStack.length, run: undo },
       '-',
-      { label: 'Back up folders to a file', run: exportTree },
-      { label: 'Restore folders from a file', run: () => document.getElementById('importFile').click() },
+      { label: 'Expand All', run: () => setAllOpen(true) },
+      { label: 'Collapse All', run: () => setAllOpen(false) },
       '-',
-      { label: 'Reset to example folders', danger: true, run: () => {
+      { label: 'Back Up Folders to a File…', run: exportTree },
+      { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
+      '-',
+      { label: 'Reset to Example Folders', run: () => {
         if (!confirm('Replace all your folders with the example set? You can undo this.')) return;
         snap(); state.tree = seed(); commit();
       } },
-    ]);
+    ], { above: true });
   });
 
   function exportTree() {
@@ -1097,20 +1381,21 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
-  document.getElementById('importFile').addEventListener('change', async e => {
+  $('importFile').addEventListener('change', async e => {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
     try {
       const data = JSON.parse(await file.text());
       const tree = Array.isArray(data) ? data : data.tree;
-      if (!Array.isArray(tree)) throw new Error('No folders found in that file');
-      const ok = n => n && typeof n.name === 'string' && (n.type === 'link' ? typeof n.url === 'string' : n.type === 'folder' && Array.isArray(n.children) && n.children.every(ok));
-      if (!tree.every(ok)) throw new Error('That file is not a Claude Navigator backup');
+      const ok = n => n && typeof n.name === 'string' &&
+        (n.type === 'link' ? typeof n.url === 'string' : n.type === 'folder' && Array.isArray(n.children) && n.children.every(ok));
+      if (!Array.isArray(tree) || !tree.every(ok)) throw new Error('That file is not a Claude Navigator backup.');
       const fresh = n => { n.id = uid(); if (n.children) n.children.forEach(fresh); };
       tree.forEach(fresh);
       snap();
       state.tree = tree;
+      go({ kind: 'folder', id: null });
       commit();
       toast('Folders restored', true);
     } catch (err) {
@@ -1120,58 +1405,79 @@
 
   document.addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey;
+    if (!mod || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
-    if (mod && e.key.toLowerCase() === 'f') { e.preventDefault(); searchEl.focus(); searchEl.select(); }
-    else if (mod && e.shiftKey && e.key.toLowerCase() === 'n') { e.preventDefault(); newFolder(); }
-    else if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); openUrl(HOME); }
-    else if (mod && e.key.toLowerCase() === 'l') { e.preventDefault(); promptNewLink(); }
-    else if (mod && e.key.toLowerCase() === 's') { e.preventDefault(); saveCurrent(); }
-    else if (mod && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); }
+    const k = e.key.toLowerCase();
+    if (k === 'f') { searchEl.focus(); searchEl.select(); }
+    else if (k === 'n' && e.shiftKey) newFolder();
+    else if (k === 'n') newChat();
+    else if (k === 'l') promptNewLink();
+    else if (k === 's') saveCurrent();
+    else if (k === 'z' && !typing) undo();
+    else if (k === '[') back();
+    else if (k === ']') forward();
+    else if (k === '1') setView('icons');
+    else if (k === '2') setView('list');
+    else if (k === 'arrowup' && !typing) up();
+    else return;
+    e.preventDefault();
   });
-  // Shortcuts forwarded from the Claude pane by the desktop app.
+  // Shortcuts pressed while typing inside Claude are passed on by the desktop app.
   if (isApp && window.navigatorApp.onShortcut) {
     window.navigatorApp.onShortcut(k => {
-      if (k === 'new-chat') openUrl(HOME);
       if (k === 'save') saveCurrent();
-      if (k === 'search') { searchEl.focus(); searchEl.select(); }
       if (k === 'new-folder') newFolder();
+      if (k === 'back') back();
+      if (k === 'forward') forward();
     });
   }
 
   // ---------- Toast ----------
-  const toastEl = document.getElementById('toast');
+  const toastEl = $('toast');
   let toastTimer = null;
   function toast(msg, withUndo = false) {
-    document.getElementById('toastMsg').textContent = msg;
-    document.getElementById('toastUndo').hidden = !withUndo;
+    $('toastMsg').textContent = msg;
+    $('toastUndo').hidden = !withUndo;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('show'), withUndo ? 6000 : 2600);
   }
-  document.getElementById('toastUndo').addEventListener('click', () => { toastEl.classList.remove('show'); undo(); });
+  $('toastUndo').addEventListener('click', () => { toastEl.classList.remove('show'); undo(); });
 
   // ---------- Resizable sidebar ----------
-  const setWidth = w => document.documentElement.style.setProperty('--side-w', Math.max(200, Math.min(640, w)) + 'px');
-  try { const w = +localStorage.getItem(WIDTH_STORE); if (w) setWidth(w); } catch (e) { /* ignore */ }
-  document.getElementById('splitter').addEventListener('mousedown', e => {
+  const clampW = w => Math.max(180, Math.min(520, w));
+  const setWidth = w => document.documentElement.style.setProperty('--side-w', clampW(w) + 'px');
+  if (+ls.get(WIDTH_STORE)) setWidth(+ls.get(WIDTH_STORE));
+  $('splitter').addEventListener('mousedown', e => {
     e.preventDefault();
     document.body.classList.add('resizing');
     const move = ev => setWidth(ev.clientX);
-    const up = ev => {
+    const stop = ev => {
       document.body.classList.remove('resizing');
       removeEventListener('mousemove', move);
-      removeEventListener('mouseup', up);
-      try { localStorage.setItem(WIDTH_STORE, String(Math.max(200, Math.min(640, ev.clientX)))); } catch (err) { /* ignore */ }
+      removeEventListener('mouseup', stop);
+      ls.set(WIDTH_STORE, String(clampW(ev.clientX)));
     };
     addEventListener('mousemove', move);
-    addEventListener('mouseup', up);
+    addEventListener('mouseup', stop);
   });
-  document.getElementById('splitter').addEventListener('dblclick', () => { setWidth(300); try { localStorage.removeItem(WIDTH_STORE); } catch (e) { /* ignore */ } });
+  $('splitter').addEventListener('dblclick', () => { setWidth(240); ls.del(WIDTH_STORE); });
 
-  // Keep multiple windows of the navigator in sync.
-  addEventListener('storage', e => { if (e.key === STORE) { state.tree = load(); render(); } });
+  addEventListener('storage', e => { if (e.key === STORE) { state.tree = load(); renderAll(); } });
 
-  render();
+  // ---------- Start where you left off ----------
+  let start = isApp ? { kind: 'page', url: HOME } : { kind: 'folder', id: null };
+  let startFolder = null;
+  try {
+    const s = JSON.parse(ls.get(LOC_STORE));
+    if (s && s.loc && (s.loc.kind === 'folder' || (s.loc.kind === 'page' && isApp && s.loc.url))) {
+      start = s.loc.kind === 'page' ? { kind: 'page', url: s.loc.url } : { kind: 'folder', id: s.loc.id || null };
+      startFolder = s.lastFolderId && nodeOf(s.lastFolderId) ? s.lastFolderId : null;
+    }
+  } catch (e) { /* ignore */ }
+  renderSide();
+  state.lastFolderId = startFolder;
+  go(start);
 })();
 </script>
 </body>
