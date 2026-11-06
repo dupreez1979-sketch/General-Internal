@@ -178,7 +178,13 @@ app.on('web-contents-created', (_event, contents) => {
   // Navigator shortcuts keep working while you are typing inside Claude.
   // (Preventing the key here also stops the menu bar firing it a second time.)
   contents.on('before-input-event', (event, input) => {
-    if (input.type !== 'keyDown' || !(input.control || input.meta) || input.alt) return;
+    if (input.type !== 'keyDown' || !(input.control || input.meta)) return;
+    // Cmd+Option+0..9: switch profile, even while typing in Claude.
+    if (input.alt) {
+      const m = /^Digit([0-9])$/.exec(input.code || '');
+      if (m) { event.preventDefault(); send('shortcut', 'profile-' + m[1]); }
+      return;
+    }
     const key = input.key.toLowerCase();
     const map = {
       n: input.shift ? 'new-folder' : 'new-chat',
@@ -433,7 +439,31 @@ async function openHidden(win, url) {
   await sleep(1500);
 }
 
-async function fetchLibrary() {
+// Reads chats (as Claude's own page does) and notes which of your artifacts each one mentions,
+// so an artifact can be attached to the chat it was made in.
+const relationsScript = (chats, artifacts) => `(async () => {
+  const chats = ${JSON.stringify(chats)};
+  const arts = ${JSON.stringify(artifacts)};
+  const out = { relations: [], scanned: {}, notes: [] };
+  const json = async u => { const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } }); return r.ok ? r : null; };
+  let orgs = [];
+  try { const r = await json('/api/organizations'); const x = r ? await r.json() : []; orgs = Array.isArray(x) ? x : (x.data || []); } catch (e) { out.notes.push('relations: ' + e.message); }
+  for (const c of chats) {
+    let text = null;
+    for (const o of orgs) {
+      for (const q of ['?tree=True&rendering_mode=messages&render_all_tools=true', '']) {
+        try { const r = await json('/api/organizations/' + o.uuid + '/chat_conversations/' + c.uuid + q); if (r) { text = await r.text(); break; } } catch (e) { /* try the next way */ }
+      }
+      if (text) break;
+    }
+    if (text === null) continue;
+    out.scanned[c.url] = c.updated || 'seen';
+    for (const a of arts) if (a.id.length >= 8 && text.includes(a.id)) out.relations.push([c.url, a.url]);
+  }
+  return out;
+})()`;
+
+async function fetchLibrary(opts = {}) {
   const result = { signedIn: true, chats: [], projects: [], artifacts: [], notes: [] };
   const win = new BrowserWindow({
     show: false, width: 1280, height: 900,
@@ -472,6 +502,23 @@ async function fetchLibrary() {
       result[kind] = await win.webContents.executeJavaScript(scrollHarvest(pattern), true).catch(() => []);
       result.notes.push(`${kind}: read ${result[kind].length} from ${prefix}`);
     }
+    // Which chat each artifact came from: check chats that are new or changed since last time (newest first).
+    if (!win.isDestroyed() && result.signedIn) {
+      const seen = opts.scanned || {};
+      const toScan = (result.chats || [])
+        .filter(c => c.url && seen[c.url] !== (c.updated || 'seen'))
+        .slice(0, 150)
+        .map(c => ({ url: c.url, uuid: c.url.split('/chat/')[1], updated: c.updated || null }));
+      const artUrls = new Set([...(opts.knownArtifacts || []), ...(result.artifacts || []).map(a => a.url), ...(result.design || []).map(a => a.url)]);
+      const arts = [...artUrls].map(u => ({ url: u, id: u.replace(/\/+$/, '').split('/').pop() }));
+      if (toScan.length && arts.length) {
+        await openHidden(win, 'https://claude.ai/recents');
+        const rel = await win.webContents.executeJavaScript(relationsScript(toScan, arts), true).catch(e => ({ relations: [], scanned: {}, notes: [String(e)] }));
+        result.relations = rel.relations;
+        result.scanned = rel.scanned;
+        result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${rel.relations.length}`, ...rel.notes);
+      }
+    }
   } catch (e) {
     result.notes.push(String(e && e.message || e));
   } finally {
@@ -482,7 +529,7 @@ async function fetchLibrary() {
 }
 
 let libraryRun = null;
-ipcMain.handle('library-refresh', () => libraryRun || (libraryRun = fetchLibrary().finally(() => { libraryRun = null; })));
+ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 
 // Quick look at the links Claude is showing in the visible pane (its sidebar of recent chats).
 ipcMain.handle('harvest-pane', async (_e, id, kind) => {

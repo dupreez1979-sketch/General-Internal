@@ -151,6 +151,8 @@
   .twisty.conn, .lrow .conn { color: var(--muted); }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
+  .lsub { color: var(--muted); font-size: 11px; font-weight: 600; padding: 14px 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .lrow.link-target { box-shadow: inset 0 0 0 2px var(--accent); }
   #libAttachedBtn.on { color: var(--text); background: var(--sel); }
   .tile .big { width: 72px; height: 66px; display: grid; place-items: center; border-radius: 6px; }
   .tile .label { margin-top: 4px; text-align: center; max-width: 100%; padding: 1px 5px; border-radius: 4px; line-height: 1.3; flex: none;
@@ -276,6 +278,49 @@
   .mac-app #bar { -webkit-app-region: drag; }
   .mac-app #bar button, .mac-app #bar input { -webkit-app-region: no-drag; }
 
+  /* ---------- Profiles ---------- */
+  .side-top { justify-content: space-between; gap: 8px; padding-right: 10px; }
+  .side-top .brand { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .side-top .brand { display: none; }          /* the switcher needs the room; the window title names the app */
+  .mac-app .side-top { padding-left: 84px; }    /* clear of the window buttons */
+  .profile-btn {
+    -webkit-app-region: no-drag; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%;
+    border: 0; border-radius: 7px; padding: 4px 8px 4px 9px; background: var(--field); color: var(--text); font-size: 12px; font-weight: 600;
+  }
+  .profile-btn:hover { background: var(--sel); }
+  .profile-btn .pname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-btn .pchev { color: var(--muted); display: grid; transform: rotate(90deg); }
+  .pdot { width: 9px; height: 9px; border-radius: 50%; flex: none; display: inline-block; box-shadow: 0 0 0 .5px rgba(0,0,0,.15); }
+  .pdot.all { background: conic-gradient(#FF4C80, #ECEB00, #6FC483, #1B5A68, #FF4C80); }
+  .row.section .pdot { margin-right: 7px; }
+  .row.section.profile-head { color: var(--text); font-size: 12px; }
+  #menu .mi .pdot { width: 10px; height: 10px; }
+
+  /* A profile's colour tints the window, so you can see which profile you are in. */
+  html.profiled { --sel: color-mix(in srgb, var(--tint) 24%, transparent); --hover: color-mix(in srgb, var(--tint) 10%, transparent); }
+  html.profiled #side { background: color-mix(in srgb, var(--tint) var(--tint-side), var(--side)); }
+  html.profiled.mac-app #side { background: color-mix(in srgb, var(--tint) var(--tint-side), color-mix(in srgb, var(--side) 50%, transparent)); }
+  html.profiled #bar, html.profiled #findbar, html.profiled #pathbar { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
+  html.profiled #main::before, html.profiled #side::before { content: ""; position: absolute; top: 0; height: 3px; background: var(--tint); z-index: 6; }
+  html.profiled #main::before { left: 0; right: 0; }
+  html.profiled #side { position: relative; }
+  html.profiled #side::before { left: 0; right: 0; }
+
+  /* Profile editor */
+  #profileDlg form { gap: 14px; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
+  .swatch.on { outline: 2.5px solid var(--text); outline-offset: 2px; }
+  .swatches input[type=color] { width: 30px; height: 28px; border: 0; padding: 0; background: none; }
+  .prow { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: 13px; }
+  .prow > span:first-child { text-align: right; }
+  .preview { border-radius: 8px; overflow: hidden; border: .5px solid var(--line); display: grid; grid-template-columns: 90px 1fr; height: 54px; font-size: 11px; }
+  .preview .pv-side { padding: 8px; font-weight: 600; }
+  .preview .pv-main { background: var(--win); position: relative; }
+  .preview .pv-bar { height: 18px; }
+  .preview .pv-top { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .dlg-actions .left { margin-right: auto; color: #c0392b; }
+
   @media (max-width: 640px) {
     body { grid-template-columns: 1fr; }
     #splitter, #main { display: none; }
@@ -285,7 +330,9 @@
 <body>
 
 <aside id="side" aria-label="Sidebar">
-  <div class="side-top">Claude Navigator</div>
+  <div class="side-top"><span class="brand">Claude Navigator</span>
+    <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="pname">All Profiles</span><span class="pchev" data-icon="chev"></span></button>
+  </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
@@ -312,7 +359,7 @@
       <button class="tb" id="libAll" title="Show everything"><span class="t">All</span></button>
       <button class="tb" id="libUnfiled" title="Show only items not yet in one of your folders"><span class="t">Not Filed</span></button>
     </div>
-    <button class="tb" id="libAttachedBtn" title="Show or hide the artifacts made in each chat" hidden><span data-icon="attach"></span><span class="t">Attached</span></button>
+    <button class="tb" id="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
     <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
@@ -343,6 +390,26 @@
 </main>
 
 <div id="menu" role="menu"></div>
+
+<dialog id="profileDlg">
+  <form method="dialog">
+    <h2 id="profileDlgTitle">New Profile</h2>
+    <label>Name:<input id="profileName" placeholder="e.g. Monkey Baa" required></label>
+    <div class="prow"><span>Colour:</span><div class="swatches" id="profileSwatches"></div></div>
+    <div class="prow"><span>Tint:</span><div class="seg" id="profileTint">
+      <button type="button" class="tb" data-tint="subtle" title="A light wash of colour">Subtle</button>
+      <button type="button" class="tb" data-tint="medium" title="A clear wash of colour">Medium</button>
+      <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
+    </div></div>
+    <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
+    <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code, Design Systems and Schedules folders</span></label>
+    <div class="dlg-actions">
+      <button type="button" class="btn left" id="profileDelete" title="Delete this profile and everything in it">Delete Profile…</button>
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn-primary" value="ok" id="profileOk">Save</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog id="linkDlg">
   <form method="dialog" id="linkForm">
@@ -473,16 +540,21 @@
   const Link = (name, url) => ({ id: uid(), type: 'link', name, url, added: Date.now() });
 
   const EXTRA_SECTIONS = ['App Code', 'Design Systems', 'Schedules', 'Other'];
+  // Profile colours to start with (the Monkey Baa brand palette); any colour can be chosen.
+  const PROFILE_COLOURS = ['#FF4C80', '#1B5A68', '#328276', '#99351E', '#B36E24', '#FF7552', '#6FC483', '#FF92B1', '#ECEB00', '#3D7FD6', '#7A3FB8', '#5F6B76'];
+  const DEFAULT_PROFILE_COLOUR = { 'monkey baa': '#FF4C80', ncti: '#1B5A68', personal: '#328276', work: '#3D7FD6' };
+  // Each profile ends with an "Other" group holding Code, Design Systems and Schedules.
+  const OTHER_FOLDERS = ['Code', 'Design Systems', 'Schedules'];
+  const groupFolders = () => [Object.assign(Folder('Other', OTHER_FOLDERS.map(n => Folder(n)), true), { group: true })];
+  function makeProfile(name, children = [], colour = null, withGroups = true) {
+    const used = 0;
+    return Object.assign(Folder(name, children.concat(withGroups ? groupFolders() : []), true), {
+      profile: true, color: colour || DEFAULT_PROFILE_COLOUR[name.toLowerCase()] || PROFILE_COLOURS[used], tint: 'medium',
+    });
+  }
   const seed = () => [
-    Folder('Work', [
-      Folder('Monkey Baa', [
-        Folder('Board', [Folder('November 2026 meeting')]),
-        Folder('Finance'),
-        Folder('NCTI'),
-      ], true),
-    ], true),
-    Folder('Personal', [], true),
-    ...EXTRA_SECTIONS.map(n => Folder(n, [], true)),
+    makeProfile('Work', [Folder('Board'), Folder('Finance')]),
+    makeProfile('Personal'),
   ];
 
   function load() {
@@ -508,6 +580,7 @@
 
   // Adds the App Code, Design Systems, Schedules and Other sections once (skipping any you already have).
   function addExtraSections(tree) {
+    if (tree.some(n => n.profile)) { ls.set('claudeNavigator.extraSections.v1', '1'); return tree; }
     if (ls.get('claudeNavigator.extraSections.v1')) return tree;
     ls.set('claudeNavigator.extraSections.v1', '1');
     const have = new Set(tree.filter(n => n.type === 'folder').map(n => n.name.toLowerCase()));
@@ -518,8 +591,73 @@
     return out;
   }
 
+  // Turns the old layout (Work > Monkey Baa, Work > NCTI, Personal, plus the extra groups) into profiles, once.
+  function migrateToProfiles(tree) {
+    if (tree.some(n => n.profile)) return tree;
+    const isGroup = n => n.type === 'folder' && EXTRA_SECTIONS.some(g => g.toLowerCase() === n.name.toLowerCase());
+    const groups = tree.filter(isGroup);
+    const loose = [];
+    const out = [];
+    let i = 0;
+    const asProfile = n => Object.assign(n, {
+      profile: true, open: true, tint: 'medium',
+      color: DEFAULT_PROFILE_COLOUR[n.name.toLowerCase()] || PROFILE_COLOURS[(i++ + 3) % PROFILE_COLOURS.length],
+    });
+    for (const n of tree) {
+      if (isGroup(n)) continue;
+      if (n.type !== 'folder') { loose.push(n); continue; }
+      if (n.name.toLowerCase() === 'work' && n.children.some(c => c.type === 'folder')) {
+        for (const c of n.children) { if (c.type === 'folder') out.push(asProfile(c)); else loose.push(c); }
+      } else out.push(asProfile(n));
+    }
+    if (!out.length) out.push(asProfile(Folder('Work')));
+    out[0].children.unshift(...loose);
+    out.forEach((p, idx) => {
+      for (const name of EXTRA_SECTIONS) {
+        const have = p.children.find(c => c.type === 'folder' && c.name.toLowerCase() === name.toLowerCase());
+        if (have) { have.group = true; continue; }
+        const old = idx === 0 ? groups.find(g => g.name.toLowerCase() === name.toLowerCase()) : null;
+        p.children.push(Object.assign(old || Folder(name, [], true), { group: true }));
+      }
+    });
+    ls.set(STORE, JSON.stringify(out));
+    return out;
+  }
+
+  // Moves the App Code, Design Systems and Schedules groups into each profile's Other group (App Code becomes Code), once.
+  function nestUnderOther(tree) {
+    if (ls.get('claudeNavigator.otherGroup.v1')) return tree;
+    ls.set('claudeNavigator.otherGroup.v1', '1');
+    const rename = { 'app code': 'Code', code: 'Code', 'design systems': 'Design Systems', schedules: 'Schedules' };
+    for (const p of tree.filter(n => n.profile)) {
+      let other = p.children.find(c => c.type === 'folder' && c.name.toLowerCase() === 'other');
+      if (!other) { other = Folder('Other', [], true); p.children.push(other); }
+      other.group = true;
+      for (const c of p.children.slice()) {
+        if (c === other || c.type !== 'folder' || !c.group) continue;          // your own folders stay put
+        const name = rename[c.name.toLowerCase()];
+        if (!name) continue;
+        p.children.splice(p.children.indexOf(c), 1);
+        c.group = false;
+        c.name = name;
+        const same = other.children.find(x => x.type === 'folder' && x.name === name);
+        if (same) same.children.push(...c.children); else other.children.push(c);
+      }
+      for (const name of OTHER_FOLDERS) if (!other.children.some(x => x.type === 'folder' && x.name === name)) other.children.push(Folder(name));
+      other.children.sort((a, b) => {
+        const ia = OTHER_FOLDERS.indexOf(a.name), ib = OTHER_FOLDERS.indexOf(b.name);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
+      p.children.splice(p.children.indexOf(other), 1);
+      p.children.push(other);                                                  // Other is always last
+    }
+    ls.set(STORE, JSON.stringify(tree));
+    return tree;
+  }
+
   const state = {
-    tree: addExtraSections(dropOldClaudeSection(load())),
+    tree: nestUnderOther(migrateToProfiles(addExtraSections(dropOldClaudeSection(load())))),
+    profileId: ls.get('claudeNavigator.activeProfile') || null,
     loc: { kind: 'folder', id: null },   // what the main area shows: a folder, or a Claude page
     pageUrl: '',                          // what the Claude pane is actually showing
     pageTitle: '',
@@ -537,6 +675,9 @@
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
   const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled' };
+  // Shown in the Claude section (Projects and Design are still read: Design feeds Design Systems).
+  const SIDEBAR_LIB = ['chats', 'artifacts'];
+  const CLAUDE_OTHER = ['designsystems', 'code', 'scheduled'];      // under "Other", closed by default
   const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', designsystems: 'designsystem', design: 'design', code: 'code', scheduled: 'schedule' };
   const LIB_TIPS = {
     chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account',
@@ -555,7 +696,7 @@
     return out;
   }
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, scanned: {}, detached: [], fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -564,7 +705,7 @@
   })();
   const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
-    kinds: lib.kinds, related: lib.related, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
   }));
   state.libFilter = ls.get(LIB_FILTER_STORE) === 'unfiled' ? 'unfiled' : 'all';
   const libSel = new Set();
@@ -581,7 +722,8 @@
     commit();
     toast('Undone');
   }
-  function commit() { save(); renderAll(); }
+  function commit() { save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
+  function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
   function locate(id, nodes = state.tree, parent = null) {
     if (!id) return null;
@@ -613,7 +755,14 @@
     while (loc) { out.unshift(loc.node); loc = loc.parent ? locate(loc.parent.id) : null; }
     return out;
   }
-  const childrenOf = id => (id ? (nodeOf(id) || {}).children || [] : state.tree);
+  // ---------- Profiles ----------
+  const profiles = () => state.tree.filter(n => n.type === 'folder' && n.profile);
+  const activeProfile = () => { const p = state.profileId && nodeOf(state.profileId); return p && p.profile ? p : null; };
+  const rootList = () => { const p = activeProfile(); return p ? p.children : state.tree; };
+  const profileOf = id => { const path = pathTo(id); return path.length && path[0].profile ? path[0] : null; };
+  // A folder path for display, without the profile you are already in.
+  const displayPath = id => pathTo(id).filter(p => !(activeProfile() && p.id === activeProfile().id));
+  const childrenOf = id => (id ? (nodeOf(id) || {}).children || [] : rootList());
 
   // ---------- URL helpers ----------
   function normUrl(u) {
@@ -636,12 +785,16 @@
     if (/claude\.ai/.test(u)) return 'claude';
     return 'link';
   }
-  const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude\s*$/i, '').trim();
+  const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude(\s+Code)?\s*$/i, '').trim();
+  // Page titles that name a Claude page rather than the thing on it; never used as a name.
+  const GENERIC_TITLE = /^(claude( code)?|code|new chat|recents?|recent chats|chats|projects?|artifacts?|design( systems?)?|scheduled|schedules?|settings|usage|search|customi[sz]e|just a moment\.*|loading\.*|untitled|404.*|.*not found|error.*|page unavailable)$/i;
   // A page title worth using as a name (not just "Claude" while a page loads).
   const realTitle = t => {
     const c = cleanTitle(t);
     if (!/[\p{L}\p{N}]/u.test(c)) return '';
-    return c && !/^(claude|new chat|just a moment\.*|loading\.*|untitled|404.*|.*not found|error.*|page unavailable)$/i.test(c) ? c : '';
+    // While a page loads its title is briefly its address: never use that as a name.
+    if (/^(https?:\/\/)?[\w.-]+\.?[\w-]*(:\d+)?\/\S*$/i.test(c) || /^https?:/i.test(c)) return '';
+    return c && !GENERIC_TITLE.test(c) ? c : '';
   };
   // Names you have not typed yourself follow the chat's title in Claude.
   const isAutoName = n => n.autoName === true || (n.autoName === undefined && /^Untitled (chat|project|artifact|link)$/.test(n.name));
@@ -689,10 +842,11 @@
       nc.title = here ? `New chat, saved in \u201c${nodeOf(here).name}\u201d once you send it (${K.mod}N)` : `New chat (${K.mod}N)`;
       frag.appendChild(nc);
       const idx = filedIndex();
-      for (const k of Object.keys(LIB_KINDS)) {
+      const libRowFor = (k, depth) => {
         const r = document.createElement('div');
         r.className = 'row lib';
         r.dataset.lib = k;
+        r.style.setProperty('--depth', depth);
         r.title = LIB_TIPS[k] +
           (unfiledCount(k, idx) ? `. ${unfiledCount(k, idx)} not in one of your folders yet.` : '. All are filed.');
         r.innerHTML = `<span class="twisty"></span><span class="icon">${small(LIB_ICON[k])}</span><span class="label"></span>`;
@@ -706,19 +860,60 @@
           r.appendChild(b);
         }
         frag.appendChild(r);
+      };
+      for (const k of SIDEBAR_LIB) libRowFor(k, 0);
+      // "Other": Design Systems, Code and Scheduled, closed until you open it.
+      const open = ls.get('claudeNavigator.claudeOtherOpen') === '1';
+      const o = document.createElement('div');
+      o.className = 'row lib-action';
+      o.dataset.action = 'claude-other';
+      o.setAttribute('aria-expanded', String(open));
+      o.title = `${open ? 'Hide' : 'Show'} Design Systems, Code and Scheduled`;
+      o.innerHTML = `<span class="twisty${open ? ' open' : ''}">${UI.chev}</span><span class="icon">${small('folder')}</span><span class="label">Other</span>`;
+      const waiting = CLAUDE_OTHER.reduce((t, k) => t + unfiledCount(k, idx), 0);
+      if (waiting && !open) {
+        const b = document.createElement('span');
+        b.className = 'count';
+        b.textContent = waiting;
+        b.title = `${waiting} not in a folder yet`;
+        o.appendChild(b);
+      }
+      frag.appendChild(o);
+      if (open) for (const k of CLAUDE_OTHER) libRowFor(k, 1);
+    }
+    const sectionHead = (n, extra = '') => {
+      const r = document.createElement('div');
+      r.className = 'row section' + (n.open ? ' open' : '') + extra;
+      r.dataset.id = n.id;
+      r.draggable = !n.profile;
+      r.setAttribute('role', 'treeitem');
+      r.setAttribute('aria-expanded', String(!!n.open));
+      r.innerHTML = `${n.profile ? `<span class="pdot" style="background:${n.color}"></span>` : ''}<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev" title="${n.open ? 'Hide' : 'Show'} this section">${UI.chev}</span>`;
+      r.querySelector('.label').textContent = n.name;
+      r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
+      frag.appendChild(r);
+    };
+    const ap = activeProfile();
+    if (ap) {
+      // One profile: its folders first, then its Other group (Code, Design Systems, Schedules) as its own section.
+      sectionHead(ap, ' profile-head');
+      if (ap.open) addChildren(ap.children.filter(c => !c.group), 0);
+      for (const g of ap.children.filter(c => c.group)) {
+        sectionHead(g);
+        if (g.open) addChildren(g.children, 0);
       }
     }
-    for (const n of state.tree) {
+    for (const n of ap ? [] : state.tree) {
       if (n.type === 'folder') {
         const r = document.createElement('div');
-        r.className = 'row section' + (n.open ? ' open' : '');
+        r.className = 'row section' + (n.open ? ' open' : '') + (n.profile ? ' profile-head' : '');
         r.dataset.id = n.id;
         r.draggable = true;
         r.setAttribute('role', 'treeitem');
         r.setAttribute('aria-expanded', String(!!n.open));
-        r.innerHTML = `<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev" title="${n.open ? 'Hide' : 'Show'} this section">${UI.chev}</span>`;
+        r.innerHTML = `${n.profile ? `<span class="pdot" style="background:${n.color}"></span>` : ''}<span class="label"></span>${n.open ? xallButton(n) : ''}<span class="sec-chev" title="${n.open ? 'Hide' : 'Show'} this section">${UI.chev}</span>`;
         r.querySelector('.label').textContent = n.name;
-        r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
+        r.title = n.profile ? `${n.name} profile: click to hide or show, double-click to open. Use the switcher at the top to work in just this profile.` : `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
         frag.appendChild(r);
         if (n.open) addChildren(n.children, 0);
       } else {
@@ -798,7 +993,34 @@
     const c = normUrl(chatUrl), a = normUrl(itemUrl);
     if (!/\/chat\//.test(c) || c === a) return;
     const list = lib.related[c] || (lib.related[c] = []);
-    if (!list.includes(a)) { list.push(a); saveLib(); }
+    if (!list.includes(a)) { list.push(a); saveLib(); setTimeout(() => { try { autoAttachSiblings(); } catch (e) { /* ignore */ } }, 0); }
+  }
+  const isDetached = (chatUrl, itemUrl) => (lib.detached || []).includes(normUrl(chatUrl) + '|' + normUrl(itemUrl));
+  // An artifact sitting next to the chat it came from moves under that chat (never across folders).
+  function autoAttachSiblings() {
+    const moves = [];
+    walk(state.tree, n => {
+      if (n.type !== 'link' || kindOf(n) !== 'chat') return;
+      const rel = new Set(lib.related[normUrl(n.url)] || []);
+      if (!rel.size) return;
+      const l = locate(n.id);
+      for (const sib of l.list) {
+        if (sib !== n && attachable(sib) && rel.has(normUrl(sib.url)) && !isDetached(n.url, sib.url)) moves.push([sib.id, n.id]);
+      }
+    });
+    if (!moves.length) return;
+    snap();
+    for (const [id, chatId] of moves) {
+      const l = locate(id), chat = nodeOf(chatId);
+      if (!l || !chat || attachedTo(id)) continue;
+      l.list.splice(l.index, 1);
+      if (!chat.children) chat.children = [];
+      chat.children.push(l.node);
+      chat.open = true;
+    }
+    save();
+    renderAll();
+    toast(moves.length === 1 ? `Attached \u201c${nodeOf(moves[0][0]).name}\u201d to the chat it came from` : `Attached ${moves.length} artifacts to the chats they came from`, true);
   }
   function removeRelation(chatUrl, itemUrl) {
     const c = normUrl(chatUrl), a = normUrl(itemUrl);
@@ -907,7 +1129,7 @@
     if (state.query) {
       const q = state.query.toLowerCase();
       items = [];
-      walk(state.tree, n => {
+      walk(rootList(), n => {
         if (n.name.toLowerCase().includes(q) || (n.url || '').toLowerCase().includes(q)) items.push(n);
       });
       where = true;
@@ -1026,10 +1248,24 @@
           }
         }
       }
+      if (kind === 'chats' && state.libShowAttached) {
+        const linked = new Set();
+        for (const c of lib.chats || []) for (const a of relatedFor(c.url)) linked.add(normUrl(a.url));
+        const q = (state.query || '').toLowerCase();
+        const loose = libList('artifacts').filter(a => !linked.has(normUrl(a.url)) && !libRowItems.has(a.url) &&
+          (state.libFilter !== 'unfiled' || !idx.has(normUrl(a.url))) && (!q || (a.name || '').toLowerCase().includes(q)));
+        if (loose.length) {
+          const h = document.createElement('div');
+          h.className = 'lsub';
+          h.textContent = `Artifacts not linked to a chat (${loose.length}). Drag one onto its chat above to link them.`;
+          l.appendChild(h);
+          for (const a of loose) { libRowItems.set(a.url, Object.assign({ list: 'artifacts' }, a)); l.appendChild(libRow(a, 'artifacts', idx)); }
+        }
+      }
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
-    for (const k of [...libSel]) if (!items.some(x => x.url === k)) libSel.delete(k);
+    for (const k of [...libSel]) if (!libRowItems.has(k) && !items.some(x => x.url === k)) libSel.delete(k);
     applyLibSel();
     renderLibPathbar(kind, idx, items.length);
   }
@@ -1178,7 +1414,7 @@
       case 'added': return it.added || 0;
       case 'opened': return it.opened || 0;
       case 'items': return it.type === 'folder' ? it.children.length : -1;
-      case 'where': return pathTo(it.id).slice(0, -1).map(p => p.name).join(' ').toLowerCase();
+      case 'where': return displayPath(it.id).slice(0, -1).map(p => p.name).join(' ').toLowerCase();
       case 'address': return it.url || '';
       default: return '';
     }
@@ -1341,7 +1577,7 @@
       added: fmtDate(n.added),
       opened: fmtDate(n.opened),
       items: n.type === 'folder' ? `${n.children.length} item${n.children.length === 1 ? '' : 's'}` : '',
-      where: pathTo(n.id).slice(0, -1).map(p => p.name).join(' \u203a ') || 'Top level',
+      where: displayPath(n.id).slice(0, -1).map(p => p.name).join(' \u203a ') || 'Top level',
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
@@ -1402,8 +1638,9 @@
       s.textContent = `Searching all folders for “${state.query}”`;
       bar.appendChild(s);
     } else {
-      bar.appendChild(crumb('Folders', UI.root, null));
-      for (const p of pathTo(state.loc.id)) {
+      const ap = activeProfile();
+      bar.appendChild(crumb(ap ? ap.name : 'All Profiles', ap ? `<span class="pdot" style="background:${ap.color}"></span>` : UI.root, null));
+      for (const p of displayPath(state.loc.id)) {
         const sep = document.createElement('span');
         sep.textContent = '›';
         bar.appendChild(sep);
@@ -1426,8 +1663,11 @@
     else if (state.query) title = 'Search';
     else if (page && state.autoFile) title = NEW_KINDS[state.autoFile.kind].title;
     else if (page && isBlankClaudePage(state.pageUrl) && /\/new/.test(state.pageUrl)) title = 'New chat';
-    else if (page) title = cleanTitle(state.pageTitle) || 'Claude';
-    else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : 'Folders';
+    else if (page) {
+      const saved = pageContext().linkId && nodeOf(pageContext().linkId);
+      title = realTitle(state.pageTitle) || (saved && saved.name) || cleanTitle(state.pageTitle) || 'Claude';
+    }
+    else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : (activeProfile() ? activeProfile().name : 'All Profiles');
     const tEl = $('title');
     tEl.replaceChildren();
     if (page) {
@@ -1441,7 +1681,7 @@
         return sp;
       };
       if (c.folderId) {
-        for (const f of pathTo(c.folderId)) {
+        for (const f of displayPath(c.folderId)) {
           const cr = add('tc', f.name, small('folder', 'currentColor', 12));
           cr.title = `Go to ${f.name}`;
           cr.addEventListener('click', () => go({ kind: 'folder', id: f.id }));
@@ -1537,8 +1777,19 @@
 
   function show() {
     const loc = state.loc;
+    if (loc.kind === 'folder' && loc.id && activeProfile() && profileOf(loc.id) !== activeProfile()) {
+      const other = profileOf(loc.id);
+      state.profileId = other ? other.id : null;
+      ls.set('claudeNavigator.activeProfile', state.profileId || '');
+      applyProfileTheme();
+      lastRevealed = null;
+      renderSide();
+    }
     if (loc.kind !== 'page') closeFind();
-    if (loc.kind === 'library') { libSel.clear(); libAnchor = null; state.lastFolderId = null; refreshLibrary(false); }
+    if (loc.kind === 'library') {
+      libSel.clear(); libAnchor = null; state.lastFolderId = null; refreshLibrary(false);
+      if (CLAUDE_OTHER.includes(loc.which) && ls.get('claudeNavigator.claudeOtherOpen') !== '1') { ls.set('claudeNavigator.claudeOtherOpen', '1'); renderSide(); }
+    }
     if (loc.kind === 'folder') {
       state.lastFolderId = loc.id;
       if (state.browseSel && !childrenOf(loc.id).some(c => c.id === state.browseSel)) state.browseSel = null;
@@ -1868,6 +2119,20 @@
     toast(on ? 'Claude\u2019s own sidebar will be hidden' : 'Claude\u2019s own sidebar is left as you set it. Use Claude\u2019s sidebar button to show it.');
   }
 
+  // Saved items that picked up a generic page title (for example "Claude Code") get their real name back.
+  function repairGenericNames() {
+    const known = new Map();
+    for (const k of Object.keys(LIB_KINDS)) for (const x of lib[k] || []) if (hasWords(x.name) && !GENERIC_TITLE.test(x.name.trim())) known.set(normUrl(x.url), x.name);
+    let fixed = 0;
+    walk(state.tree, n => {
+      if (n.type !== 'link' || n.autoName === false || !GENERIC_TITLE.test((n.name || '').trim())) return;
+      const real = known.get(normUrl(n.url));
+      if (real) { n.name = real; n.autoName = true; fixed++; }
+    });
+    if (fixed) { save(); renderAll(); }
+    return fixed;
+  }
+
   // ---------- Claude Library: loading ----------
   async function refreshLibrary(force = false) {
     if (!isApp || lib.busy) return;
@@ -1875,7 +2140,10 @@
     lib.busy = true;
     libChanged();
     try {
-      const r = await window.navigatorApp.refreshLibrary();
+      const r = await window.navigatorApp.refreshLibrary({
+        scanned: lib.scanned,
+        knownArtifacts: (lib.artifacts || []).concat(lib.design || []).map(x => x.url),
+      });
       lib.signedIn = r.signedIn !== false;
       if (lib.signedIn) {
         for (const k of Object.keys(LIB_KINDS)) {
@@ -1892,6 +2160,11 @@
         }
         lib.fetchedAt = Date.now();
       }
+      // Links Claude's chats reveal: remember them, then tuck artifacts under their chats where both sit in one folder.
+      if (r.scanned) Object.assign(lib.scanned, r.scanned);
+      for (const [c, a] of r.relations || []) if (!isDetached(c, a)) addRelation(c, a);
+      autoAttachSiblings();
+      repairGenericNames();
       lib.error = r.chats && r.chats.length ? null : ((r.notes || []).join('; ') || null);
     } catch (err) {
       lib.error = String((err && err.message) || err);
@@ -2005,7 +2278,7 @@
   function insertInto(folderId, node) {
     const f = folderId ? nodeOf(folderId) : null;
     if (f && !f.children) f.children = [];
-    (f ? f.children : state.tree).push(node);
+    (f ? f.children : rootList()).push(node);
     if (f) f.open = true;
     if (f && f.type === 'link' && node.url) addRelation(f.url, node.url);   // attached to a chat
   }
@@ -2078,12 +2351,16 @@
     const pl = locate(chat.id);
     pl.list.splice(pl.index + 1, 0, l.node);
     removeRelation(chat.url, l.node.url);
+    const pair = normUrl(chat.url) + '|' + normUrl(l.node.url);
+    if (!lib.detached.includes(pair)) lib.detached.push(pair);
+    saveLib();
     commit();
     toast(`Detached \u201c${l.node.name}\u201d from \u201c${chat.name}\u201d`, true);
   }
   function attachTo(id, chatId) {
     const n = nodeOf(id), chat = nodeOf(chatId);
     if (!attachable(n) || !chat) return;
+    lib.detached = lib.detached.filter(p => p !== normUrl(chat.url) + '|' + normUrl(n.url));
     if (moveNodes([id], { id: chatId, zone: 'into' })) { commit(); toast(`Attached \u201c${n.name}\u201d to \u201c${chat.name}\u201d`, true); }
   }
 
@@ -2239,7 +2516,8 @@
       d.querySelector('.nm2').textContent = name;
       frag.appendChild(d);
     };
-    row(null, 'Top level', 0, false, false, small('folder', KIND_COLOUR.folder));
+    const ap = activeProfile();
+    row(null, ap ? ap.name : 'Top level', 0, false, false, ap ? `<span class="pdot" style="background:${ap.color}"></span>` : small('folder', KIND_COLOUR.folder));
     const add = (nodes, depth) => {
       for (const n of nodes) {
         if (!pickable(n)) continue;
@@ -2249,10 +2527,10 @@
         if (open) add(kids, depth + 1);
       }
     };
-    add(state.tree, 0);
+    add(rootList(), 0);
     picker.replaceChildren(frag);
-    const path = pathTo(pick.value).map(p => p.name).join(' \u203a ');
-    $('pickPath').textContent = path || 'Top level';
+    const path = displayPath(pick.value).map(p => p.name).join(' \u203a ');
+    $('pickPath').textContent = path || (activeProfile() ? activeProfile().name : 'Top level');
     const sel = picker.querySelector('.pk.sel');
     if (sel && scroll) sel.scrollIntoView({ block: 'nearest' });
   }
@@ -2268,7 +2546,7 @@
     pick.value = id;
     picker.querySelectorAll('.pk.sel').forEach(x => x.classList.remove('sel'));
     r.classList.add('sel');
-    $('pickPath').textContent = pathTo(id).map(p => p.name).join(' \u203a ') || 'Top level';
+    $('pickPath').textContent = displayPath(id).map(p => p.name).join(' \u203a ') || (activeProfile() ? activeProfile().name : 'Top level');
   });
   picker.addEventListener('dblclick', e => {
     const r = e.target.closest('.pk');
@@ -2479,13 +2757,13 @@
     lastMenuY = y;
     menu.replaceChildren();
     const checks = items.some(it => it && it !== '-' && it.checked !== undefined);
-    const icons = items.some(it => it && it !== '-' && it.icon);
+    const icons = items.some(it => it && it !== '-' && (it.icon || it.dot));
     for (const it of items) {
       if (!it) continue;
       if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.dot ? `<span class="pdot${it.dot === 'all' ? ' all' : ''}" style="${it.dot === 'all' ? '' : `background:${it.dot}`}"></span>` : it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
       b.querySelector('.lb').textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
@@ -2586,6 +2864,10 @@
     const row = e.target.closest('.row');
     if (!row) return;
     if (row.dataset.action === 'new-chat') return newChat();
+    if (row.dataset.action === 'claude-other') {
+      ls.set('claudeNavigator.claudeOtherOpen', ls.get('claudeNavigator.claudeOtherOpen') === '1' ? '0' : '1');
+      return renderSide();
+    }
     if (row.dataset.lib) return go({ kind: 'library', which: row.dataset.lib });
     const n = nodeOf(row.dataset.id);
     if (!n) return;
@@ -3003,7 +3285,19 @@
 
   browseEl.addEventListener('dragover', e => {
     if (accept(e) === null) return;
-    if (state.loc.kind === 'library') { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
+    if (state.loc.kind === 'library') {
+      dropTarget = null;
+      e.dataTransfer.dropEffect = 'none';
+      browseEl.querySelectorAll('.link-target').forEach(x => x.classList.remove('link-target'));
+      const row = e.target.closest('.item.lib');
+      const isLib = [...e.dataTransfer.types].includes(LIB_TYPE);
+      if (isLib && row && state.loc.which === 'chats' && (lib.chats || []).some(c => c.url === row.dataset.key)) {
+        row.classList.add('link-target');
+        dropTarget = { libChat: row.dataset.key };
+        e.dataTransfer.dropEffect = 'copy';
+      }
+      return;
+    }
     const it = e.target.closest('.item');
     const n = it && nodeOf(it.dataset.id);
     const attachHere = n && kindOf(n) === 'chat' && !dragIds.includes(n.id) && !dragIds.some(id => !attachable(nodeOf(id)));
@@ -3021,6 +3315,7 @@
   });
 
   function onDrop(e) {
+    if (state.loc.kind === 'library' && !dropTarget) return;
     e.preventDefault();
     clearTimeout(hoverTimer);
     hoverId = null;
@@ -3028,6 +3323,21 @@
     dropTarget = null;
     clearDrop();
     if (!t) return;
+    browseEl.querySelectorAll('.link-target').forEach(x => x.classList.remove('link-target'));
+    if (t.libChat) {
+      let items = [];
+      try { items = JSON.parse(e.dataTransfer.getData(LIB_TYPE) || '[]'); } catch (err) { /* ignore */ }
+      items = items.filter(x => x.url && !(lib.chats || []).some(c => c.url === x.url));
+      if (!items.length) return toast('Drag artifacts onto a chat to link them');
+      for (const x of items) {
+        lib.detached = (lib.detached || []).filter(p => p !== normUrl(t.libChat) + '|' + normUrl(x.url));
+        addRelation(t.libChat, x.url);
+      }
+      const chat = (lib.chats || []).find(c => c.url === t.libChat);
+      saveLib();
+      renderMain();
+      return toast(`Linked ${items.length === 1 ? `\u201c${items[0].name}\u201d` : `${items.length} artifacts`} to \u201c${chat ? libName(chat, 'chats') : 'the chat'}\u201d`);
+    }
     const libData = e.dataTransfer.getData(LIB_TYPE);
     if (libData) {
       let items = [];
@@ -3217,6 +3527,11 @@
 
   document.addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.altKey && /^Digit[0-9]$/.test(e.code)) {
+      const n = +e.code.slice(5);
+      e.preventDefault();
+      return setProfile(n === 0 ? null : (profiles()[n - 1] || {}).id || state.profileId);
+    }
     if (!mod || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const k = e.key.toLowerCase();
@@ -3257,7 +3572,11 @@
       'view-icons': () => setView('icons'),
       'view-list': () => setView('list'),
     };
-    window.navigatorApp.onShortcut(k => { if (!dlg.open && actions[k]) actions[k](); });
+    window.navigatorApp.onShortcut(k => {
+      const m = /^profile-(\d)$/.exec(k);
+      if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);
+      if (!dlg.open && actions[k]) actions[k]();
+    });
 
     // Files saved from Claude land in Downloads.
     window.navigatorApp.onDownload(d => {
@@ -3283,6 +3602,149 @@
       });
     });
   }
+
+  // ---------- Profile switching and colours ----------
+  function hexToRgb(h) { const m = /^#?([0-9a-f]{6})$/i.exec(h || ''); if (!m) return [61, 127, 214]; const v = parseInt(m[1], 16); return [v >> 16, (v >> 8) & 255, v & 255]; }
+  const luminance = h => { const [r2, g, b] = hexToRgb(h).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }); return 0.2126 * r2 + 0.7152 * g + 0.0722 * b; };
+  const darken = (h, k) => '#' + hexToRgb(h).map(x => Math.round(x * (1 - k)).toString(16).padStart(2, '0')).join('');
+  const TINTS = { subtle: ['7%', '4%'], medium: ['14%', '7%'], bold: ['26%', '13%'] };
+  function applyProfileTheme() {
+    const p = activeProfile();
+    const root = document.documentElement;
+    root.classList.toggle('profiled', !!p);
+    for (const v of ['--tint', '--tint-side', '--tint-bar', '--accent', '--accent-text']) root.style.removeProperty(v);
+    if (p) {
+      const [side, bar] = TINTS[p.tint] || TINTS.medium;
+      root.style.setProperty('--tint', p.color);
+      root.style.setProperty('--tint-side', side);
+      root.style.setProperty('--tint-bar', bar);
+      // Very light colours (like yellow) are darkened for text and icons so they stay readable.
+      const accent = luminance(p.color) > 0.45 ? darken(p.color, 0.35) : p.color;
+      root.style.setProperty('--accent', accent);
+      root.style.setProperty('--accent-text', luminance(accent) > 0.5 ? '#000000' : '#ffffff');
+    }
+    const btn = $('profileBtn');
+    btn.querySelector('.pname').textContent = p ? p.name : 'All Profiles';
+    const dot = btn.querySelector('.pdot');
+    dot.className = 'pdot' + (p ? '' : ' all');
+    dot.style.background = p ? p.color : '';
+    document.title = (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
+  }
+  function setProfile(id, { quiet = false } = {}) {
+    state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
+    ls.set('claudeNavigator.activeProfile', state.profileId || '');
+    applyProfileTheme();
+    // Stay where you are if it belongs to this profile; otherwise go to the profile's top level.
+    if (state.loc.kind === 'folder' && state.loc.id && state.profileId && profileOf(state.loc.id) !== activeProfile()) {
+      state.loc = { kind: 'folder', id: null };
+      nav.hist[nav.pos] = state.loc;
+    }
+    if (state.loc.kind === 'folder' && state.loc.id === state.profileId && state.profileId) {
+      state.loc = { kind: 'folder', id: null };
+      nav.hist[nav.pos] = state.loc;
+    }
+    lastRevealed = null;
+    renderAll();
+    if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
+  }
+  function showProfileMenu(x, y) {
+    const ap = activeProfile();
+    showMenu(x, y, [
+      { label: 'All Profiles', dot: 'all', checked: !ap, key: (isMac ? '\u2325\u2318' : 'Ctrl+Alt+') + '0', run: () => setProfile(null) },
+      '-',
+      ...profiles().map((p, i) => ({ label: p.name, dot: p.color, checked: ap === p, key: i < 9 ? (isMac ? '\u2325\u2318' : 'Ctrl+Alt+') + (i + 1) : undefined, run: () => setProfile(p.id) })),
+      '-',
+      { label: 'New Profile\u2026', run: () => openProfileDialog(null) },
+      ap && { label: `Edit \u201c${ap.name}\u201d\u2026`, run: () => openProfileDialog(ap) },
+      !ap && profiles().length > 0 && { label: 'Edit a Profile\u2026', run: () => showMenu(x, y, profiles().map(p => ({ label: p.name, dot: p.color, run: () => openProfileDialog(p) }))) },
+    ]);
+  }
+  $('profileBtn').addEventListener('click', e => {
+    const b = e.currentTarget.getBoundingClientRect();
+    showProfileMenu(b.left, b.bottom + 4);
+  });
+
+  // New / edit profile dialog: name, colour (brand palette or any colour), tint strength, live preview.
+  const pdlg = $('profileDlg');
+  const pf = { editing: null, color: PROFILE_COLOURS[0], tint: 'medium' };
+  function paintProfilePreview() {
+    const [side, bar] = TINTS[pf.tint];
+    $('pvSide').style.background = `color-mix(in srgb, ${pf.color} ${side}, var(--side))`;
+    $('pvSide').textContent = $('profileName').value.trim() || 'Folders';
+    $('pvBar').style.background = `color-mix(in srgb, ${pf.color} ${bar}, var(--win))`;
+    $('pvTop').style.background = pf.color;
+    $('profileSwatches').querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.c.toLowerCase() === pf.color.toLowerCase()));
+    $('profileTint').querySelectorAll('.tb').forEach(b => b.classList.toggle('on', b.dataset.tint === pf.tint));
+    $('profileCustom').value = /^#[0-9a-f]{6}$/i.test(pf.color) ? pf.color : '#3d7fd6';
+  }
+  (() => {
+    const sw = $('profileSwatches');
+    for (const c of PROFILE_COLOURS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swatch';
+      b.dataset.c = c;
+      b.style.background = c;
+      b.title = c;
+      b.addEventListener('click', () => { pf.color = c; paintProfilePreview(); });
+      sw.appendChild(b);
+    }
+    const custom = document.createElement('input');
+    custom.type = 'color';
+    custom.id = 'profileCustom';
+    custom.title = 'Any colour';
+    custom.addEventListener('input', () => { pf.color = custom.value; paintProfilePreview(); });
+    sw.appendChild(custom);
+    $('profileTint').addEventListener('click', e => { const b = e.target.closest('[data-tint]'); if (b) { pf.tint = b.dataset.tint; paintProfilePreview(); } });
+    $('profileName').addEventListener('input', paintProfilePreview);
+  })();
+  function openProfileDialog(p) {
+    pf.editing = p;
+    pf.color = p ? p.color : PROFILE_COLOURS[profiles().length % PROFILE_COLOURS.length];
+    pf.tint = p ? (p.tint || 'medium') : 'medium';
+    $('profileDlgTitle').textContent = p ? `Edit \u201c${p.name}\u201d` : 'New Profile';
+    $('profileName').value = p ? p.name : '';
+    $('profileGroupsRow').hidden = !!p;
+    $('profileDelete').hidden = !p;
+    $('profileOk').textContent = p ? 'Save' : 'Create Profile';
+    paintProfilePreview();
+    pdlg.returnValue = '';
+    pdlg.showModal();
+    $('profileName').focus();
+  }
+  pdlg.addEventListener('close', () => {
+    if (pdlg.returnValue !== 'ok') return;
+    const name = $('profileName').value.trim();
+    if (!name) return;
+    snap();
+    if (pf.editing) {
+      Object.assign(pf.editing, { name, color: pf.color, tint: pf.tint });
+      commit();
+      applyProfileTheme();
+    } else {
+      const p = makeProfile(name, [], pf.color, $('profileGroups').checked);
+      p.tint = pf.tint;
+      state.tree.push(p);
+      save();
+      setProfile(p.id, { quiet: true });
+      toast(`Created the ${name} profile`, true);
+    }
+  });
+  $('profileDelete').addEventListener('click', () => {
+    const p = pf.editing;
+    if (!p) return;
+    let c = 0;
+    walk(p.children, () => c++);
+    if (!confirm(`Delete the \u201c${p.name}\u201d profile${c ? ` and the ${c} item${c === 1 ? '' : 's'} in it` : ''}? You can undo this.`)) return;
+    pdlg.close();
+    snap();
+    const l = locate(p.id);
+    l.list.splice(l.index, 1);
+    if (state.profileId === p.id) state.profileId = null;
+    save();
+    setProfile(state.profileId, { quiet: true });
+    toast(`Deleted the ${p.name} profile`, true);
+  });
 
   // ---------- Tooltips ----------
   // Any element with a title shows it after a short pause; once one is showing,
@@ -3377,6 +3839,8 @@
       startFolder = s.lastFolderId && nodeOf(s.lastFolderId) ? s.lastFolderId : null;
     }
   } catch (e) { /* ignore */ }
+  applyProfileTheme();
+  repairGenericNames();
   renderSide();
   state.lastFolderId = startFolder;
   go(start);

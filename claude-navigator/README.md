@@ -74,9 +74,24 @@ How it works: Claude has no official way for other apps to read your chat list, 
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
-## More groups: App Code, Design Systems, Schedules, Other
+## Profiles
 
-Below your own folders are four more sections that work exactly the same way (folders inside, drag things in). The **Claude** section at the top has matching lists to fill them from: **Code** (Claude Code sessions), **Design** (designs and design systems) and **Scheduled** (scheduled tasks).
+Your folders live in **profiles**, for example Monkey Baa, NCTI and Personal. The switcher at the top of the sidebar picks one:
+
+- **One profile**: you see only its folders, and new chats, Save As, search and the folder browser all stay inside it. Its colour tints the sidebar and top bar, draws a line across the top, and becomes the highlight colour, so you always know where you are.
+- **All Profiles**: every profile as a top-level group with everything inside. Drag things between profiles here.
+- **New Profile…** and **Edit Profile…** in the switcher: a name, a colour (the Monkey Baa palette or any colour), and how strong the tint is (Subtle, Medium, Bold). Edit also lets you delete a profile.
+- ⌥⌘1, ⌥⌘2 … switch straight to a profile; ⌥⌘0 is All Profiles.
+
+Each profile ends with an **Other** group holding **Code**, **Design Systems** and **Schedules** folders.
+
+The first time you open this version, your old layout is converted once: Work › Monkey Baa and Work › NCTI become profiles, Personal becomes a profile, and the old App Code (now Code), Design Systems and Schedules groups move into Monkey Baa's Other group with everything in them. Nothing is deleted.
+
+## The Claude section
+
+**New Chat**, **Recent Chats** and **Artifacts**, then **Other** (closed until you open it) with **Design Systems**, **Code** and **Scheduled**. The numbers show what is not in a folder yet.
+
+**Recent Chats** shows chats and artifacts together: each chat's artifacts under it, then the artifacts not linked to any chat at the end. Drag one of those onto its chat to link them. The Artifacts button at the top shows or hides them.
 
 Items get the right icon where Claude says what they are, or where the name makes it clear (for example "… Design System" or "… Slides"). Right-click anything and choose **Change Icon…** to correct it.
 
@@ -86,10 +101,9 @@ An artifact made in a chat sits underneath that chat (with a small ↳ arrow), i
 
 - **Detach** an artifact (right-click, Detach from Chat) to move it on its own, for example when one chat made several artifacts that belong in different places. ⌥-drag also moves it on its own.
 - **Attach** it again by dropping it onto the chat, or right-click and choose Attach to Chat.
+- The app learns these links by itself: when you open an artifact from a chat, and by reading your recent chats in the background (as Claude's own page does) for the artifacts they mention. Where an artifact and its chat sit in the same folder, the artifact moves under the chat automatically (with Undo). A detached artifact is never reattached automatically.
 - The app learns these links when you open an artifact from a chat. Filing that chat then brings its artifacts along, and an artifact filed into the folder that holds its chat goes under the chat.
 - In **Recent Chats**, the **Attached** button at the top shows or hides each chat's artifacts underneath it.
-
-The Claude section also has **Design Systems** (gathered from the Design and Artifacts lists), **Design**, **Code** and **Scheduled**, ready to drag into your App Code, Design Systems and Schedules groups.
 
 ## Your Claude account
 

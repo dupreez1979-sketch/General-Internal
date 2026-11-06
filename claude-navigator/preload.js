@@ -9,7 +9,7 @@ contextBridge.exposeInMainWorld('navigatorApp', {
   openFile: (file) => ipcRenderer.invoke('open-file', file),
   onShortcut: (fn) => ipcRenderer.on('shortcut', (_e, action) => fn(action)),
   onDownload: (fn) => ipcRenderer.on('download', (_e, info) => fn(info)),
-  refreshLibrary: () => ipcRenderer.invoke('library-refresh'),
+  refreshLibrary: (opts) => ipcRenderer.invoke('library-refresh', opts),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
   onContextAction: (fn) => ipcRenderer.on('context-action', (_e, info) => fn(info)),
