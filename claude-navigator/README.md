@@ -96,6 +96,17 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## Search
+
+The search box looks through all your folders (names and addresses), or through the Claude list you are viewing. Capitals never matter.
+
+| Type | Finds |
+|---|---|
+| `cape town` | both words, in any order |
+| `"cape town"` | exactly that phrase |
+| `zanzibar OR safari` | either one (`|` works too) |
+| `board -minutes` | "board" but not "minutes" (also `-"exact phrase"`) |
+
 ## One Rename, one Delete
 
 Right-click anything in your folders:

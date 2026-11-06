@@ -418,7 +418,7 @@
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
     <div class="search" data-tb="search">
       <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
-      <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)">
+      <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or the Claude list you are viewing (Ctrl+F).&#10;cape town: both words, any order&#10;&quot;cape town&quot;: exact phrase&#10;zanzibar OR safari: either&#10;board -minutes: leave out a word">
     </div>
   </div>
   <div id="tbPalette" hidden>
@@ -1528,10 +1528,10 @@
 
     let items, where = false;
     if (state.query) {
-      const q = state.query.toLowerCase();
+      const m = searchMatcher(state.query);
       items = [];
       walk(rootList(), n => {
-        if (n.name.toLowerCase().includes(q) || (n.url || '').toLowerCase().includes(q)) items.push(n);
+        if (m(n.name, n.url || '')) items.push(n);
       });
       where = true;
     } else {
@@ -1724,8 +1724,8 @@
     if (kind === 'chats' && state.libArts !== 'any') items = items.filter(x => (relatedFor(x.url).length > 0) === (state.libArts === 'with'));
     if (kind === 'chats' && state.libStarred) items = items.filter(x => x.starred);
     if (state.query) {
-      const q = state.query.toLowerCase();
-      items = items.filter(x => (x.name || '').toLowerCase().includes(q));
+      const m = searchMatcher(state.query);
+      items = items.filter(x => m(x.name || ''));
     }
     return { kind, idx, items: sortItems(items, 'library', { idx }) };
   }
@@ -1817,9 +1817,9 @@
       if (kind === 'chats' && state.libShowAttached && lastPage) {
         const linked = new Set();
         for (const c of lib.chats || []) for (const a of relatedFor(c.url)) linked.add(normUrl(a.url));
-        const q = (state.query || '').toLowerCase();
+        const sm = searchMatcher(state.query || '');
         const loose = libList('artifacts').filter(a => !linked.has(normUrl(a.url)) && !libRowItems.has(a.url) && inThisProfileOrUnfiled(a.url, idx) &&
-          (state.libFilter !== 'unfiled' || !idx.has(normUrl(a.url))) && (!q || (a.name || '').toLowerCase().includes(q)));
+          (state.libFilter !== 'unfiled' || !idx.has(normUrl(a.url))) && sm(a.name || ''));
         if (loose.length) {
           const h = document.createElement('div');
           h.className = 'lsub';
@@ -4521,6 +4521,40 @@
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
   });
+  // ---------- Search ----------
+  // How the search box reads what you type (capitals never matter):
+  //   cape town            both words, in any order
+  //   "cape town"          exactly that phrase
+  //   zanzibar OR safari   either (OR in capitals, or |)
+  //   board -minutes       "board" but not "minutes" (also -"exact phrase")
+  // An item matches if any of its texts (for example its name and its address) matches.
+  function searchMatcher(query) {
+    const tokens = [];
+    const re = /(-?)"([^"]*)"?|(\S+)/g;
+    let m;
+    while ((m = re.exec(String(query || '')))) {
+      if (m[3] !== undefined) {
+        const w = m[3];
+        if (w === 'OR' || w === '|') tokens.push({ or: true });
+        else if (w.length > 1 && w[0] === '-') tokens.push({ text: w.slice(1).toLowerCase(), not: true });
+        else tokens.push({ text: w.toLowerCase() });
+      } else if (m[2].trim()) tokens.push({ text: m[2].toLowerCase(), not: m[1] === '-' });
+    }
+    const groups = [[]], nots = [];
+    for (const t of tokens) {
+      if (t.or) { if (groups[groups.length - 1].length) groups.push([]); }
+      else if (t.not) nots.push(t.text);
+      else groups[groups.length - 1].push(t.text);
+    }
+    const wanted = groups.filter(g => g.length);
+    return (...texts) => {
+      const hay = texts.map(t => String(t || '').toLowerCase());
+      const has = w => hay.some(h => h.includes(w));
+      if (nots.some(has)) return false;
+      return !wanted.length || wanted.some(g => g.every(has));
+    };
+  }
+
   // ---------- Customise the toolbar ----------
   // Right-click the toolbar: move items, take them off, add them back, and add spaces to push things to the middle or right.
   const TB_STORE = 'claudeNavigator.toolbar.v1';
