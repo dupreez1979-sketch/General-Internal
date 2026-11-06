@@ -1581,6 +1581,7 @@
     $('pathbar').hidden = showPage;
     if (showPage) return;
     if (state.loc.kind === 'library') return renderLibrary();
+    if (state.loc.kind === 'monday') return renderMonday();
 
     let items, where = false;
     if (state.query) {
@@ -2485,6 +2486,7 @@
       const saved = pageContext().linkId && nodeOf(pageContext().linkId);
       title = realTitle(state.pageTitle) || (saved && saved.name) || cleanTitle(state.pageTitle) || 'Claude';
     }
+    else if (state.loc.kind === 'monday') title = mondayPlace(state.loc.key).name || 'monday.com';
     else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : (activeProfile() ? activeProfile().name : 'All Profiles');
     const tEl = $('title');
     tEl.replaceChildren();
@@ -2571,7 +2573,7 @@
 
   // ---------- Navigation (Finder-style back and forward) ----------
   const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id
-    : a.kind === 'library' ? a.which === b.which : normUrl(a.url) === normUrl(b.url)));
+    : a.kind === 'library' ? a.which === b.which : a.kind === 'monday' ? a.key === b.key : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
     if (loc.kind === 'page' && !/^https?:\/\//i.test(loc.url || '')) { toast('That link is not a web address, so it was not opened'); return; }
@@ -3889,7 +3891,10 @@
     if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
     if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
-    if (row.dataset.action === 'monday-open') return toggleMondayOpen(row.dataset.key);
+    if (row.dataset.action === 'monday-open') {
+      if (e.target.closest('.twisty')) return toggleMondayOpen(row.dataset.key);
+      return go({ kind: 'monday', key: row.dataset.key });
+    }
     if (row.classList.contains('monday-board')) return go({ kind: 'page', url: row.dataset.url });
     if (row.dataset.action === 'claude-other') {
       ls.set('claudeNavigator.claudeOtherOpen', ls.get('claudeNavigator.claudeOtherOpen') === '1' ? '0' : '1');
@@ -3920,6 +3925,8 @@
   });
   treeEl.addEventListener('dblclick', e => {
     if (e.target.closest('.xall, .twisty')) return;           // the arrow already toggled on each click
+    const mrow = e.target.closest('.row[data-action="monday-open"]');
+    if (mrow) return toggleMondayOpen(mrow.dataset.key);
     const sec = e.target.closest('.row.section');
     if (sec) return openNode(nodeOf(sec.dataset.id));
     // Double-clicking a folder (or a chat with attached items) expands or collapses it, like its arrow.
@@ -4122,6 +4129,12 @@
   }
 
   browseEl.addEventListener('mousedown', e => {
+    if (state.loc.kind === 'monday') {                 // a monday.com workspace or folder: click selects
+      const it = e.target.closest('.item');
+      browseEl.querySelectorAll('.item.selected').forEach(x => x.classList.remove('selected'));
+      if (it) it.classList.add('selected');
+      return;
+    }
     if (e.target.closest('input:not(.lchk), button, .banner')) return;
     const disc = e.target.closest('.lrow .disc');
     if (disc) {
@@ -4194,6 +4207,13 @@
     applyBrowseSel(false);
   });
   browseEl.addEventListener('dblclick', e => {
+    if (state.loc.kind === 'monday') {                 // double-click opens, as in your own folders
+      const it = e.target.closest('.item');
+      if (!it) return;
+      if (it.dataset.mkey) return go({ kind: 'monday', key: it.dataset.mkey });
+      if (it.dataset.url) return go({ kind: 'page', url: it.dataset.url });
+      return;
+    }
     if (state.loc.kind === 'library') {
       const it = e.target.closest('.item.lib');
       if (it) openLib(it.dataset.key, e.metaKey || e.ctrlKey);
@@ -4279,7 +4299,7 @@
   const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain' || t === 'Files');
 
   function onDragStart(e) {
-    const board = e.target.closest && e.target.closest('.row.monday-board');
+    const board = e.target.closest && e.target.closest('.monday-board');
     if (board) {
       const item = { name: board.dataset.name, url: board.dataset.url, system: 'monday' };
       e.dataTransfer.effectAllowed = 'copy';
@@ -4655,12 +4675,14 @@
       r.dataset.url = b.url;
       r.dataset.name = b.name;
       r.draggable = true;
+      if (state.loc.kind === 'page' && normUrl(state.loc.url || '') === normUrl(b.url)) r.classList.add('selected');
     };
     const folderRows = (wsId, parentId, depth) => {
       for (const f of folders.filter(f => f.workspace === wsId && (f.parent || null) === parentId).sort(byName)) {
         const r = row('lib-action monday-node', depth, small('folder', KIND_COLOUR.mondayws), f.name, f.name);
         r.dataset.action = 'monday-open';
         r.dataset.key = 'f:' + f.id;
+        if (state.loc.kind === 'monday' && state.loc.key === 'f:' + f.id) r.classList.add('selected');
         if (tw(r, 'f:' + f.id)) {
           folderRows(wsId, f.id, depth + 1);
           for (const b of boards.filter(b => b.folder === f.id).sort(byName)) boardRow(b, depth + 1);
@@ -4674,6 +4696,7 @@
       const r = row('lib-action monday-node', 1, small('mondayws', KIND_COLOUR.mondayws), w.name, `${w.name}: ${inWs.length} board${inWs.length === 1 ? '' : 's'}`);
       r.dataset.action = 'monday-open';
       r.dataset.key = 'w:' + w.id;
+      if (state.loc.kind === 'monday' && state.loc.key === 'w:' + w.id) r.classList.add('selected');
       const c = document.createElement('span');
       c.className = 'count';
       c.textContent = inWs.length;
@@ -4684,6 +4707,78 @@
       }
     }
     if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
+  }
+  // A workspace ('w:id') or folder ('f:id'): its name, the path to it, and what is directly inside.
+  function mondayPlace(key) {
+    const boards = mondayData.boards || [], folders = mondayData.folders || [];
+    const [t, id] = String(key || '').split(/:(.*)/s);
+    const known = new Set(folders.map(f => f.id));
+    if (t === 'w') {
+      const w = (mondayData.workspaces || []).find(x => x.id === id);
+      return { name: w ? w.name : 'Workspace', path: [], folders: folders.filter(f => f.workspace === id && !f.parent),
+        boards: boards.filter(b => b.workspace === id && (!b.folder || !known.has(b.folder))) };
+    }
+    const f = folders.find(x => x.id === id);
+    if (!f) return { name: 'Folder', path: [], folders: [], boards: [] };
+    const path = [];
+    for (let p = f.parent && folders.find(x => x.id === f.parent); p; p = p.parent && folders.find(x => x.id === p.parent)) path.unshift({ key: 'f:' + p.id, name: p.name });
+    const w = (mondayData.workspaces || []).find(x => x.id === f.workspace);
+    if (w) path.unshift({ key: 'w:' + w.id, name: w.name });
+    return { name: f.name, path, folders: folders.filter(x => x.parent === id), boards: boards.filter(b => b.folder === id) };
+  }
+  function renderMonday() {
+    const place = mondayPlace(state.loc.key);
+    const frag = document.createDocumentFragment();
+    const items = [...place.folders.slice().sort(byName).map(f => ({ folder: f })), ...place.boards.slice().sort(byName).map(b => ({ board: b }))];
+    if (!items.length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.innerHTML = mondayData.workspaces ? '<b>Nothing here</b>This workspace or folder has no boards.' : '<b>Not loaded yet</b>Open monday.com under Systems to connect or refresh.';
+      frag.appendChild(e);
+    } else {
+      const l = makeList('folder');
+      for (const it of items) {
+        const r = document.createElement('div');
+        if (it.folder) {
+          const n = (mondayData.boards || []).filter(b => b.folder === it.folder.id).length;
+          r.className = 'lrow item';
+          r.dataset.mkey = 'f:' + it.folder.id;
+          fillRow(r, 'folder', small('folder', KIND_COLOUR.mondayws), it.folder.name, { kind: 'monday.com folder', items: `${n} board${n === 1 ? '' : 's'}`, where: place.name });
+          r.title = `${it.folder.name}: double-click to open`;
+        } else {
+          const b = it.board, kind = b.type === 'document' ? 'mondaydoc' : 'monday';
+          r.className = 'lrow item monday-board';
+          r.dataset.url = b.url;
+          r.dataset.name = b.name;
+          r.draggable = true;
+          fillRow(r, 'folder', small(kind, KIND_COLOUR[kind]), b.name, { kind: KIND_NAME[kind] + (b.private ? ' (private)' : ''), edited: fmtDate(b.updated), where: place.name, address: (b.url || '').replace(/^https?:\/\//, '') });
+          r.title = `${b.name}\nDouble-click to open it here; drag it into one of your folders to file it.${savedLinksFor(b.url).length ? '\nAlready in your folders.' : ''}`;
+        }
+        l.appendChild(r);
+      }
+      frag.appendChild(l);
+    }
+    browseEl.replaceChildren(frag);
+    // Path bar: monday.com › workspace › folder, each clickable.
+    const bar = $('pathbar');
+    bar.replaceChildren();
+    const crumb = (label, key) => {
+      const c = document.createElement('span');
+      c.className = 'crumb';
+      c.textContent = label;
+      if (key) { c.style.cursor = 'pointer'; c.title = `Go to ${label}`; c.addEventListener('click', () => go({ kind: 'monday', key })); }
+      bar.appendChild(c);
+      const sep = document.createElement('span');
+      sep.className = 'sep';
+      sep.textContent = ' \u203a ';
+      bar.appendChild(sep);
+    };
+    crumb('monday.com', null);
+    for (const p of place.path) crumb(p.name, p.key);
+    const here = document.createElement('span');
+    here.textContent = `${place.name} \u00b7 ${items.length} item${items.length === 1 ? '' : 's'}`;
+    bar.appendChild(here);
+    renderSide();
   }
   async function mondayRefresh(force = true) {
     if (!isApp || mondayBusy) return;
@@ -4700,6 +4795,7 @@
     } else mondayData = res;
     ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
     renderSide();
+    if (state.loc.kind === 'monday') renderMain();
     if (force && res && !res.error && res.connected) toast(`Loaded ${res.boards.length} boards from monday.com`);
   }
   const mdlg = $('mondayDlg');
