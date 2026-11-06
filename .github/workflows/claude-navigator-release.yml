@@ -1,0 +1,65 @@
+# Builds Claude Navigator on a Mac, signs it with your Developer ID, has Apple notarise it,
+# and publishes it to the public releases repository, where the app looks for updates.
+#
+# Runs when a tag like "claude-navigator-v0.2.0" is pushed, or by hand from the Actions tab.
+# The version in claude-navigator/package.json must match the tag.
+# Secrets it needs (Settings > Secrets and variables > Actions) are listed in claude-navigator/RELEASING.md.
+
+name: Release Claude Navigator (Mac)
+
+on:
+  push:
+    tags: ['claude-navigator-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: claude-navigator
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: claude-navigator/package-lock.json
+
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          want="claude-navigator-v$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "$want" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json ($want). Update the version, commit, and tag again."
+            exit 1
+          fi
+
+      - name: Check the secrets are set
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          missing=""
+          [ -n "$CSC_LINK" ] || missing="$missing MAC_CERT_P12_BASE64"
+          [ -n "$APPLE_ID" ] || missing="$missing APPLE_ID"
+          [ -n "$GH_TOKEN" ] || missing="$missing RELEASES_TOKEN"
+          if [ -n "$missing" ]; then echo "Missing secrets:$missing (see claude-navigator/RELEASING.md)"; exit 1; fi
+
+      - run: npm ci
+
+      - name: Build, sign, notarise and publish
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: npx electron-builder --mac --arm64 --x64 --publish always

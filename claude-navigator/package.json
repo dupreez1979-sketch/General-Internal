@@ -1,14 +1,15 @@
 {
   "name": "claude-navigator",
   "productName": "Claude Navigator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Your own folder tree for Claude chats, projects and artifacts, with Claude open alongside.",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
     "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win",
+    "release:mac": "electron-builder --mac --arm64 --x64 --publish always"
   },
   "devDependencies": {
     "electron": "^33.2.1",
@@ -38,13 +39,44 @@
             "arm64",
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "category": "public.app-category.productivity",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Claude uses the microphone for voice mode and dictation.",
         "NSCameraUsageDescription": "Claude uses the camera when you choose to share a photo or video."
+      },
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true
+    },
+    "directories": {
+      "buildResources": "build"
+    },
+    "icon": "build/icon.png",
+    "dmg": {
+      "title": "Claude Navigator ${version}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dupreez1979-sketch",
+        "repo": "claude-navigator-releases",
+        "releaseType": "release"
       }
-    }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   }
 }

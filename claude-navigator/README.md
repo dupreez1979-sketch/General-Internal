@@ -4,6 +4,12 @@ Your own front end for Claude, laid out like the Mac Finder: a sidebar of folder
 
 Folders can nest as deep as you like. Each link points at a Claude chat, project, artifact, or any other page (Canva designs, Google Docs). Clicking a link opens it in Claude, signed in as you, so every Claude feature still works: projects, artifacts, connectors, Canva, design systems.
 
+## Updates
+
+Signed versions update themselves: the app checks for a new version on start-up and every few hours, downloads it quietly, and tells you when it is ready ("Restart Now"). It also installs next time you quit. **… › Check for Updates…** checks straight away. Setting this up (an Apple Developer account and a few GitHub settings, done once) is explained step by step in [RELEASING.md](RELEASING.md).
+
+Copies built on your Mac with **Install or Update.command** do not update themselves; run the script again to update them.
+
 ## Two ways to run it
 
 ### 1. Mac app (recommended)

@@ -783,6 +783,35 @@ ipcMain.handle('fs-new-file', async (_e, kind, destRel, name) => {
   return { rel: folderSync.rel(target), error: err || null };
 });
 
+// ---------- Updates ----------
+// Signed releases check for a newer version on start-up and every few hours, download it in the background,
+// and install it when you restart (or quit). Builds made on this Mac by the install script do not update
+// themselves (they are updated by running the script again).
+const pkg = require('./package.json');
+let updater = null;
+const update = { state: 'idle', version: null, error: null };
+function setUpUpdates() {
+  if (!app.isPackaged || pkg.localBuild) { update.state = 'unavailable'; return; }
+  try { updater = require('electron-updater').autoUpdater; } catch (e) { update.state = 'unavailable'; return; }
+  updater.autoDownload = true;
+  updater.autoInstallOnAppQuit = true;
+  updater.on('checking-for-update', () => { update.state = 'checking'; });
+  updater.on('update-not-available', () => { update.state = 'current'; });
+  updater.on('update-available', info => { update.state = 'downloading'; update.version = info && info.version; });
+  updater.on('update-downloaded', info => { update.state = 'ready'; update.version = info && info.version; send('update-ready', { version: update.version }); });
+  updater.on('error', err => { update.state = 'error'; update.error = String((err && err.message) || err).split('\n')[0]; });
+  const check = () => updater.checkForUpdates().catch(() => {});
+  setTimeout(check, 15000);
+  setInterval(check, 4 * 60 * 60e3);
+}
+ipcMain.handle('update-status', () => Object.assign({ current: app.getVersion() }, update));
+ipcMain.handle('update-check', async () => {
+  if (!updater) return Object.assign({ current: app.getVersion() }, update);
+  try { await updater.checkForUpdates(); } catch (e) { update.state = 'error'; update.error = String(e.message || e); }
+  return Object.assign({ current: app.getVersion() }, update);
+});
+ipcMain.handle('update-install', () => { if (updater && update.state === 'ready') setImmediate(() => updater.quitAndInstall()); });
+
 // ---------- Automatic backups ----------
 // One backup a day of your folders (and the app's links between chats and artifacts), the last 30 kept.
 const backupDir = () => path.join(app.getPath('userData'), 'Backups');
@@ -843,6 +872,7 @@ if (!app.requestSingleInstanceLock()) {
     setUpSession();
     buildMenu();
     createWindow();
+    setUpUpdates();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });
   app.on('window-all-closed', () => { if (!isMac) app.quit(); });

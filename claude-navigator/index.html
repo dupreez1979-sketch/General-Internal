@@ -4733,6 +4733,8 @@
         commit();
         toast(`Removed ${ids.length} deleted chat${ids.length === 1 ? '' : 's'}`, true);
       } },
+      isApp && updateReady && { label: `Restart to Update to ${updateReady}`, run: () => window.navigatorApp.updateInstall() },
+      isApp && !updateReady && { label: 'Check for Updates\u2026', run: checkForUpdates },
       isApp && { label: 'Restore from Automatic Backup\u2026', run: () => showBackupMenu(lastMenuX, lastMenuY) },
       { label: 'Back Up Folders to a File…', run: exportTree },
       { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
@@ -4823,6 +4825,24 @@
     ]);
   }
   if (isApp) { setTimeout(() => autoBackup(), 8000); setInterval(() => autoBackup(), 60 * 60e3); }
+
+  // ---------- Updates ----------
+  let updateReady = null;
+  if (isApp && window.navigatorApp.onUpdateReady) {
+    window.navigatorApp.onUpdateReady(info => {
+      updateReady = info && info.version;
+      toast(`Version ${updateReady} is ready. It installs when you restart.`, { label: 'Restart Now', run: () => window.navigatorApp.updateInstall() });
+    });
+  }
+  async function checkForUpdates() {
+    toast('Checking for updates\u2026');
+    const s = await window.navigatorApp.updateCheck();
+    if (s.state === 'unavailable') return toast(`This copy (version ${s.current}) was built on this Mac, so it updates by running Install or Update again.`);
+    if (s.state === 'ready') return toast(`Version ${s.version} is ready.`, { label: 'Restart Now', run: () => window.navigatorApp.updateInstall() });
+    if (s.state === 'downloading' || s.state === 'checking') return toast(`Version ${s.version || 'new'} is downloading. You will be told when it is ready.`);
+    if (s.state === 'error') return toast(`Could not check for updates: ${s.error}`);
+    toast(`You have the latest version (${s.current}).`);
+  }
 
   document.addEventListener('keydown', e => {
     if (document.querySelector('dialog[open]') || tbCustomizing) return;    // a dialog is open: its own keys only

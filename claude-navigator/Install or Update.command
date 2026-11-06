@@ -45,7 +45,7 @@ say_step "3 of 4  Building the app"
 # Apple Silicon even when Terminal runs under Rosetta (where uname reports x86_64).
 if [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ]; then ARCH="--arm64"; else ARCH="--x64"; fi
 rm -rf dist
-npx electron-builder --mac dir "$ARCH" -c.mac.identity=null || fail "The build failed. Copy the text above and send it to Claude."
+npx electron-builder --mac dir "$ARCH" --publish never -c.mac.identity=null -c.mac.notarize=false -c.mac.hardenedRuntime=false -c.extraMetadata.localBuild=true || fail "The build failed. Copy the text above and send it to Claude."
 BUILT="$(find dist -maxdepth 2 -name "$APP_NAME.app" -type d | head -n 1)"
 [ -n "$BUILT" ] || fail "The build finished but the app was not found in the dist folder."
 

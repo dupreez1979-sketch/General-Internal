@@ -17,6 +17,10 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   backupList: () => ipcRenderer.invoke('backup-list'),
   backupRead: (name) => ipcRenderer.invoke('backup-read', name),
   backupReveal: () => ipcRenderer.invoke('backup-reveal'),
+  updateStatus: () => ipcRenderer.invoke('update-status'),
+  updateCheck: () => ipcRenderer.invoke('update-check'),
+  updateInstall: () => ipcRenderer.invoke('update-install'),
+  onUpdateReady: (fn) => ipcRenderer.on('update-ready', (_e, info) => fn(info)),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
   // Folders on this computer
