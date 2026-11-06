@@ -151,6 +151,9 @@
   .twisty.conn, .lrow .conn { color: var(--muted); }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
   .list .item.selected .conn { color: inherit; }
+  @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #bSaveText { display: none; } }
+  @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } #libSeg { display: none !important; } }
+  .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
   .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
   .libbar b { margin-right: 6px; }
   .libbar .danger { color: #c0392b; }
@@ -838,6 +841,7 @@
     const frag = document.createDocumentFragment();
     const addChildren = (nodes, depth, parent = null) => {
       for (const n of nodes) {
+        if (n.type === 'link' && isArchived(n.url)) continue;     // archived: see Filter, Archived
         const open = !!(n.children && n.children.length && n.open);
         frag.appendChild(sideRow(n, depth, open, parent));
         if (open) addChildren(n.children, depth + 1, n);
@@ -1152,7 +1156,14 @@
       items = childrenOf(state.loc.id);
     }
     items = sortItems(items, where ? 'search' : 'folder', { updated: libUpdatedIndex() });
+    const unfiltered = items.length;
+    items = folderFilter(items);
+    state.folderFiltered = items;
+    const pages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+    if (state.libPage >= pages) state.libPage = pages - 1;
+    const pageItems = items.slice(state.libPage * PAGE_SIZE, (state.libPage + 1) * PAGE_SIZE);
     const frag = document.createDocumentFragment();
+    if (state.libSelectMode && items.length) frag.appendChild(folderActionBar());
 
     if (!isApp && !state.query && !ls.get(BANNER_STORE)) {
       const b = document.createElement('div');
@@ -1167,18 +1178,34 @@
       e.className = 'empty';
       e.innerHTML = state.query
         ? '<b>No results</b>Try a different word.'
+        : unfiltered ? '<b>Nothing matches these filters</b>Change or reset them in Filter at the top.'
         : `<b>This folder is empty</b>Open a Claude chat and press ${K.mod}S to save it here, drag links in, or right-click for more.`;
       frag.appendChild(e);
     } else if (state.view === 'icons' && !where) {
       const g = document.createElement('div');
       g.className = 'grid';
-      for (const n of items) g.appendChild(tileFor(n));
+      for (const n of pageItems) g.appendChild(tileFor(n));
       frag.appendChild(g);
     } else {
       const view = where ? 'search' : 'folder';
       const l = makeList(view);
+      if (state.libSelectMode) {
+        const all2 = document.createElement('input');
+        all2.type = 'checkbox';
+        all2.className = 'lchk lchk-all';
+        all2.title = `Select all ${items.length}${pages > 1 ? ' (every page)' : ''}`;
+        all2.addEventListener('mousedown', e => e.stopPropagation());
+        all2.addEventListener('click', e => {
+          e.stopPropagation();
+          const everyone = items.every(x => multi.browse.has(x.id));
+          multi.browse.clear();
+          if (!everyone) { items.forEach(x => multi.browse.add(x.id)); state.browseSel = items[0].id; } else state.browseSel = null;
+          renderMain();
+        });
+        l.querySelector('.lhead .hc').prepend(all2);
+      }
       const updated = libUpdatedIndex();
-      for (const n of items) {
+      for (const n of pageItems) {
         l.appendChild(listRowFor(n, view, updated));
         if (n.type === 'link' && n.children && n.children.length && n.open !== false && !where) {
           for (const c of n.children) {
@@ -1198,6 +1225,84 @@
     browseEl.replaceChildren(frag);
     renderPathbar(items.length);
     applyBrowseSel(false);
+    renderLibPager(items.length);
+  }
+
+  // ---------- Filters for folder and search lists ----------
+  const FF_KINDS = {
+    any: 'All Kinds', folders: 'Folders', chats: 'Chats', artifacts: 'Artifacts (docs, slides, designs\u2026)',
+    code: 'Code', projects: 'Projects', links: 'Other links',
+  };
+  const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard']);
+  state.ff = { kind: 'any', when: 'any', archived: false };
+  function folderFilter(items) {
+    const f = state.ff;
+    const upd = libUpdatedIndex();
+    return items.filter(n => {
+      if (n.type === 'link' && isArchived(n.url) !== f.archived) return false;
+      if (n.type === 'folder' && f.archived) return false;
+      const k = kindOf(n);
+      if (f.kind !== 'any') {
+        const ok = f.kind === 'folders' ? n.type === 'folder' : f.kind === 'chats' ? k === 'chat' : f.kind === 'artifacts' ? ARTIFACTY.has(k)
+          : f.kind === 'code' ? k === 'code' : f.kind === 'projects' ? k === 'project' : n.type === 'link' && !['chat', 'code', 'project'].includes(k) && !ARTIFACTY.has(k);
+        if (!ok) return false;
+      }
+      if (f.when !== 'any') {
+        const t = toTime(editedOf(n, upd)) || n.added || 0;
+        const day = 864e5, now = Date.now(), start = new Date(); start.setHours(0, 0, 0, 0);
+        const ok = !t ? f.when === 'older' : f.when === 'today' ? t >= start.getTime() : f.when === 'week' ? t >= now - 7 * day
+          : f.when === 'month' ? t >= now - 30 * day : t < now - 30 * day;
+        if (!ok) return false;
+      }
+      return true;
+    });
+  }
+  const folderFilterCount = () => (state.ff.kind !== 'any' ? 1 : 0) + (state.ff.when !== 'any' ? 1 : 0) + (state.ff.archived ? 1 : 0);
+  function showFolderFilterMenu(x, y) {
+    const set = (k, v) => () => { state.ff[k] = v; state.libPage = 0; renderMain(); renderToolbar(); };
+    showMenu(x, y, [
+      ...Object.keys(FF_KINDS).map(k => ({ label: FF_KINDS[k], checked: state.ff.kind === k, run: set('kind', k) })),
+      '-',
+      ...Object.keys(WHEN).map(k => ({ label: WHEN[k], checked: state.ff.when === k, run: set('when', k) })),
+      '-',
+      { label: 'Archived Only', checked: state.ff.archived, run: set('archived', !state.ff.archived) },
+      '-',
+      { label: 'Reset Filters', disabled: !folderFilterCount(), run: () => { state.ff = { kind: 'any', when: 'any', archived: false }; state.libPage = 0; renderMain(); renderToolbar(); } },
+    ]);
+  }
+  // The bar shown in Select mode for folder and search lists.
+  function folderActionBar() {
+    const ids = selectedBrowse();
+    const nodes = ids.map(nodeOf).filter(Boolean);
+    const bar = document.createElement('div');
+    bar.className = 'libbar';
+    const count = document.createElement('b');
+    count.textContent = ids.length ? `${ids.length} selected` : 'Select items with the checkboxes';
+    bar.appendChild(count);
+    if (!ids.length) return bar;
+    const b = (label, run, cls = '', title = '') => {
+      const x = document.createElement('button');
+      x.className = 'tb ' + cls;
+      x.innerHTML = '<span class="t"></span>';
+      x.firstChild.textContent = label;
+      if (title) x.title = title;
+      x.addEventListener('mousedown', e => e.stopPropagation());
+      x.addEventListener('click', e => { e.stopPropagation(); run(); });
+      bar.appendChild(x);
+    };
+    const links = nodes.filter(n => n.type === 'link');
+    const chats = links.filter(n => kindOf(n) === 'chat' && /claude\.ai\/chat\//.test(n.url));
+    b('Move To\u2026', () => moveManyPrompt(ids), '', 'Move them to another folder');
+    b('New Folder with Items', () => newFolderWith(ids, browseEl), '', 'Put them into a new folder here');
+    if (links.length) b(state.ff.archived ? 'Unarchive' : 'Archive', () => archiveItems(links.map(n => ({ url: n.url, name: n.name })), !state.ff.archived), '', 'Hide them from lists (only in this app; Claude is not changed)');
+    if (links.length) b('Copy Links', () => navigator.clipboard.writeText(links.map(n => n.url).join('\n')).then(() => toast('Links copied')));
+    b('Remove from Folder', () => removeNodes(ids), '', 'Remove them from your folders (nothing is deleted in Claude)');
+    if (chats.length && isApp) b(`Delete ${chats.length === 1 ? 'Chat' : `${chats.length} Chats`} from Claude\u2026`, () => {
+      const org = new Map((lib.chats || []).map(c => [normUrl(c.url), c.org]));
+      deleteFromClaude(chats.map(n => ({ url: n.url, name: n.name, org: org.get(normUrl(n.url)) || null })));
+    }, 'danger', 'Delete these chats from your Claude account for good');
+    b('Clear Selection', () => { state.browseSel = null; multi.browse.clear(); renderMain(); });
+    return bar;
   }
 
   const isArchived = url => (lib.archived || []).includes(normUrl(url));
@@ -1552,7 +1657,20 @@
     return p;
   }
   const colWidth = (view, k) => colsFor(view).widths[k] || COLS[k].w;
-  const gridCols = view => colsFor(view).cols.map((k, i, a) => i === a.length - 1 ? `minmax(${colWidth(view, k)}px, 1fr)` : `${colWidth(view, k)}px`).join(' ');
+  // Columns that fit the window (Name always stays); the rest drop out on narrow windows.
+  function visibleCols(view) {
+    const avail = Math.max(300, (browseEl.clientWidth || 900) - 80);
+    const out = [];
+    let used = 0;
+    for (const k of colsFor(view).cols) {
+      const w = colWidth(view, k);
+      if (k !== 'name' && used + w > avail) continue;
+      out.push(k);
+      used += w;
+    }
+    return out;
+  }
+  const gridCols = view => visibleCols(view).map((k, i, a) => i === a.length - 1 ? `minmax(${colWidth(view, k)}px, 1fr)` : `${colWidth(view, k)}px`).join(' ');
   const saveCols = () => ls.set(COL_STORE, JSON.stringify(colPrefs));
   const listView = () => (state.loc.kind === 'library' ? 'library' : state.query ? 'search' : 'folder');
 
@@ -1624,7 +1742,7 @@
     const head = document.createElement('div');
     head.className = 'lhead';
     const sort = sortFor(view);
-    for (const k of colsFor(view).cols) {
+    for (const k of visibleCols(view)) {
       const c = document.createElement('span');
       c.className = 'hc' + (sort && sort.col === k ? ' sorted' : '');
       c.dataset.col = k;
@@ -1657,7 +1775,7 @@
   // Fills a list row: the name cell plus one cell per chosen column.
   function fillRow(r, view, iconHtml, name, values) {
     const cells = [`<span class="nm"><span class="icon">${iconHtml}</span><span class="label"></span></span>`];
-    const cols = colsFor(view).cols;
+    const cols = visibleCols(view);
     for (let i = 1; i < cols.length; i++) cells.push('<span class="muted"></span>');
     r.innerHTML = cells.join('');
     r.querySelector('.label').textContent = name;
@@ -1689,6 +1807,12 @@
     ]);
   }
 
+  // Row checkboxes show the app's selection; stop the box's own click from flipping it back.
+  browseEl.addEventListener('click', e => {
+    if (!e.target.closest('.lchk:not(.lchk-all)')) return;
+    e.preventDefault();
+    requestAnimationFrame(() => (state.loc.kind === 'library' ? applyLibSel() : applyBrowseSel(false)));
+  });
   let lastResize = 0;
   browseEl.addEventListener('click', e => {
     const hc = e.target.closest('.lhead .hc');
@@ -1738,7 +1862,7 @@
     t.dataset.id = n.id;
     t.draggable = true;
     const k = kindOf(n);
-    t.innerHTML = `<div class="big">${k === 'folder' ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
+    t.innerHTML = `${state.libSelectMode ? '<input type="checkbox" class="lchk" title="Select">' : ''}<div class="big">${k === 'folder' ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
     t.querySelector('.label').textContent = n.name;
     t.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     if (n.type === 'link' && n.children && n.children.length) {
@@ -1758,6 +1882,7 @@
     r.draggable = true;
     const k = kindOf(n);
     const edited = editedOf(n, updated);
+
     fillRow(r, view, colourIcon(k), n.name, {
       kind: KIND_NAME[k],
       edited: fmtDate(edited),
@@ -1768,6 +1893,14 @@
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (state.libSelectMode) {
+      const c = document.createElement('input');
+      c.type = 'checkbox';
+      c.className = 'lchk';
+      c.title = 'Select';
+      c.checked = multi.browse.has(n.id);
+      r.querySelector('.nm').prepend(c);
+    }
     return r;
   }
 
@@ -1780,8 +1913,11 @@
   // Keeps only the outermost items (a folder's contents travel with it).
   const outermost = ids => ids.filter(id => locate(id) && !ids.some(o => o !== id && contains(o, id)));
   function selectedBrowse() {
-    if (!state.browseSel) return [];
-    return browseIds().filter(id => multi.browse.has(id));
+    if (!state.browseSel && !multi.browse.size) return [];
+    const pool = state.loc.kind === 'folder' && state.folderFiltered ? state.folderFiltered.map(n => n.id) : browseIds();
+    const ids = pool.filter(id => multi.browse.has(id));
+    for (const id of browseIds()) if (multi.browse.has(id) && !ids.includes(id)) ids.push(id);   // attached rows
+    return ids;
   }
   function selectedSide() {
     if (multi.side.size < 2) return [];
@@ -1799,6 +1935,15 @@
     else if (!multi.browse.has(state.browseSel)) { multi.browse.clear(); multi.browse.add(state.browseSel); }
     browseEl.querySelectorAll('.item.selected').forEach(r => r.classList.remove('selected'));
     for (const id of multi.browse) { const el = browseItemEl(id); if (el) el.classList.add('selected'); }
+    browseEl.querySelectorAll('.item[data-id] .lchk').forEach(c => { c.checked = multi.browse.has(c.closest('.item').dataset.id); });
+    const ca = browseEl.querySelector('.lchk-all');
+    if (ca && state.folderFiltered) {
+      const n = state.folderFiltered.filter(x => multi.browse.has(x.id)).length;
+      ca.checked = n > 0 && n === state.folderFiltered.length;
+      ca.indeterminate = n > 0 && n < state.folderFiltered.length;
+    }
+    const fbar = browseEl.querySelector('.libbar');
+    if (fbar && state.loc.kind === 'folder') fbar.replaceWith(folderActionBar());
     const r = browseItemEl(state.browseSel);
     if (r && scroll) r.scrollIntoView({ block: 'nearest' });
     const st = $('status');
@@ -1905,9 +2050,10 @@
     $('viewSeg').hidden = page || !!state.query || inLib;
     $('libSeg').hidden = !inLib;
     $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
-    $('libFilterBtn').hidden = !inLib;
-    $('libSelectBtn').hidden = !inLib;
-    const fc = activeFilterCount();
+    const listView = !page;
+    $('libFilterBtn').hidden = !listView;
+    $('libSelectBtn').hidden = !listView;
+    const fc = inLib ? activeFilterCount() : folderFilterCount();
     $('libFilterText').textContent = fc ? `Filter (${fc})` : 'Filter';
     $('libFilterBtn').classList.toggle('on', fc > 0);
     $('libSelectBtn').classList.toggle('on', !!state.libSelectMode);
@@ -1979,6 +2125,7 @@
       renderSide();
     }
     if (loc.kind !== 'page') closeFind();
+    state.libPage = 0;
     if (loc.kind === 'library') {
       libSel.clear(); libAnchor = null; state.lastFolderId = null; state.libPage = 0; refreshLibrary(false);
       if (CLAUDE_OTHER.includes(loc.which) && ls.get('claudeNavigator.claudeOtherOpen') !== '1') { ls.set('claudeNavigator.claudeOtherOpen', '1'); renderSide(); }
@@ -3268,8 +3415,24 @@
   browseEl.addEventListener('mousedown', e => {
     if (e.target.closest('input:not(.lchk), button, .banner')) return;
     if (state.loc.kind === 'library') return libMouseDown(e);
+    if (e.target.closest('.libbar, .lchk-all')) return;
     const it = e.target.closest('.item');
     multi.pending = null;
+    if (it && e.target.closest('.lchk')) {
+      // A checkbox adds or removes this item without touching the rest.
+      e.preventDefault();
+      const id = it.dataset.id;
+      if (multi.browse.has(id)) {
+        multi.browse.delete(id);
+        state.browseSel = state.browseSel === id ? ([...multi.browse].pop() || null) : state.browseSel;
+      } else {
+        if (state.browseSel && !multi.browse.size) multi.browse.add(state.browseSel);
+        multi.browse.add(id);
+        state.browseSel = id;
+      }
+      multi.browseAnchor = id;
+      return applyBrowseSel(false);
+    }
     if (!it) { state.browseSel = null; applyBrowseSel(false); return; }
     const id = it.dataset.id;
     if (e.metaKey || e.ctrlKey) {
@@ -3663,7 +3826,10 @@
   $('libAll').addEventListener('click', () => setLibFilter('all'));
   $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
   $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
-  $('libFilterBtn').addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); showLibFilterMenu(b.left, b.bottom + 4); });
+  $('libFilterBtn').addEventListener('click', e => {
+    const b = e.currentTarget.getBoundingClientRect();
+    if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
+  });
   $('libSelectBtn').addEventListener('click', () => { state.libSelectMode = !state.libSelectMode; renderMain(); renderToolbar(); });
   $('libAttachedBtn').addEventListener('click', () => {
     state.libShowAttached = !state.libShowAttached;
@@ -4039,6 +4205,12 @@
     addEventListener('mouseup', stop);
   });
   $('splitter').addEventListener('dblclick', () => { setWidth(240); ls.del(WIDTH_STORE); });
+
+  let fitTimer = null;
+  addEventListener('resize', () => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => { if (!browseEl.hidden && browseEl.querySelector('.list')) renderMain(); }, 150);
+  });
 
   addEventListener('storage', e => { if (e.key === STORE) { state.tree = load(); renderAll(); } });
 

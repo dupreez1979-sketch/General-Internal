@@ -106,6 +106,17 @@ Items get the right icon where Claude says what they are, or where the name make
 - **Archive** hides chats from the list in this app only; Claude has no archive to sync with, so nothing changes there. See them with Filter, Archived, and Unarchive them from there.
 - Artifacts can't be deleted from here yet; right-click one and choose **Open in Claude to Delete**.
 
+## The same tools in every list
+
+Folders, search results and the Claude section all have the same tools in the top bar:
+
+- **Filter**: in folders, by kind (folders, chats, artifacts, code, projects, other links), by date, or archived only. In the Claude lists, also filed or not filed, with or without artifacts, and starred.
+- **Select**: checkboxes on every row (and on icons in icon view), with a box in the Name heading that selects everything that matches, across all pages. In folders the bar offers **Move To**, **New Folder with Items**, **Archive**, **Copy Links**, **Remove from Folder** (nothing changes in Claude) and **Delete from Claude** for chats.
+- **Pages** of 100, with Previous and Next at the bottom right.
+- **Narrow windows**: columns that do not fit drop out (Name always stays), and the top-bar buttons shrink to icons; hover for their names.
+
+Archived items are hidden everywhere, including the sidebar, until you choose Filter, Archived (only in this app; Claude is not changed).
+
 ## Artifacts stay with the chat they came from
 
 An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. They move together: drag either one and both go.
