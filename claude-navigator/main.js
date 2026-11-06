@@ -387,7 +387,7 @@ const scrollHarvest = (pattern) => `(async () => {
 
 // Asks claude.ai for the full lists, as its own pages do.
 const API_SCRIPT = `(async () => {
-  const out = { chats: [], projects: [], notes: [], status: 0 };
+  const out = { chats: [], projects: [], notes: [], status: 0, chatsComplete: true };
   const get = async (u) => {
     const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } });
     if (!r.ok) { out.status = r.status; throw new Error(u.split('?')[0] + ' answered ' + r.status); }
@@ -413,14 +413,14 @@ const API_SCRIPT = `(async () => {
           });
           if (page.length < 200 || !fresh.length) break;
         }
-      } catch (e) { out.notes.push('chats: ' + e.message); }
+      } catch (e) { out.notes.push('chats: ' + e.message); out.chatsComplete = false; }
       try {
         for (const p of list(await get('/api/organizations/' + o.uuid + '/projects'))) {
           if (p && p.uuid) out.projects.push({ name: p.name || 'Untitled project', url: 'https://claude.ai/project/' + p.uuid, updated: p.updated_at || p.created_at || null });
         }
       } catch (e) { out.notes.push('projects: ' + e.message); }
     }
-  } catch (e) { out.notes.push(e.message); }
+  } catch (e) { out.notes.push(e.message); out.chatsComplete = false; }
   out.chats.sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
   out.projects.sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
   return out;
@@ -503,6 +503,7 @@ async function fetchLibrary(opts = {}) {
 
     const api = await win.webContents.executeJavaScript(API_SCRIPT, true);
     result.chats = api.chats;
+    result.chatsComplete = !!api.chatsComplete && api.chats.length > 0;   // the full list, straight from Claude
     result.projects = api.projects;
     result.notes.push(...api.notes);
     if ((api.status === 401 || api.status === 403) && !api.chats.length) result.signedIn = false;
@@ -781,6 +782,34 @@ ipcMain.handle('fs-new-file', async (_e, kind, destRel, name) => {
   const err = await shell.openPath(target);
   return { rel: folderSync.rel(target), error: err || null };
 });
+
+// ---------- Automatic backups ----------
+// One backup a day of your folders (and the app's links between chats and artifacts), the last 30 kept.
+const backupDir = () => path.join(app.getPath('userData'), 'Backups');
+const BACKUP_NAME = /^\d{4}-\d{2}-\d{2}\.json$/;
+ipcMain.handle('backup-write', (_e, text) => {
+  if (typeof text !== 'string' || text.length > 50e6) return { error: 'nothing to back up' };
+  fs.mkdirSync(backupDir(), { recursive: true });
+  const d = new Date();
+  const name = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`;
+  const tmp = path.join(backupDir(), name + '.tmp');
+  fs.writeFileSync(tmp, text);
+  fs.renameSync(tmp, path.join(backupDir(), name));
+  const all = fs.readdirSync(backupDir()).filter(n => BACKUP_NAME.test(n)).sort();
+  for (const old of all.slice(0, Math.max(0, all.length - 30))) fs.rmSync(path.join(backupDir(), old), { force: true });
+  return { name };
+});
+ipcMain.handle('backup-list', () => {
+  try {
+    return fs.readdirSync(backupDir()).filter(n => BACKUP_NAME.test(n)).sort().reverse()
+      .map(n => ({ name: n, size: fs.statSync(path.join(backupDir(), n)).size }));
+  } catch (e) { return []; }
+});
+ipcMain.handle('backup-read', (_e, name) => {
+  if (typeof name !== 'string' || !BACKUP_NAME.test(name)) return null;
+  try { return fs.readFileSync(path.join(backupDir(), name), 'utf8'); } catch (e) { return null; }
+});
+ipcMain.handle('backup-reveal', () => { fs.mkdirSync(backupDir(), { recursive: true }); shell.openPath(backupDir()); });
 
 // ---------- Messages from the folder page ----------
 ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.openExternal(url); });

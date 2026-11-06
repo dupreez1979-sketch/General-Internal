@@ -152,6 +152,8 @@
   .lrow .disc { width: 14px; height: 14px; flex: none; display: grid; place-items: center; color: var(--muted); margin-left: -4px; }
   .lrow .disc svg { transition: transform .15s ease; }
   .lrow .disc.open svg { transform: rotate(90deg); }
+  .row.gone .label, .lrow.gone .label { text-decoration: line-through; color: var(--muted); }
+  .gone-tag { flex: none; font-size: 10px; font-weight: 600; color: #99351E; background: color-mix(in srgb, #99351E 12%, transparent); border-radius: 8px; padding: 1px 7px; margin-left: 6px; }
   .lrow .disc:hover { color: var(--text); }
   .list .item.selected .disc { color: inherit; }
   .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
@@ -781,7 +783,7 @@
   })();
   const saveLib = () => (bumpCaches(), ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
-    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn, chatsCompleteAt: lib.chatsCompleteAt,
   })));
   state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
   if (lib.scanVersion !== 2) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 2; }   // new ways to find links: look again
@@ -1122,6 +1124,17 @@
     }
     return caches.links;
   }
+  // A chat filed here that Claude no longer has (deleted in Claude). Only judged against a complete list read
+  // from Claude, and only for chats filed before that list was read (a brand-new chat is not "missing").
+  function goneFromClaude(n) {
+    if (!n || n.type !== 'link' || !lib.chatsCompleteAt || !/claude\.ai\/chat\//.test(n.url || '')) return false;
+    if ((n.added || 0) >= lib.chatsCompleteAt) return false;
+    caches = caches || {};
+    if (!caches.chatSet) caches.chatSet = new Set((lib.chats || []).map(c => normUrl(c.url)));
+    return !caches.chatSet.has(normUrl(n.url));
+  }
+  const GONE_TIP = 'Deleted in Claude: this chat is no longer in your Claude account. Right-click to remove it from this folder.';
+  function goneLinks() { const out = []; walk(state.tree, n => { if (goneFromClaude(n)) out.push(n); }); return out; }
   function savedLinksFor(url) {
     if (!url) return [];
     return (linkIndex().get(normUrl(url)) || []).slice();
@@ -1283,6 +1296,7 @@
       `<span class="icon">${n.type === 'folder' ? small('folder') : colourIcon(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
     r.querySelector('.label').textContent = n.name;
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (goneFromClaude(n)) { r.classList.add('gone'); r.title = `${n.name}\n${GONE_TIP}`; }
     return r;
   }
 
@@ -2296,6 +2310,15 @@
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (goneFromClaude(n)) {
+      r.classList.add('gone');
+      r.title = `${n.name}\n${GONE_TIP}`;
+      const tag = document.createElement('span');
+      tag.className = 'gone-tag';
+      tag.textContent = 'Deleted in Claude';
+      const nm = r.querySelector('.nm .label') || r.querySelector('.label');
+      if (nm) nm.after(tag);
+    }
     if (state.libSelectMode) {
       const c = document.createElement('input');
       c.type = 'checkbox';
@@ -2648,8 +2671,20 @@
   }
 
   // `folderItem` (New Folder) sits right under New Chat.
-  function newItemsMenu(folderId, suffix = '', folderItem = null) {
+  // `compact` (right-click menus): New Chat and New Folder, then everything else under one "New" item.
+  function newItemsMenu(folderId, suffix = '', folderItem = null, compact = false) {
     const add = kind => ({ label: `New ${NEW_KINDS[kind].label}${suffix}`, icon: NEW_KINDS[kind].icon, key: kind === 'chat' ? K.mod + 'N' : undefined, run: () => newInFolder(kind, folderId) });
+    if (compact && isApp) {
+      const rest = newItemsMenu(folderId, '', null).slice(1).filter(Boolean);
+      while (rest.length && rest[0] === '-') rest.shift();
+      while (rest.length && rest[rest.length - 1] === '-') rest.pop();
+      return [
+        add('chat'),
+        folderItem,
+        { label: 'New', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, rest) },
+        '-',
+      ];
+    }
     return [
       add('chat'),
       folderItem,
@@ -2940,6 +2975,7 @@
           }).concat(keep);
         }
         lib.fetchedAt = Date.now();
+        if (r.chatsComplete) lib.chatsCompleteAt = Date.now();     // the full chat list: anything filed but missing was deleted in Claude
       }
       // Links Claude's chats reveal: remember them, then tuck artifacts under their chats where both sit in one folder.
       if (r.scanned) Object.assign(lib.scanned, r.scanned);
@@ -3642,7 +3678,7 @@
     if (!n) {
       const here = scope === browseEl ? hereFolder() : null;
       return [
-        ...newItemsMenu(here, ' Here', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) }),
+        ...newItemsMenu(here, ' Here', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) }, true),
         { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
         '-',
@@ -3676,7 +3712,7 @@
         finder,
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
-        ...newItemsMenu(n.id, ' Here', { label: 'New Folder Inside', icon: 'folder', run: () => newFolder(n.id) }),
+        ...newItemsMenu(n.id, ' Here', { label: 'New Folder Inside', icon: 'folder', run: () => newFolder(n.id) }, true),
         { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Inside`, run: () => { state.lastFolderId = n.id; saveCurrent(n.id); } },
         '-',
@@ -4689,6 +4725,15 @@
           sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null };
         navigator.clipboard.writeText(JSON.stringify(report, null, 2)).then(() => toast('Diagnostics copied. Paste them into your chat with Claude Code.'));
       } },
+      isApp && goneLinks().length > 0 && { label: `Remove ${goneLinks().length} Chat${goneLinks().length === 1 ? '' : 's'} Deleted in Claude\u2026`, run: () => {
+        const ids = goneLinks().map(n => n.id);
+        if (!confirm(`Remove ${ids.length} chat${ids.length === 1 ? '' : 's'} that ${ids.length === 1 ? 'was' : 'were'} deleted in Claude from your folders? Anything attached to them stays in the folder. You can undo this.`)) return;
+        snap();
+        for (const id of ids) { const l = locate(id); if (!l) continue; queueTrash([l.node]); l.list.splice(l.index, 1, ...((l.node.children || []).filter(c => c.type !== 'link' || !goneFromClaude(c)))); }
+        commit();
+        toast(`Removed ${ids.length} deleted chat${ids.length === 1 ? '' : 's'}`, true);
+      } },
+      isApp && { label: 'Restore from Automatic Backup\u2026', run: () => showBackupMenu(lastMenuX, lastMenuY) },
       { label: 'Back Up Folders to a File…', run: exportTree },
       { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
       '-',
@@ -4713,8 +4758,12 @@
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
+    try { restoreFromData(JSON.parse(await file.text())); }
+    catch (err) { alert('Could not restore: ' + err.message); }
+  });
+  // Restores folders from a backup (a file you saved, or an automatic one). Never touches files on disk.
+  function restoreFromData(data, when = '') {
     try {
-      const data = JSON.parse(await file.text());
       const tree = Array.isArray(data) ? data : data.tree;
       const ok = n => n && typeof n.name === 'string' &&
         (n.type === 'link' ? typeof n.url === 'string' && (!n.children || n.children.every(ok))
@@ -4729,11 +4778,51 @@
       fsState.pullAfter = true;         // and anything on disk that is not in the backup comes back in
       go({ kind: 'folder', id: null });
       commit();
-      toast(fsState.enabled ? 'Folders restored. Your folders and files on this Mac were left as they are.' : 'Folders restored', true);
+      // The app's own notes about chats and artifacts come back too (added to what is there now).
+      const x = data && data.links;
+      if (x) {
+        for (const p of x.detached || []) if (!lib.detached.includes(p)) lib.detached.push(p);
+        for (const a of x.archived || []) if (!(lib.archived || (lib.archived = [])).includes(a)) lib.archived.push(a);
+        Object.assign(lib.kinds || (lib.kinds = {}), x.kinds || {});
+        for (const [c, list] of Object.entries(x.related || {})) for (const a of list) if (!(lib.related[c] || (lib.related[c] = [])).includes(a)) lib.related[c].push(a);
+        saveLib();
+      }
+      toast(`Folders restored${when ? ` from ${when}` : ''}.${fsState.enabled ? ' Your folders and files on this Mac were left as they are.' : ''}`, true);
     } catch (err) {
       alert('Could not restore: ' + err.message);
     }
-  });
+  }
+
+  // ---------- Automatic backups ----------
+  // Once a day the app saves a copy of your folders (kept for 30 days). Restore one from the ... menu.
+  const LAST_BACKUP = 'claudeNavigator.lastAutoBackup';
+  const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  async function autoBackup(force = false) {
+    if (!isApp || !window.navigatorApp.backupWrite) return;
+    if (!force && ls.get(LAST_BACKUP) === todayKey()) return;
+    const data = { app: 'claude-navigator', version: 2, saved: new Date().toISOString(), tree: state.tree,
+      links: { related: lib.related, detached: lib.detached, archived: lib.archived, kinds: lib.kinds } };
+    try {
+      const res = await window.navigatorApp.backupWrite(JSON.stringify(data));
+      if (res && res.name) ls.set(LAST_BACKUP, todayKey());
+    } catch (e) { /* tried again next hour */ }
+  }
+  async function showBackupMenu(x, y) {
+    const list = await window.navigatorApp.backupList();
+    const label = n => new Date(n.replace('.json', 'T12:00:00')).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    showMenu(x, y, [
+      ...(list.length ? list.slice(0, 30).map(b => ({ label: label(b.name), run: async () => {
+        if (!confirm(`Restore your folders as they were on ${label(b.name)}? What you have now is replaced, and you can undo this.${fsState.enabled ? ' Files on this Mac are not touched.' : ''}`)) return;
+        const text = await window.navigatorApp.backupRead(b.name);
+        if (!text) return toast('That backup could not be read');
+        try { restoreFromData(JSON.parse(text), label(b.name)); } catch (e) { alert('Could not restore: ' + e.message); }
+      } })) : [{ label: 'No automatic backups yet', run: () => {} }]),
+      '-',
+      { label: 'Back Up Now', run: async () => { await autoBackup(true); toast('Backed up'); } },
+      { label: `Show Backups in ${isMac ? 'Finder' : 'File Explorer'}`, run: () => window.navigatorApp.backupReveal() },
+    ]);
+  }
+  if (isApp) { setTimeout(() => autoBackup(), 8000); setInterval(() => autoBackup(), 60 * 60e3); }
 
   document.addEventListener('keydown', e => {
     if (document.querySelector('dialog[open]') || tbCustomizing) return;    // a dialog is open: its own keys only

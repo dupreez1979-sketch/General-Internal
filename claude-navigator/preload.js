@@ -13,6 +13,10 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   refreshLibrary: (opts) => ipcRenderer.invoke('library-refresh', opts),
   deleteChats: (items) => ipcRenderer.invoke('claude-delete-chats', items),
   renameChat: (item) => ipcRenderer.invoke('claude-rename-chat', item),
+  backupWrite: (text) => ipcRenderer.invoke('backup-write', text),
+  backupList: () => ipcRenderer.invoke('backup-list'),
+  backupRead: (name) => ipcRenderer.invoke('backup-read', name),
+  backupReveal: () => ipcRenderer.invoke('backup-reveal'),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
   onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
   // Folders on this computer

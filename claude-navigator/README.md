@@ -42,7 +42,7 @@ Double-click `index.html`. The folder tree works the same, but links open Claude
 
 ## New chats, docs, slides, designs, dashboards and projects go straight into a folder
 
-Right-click a folder (or empty space inside one), or click the + button at the top, and choose what to make: **Chat, Doc, Slides, Design, Dashboard, Project**, or **Artifact in a Chat**. ⌘N starts a new chat in the folder you are in.
+Click the + button at the top, or right-click a folder (or empty space inside one), and choose what to make. Right-click menus show **New Chat** and **New Folder** first, and everything else under **New ▸**: **Doc, Slides, Design, Dashboard, Project, Artifact in a Chat**, and Word, Excel, PowerPoint and text files. ⌘N starts a new chat in the folder you are in.
 
 - **Chat**: saved in the folder as soon as you send your first message.
 - **Doc, Slides, Design, Dashboard**: the app opens Claude's "Make something new" and picks the right tile for you. Whatever Claude creates is saved in the folder, with a matching icon, even if Claude opens it in a separate window.
@@ -79,6 +79,8 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
 ## Your folders on your Mac
+
+Safety: only what you delete in the app ever goes to the Trash. Undo, restoring a backup and Reset never send anything there. If your folder cannot be found or read (moved, renamed, an unplugged drive, or macOS not allowing access to Documents), the app tells you and changes nothing until it is back. **Change Folder Location…** moves your folders and files to the new place (choose an empty folder).
 
 Turn on **Keep Folders on This Mac** (the app offers it once, and it is in the ... menu) and your profiles and folders become real folders in **Documents › Claude Navigator**: one folder per profile, with your folders inside.
 
@@ -207,7 +209,16 @@ On Windows the same shortcuts use Ctrl, F2 renames and Enter opens.
 
 ## Your data
 
-Folders are stored on your computer only, inside the app. Use the `...` menu, "Back up folders to a file", to save a copy. "Restore folders from a file" brings it back, including on another computer.
+Folders are stored on your computer only, inside the app.
+
+- **Automatic backups**: once a day the app saves a copy of your folders (and which artifacts belong to which chats). The last 30 days are kept. To go back, use the `...` menu, **Restore from Automatic Backup…**, and pick a day. **Back Up Now** makes one straight away.
+- **Back Up Folders to a File** saves a copy anywhere you like; **Restore Folders from a File** brings it back, including on another computer.
+- Restoring never touches the folders and files on your Mac: anything there that is not in the backup simply shows up again.
+- If the app ever cannot read its saved folders, it keeps them aside (never overwrites them), shows the example folders, and tells you to restore a backup.
+
+## Chats deleted in Claude
+
+When a chat you filed is deleted in Claude itself (on the website or another device), it stays in your folder, crossed out, with a **Deleted in Claude** label, so nothing disappears without you knowing. Remove it with right-click, **Remove from Folder**, or remove them all at once from the `...` menu, **Remove … Chats Deleted in Claude…**. Artifacts attached to them stay in the folder.
 
 ## Files
 
