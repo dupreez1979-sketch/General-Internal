@@ -39,7 +39,7 @@ for _ in $(seq 1 30); do
 done
 
 say_step "2 of 4  Downloading the building blocks (the first time takes a few minutes)"
-npm install --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
+npm ci --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
 
 say_step "3 of 4  Building the app"
 # Apple Silicon even when Terminal runs under Rosetta (where uname reports x86_64).

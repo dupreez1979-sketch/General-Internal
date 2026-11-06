@@ -36,7 +36,7 @@ fi
 
 if [ ! -d node_modules ] || [ package.json -nt node_modules ]; then
   printf '\n\033[1mDownloading the building blocks (first time takes a minute)\033[0m\n'
-  npm install --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
+  npm ci --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
   touch node_modules
 fi
 
