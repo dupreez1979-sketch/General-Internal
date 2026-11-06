@@ -4307,6 +4307,63 @@
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
   });
+  // ---------- Review export ----------
+  // Plain text of every folder and every chat not filed yet, to paste into Claude for a tidy-up plan.
+  // Short ids (the start of each chat's address) let a plan point at exact chats.
+  function copyForReview() {
+    const day = d => { try { return d ? new Date(d).toISOString().slice(0, 10) : '?'; } catch (e) { return '?'; } };
+    const chatInfo = new Map((lib.chats || []).map(c => [normUrl(c.url), c]));
+    const known = new Map();
+    for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) known.set(normUrl(x.url), x);
+    const sid = url => { const m = /\/(?:chat|artifact|project|code)\/(?:session_)?([0-9A-Za-z-]+)/.exec(url || ''); return m ? m[1].replace(/-/g, '').slice(0, 8) : (url || '').slice(-12); };
+    const artNames = url => relatedFor(url).map(a => a.name);
+    const out = [];
+    out.push(`Claude Navigator review export, ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`);
+    out.push('Legend: [chat id | last edited] for chats, (artifact), (file), (link). Indent = inside the folder above.');
+    out.push('');
+    out.push('== FOLDERS ==');
+    let filedChats = 0;
+    const line = (n, depth) => {
+      const pad = '  '.repeat(depth);
+      if (n.type === 'folder') { out.push(`${pad}${n.name}/${n.profile ? '   (profile)' : ''}${n.group ? '   (group)' : ''}`); return; }
+      if (n.type === 'file') { out.push(`${pad}- ${n.name} (file)`); return; }
+      const k = kindOf(n);
+      if (k === 'chat') {
+        filedChats++;
+        const c = chatInfo.get(normUrl(n.url));
+        out.push(`${pad}- ${n.name} [chat ${sid(n.url)} | ${day(c && c.updated)}]${isArchived(n.url) ? ' ARCHIVED' : ''}`);
+      } else out.push(`${pad}- ${n.name} (${k})`);
+    };
+    const walkOut = (nodes, depth) => { for (const n of nodes) { line(n, depth); if (n.children && n.children.length) walkOut(n.children, depth + 1); } };
+    walkOut(state.tree, 0);
+    const filed = new Set();
+    walk(state.tree, n => { if (n.type === 'link') filed.add(normUrl(n.url)); });
+    const unfiled = (lib.chats || []).filter(c => !filed.has(normUrl(c.url)))
+      .sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || '')));
+    out.push('');
+    out.push(`== CHATS NOT IN ANY FOLDER (${unfiled.length} of ${(lib.chats || []).length}, newest first) ==`);
+    out.push('id | last edited | name | artifacts made in it');
+    for (const c of unfiled) {
+      const arts = artNames(c.url);
+      out.push(`${sid(c.url)} | ${day(c.updated)} | ${c.name || 'Untitled'}${isArchived(c.url) ? ' | ARCHIVED' : ''}${arts.length ? ` | ${arts.join('; ')}` : ''}`);
+    }
+    const linked = new Set();
+    for (const c of lib.chats || []) for (const a of relatedFor(c.url)) linked.add(normUrl(a.url));
+    const looseArts = [...known.values()].filter(a => !filed.has(normUrl(a.url)) && !linked.has(normUrl(a.url)));
+    if (looseArts.length) {
+      out.push('');
+      out.push(`== ARTIFACTS NOT IN A FOLDER OR LINKED TO A CHAT (${looseArts.length}) ==`);
+      for (const a of looseArts) out.push(`${sid(a.url)} | ${a.name || 'Untitled'}`);
+    }
+    out.push('');
+    out.push(`Totals: ${filedChats} chats filed, ${unfiled.length} not filed, ${(lib.archived || []).length} archived in the app. List last refreshed ${lib.fetchedAt ? new Date(lib.fetchedAt).toISOString().slice(0, 16).replace('T', ' ') : 'never'}.`);
+    const text = out.join('\n');
+    navigator.clipboard.writeText(text).then(
+      () => toast(`Copied ${unfiled.length} unfiled chats and all your folders. Paste them into Claude for a tidy-up plan.`),
+      () => toast('Could not copy to the clipboard'));
+    return text;
+  }
+
   // ---------- Customise the toolbar ----------
   // Right-click the toolbar: move items, take them off, add them back, and add spaces to push things to the middle or right.
   const TB_STORE = 'claudeNavigator.toolbar.v1';
@@ -4564,6 +4621,7 @@
         if (root) enableFolderSync(root);
       } },
       isApp && '-',
+      isApp && { label: 'Copy Everything for Review', run: copyForReview },
       isApp && { label: 'Copy Link Diagnostics', run: () => {
         const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
         const report = { chats: (lib.chats || []).length, artifacts: (lib.artifacts || []).length, linkedPairs: pairs,
