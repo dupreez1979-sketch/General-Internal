@@ -12,9 +12,20 @@ APP="/Applications/$APP_NAME.app"
 say_step() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 fail() { printf '\n\033[31m%s\033[0m\n\n' "$1"; read -r -p "Press Return to close this window." _; exit 1; }
 
+# Find Node.js however it was installed: nvm, Homebrew, or the nodejs.org installer.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh" >/dev/null 2>&1 || true
+  nvm use default >/dev/null 2>&1 || true
+fi
+
 if ! command -v npm >/dev/null 2>&1; then
   fail "Node.js is not installed yet. Download the LTS version from https://nodejs.org, install it, then double-click this file again."
 fi
+
+echo "Using Node.js $(node -v) from $(command -v node)"
 
 say_step "1 of 4  Closing $APP_NAME if it is open"
 osascript -e "quit app \"$APP_NAME\"" >/dev/null 2>&1 || true
