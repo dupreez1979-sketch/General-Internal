@@ -3232,9 +3232,13 @@
     openNode(n);
   });
   treeEl.addEventListener('dblclick', e => {
-    if (e.target.closest('.xall')) return;
-    const row = e.target.closest('.row.section');
-    if (row) openNode(nodeOf(row.dataset.id));
+    if (e.target.closest('.xall, .twisty')) return;           // the arrow already toggled on each click
+    const sec = e.target.closest('.row.section');
+    if (sec) return openNode(nodeOf(sec.dataset.id));
+    // Double-clicking a folder (or a chat with attached items) expands or collapses it, like its arrow.
+    const row = e.target.closest('.row[data-id]');
+    const n = row && nodeOf(row.dataset.id);
+    if (n && n.children && n.children.length) toggle(n);
   });
   treeEl.addEventListener('auxclick', e => {
     const row = e.button === 1 && e.target.closest('.row');
