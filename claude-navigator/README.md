@@ -116,6 +116,14 @@ The token is stored encrypted in your Mac's Keychain and only ever sent to monda
 
 Deleting a board from your folders only removes it from the folder; nothing is changed in monday.com.
 
+## Split view
+
+Click **Split** in the toolbar (it works in any list: All Chats, Artifacts, monday.com, your folders). Your own folders appear on the left; whatever you are browsing stays on the right.
+
+- The left side has its own path and back button: double-click a folder there to go into it.
+- Drag items from the right onto a folder on the left to file them there, or into the empty space to file them in the folder shown.
+- Neither side loses its place while you file, so you can work through a list quickly. Click **Split** again to close it.
+
 ## Search
 
 The search box looks through all your folders (names and addresses), or through the Claude list you are viewing. Capitals never matter.

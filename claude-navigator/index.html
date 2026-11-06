@@ -143,6 +143,21 @@
   #pane { flex: 1; display: flex; }
   #pane webview { flex: 1; border: 0; }
   #browse { flex: 1; overflow: auto; outline: none; padding: 14px 18px 30px; }
+  #splitLeft { flex: 0 0 38%; max-width: 520px; min-width: 240px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--tint, var(--accent)) 4%, var(--win)); }
+  #splitLeft[hidden] { display: none; }
+  .sl-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); min-height: 40px; }
+  #slPath { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; min-width: 0; }
+  #slPath .crumb { cursor: pointer; }
+  #slList { flex: 1; overflow: auto; padding: 6px 8px; }
+  #slList.drop-here, .sl-row.drop-into { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
+  .sl-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 13px; cursor: default; user-select: none; }
+  .sl-row:hover { background: var(--hover); }
+  .sl-row .icon { flex: none; display: inline-grid; place-items: center; }
+  .sl-row .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sl-row.folder .label { font-weight: 500; }
+  .sl-row.child { padding-left: 30px; color: var(--muted); }
+  .sl-foot { font-size: 11px; color: var(--muted); padding: 8px 12px 10px; border-top: 1px solid var(--line); }
+  #splitBtn.on { color: var(--text); background: var(--sel); }
   #browse.drop-here { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, 104px); gap: 6px; align-content: start; }
@@ -415,6 +430,7 @@
       <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
       <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
     </div>
+ <button class="tb" id="splitBtn" data-tb="splitBtn" title="Split view: your folders on the left, Claude or monday.com on the right, so you can drag across without losing your place"><span data-icon="split"></span><span class="t">Split</span></button>
     <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
     <button class="tb" id="libSelectBtn" data-tb="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
     <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
@@ -447,6 +463,11 @@
     <button class="btn" id="findDone" title="Close the find bar (Esc)">Done</button>
   </div>
   <div id="content">
+    <div id="splitLeft" hidden aria-label="Your folders">
+      <div class="sl-head"><button class="tb" id="slUp" title="Up one level"><span data-icon="back"></span></button><div id="slPath"></div></div>
+      <div id="slList"></div>
+      <div class="sl-foot">Drag items from the right onto a folder here, or into the empty space to file them in this folder.</div>
+    </div>
     <div id="browse" tabindex="0" aria-label="Folder contents"></div>
     <div id="pane" hidden></div>
   </div>
@@ -644,6 +665,7 @@
     more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="5.2" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="10.8" cy="8" r=".9" fill="currentColor"/></svg>',
     back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    split: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3.6 5.5h2.6M3.6 8h2.6M9.8 5.5h2.6M9.8 8h2.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
     grid: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
     list: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M5.5 4h8.5M5.5 8h8.5M5.5 12h8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="2.5" cy="4" r="1" fill="currentColor"/><circle cx="2.5" cy="8" r="1" fill="currentColor"/><circle cx="2.5" cy="12" r="1" fill="currentColor"/></svg>',
     reload: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1155,7 +1177,8 @@
     if (/claude\.ai/.test(u)) return 'claude';
     return 'link';
   }
-  const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude(\s+Code)?\s*$/i, '').trim();
+  // A page title without the site's name or an unread-notifications counter such as "(1) " (monday.com adds one).
+  const cleanTitle = t => (t || '').replace(/^\s*\(\d+\+?\)\s*/, '').replace(/\s*[-|–:]\s*(Claude(\s+Code)?|monday\.com|monday)\s*$/i, '').trim();
   // Page titles that name a Claude page rather than the thing on it; never used as a name.
   const GENERIC_TITLE = /^(claude( code)?|code|new chat|recents?|recent chats|chats|projects?|artifacts?|design( systems?)?|scheduled|schedules?|settings|usage|search|customi[sz]e|just a moment\.*|loading\.*|untitled|404.*|.*not found|error.*|page unavailable)$/i;
   // A page title worth using as a name (not just "Claude" while a page loads).
@@ -2606,6 +2629,8 @@
     document.title = title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || !!state.query || inLib;
     $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
+    $('splitBtn').hidden = page;
+    try { renderSplit(); } catch (e) { /* during start-up */ }
     const listView = !page;
     $('libFilterBtn').hidden = !listView;
     $('libSelectBtn').hidden = !listView;
@@ -2638,7 +2663,7 @@
   }
 
   function renderAll() { bumpCaches(); renderAllInner(); }
-  function renderAllInner() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
+  function renderAllInner() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); renderSplit(); }
 
   // ---------- Navigation (Finder-style back and forward) ----------
   const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id
@@ -4910,6 +4935,115 @@
     setInterval(() => { if (sysOpen('monday')) mondayRefresh(false); }, 10 * 60e3);
   }
 
+  // ---------- Split view ----------
+  // Your folders on the left, the list you are browsing (Claude or monday.com) on the right. Drag across to file
+  // things without losing your place on either side. The left side has its own navigation.
+  var splitOn = ls.get('claudeNavigator.split') === '1';
+  var splitFolder = ls.get('claudeNavigator.splitFolder') || null;
+  function setSplit(on) {
+    splitOn = on;
+    ls.set('claudeNavigator.split', on ? '1' : '0');
+    renderSplit();
+    renderToolbar();
+  }
+  function splitGo(id) {
+    splitFolder = id && nodeOf(id) ? id : null;
+    ls.set('claudeNavigator.splitFolder', splitFolder || '');
+    renderSplit();
+  }
+  function renderSplit() {
+    const panel = $('splitLeft');
+    if (!panel) return;
+    const show = splitOn && isApp !== undefined && state.loc.kind !== 'page';
+    panel.hidden = !show;
+    $('splitBtn').classList.toggle('on', splitOn);
+    if (!show) return;
+    if (splitFolder && !nodeOf(splitFolder)) splitFolder = null;
+    const ap = activeProfile();
+    if (!splitFolder && ap) splitFolder = ap.id;
+    const here = splitFolder ? nodeOf(splitFolder) : null;
+    // Path: each step clickable.
+    const path = $('slPath');
+    path.replaceChildren();
+    const chain = here ? pathTo(here.id) : [];
+    const crumb = (label, id) => {
+      const c = document.createElement('span');
+      c.className = 'crumb';
+      c.textContent = label;
+      c.title = `Go to ${label}`;
+      c.addEventListener('click', () => splitGo(id));
+      path.appendChild(c);
+    };
+    if (!ap) { crumb('All Profiles', null); }
+    chain.forEach((n, i) => {
+      if (i || !ap) { const sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = '\u203a'; path.appendChild(sep); }
+      crumb(n.name, n.id);
+    });
+    $('slUp').disabled = !here || (ap && here.id === ap.id);
+    $('slUp').onclick = () => { const l = here && locate(here.id); splitGo(l && l.parent ? l.parent.id : null); };
+    // Contents: folders first (double-click to open), then what is filed here.
+    const list = $('slList');
+    list.replaceChildren();
+    const kids = here ? here.children || [] : rootList();
+    const folders = kids.filter(n => n.type === 'folder' && !(n.group && ap));
+    const others = kids.filter(n => n.type !== 'folder');
+    const row = (n, cls = '') => {
+      const r = document.createElement('div');
+      r.className = 'sl-row' + (n.type === 'folder' ? ' folder' : '') + cls;
+      r.dataset.sid = n.id;
+      r.innerHTML = `<span class="icon">${n.type === 'folder' ? (n.profile ? `<span class="pdot" style="background:${n.color}"></span>` : small('folder', KIND_COLOUR.folder)) : colourIcon(kindOf(n))}</span><span class="label"></span>`;
+      r.querySelector('.label').textContent = n.name;
+      r.title = n.type === 'folder' ? `${n.name}: double-click to open; drop items here to file them inside` : n.name;
+      list.appendChild(r);
+    };
+    for (const n of folders) row(n);
+    for (const n of others) {
+      row(n);
+      if (n.type === 'link' && n.children && n.children.length && isOpen(n)) for (const c of n.children) row(c, ' child');
+    }
+    if (!kids.length) {
+      const e = document.createElement('div');
+      e.className = 'empty';
+      e.innerHTML = '<b>Empty folder</b>Drop items here.';
+      list.appendChild(e);
+    }
+  }
+  $('splitBtn').addEventListener('click', () => setSplit(!splitOn));
+  $('slList').addEventListener('dblclick', e => {
+    const r = e.target.closest('.sl-row');
+    const n = r && nodeOf(r.dataset.sid);
+    if (!n) return;
+    if (n.type === 'folder') splitGo(n.id); else openNode(n);
+  });
+  // Dropping: onto a folder row files into that folder; anywhere else, into the folder shown.
+  const slTarget = e => {
+    const r = e.target.closest('.sl-row.folder');
+    if (r) return { id: r.dataset.sid, zone: 'into', row: r };
+    return splitFolder ? { id: splitFolder, zone: 'into', row: null } : null;
+  };
+  $('slList').addEventListener('dragover', e => {
+    const types = [...e.dataTransfer.types];
+    if (!types.includes(LIB_TYPE) && !types.includes(NAV_TYPE) && !types.includes('text/uri-list')) return;
+    const t = slTarget(e);
+    $('slList').classList.remove('drop-here');
+    $('slList').querySelectorAll('.drop-into').forEach(x => x.classList.remove('drop-into'));
+    if (!t || (types.includes(NAV_TYPE) && dragIds.some(id => contains(id, t.id)))) { e.dataTransfer.dropEffect = 'none'; dropTarget = null; return; }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = types.includes(NAV_TYPE) ? 'move' : 'copy';
+    if (t.row) t.row.classList.add('drop-into'); else $('slList').classList.add('drop-here');
+    dropTarget = { id: t.id, zone: 'into' };
+  });
+  $('slList').addEventListener('dragleave', e => {
+    if ($('slList').contains(e.relatedTarget)) return;
+    $('slList').classList.remove('drop-here');
+    $('slList').querySelectorAll('.drop-into').forEach(x => x.classList.remove('drop-into'));
+  });
+  $('slList').addEventListener('drop', e => {
+    $('slList').classList.remove('drop-here');
+    $('slList').querySelectorAll('.drop-into').forEach(x => x.classList.remove('drop-into'));
+    onDrop(e);
+  });
+
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
   //   cape town            both words, in any order
@@ -4949,7 +5083,7 @@
   const TB_STORE = 'claudeNavigator.toolbar.v1';
   const TB_ITEMS = {
     nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
-    libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
+    libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
     save: 'Save', bExternal: 'Open in Browser', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
   };
   const TB_DEFAULT = Object.keys(TB_ITEMS);
@@ -5699,6 +5833,11 @@
   } catch (e) { /* ignore */ }
   applyProfileTheme();
   repairGenericNames();
+  (() => {   // names picked up earlier with a notification counter in front, e.g. "(1) Register of Interests"
+    let fixed = 0;
+    walk(state.tree, n => { if (n.type === 'link' && n.autoName !== false && /^\(\d+\+?\)\s+\S/.test(n.name || '')) { n.name = cleanTitle(n.name); fixed++; } });
+    if (fixed) save();
+  })();
   try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();
   renderSide();
