@@ -40,6 +40,18 @@ macOS may ask again for microphone permission after an update, because each buil
 
 Double-click `index.html`. The folder tree works the same, but links open Claude in a separate browser tab, because claude.ai does not allow itself to be shown inside another web page.
 
+## New chats, artifacts and projects go straight into a folder
+
+Right-click a folder (or empty space inside one) and choose **New Chat Here**, **New Artifact Here** or **New Project Here**. The + button at the top does the same, and ⌘N starts a new chat in the folder you are in.
+
+The top bar shows "Saves in Board once created". As soon as you send your first message (or click Create Project), it is saved in that folder automatically, named with Claude's title for it.
+
+In Claude, artifacts are made inside chats, so New Artifact starts a chat. Ask Claude for what you want; the chat is saved in the folder with an artifact icon.
+
+**Always know where you are.** While Claude is open, the top bar shows the folder path, for example Work › Monkey Baa › Board › Budget questions. Click any part to go there. The sidebar highlights that folder and the chat inside it. A chat that is not in any folder shows "Not in a folder"; press ⌘S to save it.
+
+**Claude's own sidebar is hidden** so your folders are the only navigation. Claude's own button still opens it when you need it. To keep it showing, untick "Hide Claude's Own Sidebar" in the ... menu at the bottom of the sidebar.
+
 ## Claude Library: file your existing chats
 
 At the top of the sidebar, **Claude Library** lists everything in your Claude account: **Recent Chats**, **Projects** and **Artifacts**. The number beside each shows how many are not in one of your folders yet.

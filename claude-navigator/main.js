@@ -276,6 +276,7 @@ function buildMenu() {
         { label: 'as List', accelerator: 'Cmd+2', click: act('view-list') },
         { type: 'separator' },
         { label: 'Reload Page', accelerator: 'Cmd+R', click: act('reload') },
+        { label: 'Hide or Show Claude\u2019s Own Sidebar', click: act('toggle-claude-sidebar') },
         { type: 'separator' },
         { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
         { type: 'separator' },

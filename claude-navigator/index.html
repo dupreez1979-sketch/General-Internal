@@ -108,7 +108,18 @@
   #main { display: flex; flex-direction: column; min-width: 0; background: var(--win); position: relative; }
   #bar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-bottom: 1px solid var(--line); }
   .nav-btns { display: flex; gap: 2px; }
-  #title { font-size: 15px; font-weight: 700; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+  #title { font-size: 15px; font-weight: 700; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px; }
+  #title .tc { flex: 0 1 auto; min-width: 0; max-width: 170px; overflow: hidden; text-overflow: ellipsis; font-size: 13px; font-weight: 500; color: var(--muted); padding: 2px 5px; border-radius: 5px; display: inline-flex; align-items: center; gap: 4px; }
+  #title .tc svg { color: var(--accent); flex: none; }
+  #title .tc:hover { background: var(--hover); color: var(--text); }
+  #title .tc.none { font-style: italic; }
+  #title .tc.none:hover { background: none; color: var(--muted); }
+  #title .ts { color: var(--muted); font-weight: 400; font-size: 13px; flex: none; }
+  #title .tn { flex: 1 1 auto; min-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+  #title .chip { flex: none; font-size: 11px; font-weight: 500; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; padding: 2px 8px; }
+  .mac-app #bar #title .tc { -webkit-app-region: no-drag; }
+  .row.context > .label { font-weight: 600; }
+  .row.context:not(.selected) { background: color-mix(in srgb, var(--accent) 9%, transparent); }
   .search { position: relative; width: 170px; transition: width .2s ease; flex: none; }
   .search:focus-within { width: 220px; }
   .search > span { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); color: var(--muted); }
@@ -268,6 +279,7 @@
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
     <button class="tb" id="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
+    <button class="tb" id="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
     <div class="search">
       <span data-icon="search"></span>
       <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false">
@@ -502,6 +514,7 @@
   }
   function kindOf(n) {
     if (n.type === 'folder') return 'folder';
+    if (n.as === 'artifact') return 'artifact';
     const u = n.url || '';
     if (/claude\.ai\/chat\//.test(u)) return 'chat';
     if (/claude\.ai\/project\//.test(u)) return 'project';
@@ -636,20 +649,45 @@
     : treeEl.querySelector(`.row[data-id="${CSS.escape(id)}"]`));
 
   function applySideSel(scroll = true) {
-    treeEl.querySelectorAll('.row.selected').forEach(r => r.classList.remove('selected'));
+    treeEl.querySelectorAll('.row.selected, .row.context').forEach(r => r.classList.remove('selected', 'context'));
+    const cr = state.loc.kind === 'page' && sideRowEl(state.ctxFolder);
+    if (cr) cr.classList.add('context');
     const r = sideRowEl(state.sideSel);
     if (r) { r.classList.add('selected'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
   }
 
   // The sidebar highlights where you are, like Finder.
+  // Which folder the open Claude page belongs to:
+  // saved (it is in a folder), pending (a new item that will be saved there), or none.
+  const parentIdOf = id => ((locate(id) || {}).parent || {}).id || null;
+  function pageContext() {
+    const url = state.pageUrl || state.loc.url || '';
+    const hits = isBlankClaudePage(url) ? [] : savedLinksFor(url);
+    if (hits.length) {
+      const h = hits.find(x => parentIdOf(x.id) === state.lastFolderId) || hits[0];
+      return { status: 'saved', folderId: parentIdOf(h.id), linkId: h.id };
+    }
+    if (state.autoFile && nodeOf(state.autoFile.folderId)) return { status: 'pending', folderId: state.autoFile.folderId, linkId: null };
+    return { status: 'none', folderId: null, linkId: null };
+  }
+
+  let lastRevealed = null;
   function syncSideSel() {
     if (state.query) return;
+    state.ctxFolder = null;
     if (state.loc.kind === 'folder') state.sideSel = state.loc.id;
     else if (state.loc.kind === 'library') state.sideSel = 'lib:' + state.loc.which;
     else {
-      const hits = savedLinksFor(state.pageUrl || state.loc.url);
-      const inFolder = hits.find(h => ((locate(h.id) || {}).parent || {}).id === state.lastFolderId);
-      state.sideSel = (inFolder || hits[0] || {}).id || null;
+      const c = pageContext();
+      state.sideSel = c.linkId || c.folderId;
+      state.ctxFolder = c.folderId;
+    }
+    // Open the folders above the highlighted row so you can see it (once per place).
+    if (state.sideSel && !String(state.sideSel).startsWith('lib:') && state.sideSel !== lastRevealed) {
+      lastRevealed = state.sideSel;
+      let l = locate(state.sideSel), changed = false;
+      while (l && l.parent) { if (!l.parent.open) { l.parent.open = true; changed = true; } l = locate(l.parent.id); }
+      if (changed) { save(); renderSide(); }
     }
     applySideSel();
   }
@@ -1036,10 +1074,39 @@
     const inLib = state.loc.kind === 'library';
     if (inLib) title = LIB_KINDS[state.loc.which];
     else if (state.query) title = 'Search';
+    else if (page && state.autoFile) title = { chat: 'New chat', artifact: 'New artifact', project: 'New project' }[state.autoFile.kind];
+    else if (page && isBlankClaudePage(state.pageUrl) && /\/new/.test(state.pageUrl)) title = 'New chat';
     else if (page) title = cleanTitle(state.pageTitle) || 'Claude';
     else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : 'Folders';
-    $('title').textContent = title;
-    document.title = title + ' – Claude Navigator';
+    const tEl = $('title');
+    tEl.replaceChildren();
+    if (page) {
+      const c = pageContext();
+      const add = (cls, text, html) => {
+        const sp = document.createElement('span');
+        sp.className = cls;
+        if (html) sp.innerHTML = html;
+        sp.appendChild(document.createTextNode(text));
+        tEl.appendChild(sp);
+        return sp;
+      };
+      if (c.folderId) {
+        for (const f of pathTo(c.folderId)) {
+          const cr = add('tc', f.name, small('folder', 'currentColor', 12));
+          cr.title = `Go to ${f.name}`;
+          cr.addEventListener('click', () => go({ kind: 'folder', id: f.id }));
+          add('ts', '\u203a');
+        }
+      } else {
+        add('tc none', 'Not in a folder').title = `Press ${K.mod}S to save this page in a folder`;
+        add('ts', '\u203a');
+      }
+      add('tn', title);
+      if (c.status === 'pending') add('chip', `Saves in ${nodeOf(c.folderId).name} once created`);
+    } else {
+      tEl.textContent = title;
+    }
+    document.title = title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || !!state.query || inLib;
     $('libSeg').hidden = !inLib;
     $('bRefreshLib').hidden = !inLib;
@@ -1052,13 +1119,17 @@
     $('bExternal').hidden = !page;
     $('bSave').hidden = !page;
     if (page) {
-      const f = nodeOf(state.lastFolderId);
-      const saved = savedLinksFor(state.pageUrl).length > 0;
+      const c = pageContext();
+      const f = nodeOf(c.folderId || state.lastFolderId);
+      const saved = c.status === 'saved';
+      $('bSave').hidden = c.status === 'pending' || isBlankClaudePage(state.pageUrl);
       $('bSave').firstElementChild.innerHTML = saved ? UI.starFilled : UI.star;
-      $('bSaveText').textContent = f ? `Save to ${f.name}` : 'Save';
+      $('bSaveText').textContent = saved ? 'Saved' : f ? `Save to ${f.name}` : 'Save';
       $('bSave').title = (saved ? 'Already saved. Click to save another copy' : 'Save this page') +
-        (f ? ` in “${f.name}”` : '') + ` (${K.mod}S)`;
+        (f ? ` in \u201c${f.name}\u201d` : '') + ` (${K.mod}S)`;
     }
+    const here = newHereFolder();
+    $('bNewChat').title = `New Chat${here ? ` in \u201c${nodeOf(here).name}\u201d` : ''} (${K.mod}N)`;
   }
 
   function renderAll() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
@@ -1068,6 +1139,7 @@
     : a.kind === 'library' ? a.which === b.which : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
+    state.autoFile = null;
     if (loc.kind === 'page') {
       const opened = savedLinksFor(loc.url);
       if (opened.length) { opened.forEach(n => { n.opened = Date.now(); }); save(); }
@@ -1095,11 +1167,11 @@
   function show() {
     const loc = state.loc;
     if (loc.kind !== 'page') closeFind();
-    if (loc.kind === 'library') { libSel.clear(); libAnchor = null; refreshLibrary(false); }
+    if (loc.kind === 'library') { libSel.clear(); libAnchor = null; state.lastFolderId = null; refreshLibrary(false); }
     if (loc.kind === 'folder') {
       state.lastFolderId = loc.id;
       if (state.browseSel && !childrenOf(loc.id).some(c => c.id === state.browseSel)) state.browseSel = null;
-    } else if (view) {
+    } else if (loc.kind === 'page' && view) {
       if (loc.folderId !== undefined) state.lastFolderId = nodeOf(loc.folderId) ? loc.folderId : null;
       let cur = '';
       try { cur = view.getURL(); } catch (e) { /* not attached yet */ }
@@ -1145,9 +1217,66 @@
     if (isApp) window.navigatorApp.openExternal(url);
     else window.open(url, '_blank');
   }
-  function newChat() {
-    if (state.loc.kind === 'folder') state.lastFolderId = state.loc.id;
-    go({ kind: 'page', url: HOME });
+  // The folder a new chat should go in: the folder on screen, or the folder of the open page.
+  function newHereFolder() {
+    if (state.query) return null;
+    if (state.loc.kind === 'folder') return state.loc.id;
+    if (state.loc.kind === 'page') return pageContext().folderId;
+    return null;
+  }
+  const isBlankClaudePage = url => { try { return /^\/(new|projects?)(\/|$)/.test(new URL(url).pathname) && !/^\/project\/[0-9a-f-]{8}/i.test(new URL(url).pathname); } catch (e) { return false; } };
+  const NEW_URL = { chat: HOME, artifact: HOME, project: 'https://claude.ai/projects' };
+  function newInFolder(kind = 'chat', folderId = newHereFolder()) {
+    state.lastFolderId = folderId;
+    go({ kind: 'page', url: NEW_URL[kind] });
+    if (!isApp || !folderId) return;
+    state.autoFile = { folderId, kind, lastPath: null };
+    lastRevealed = null;
+    renderToolbar();
+    syncSideSel();
+    const f = nodeOf(folderId).name;
+    if (kind === 'artifact') toast(`Ask Claude to make your artifact. The chat is saved in ${f} as soon as you send it.`);
+    else if (kind === 'project') toast(`Click Create Project. The new project is saved in ${f}.`);
+    else toast(`This chat is saved in ${f} as soon as you send your first message.`);
+  }
+  const newChat = () => newInFolder('chat');
+
+  // Watches a new chat or project become real (Claude gives it its own address), then files it.
+  function checkAutoFile(url, title) {
+    const a = state.autoFile;
+    if (!a || state.loc.kind !== 'page') return;
+    let path = '';
+    try { path = new URL(url).pathname; } catch (e) { return; }
+    const prev = a.lastPath;
+    const isProject = a.kind === 'project';
+    const re = isProject ? /^\/project\/[0-9a-f-]{8,}/i : /^\/chat\/[0-9a-f-]{8,}/i;
+    const cameFrom = isProject ? /^\/projects(\/|$)/ : /^\/new(\/|$)/;
+    if (!re.test(path)) {
+      if (cameFrom.test(path)) a.lastPath = path;          // on the new-chat (or projects) page
+      else if (prev) state.autoFile = null;                 // went somewhere else instead
+      return;
+    }
+    if (!prev) return;                                      // a late signal from the page being left
+    if (!cameFrom.test(prev)) { state.autoFile = null; return; }
+    const known = (lib[isProject ? 'projects' : 'chats'] || []).some(x => normUrl(x.url) === normUrl(url));
+    state.autoFile = null;
+    if (known || !nodeOf(a.folderId)) return;
+    const link = addLink(a.folderId, realTitle(title), url, { autoName: true });
+    if (a.kind === 'artifact') { link.as = 'artifact'; save(); renderSide(); }
+    toast(`Saved in ${nodeOf(a.folderId).name}`, true);
+  }
+
+  function showNewMenu(x, y, folderId = newHereFolder()) {
+    const f = nodeOf(folderId);
+    const where = f ? ` in \u201c${f.name}\u201d` : '';
+    showMenu(x, y, [
+      { label: `New Chat${where}`, key: K.mod + 'N', run: () => newInFolder('chat', folderId) },
+      isApp && { label: `New Artifact${where}`, run: () => newInFolder('artifact', folderId) },
+      isApp && { label: `New Project${where}`, run: () => newInFolder('project', folderId) },
+      '-',
+      { label: `New Folder${where}`, key: K.mod + K.shift + 'N', run: () => newFolder(folderId) },
+      { label: `Add Link${where}\u2026`, key: K.mod + 'L', run: () => promptNewLink(folderId) },
+    ]);
   }
 
   // ---------- Claude pane (desktop app only) ----------
@@ -1165,6 +1294,7 @@
       state.pageTitle = title;
       // Moving around inside Claude updates the current history entry rather than adding one.
       syncNames(url, title);
+      checkAutoFile(url, title);
       if (state.loc.kind === 'page') {
         state.loc.url = url;
         ls.set(LOC_STORE, JSON.stringify({ loc: state.loc, lastFolderId: state.lastFolderId }));
@@ -1172,11 +1302,44 @@
       renderToolbar();
       syncSideSel();
     };
-    view.addEventListener('dom-ready', () => { viewReady = true; update(); });
+    view.addEventListener('dom-ready', () => { viewReady = true; update(); setTimeout(collapseClaudeSidebar, 600); });
     ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => view.addEventListener(ev, update));
     view.addEventListener('did-start-loading', () => $('progress').classList.add('on'));
     view.addEventListener('did-stop-loading', () => { $('progress').classList.remove('on'); update(); });
     ['did-stop-loading', 'did-navigate-in-page'].forEach(ev => view.addEventListener(ev, () => harvestPaneSoon()));
+  }
+
+  // ---------- Claude's own sidebar: hidden by default ----------
+  // Presses Claude's own "close sidebar" button once per page load, so Claude remembers it.
+  // You can still open it with Claude's button; turn this off in the ... menu.
+  const HIDE_SIDEBAR_STORE = 'claudeNavigator.hideClaudeSidebar';
+  const hideClaudeSidebar = () => ls.get(HIDE_SIDEBAR_STORE) !== 'off';
+  const COLLAPSE_SCRIPT = `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 12; i++) {
+      const navs = [...document.querySelectorAll('nav, aside, [data-testid*="sidebar" i]')].filter(el => {
+        const r = el.getBoundingClientRect();
+        return r.left < 40 && r.height > innerHeight * 0.6;
+      });
+      const nav = navs.sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
+      if (nav) {
+        if (nav.getBoundingClientRect().width < 120) return 'already collapsed';
+        const label = b => (b.getAttribute('aria-label') || b.getAttribute('title') || '') + ' ' + (b.getAttribute('data-testid') || '');
+        const btn = [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)) && !/open|expand/i.test(label(b)));
+        if (btn) { btn.click(); return 'collapsed'; }
+      }
+      await sleep(500);
+    }
+    return 'not found';
+  })()`;
+  function collapseClaudeSidebar() {
+    if (!isApp || !hideClaudeSidebar() || !/^https:\/\/claude\.ai\//.test(state.pageUrl || '')) return;
+    view.executeJavaScript(COLLAPSE_SCRIPT).catch(() => {});
+  }
+  function setHideClaudeSidebar(on) {
+    ls.set(HIDE_SIDEBAR_STORE, on ? 'on' : 'off');
+    if (on) collapseClaudeSidebar();
+    toast(on ? 'Claude\u2019s own sidebar will be hidden' : 'Claude\u2019s own sidebar is left as you set it. Use Claude\u2019s sidebar button to show it.');
   }
 
   // ---------- Claude Library: loading ----------
@@ -1513,6 +1676,9 @@
 
   function saveCurrent(folderId = state.lastFolderId) {
     if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
+    if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
+    if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
+    if (pageContext().status === 'none' && !folderId) folderId = state.lastFolderId;
     const url = state.pageUrl;
     const name = realTitle(state.pageTitle) || guessName(url);
     addLink(folderId, name, url, { autoName: true });
@@ -1556,6 +1722,10 @@
     if (!n) {
       const here = scope === browseEl ? hereFolder() : null;
       return [
+        { label: 'New Chat Here', key: K.mod + 'N', run: () => newInFolder('chat', here) },
+        isApp && { label: 'New Artifact Here', run: () => newInFolder('artifact', here) },
+        isApp && { label: 'New Project Here', run: () => newInFolder('project', here) },
+        '-',
         { label: 'New Folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) },
         { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
@@ -1575,10 +1745,13 @@
         { label: 'Open', key: K.open, run: () => openNode(n) },
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
+        { label: 'New Chat Here', key: K.mod + 'N', run: () => newInFolder('chat', n.id) },
+        isApp && { label: 'New Artifact Here', run: () => newInFolder('artifact', n.id) },
+        isApp && { label: 'New Project Here', run: () => newInFolder('project', n.id) },
+        '-',
         { label: 'New Folder Inside', run: () => newFolder(n.id) },
         { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Inside`, run: () => { state.lastFolderId = n.id; saveCurrent(n.id); } },
-        isApp && { label: 'New Chat to Save Here', run: () => { state.lastFolderId = n.id; go({ kind: 'page', url: HOME }); toast(`Press ${K.mod}S once the chat has a title`); } },
         '-',
         { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
         { label: 'Move To…', run: () => moveTo(n.id) },
@@ -2008,6 +2181,10 @@
   $('bSave').addEventListener('click', () => saveCurrent());
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
+  $('bNewMenu').addEventListener('click', e => {
+    const b = e.currentTarget.getBoundingClientRect();
+    showNewMenu(b.left, b.bottom + 4);
+  });
   $('sNewFolder').addEventListener('click', () => newFolder());
   const setLibFilter = v => { state.libFilter = v; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
   $('libAll').addEventListener('click', () => setLibFilter('all'));
@@ -2037,6 +2214,8 @@
       { label: 'Expand All', run: () => setAllOpen(true) },
       { label: 'Collapse All', run: () => setAllOpen(false) },
       '-',
+      isApp && { label: 'Hide Claude\u2019s Own Sidebar', checked: hideClaudeSidebar(), run: () => setHideClaudeSidebar(!hideClaudeSidebar()) },
+      isApp && '-',
       { label: 'Back Up Folders to a File…', run: exportTree },
       { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
       '-',
@@ -2112,6 +2291,7 @@
       print: () => { if (pageShowing()) view.print(); else window.print(); },
       reload: () => { if (pageShowing()) view.reload(); },
       back, forward, up,
+      'toggle-claude-sidebar': () => setHideClaudeSidebar(!hideClaudeSidebar()),
       'view-icons': () => setView('icons'),
       'view-list': () => setView('list'),
     };
