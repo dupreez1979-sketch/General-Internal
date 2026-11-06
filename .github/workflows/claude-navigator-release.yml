@@ -11,7 +11,7 @@ on:
   push:
     tags: ['claude-navigator-v*']
     branches: ['**']
-    paths: ['claude-navigator/package.json']
+    paths: ['claude-navigator/package.json', '.github/workflows/claude-navigator-release.yml']
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: macos-14
+    runs-on: macos-latest      # GitHub's current Mac (Apple silicon); builds both arm64 and x64
     timeout-minutes: 60
     defaults:
       run:
