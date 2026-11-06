@@ -184,7 +184,8 @@
   .lrow .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lrow:nth-child(odd) { background: var(--hover); }
   .lrow .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .lrow .icon { color: var(--accent); display: grid; }
+  .lrow .icon { color: var(--accent); display: grid; width: 18px; place-items: center; }
+  .list .item.selected .icon svg { filter: brightness(0) invert(1); }
   .lrow .muted { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
   .list .item.selected { background: var(--accent); color: var(--accent-text); }
   .list .item.selected .muted, .list .item.selected .icon { color: inherit; }
@@ -381,7 +382,11 @@
     link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
   G.canva = G.design;
-  const KIND_COLOUR = {
+  // Brighter versions in dark mode so every icon stays easy to see.
+  const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
+    chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
+    doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
+  } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
   };
@@ -391,6 +396,11 @@
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
 
+  // Folders: a small solid Finder-blue folder. Everything else: an outline in its own colour.
+  const SMALL_FOLDER = `<svg width="17" height="15" viewBox="0 0 17 15">
+    <path d="M1 2.2A1.2 1.2 0 012.2 1h4.1c.3 0 .6.1.8.3L8.4 2.6h6.4A1.2 1.2 0 0116 3.8v9A1.2 1.2 0 0114.8 14H2.2A1.2 1.2 0 011 12.8z" fill="#56A6E8"/>
+    <path d="M1 5.2A1.2 1.2 0 012.2 4h12.6A1.2 1.2 0 0116 5.2v7.6a1.2 1.2 0 01-1.2 1.2H2.2A1.2 1.2 0 011 12.8z" fill="#8ACBFA"/></svg>`;
+  const colourIcon = k => (k === 'folder' ? SMALL_FOLDER : small(k, KIND_COLOUR[k] || 'currentColor'));
   const BIG_FOLDER = `<svg width="64" height="54" viewBox="0 0 64 54">
     <path d="M3 6a4 4 0 014-4h15.5a3 3 0 012.1.9L28.5 7H57a4 4 0 014 4v37a4 4 0 01-4 4H7a4 4 0 01-4-4z" fill="#56A6E8"/>
     <path d="M3 15.5a4 4 0 014-4h50a4 4 0 014 4V48a4 4 0 01-4 4H7a4 4 0 01-4-4z" fill="#8ACBFA"/>
@@ -688,7 +698,7 @@
     if (n.type === 'folder') r.setAttribute('aria-expanded', String(open));
     const twTip = hasKids ? ` title="${open ? 'Collapse' : 'Expand'}${isMac ? ' (\u2325-click: everything inside)' : ' (Alt-click: everything inside)'}"` : '';
     r.innerHTML = `<span class="twisty${open ? ' open' : ''}"${twTip}>${hasKids ? UI.chev : ''}</span>` +
-      `<span class="icon">${small(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
+      `<span class="icon">${n.type === 'folder' ? small('folder') : colourIcon(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
     r.querySelector('.label').textContent = n.name;
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     return r;
@@ -892,7 +902,7 @@
     r.className = 'lrow item lib' + (where ? ' filed' : '');
     r.dataset.key = x.url;
     r.draggable = true;
-    fillRow(r, 'library', small(LIB_ICON[kind]), libName(x, kind), {
+    fillRow(r, 'library', colourIcon(LIB_ICON[kind]), libName(x, kind), {
       edited: fmtDate(x.updated),
       filed: where ? where.join(', ') : '',
       address: x.url.replace(/^https?:\/\//, ''),
@@ -1150,7 +1160,7 @@
     r.draggable = true;
     const k = kindOf(n);
     const edited = editedOf(n, updated);
-    fillRow(r, view, small(k), n.name, {
+    fillRow(r, view, colourIcon(k), n.name, {
       kind: KIND_NAME[k],
       edited: fmtDate(edited),
       added: fmtDate(n.added),
