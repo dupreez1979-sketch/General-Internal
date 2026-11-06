@@ -178,6 +178,8 @@ Your folders live in **profiles**, for example Monkey Baa, NCTI and Personal. Th
 - ⌥⌘1, ⌥⌘2 … switch straight to a profile; ⌥⌘0 is All Profiles.
 - **Change the order**: in All Profiles, drag a profile above or below another. Or right-click a profile for **Move Profile Up / Down**, **Move to Top / Bottom**, or use **Change Profile Order…** in the switcher. The order is used everywhere, including the ⌥⌘ number shortcuts.
 
+- **Design system** (in New Profile / Edit Profile): the Claude design system a profile uses by default, chosen from your Claude design systems (or any you have filed). It is a setting of the profile, not a folder. When you make a doc, slides, a design or a dashboard in that profile, the app reminds you which design system to use and can copy its link for you; the profile's right-click menu and the switcher have **Open Design System**. Profiles without one work as before.
+
 Each profile ends with an **Other** group holding **Code**, **Design Systems** and **Schedules** folders.
 
 The first time you open this version, your old layout is converted once: Work › Monkey Baa and Work › NCTI become profiles, Personal becomes a profile, and the old App Code (now Code), Design Systems and Schedules groups move into Monkey Baa's Other group with everything in them. Nothing is deleted.
