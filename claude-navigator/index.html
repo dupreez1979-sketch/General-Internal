@@ -528,7 +528,7 @@
     </div></div>
     <div class="prow"><span>Design system:</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
     <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
-    <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code, Design Systems and Schedules folders</span></label>
+    <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     <div class="dlg-actions">
       <button type="button" class="btn left" id="profileDelete" title="Delete this profile and everything in it">Delete Profile…</button>
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
@@ -700,8 +700,8 @@
   // Profile colours to start with (the Monkey Baa brand palette); any colour can be chosen.
   const PROFILE_COLOURS = ['#FF4C80', '#1B5A68', '#328276', '#99351E', '#B36E24', '#FF7552', '#6FC483', '#FF92B1', '#ECEB00', '#3D7FD6', '#7A3FB8', '#5F6B76'];
   const DEFAULT_PROFILE_COLOUR = { 'monkey baa': '#FF4C80', ncti: '#1B5A68', personal: '#328276', work: '#3D7FD6' };
-  // Each profile ends with an "Other" group holding Code, Design Systems and Schedules.
-  const OTHER_FOLDERS = ['Code', 'Design Systems', 'Schedules'];
+  // Each profile ends with an "Other" group holding Code and Schedules (its design system is a profile setting).
+  const OTHER_FOLDERS = ['Code', 'Schedules'];
   const groupFolders = () => [Object.assign(Folder('Other', OTHER_FOLDERS.map(n => Folder(n)), true), { group: true })];
   function makeProfile(name, children = [], colour = null, withGroups = true) {
     const used = 0;
@@ -1333,7 +1333,7 @@
     };
     const ap = activeProfile();
     if (ap) {
-      // One profile: its folders first, then its Other group (Code, Design Systems, Schedules) as its own section.
+      // One profile: its folders first, then its Other group (Code, Schedules) as its own section.
       sectionHead(ap, ' profile-head');
       if (ap.open) addChildren(ap.children.filter(c => !c.group), 0);
       for (const g of ap.children.filter(c => c.group)) {
@@ -6021,6 +6021,19 @@
   } catch (e) { /* ignore */ }
   applyProfileTheme();
   repairGenericNames();
+  if (!ls.get('claudeNavigator.dsFoldersRemoved')) {   // once: design systems are a profile setting now
+    ls.set('claudeNavigator.dsFoldersRemoved', '1');
+    let removed = 0, kept = 0;
+    for (const p of state.tree.filter(n => n.profile)) for (const g of (p.children || []).filter(c => c.type === 'folder' && c.group)) {
+      g.children = g.children.filter(c => {
+        if (!(c.type === 'folder' && /^design systems$/i.test(c.name))) return true;
+        if (c.children && c.children.length) { kept++; return true; }
+        queueTrash([c]); removed++; return false;
+      });
+    }
+    if (removed) save();
+    if (kept) setTimeout(() => toast(`Removed the empty Design Systems folders. ${kept} still ${kept === 1 ? 'has' : 'have'} things in ${kept === 1 ? 'it' : 'them'}, so ${kept === 1 ? 'it was' : 'they were'} kept: move what you need, then delete ${kept === 1 ? 'it' : 'them'}.`), 2000);
+  }
   if (!ls.get('claudeNavigator.attachedClosed')) {     // once: chats' attached artifacts now start closed
     ls.set('claudeNavigator.attachedClosed', '1');
     walk(state.tree, n => { if (n.type === 'link' && n.children && n.children.length) n.open = false; });
