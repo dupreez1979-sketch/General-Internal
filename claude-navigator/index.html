@@ -505,7 +505,12 @@
   const HOME = 'https://claude.ai/new';
   const ls = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } },
+    set(k, v) {
+      try { localStorage.setItem(k, v); }
+      catch (e) {
+        if (!ls.warned) { ls.warned = true; setTimeout(() => { try { toast('Could not save your latest changes: the app\u2019s storage is full. Back up your folders from the ... menu.'); } catch (err) { /* ignore */ } }, 0); }
+      }
+    },
     del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
   };
 
@@ -623,10 +628,16 @@
   ];
 
   function load() {
+    const raw = ls.get(STORE);
     try {
-      const t = JSON.parse(ls.get(STORE));
+      const t = JSON.parse(raw);
       if (Array.isArray(t)) return t;
     } catch (e) { /* ignore */ }
+    // Saved folders that cannot be read are kept aside (never overwritten) so they can be recovered.
+    if (raw) {
+      ls.set(STORE + '.unreadable-' + Date.now(), raw);
+      setTimeout(() => { try { toast('Your saved folders could not be read, so the example folders are showing. Restore from an automatic backup in the ... menu.'); } catch (e) { /* ignore */ } }, 1500);
+    }
     return seed();
   }
 
@@ -781,12 +792,21 @@
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
-  function save() { ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) scheduleApply(); }
+  function save() { ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) { fsState.savedAt = Date.now(); scheduleApply(); } }
 
   // ---------- Folders on this computer (Documents › Claude Navigator) ----------
   // The disk mirrors the app: app changes are written to disk shortly after; Finder changes come back in.
   const fsState = { enabled: false, root: '', asked: true, pulling: false, timer: null, applying: false, pullAfter: false };
   const FS_MAP = 'claudeNavigator.fsPaths';
+  // Things you deleted in the app that should go to the Trash on disk. Only these ever go to the Trash.
+  const FS_TRASH = 'claudeNavigator.fsTrash';
+  function queueTrash(nodes) {
+    if (!fsState.enabled) return;
+    let q = [];
+    try { q = JSON.parse(ls.get(FS_TRASH)) || []; } catch (e) { /* ignore */ }
+    for (const n of nodes) if (n && n.path && !q.includes(n.path)) q.push(n.path);
+    ls.set(FS_TRASH, JSON.stringify(q));
+  }
   const safeName = name => {
     let t = String(name || 'Untitled').replace(/[\/\\:*?"<>|\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim();
     t = t.replace(/^\.+/, '').slice(0, 120).trim();
@@ -799,6 +819,7 @@
   }
   async function runApply() {
     if (!fsState.enabled || fsState.applying) { if (fsState.applying) scheduleApply(); return; }
+    if (fsState.suspect) return;       // the folder looked empty or missing: write nothing until it is back
     fsState.applying = true;
     try {
       const nodes = [];
@@ -807,19 +828,20 @@
         if (n.children) visit(n.children, n.id);
       });
       visit(state.tree, null);
-      // What was on disk last time but has since been deleted in the app goes to the Trash.
-      let prev = {};
-      try { prev = JSON.parse(ls.get(FS_MAP)) || {}; } catch (e) { /* ignore */ }
-      const ids = new Set(nodes.map(n => n.id));
-      let trash = Object.entries(prev).filter(([id]) => !ids.has(id)).map(([, p]) => p);
+      // Only what you deleted in the app goes to the Trash (never anything still in use, e.g. after Undo).
+      let trash = [];
+      try { trash = JSON.parse(ls.get(FS_TRASH)) || []; } catch (e) { /* ignore */ }
+      const used = new Set(nodes.map(n => n.path).filter(Boolean));
+      trash = trash.filter(p => !used.has(p));
       trash = trash.filter(p => !trash.some(o => o !== p && p.startsWith(o + '/')));     // only the outermost
       const res = await window.navigatorApp.fsApply({ nodes, trash });
-      if (!res) return;
+      if (!res || res.unreachable) { if (res) { fsState.suspect = true; fsState.pullAfter = true; } return; }
+      ls.set(FS_TRASH, '[]');
       let removed = false;
       for (const [id, v] of Object.entries(res.map || {})) {
         const n = nodeOf(id);
         if (!n) continue;
-        if (v.missing) { const l = locate(id); if (l) { l.list.splice(l.index, 1); removed = true; } continue; }
+        if (v.missing) continue;      // a file not on disk: the next read of the folder decides, never this write
         n.path = v.path;
         n.ino = v.ino;
       }
@@ -840,8 +862,34 @@
   async function pullFromDisk() {
     if (!fsState.enabled) return;
     if (fsState.applying || fsState.timerPending) { fsState.pullAfter = true; return; }
+    const scanAt = Date.now();
     const entries = await window.navigatorApp.fsScan();
     if (!entries) return;
+    if (entries.error || !Array.isArray(entries)) {
+      if (!fsState.warnedScan) {
+        fsState.warnedScan = true;
+        toast(entries.error === 'no-access'
+          ? `Claude Navigator is not allowed to open your folders on this Mac. Allow it in System Settings \u203a Privacy & Security \u203a Files and Folders. Nothing has been changed.`
+          : entries.error === 'ENOENT'
+            ? `Your Claude Navigator folder can\u2019t be found (was it moved or renamed?). Nothing has been changed. Put it back, or choose Change Folder Location in the ... menu.`
+            : `Your folders on this Mac cannot be reached right now (${entries.error}). Nothing has been changed.`);
+      }
+      return;
+    }
+    fsState.warnedScan = false;
+    // Something changed in the app while the folder was being read: read again once that is written.
+    if (fsState.applying || fsState.timerPending || (fsState.savedAt || 0) > scanAt) { fsState.pullAfter = true; if (!fsState.applying) scheduleApply(); return; }
+    // An empty folder while the app still has folders on disk almost always means the folder is unreachable,
+    // not that you deleted everything in Finder. Leave the app as it is.
+    let withPaths = 0;
+    walk(state.tree, n => { if (n.path) withPaths++; });
+    if (!entries.length && withPaths > 2) {
+      if (!fsState.warnedEmpty) { fsState.warnedEmpty = true; toast('Your Claude Navigator folder on this Mac is empty, so nothing was removed in the app and nothing will be written there until it is back. If you meant to delete everything, delete it in the app.'); }
+      fsState.suspect = true;
+      return;
+    }
+    fsState.suspect = false;
+    fsState.warnedEmpty = false;
     fsState.pulling = true;
     try {
       const byIno = new Map(), byPath = new Map();
@@ -894,24 +942,40 @@
       }
       const gone = [];
       walk(state.tree, n => { if (n.path && !seen.has(n)) gone.push(n.id); });
-      for (const id of outermost(gone)) { const l = locate(id); if (l) { l.list.splice(l.index, 1); changed = true; } }
+      for (const id of outermost(gone)) {
+        const l = locate(id);
+        if (!l) continue;
+        // A chat's link file deleted in Finder: its artifacts (still on disk) stay, next to where the chat was.
+        const keep = l.node.type === 'link' && l.node.children ? l.node.children.filter(c => seen.has(c)) : [];
+        l.list.splice(l.index, 1, ...keep);
+        changed = true;
+      }
       const map = {};
       walk(state.tree, n => { if (n.path) map[n.id] = n.path; });
       ls.set(FS_MAP, JSON.stringify(map));
       ls.set(STORE, JSON.stringify(state.tree));
-      if (changed) renderAll();
+      if (changed) {
+        undoStack.length = 0;          // Finder changed things: an older Undo would no longer match the disk
+        renderAll();
+      }
     } finally {
       fsState.pulling = false;
     }
   }
   async function enableFolderSync(root) {
     const res = await window.navigatorApp.fsEnable(root);
-    const moved = root && root !== fsState.root;
+    if (!res || res.error) { alert(res ? res.error : 'Could not turn on folders on this Mac.'); return false; }
     fsState.enabled = true;
     fsState.root = res.root;
-    if (moved) { walk(state.tree, n => { delete n.path; delete n.ino; }); ls.set(FS_MAP, '{}'); }
-    await runApply();          // write the app's folders (adopting any that already exist)
-    await pullFromDisk();      // then bring in whatever else is there
+    let known = 0;
+    walk(state.tree, n => { if (n.path) known++; });
+    if (known) {
+      await pullFromDisk();    // turned back on (or moved): first pick up anything renamed or added in Finder meanwhile
+      await runApply();
+    } else {
+      await runApply();        // first time: write the app's folders, using any that already exist there
+      await pullFromDisk();    // then bring in whatever else is there
+    }
     renderAll();
     toast(`Your folders are now in ${res.root.replace(/^\/Users\/[^/]+/, '~')}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal('') });
   }
@@ -926,6 +990,8 @@
     const st = await window.navigatorApp.fsStatus();
     Object.assign(fsState, { root: st.root, asked: st.asked });
     window.navigatorApp.onFsChanged(() => pullFromDisk());
+    // After the folder was missing or unreadable, look again whenever you come back to the app.
+    window.addEventListener('focus', () => { if (fsState.enabled && (fsState.suspect || fsState.warnedScan)) pullFromDisk(); });
     if (st.enabled) {
       fsState.enabled = true;
       await pullFromDisk();
@@ -1916,7 +1982,7 @@
     lib.archived = (lib.archived || []).filter(k => !gone.has(k));
     const drop = [];
     walk(state.tree, x => { if (x.type === 'link' && gone.has(normUrl(x.url))) drop.push(x.id); });
-    for (const id of drop) { const l = locate(id); if (l) { if (l.node.children && l.node.children.length) l.list.splice(l.index, 1, ...l.node.children); else l.list.splice(l.index, 1); } }
+    for (const id of drop) { const l = locate(id); if (l) { queueTrash([l.node]); if (l.node.children && l.node.children.length) l.list.splice(l.index, 1, ...l.node.children); else l.list.splice(l.index, 1); } }
     libSel.clear();
     saveLib();
     commit();
@@ -3029,6 +3095,7 @@
     }
     snap();
     forgetAttachment(n, loc.parent);
+    queueTrash([n]);
     if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
       state.loc = { kind: 'folder', id: loc.parent ? loc.parent.id : null };
       nav.hist[nav.pos] = state.loc;
@@ -3066,10 +3133,23 @@
   }
 
   // An artifact you take out from under its chat stays out: it is not filed under the chat again.
+  // Also for an artifact filed in an ordinary folder, or inside a deleted folder: if its chat is still filed,
+  // removing the artifact must not bring it straight back under the chat.
   function forgetAttachment(n, parent) {
-    if (!n || n.type !== 'link' || !parent || parent.type !== 'link') return;
-    const pair = normUrl(parent.url) + '|' + normUrl(n.url);
-    if (!lib.detached.includes(pair)) { lib.detached.push(pair); saveLib(); }
+    if (!n) return;
+    const removed = [];
+    walk([n], x => { if (x.type === 'link' && x.url) removed.push(x); });
+    let changed = false;
+    const add = pair => { if (!lib.detached.includes(pair)) { lib.detached.push(pair); changed = true; } };
+    if (n.type === 'link' && parent && parent.type === 'link') add(normUrl(parent.url) + '|' + normUrl(n.url));
+    const filedElsewhere = new Set();
+    const visit = list => { for (const x of list) { if (x === n) continue; if (x.type === 'link' && x.url) filedElsewhere.add(normUrl(x.url)); if (x.children) visit(x.children); } };
+    visit(state.tree);
+    for (const x of removed) {
+      const u = normUrl(x.url);
+      for (const [c, list] of Object.entries(lib.related || {})) if (filedElsewhere.has(c) && list.includes(u)) add(c + '|' + u);
+    }
+    if (changed) saveLib();
   }
   // Claude items are only taken out of your folders, so they are "removed". Folders and files really go, so they are "deleted".
   const removeWord = ids => ids.every(id => { const n = nodeOf(id); return n && n.type === 'link'; }) ? 'Remove' : 'Delete';
@@ -3089,6 +3169,7 @@
       const l = locate(id);
       if (!l) continue;
       forgetAttachment(l.node, l.parent);
+      queueTrash([l.node]);
       if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
         state.loc = { kind: 'folder', id: l.parent ? l.parent.id : null };
         nav.hist[nav.pos] = state.loc;
@@ -4575,8 +4656,10 @@
       { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
       '-',
       { label: 'Reset to Example Folders', run: () => {
-        if (!confirm('Replace all your folders with the example set? You can undo this.')) return;
-        snap(); state.tree = seed(); commit();
+        if (!confirm(fsState.enabled
+          ? 'Replace all your folders in the app with the example set? Your folders and files on this Mac are not touched, and will show up again here. You can undo this.'
+          : 'Replace all your folders with the example set? You can undo this.')) return;
+        snap(); state.tree = seed(); ls.set(FS_TRASH, '[]'); fsState.pullAfter = true; commit();
       } },
     ], { above: true });
   });
@@ -4597,15 +4680,19 @@
       const data = JSON.parse(await file.text());
       const tree = Array.isArray(data) ? data : data.tree;
       const ok = n => n && typeof n.name === 'string' &&
-        (n.type === 'link' ? typeof n.url === 'string' : n.type === 'folder' && Array.isArray(n.children) && n.children.every(ok));
+        (n.type === 'link' ? typeof n.url === 'string' && (!n.children || n.children.every(ok))
+          : n.type === 'file' ? true
+          : n.type === 'folder' && Array.isArray(n.children) && n.children.every(ok));
       if (!Array.isArray(tree) || !tree.every(ok)) throw new Error('That file is not a Claude Navigator backup.');
       const fresh = n => { n.id = uid(); if (n.children) n.children.forEach(fresh); };
       tree.forEach(fresh);
       snap();
       state.tree = tree;
+      ls.set(FS_TRASH, '[]');          // restoring never sends anything on disk to the Trash
+      fsState.pullAfter = true;         // and anything on disk that is not in the backup comes back in
       go({ kind: 'folder', id: null });
       commit();
-      toast('Folders restored', true);
+      toast(fsState.enabled ? 'Folders restored. Your folders and files on this Mac were left as they are.' : 'Folders restored', true);
     } catch (err) {
       alert('Could not restore: ' + err.message);
     }
@@ -4853,6 +4940,7 @@
     pdlg.close();
     snap();
     const l = locate(p.id);
+    queueTrash([p]);
     l.list.splice(l.index, 1);
     if (state.profileId === p.id) state.profileId = null;
     save();

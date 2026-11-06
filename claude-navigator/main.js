@@ -678,19 +678,49 @@ let folderSync = null;
 function startSync(root) {
   if (folderSync) folderSync.unwatch();
   folderSync = new FolderSync(root);
-  folderSync.ensureRoot();
-  folderSync.watch(() => send('fs-changed'));
+  try { folderSync.ensureRoot(); folderSync.watch(() => send('fs-changed')); } catch (e) { /* reported when the app next reads the folder */ }
 }
 ipcMain.handle('fs-status', () => {
   const s = readSyncSettings();
   return { enabled: !!s.enabled, asked: !!s.asked, root: s.root || defaultRoot(), defaultRoot: defaultRoot(), platform: process.platform };
 });
-ipcMain.handle('fs-enable', (_e, root) => {
+// Folders that must never be used as the synced folder: everything in them would become part of the app.
+function rootProblem(r) {
+  const home = app.getPath('home');
+  const bad = [path.parse(r).root, home, app.getPath('documents'), app.getPath('desktop'), app.getPath('downloads'), path.join(home, 'Library')];
+  if (bad.some(b => path.resolve(b) === path.resolve(r))) return 'Choose (or make) a folder of its own for your folders, not your whole home, Documents, Desktop or Downloads folder.';
+  if (path.resolve(r).startsWith(path.join(home, 'Library') + path.sep)) return 'That folder is inside the hidden Library folder. Choose another one.';
+  return null;
+}
+const isEmptyDir = d => { try { return fs.readdirSync(d).filter(n => !n.startsWith('.')).length === 0; } catch (e) { return !fs.existsSync(d); } };
+ipcMain.handle('fs-enable', async (_e, root) => {
   const s = readSyncSettings();
-  const r = typeof root === 'string' && root ? root : (s.root || defaultRoot());
+  const oldRoot = s.root || defaultRoot();
+  const r = path.resolve(typeof root === 'string' && root ? root : oldRoot);
+  const problem = rootProblem(r);
+  if (problem) return { error: problem };
+  let moved = false;
+  // Changing the location moves your folders (and the files in them) to the new place.
+  if (r !== path.resolve(oldRoot) && s.enabled && fs.existsSync(oldRoot)) {
+    if (r.startsWith(path.resolve(oldRoot) + path.sep) || path.resolve(oldRoot).startsWith(r + path.sep)) return { error: 'The new place cannot be inside the current folder (or the other way round).' };
+    if (!isEmptyDir(r)) return { error: 'That folder already has things in it. Choose an empty folder, or make a new one, and your folders will be moved there.' };
+    if (folderSync) folderSync.unwatch();
+    try {
+      if (fs.existsSync(r)) fs.rmdirSync(r);
+      try { fs.renameSync(oldRoot, r); }
+      catch (err) {                                   // another drive: copy, then put the old copy in the Trash
+        fs.cpSync(oldRoot, r, { recursive: true });
+        await shell.trashItem(oldRoot).catch(() => {});
+      }
+      moved = true;
+    } catch (err) {
+      if (s.enabled) startSync(oldRoot);
+      return { error: `Could not move your folders: ${err.message}` };
+    }
+  }
   writeSyncSettings({ enabled: true, asked: true, root: r });
   startSync(r);
-  return { enabled: true, root: r };
+  return { enabled: true, root: r, moved };
 });
 ipcMain.handle('fs-disable', (_e, askedOnly) => {
   const s = readSyncSettings();
@@ -703,8 +733,18 @@ ipcMain.handle('fs-choose-root', async () => {
   const r = await dialog.showOpenDialog(mainWindow, { title: 'Choose where your folders live', properties: ['openDirectory', 'createDirectory'], defaultPath: app.getPath('documents') });
   return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
 });
-ipcMain.handle('fs-scan', () => (folderSync ? folderSync.scan() : null));
-ipcMain.handle('fs-apply', (_e, payload) => (folderSync ? folderSync.apply(payload || {}) : null));
+ipcMain.handle('fs-scan', () => {
+  if (!folderSync) return null;
+  try {
+    const out = folderSync.scan();
+    if (!folderSync.watcher && !folderSync.poll) folderSync.watch(() => send('fs-changed'));   // folder is back: watch it again
+    return out;
+  } catch (e) { return { error: e.code === 'EPERM' || e.code === 'EACCES' ? 'no-access' : (e.code || e.message) }; }
+});
+ipcMain.handle('fs-apply', async (_e, payload) => {
+  if (!folderSync) return null;
+  try { return await folderSync.apply(payload || {}); } catch (e) { return { map: {}, errors: [e.message] }; }
+});
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
 ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
