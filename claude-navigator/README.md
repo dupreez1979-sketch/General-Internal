@@ -90,6 +90,17 @@ Turn on **Keep Folders on This Mac** (the app offers it once, and it is in the .
 - **Deleting** in the app moves things to the Mac Trash, so you can always get them back from there.
 - Right-click anything and choose **Show in Finder**. **Change Folder Location…** in the ... menu moves your folders somewhere else.
 
+## Customise the toolbar
+
+Right-click the toolbar at the top (anywhere except the search box):
+
+- **Remove “…” from Toolbar** takes off the item you clicked.
+- **Show or Hide Items…** lists every item with a tick, so you can put things back or take them off.
+- **Customise Toolbar…** opens a panel under the toolbar. Drag items along the toolbar to move them, drag them down into the panel to take them off, or drag them from the panel up into the toolbar to add them. **Flexible Space** pushes things apart (put one on each side of a button to centre it); **Space** is a small fixed gap. Right-click an item for Move Left and Move Right. Press **Done** or Esc when finished.
+- **Restore Default Toolbar** puts it back the way it came.
+
+Items that only appear in some places (such as Save on a Claude page, or Refresh in the Claude lists) still only appear there, in the position you chose. Your layout is kept between sessions.
+
 ## Profiles
 
 Your folders live in **profiles**, for example Monkey Baa, NCTI and Personal. The switcher at the top of the sidebar picks one:

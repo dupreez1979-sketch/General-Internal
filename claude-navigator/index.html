@@ -160,6 +160,31 @@
   #subAllBtn .ic { display: inline-grid; place-items: center; }
   @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
+  .tbgroup { display: flex; align-items: center; flex: none; }
+  #bar > .tb-off, body.tb-customizing #bar > .tb-off { display: none !important; }
+  .tb-gap { flex: none; width: 24px; height: 28px; }
+  .tb-gap.flex { flex: 1 1 0; min-width: 12px; }
+  #bar { position: relative; }
+  body.tb-customizing #bar { -webkit-app-region: no-drag; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent); flex-wrap: wrap; height: auto; min-height: 52px; padding-top: 8px; padding-bottom: 8px; row-gap: 8px; }
+  body.tb-customizing #bar > #title { min-width: 140px; }
+  body.tb-customizing #bar > [data-tb] { -webkit-app-region: no-drag; cursor: grab; border-radius: 7px; box-shadow: 0 0 0 1px var(--line); background: var(--win); }
+  body.tb-customizing #bar > [data-tb][hidden]:not(.tb-off) { display: flex !important; opacity: .55; }
+  body.tb-customizing #bar > [data-tb] * { pointer-events: none; }
+  body.tb-customizing #bar .tbgroup > .tb[hidden] { display: inline-flex !important; opacity: .55; }
+  body.tb-customizing #bar > .tb-gap { background: repeating-linear-gradient(90deg, transparent 0 4px, color-mix(in srgb, var(--muted) 25%, transparent) 4px 5px); }
+  body.tb-customizing #bar > .tb-dragging { opacity: .3; }
+  #tbMarker { position: absolute; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: var(--accent); pointer-events: none; z-index: 5; }
+  #tbPalette { min-width: 0; max-width: 100%; box-sizing: border-box; white-space: normal; overflow: hidden; flex: none; border-bottom: 1px solid var(--line); padding: 10px 14px 12px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--accent) 5%, var(--win)); }
+  #tbPalette[hidden] { display: none; }
+  #tbPalette.drop-out { background: color-mix(in srgb, var(--accent) 14%, var(--win)); }
+  .tbp-tip { font-size: 12px; color: var(--muted); }
+  .tbp-items { display: flex; flex-wrap: wrap; gap: 8px; min-height: 34px; }
+  .tbp-chip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 7px; box-shadow: 0 0 0 1px var(--line); background: var(--win); font-size: 12px; cursor: grab; user-select: none; }
+  .tbp-chip .ic { display: inline-grid; place-items: center; color: var(--muted); }
+  .tbp-chip.space .ic { width: 22px; height: 14px; border: 1px dashed var(--muted); border-radius: 3px; }
+  .tbp-chip.space.flex .ic { width: 40px; }
+  .tbp-empty { font-size: 12px; color: var(--muted); align-self: center; }
+  .tbp-btns { display: flex; justify-content: flex-end; gap: 8px; }
   #bSaveMore { min-width: 18px; padding: 0 3px; margin-left: -4px; }
   .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
   .libbar b { margin-right: 6px; }
@@ -365,30 +390,34 @@
 
 <main id="main">
   <div id="bar">
-    <div class="nav-btns">
+    <div class="nav-btns" data-tb="nav">
       <button class="tb" id="bBack" title="Back (Ctrl+[)"><span data-icon="back"></span></button>
       <button class="tb" id="bFwd" title="Forward (Ctrl+])"><span data-icon="fwd"></span></button>
     </div>
-    <div id="title">Folders</div>
-    <div class="seg" id="viewSeg" role="group" aria-label="View">
+    <div id="title" data-tb="title">Folders</div>
+    <div class="seg" id="viewSeg" data-tb="viewSeg" role="group" aria-label="View">
       <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
       <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
     </div>
-    <button class="tb" id="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
-    <button class="tb" id="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
-    <button class="tb" id="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
-    <button class="tb" id="subAllBtn" title="Show or hide the artifacts under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
-    <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
-    <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
-    <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
-    <button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button>
-    <button class="tb" id="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
-    <button class="tb" id="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
-    <button class="tb" id="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
-    <div class="search">
+    <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
+    <button class="tb" id="libSelectBtn" data-tb="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
+    <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show artifacts too: each chat's artifacts under it, and those not linked to a chat at the end" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
+    <button class="tb" id="subAllBtn" data-tb="subAllBtn" title="Show or hide the artifacts under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
+    <button class="tb" id="bRefreshLib" data-tb="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
+    <button class="tb" id="bReload" data-tb="bReload" title="Reload"><span data-icon="reload"></span></button>
+    <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
+    <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
+    <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
+    <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
+    <div class="search" data-tb="search">
       <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
       <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)">
     </div>
+  </div>
+  <div id="tbPalette" hidden>
+    <div class="tbp-tip">Drag items along the toolbar to move them, drag them down here to take them off, or drag them up into the toolbar to add them. Use Flexible Space to push things to the middle or the right.</div>
+    <div class="tbp-items" id="tbpItems"></div>
+    <div class="tbp-btns"><button class="btn" id="tbpReset" title="Put the toolbar back the way it came">Restore Defaults</button><button class="btn-primary" id="tbpDone" title="Finish customising (Esc)">Done</button></div>
   </div>
   <div id="progress"></div>
   <div id="findbar" hidden>
@@ -4246,6 +4275,213 @@
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
   });
+  // ---------- Customise the toolbar ----------
+  // Right-click the toolbar: move items, take them off, add them back, and add spaces to push things to the middle or right.
+  const TB_STORE = 'claudeNavigator.toolbar.v1';
+  const TB_ITEMS = {
+    nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
+    libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
+    save: 'Save', bExternal: 'Open in Browser', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
+  };
+  const TB_DEFAULT = Object.keys(TB_ITEMS);
+  const isGap = id => /^(flex|space)-\w+$/.test(id);
+  const barEl = $('bar');
+  const tbEl = id => barEl.querySelector(`:scope > [data-tb="${id}"]`);
+  const tbName = id => isGap(id) ? (id.startsWith('flex') ? 'Flexible Space' : 'Space') : TB_ITEMS[id];
+  let tbConf = (() => {
+    let c = null;
+    try { c = JSON.parse(ls.get(TB_STORE)); } catch (e) { /* ignore */ }
+    const order = (c && Array.isArray(c.order) ? c.order : []).filter(id => TB_ITEMS[id] || isGap(id));
+    // Items added in later versions go next to the item they follow by default.
+    TB_DEFAULT.forEach((id, i) => {
+      if (order.includes(id)) return;
+      const prev = TB_DEFAULT.slice(0, i).reverse().find(x => order.includes(x));
+      order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+    });
+    return { order: [...new Set(order)], hidden: (c && Array.isArray(c.hidden) ? c.hidden : []).filter(id => TB_ITEMS[id]) };
+  })();
+  let tbCustomizing = false, tbDrag = null;
+  function applyToolbar() {
+    const want = new Set(tbConf.order.filter(isGap));
+    barEl.querySelectorAll(':scope > .tb-gap').forEach(g => { if (!want.has(g.dataset.tb)) g.remove(); });
+    tbConf.order.forEach((id, i) => {
+      let el = tbEl(id);
+      if (!el && isGap(id)) {
+        el = document.createElement('div');
+        el.className = 'tb-gap' + (id.startsWith('flex') ? ' flex' : '');
+        el.dataset.tb = id;
+        barEl.appendChild(el);
+      }
+      if (!el) return;
+      el.style.order = String(i);
+      el.classList.toggle('tb-off', tbConf.hidden.includes(id));
+      el.draggable = tbCustomizing;
+      if (isGap(el.dataset.tb)) el.title = tbCustomizing ? `${tbName(id)}: drag to move, drag down to remove` : '';
+    });
+  }
+  function saveToolbar() {
+    ls.set(TB_STORE, JSON.stringify({ order: tbConf.order, hidden: tbConf.hidden }));
+    applyToolbar();
+    if (tbCustomizing) renderPalette();
+  }
+  function tbMove(id, beforeId) {        // beforeId null: to the end
+    tbConf.order = tbConf.order.filter(x => x !== id);
+    const at = beforeId ? tbConf.order.indexOf(beforeId) : -1;
+    tbConf.order.splice(at < 0 ? tbConf.order.length : at, 0, id);
+    tbConf.hidden = tbConf.hidden.filter(x => x !== id);
+  }
+  function tbRemove(id) {
+    if (isGap(id)) tbConf.order = tbConf.order.filter(x => x !== id);
+    else if (!tbConf.hidden.includes(id)) tbConf.hidden.push(id);
+    saveToolbar();
+  }
+  function tbShow(id) { tbConf.hidden = tbConf.hidden.filter(x => x !== id); saveToolbar(); }
+  function tbNudge(id, dir) {
+    const vis = tbConf.order.filter(x => !tbConf.hidden.includes(x));
+    const i = vis.indexOf(id), j = i + dir;
+    if (i < 0 || j < 0 || j >= vis.length) return;
+    tbMove(id, dir < 0 ? vis[j] : (vis[j + 1] || null));
+    saveToolbar();
+  }
+  function tbReset() { tbConf = { order: TB_DEFAULT.slice(), hidden: [] }; saveToolbar(); toast('Toolbar restored'); }
+  function tbIcon(id) {
+    if (isGap(id)) return '';
+    if (id === 'title') return '<b style="font-size:11px">Aa</b>';
+    const el = tbEl(id);
+    const icons = el ? [...el.querySelectorAll('[data-icon]')].slice(0, 2).map(x => x.innerHTML).join('') : '';
+    return icons;
+  }
+  function renderPalette() {
+    const box = $('tbpItems');
+    box.replaceChildren();
+    const chip = (id, label, cls = '') => {
+      const c = document.createElement('div');
+      c.className = 'tbp-chip' + cls;
+      c.draggable = true;
+      c.dataset.tbNew = id;
+      c.innerHTML = `<span class="ic">${tbIcon(id)}</span><span></span>`;
+      c.lastChild.textContent = label;
+      c.title = `Drag ${label} up into the toolbar, or double-click to add it at the end`;
+      c.addEventListener('dblclick', () => { const nid = id === 'flex' || id === 'space' ? `${id}-${Date.now().toString(36)}` : id; tbMove(nid, null); saveToolbar(); });
+      box.appendChild(c);
+    };
+    const off = tbConf.order.filter(id => tbConf.hidden.includes(id));
+    for (const id of off) chip(id, TB_ITEMS[id]);
+    chip('flex', 'Flexible Space', ' space flex');
+    chip('space', 'Space', ' space');
+  }
+  function startCustomize() {
+    if (tbCustomizing) return;
+    tbCustomizing = true;
+    document.body.classList.add('tb-customizing');
+    $('tbPalette').hidden = false;
+    applyToolbar();
+    renderPalette();
+  }
+  function endCustomize() {
+    tbCustomizing = false;
+    document.body.classList.remove('tb-customizing');
+    $('tbPalette').hidden = true;
+    tbClearMarker();
+    applyToolbar();
+  }
+  $('tbpDone').addEventListener('click', endCustomize);
+  $('tbpReset').addEventListener('click', tbReset);
+  document.addEventListener('keydown', e => { if (tbCustomizing && e.key === 'Escape') { e.stopPropagation(); endCustomize(); } }, true);
+  // While customising, the toolbar's buttons do nothing but move.
+  barEl.addEventListener('click', e => { if (tbCustomizing && e.target.closest('[data-tb]')) { e.preventDefault(); e.stopPropagation(); } }, true);
+  barEl.addEventListener('mousedown', e => { if (tbCustomizing && e.target.closest('[data-tb]')) e.stopPropagation(); }, true);
+
+  const TB_TYPE = 'application/x-navigator-toolbar';
+  function tbClearMarker() { const m = $('tbMarker'); if (m) m.remove(); barEl.querySelectorAll('.tb-dragging').forEach(x => x.classList.remove('tb-dragging')); $('tbPalette').classList.remove('drop-out'); }
+  // Which item a drop at this x goes in front of (null: the end), and where to draw the marker.
+  function tbDropSpot(x) {
+    const items = tbConf.order.map(id => tbEl(id)).filter(el => el && !el.classList.contains('tb-off') && el.offsetWidth && el.dataset.tb !== tbDrag);
+    const br = barEl.getBoundingClientRect();
+    for (const el of items) {
+      const r = el.getBoundingClientRect();
+      if (x < r.left + r.width / 2) return { before: el.dataset.tb, left: r.left - br.left - 5 };
+    }
+    const last = items[items.length - 1];
+    return { before: null, left: last ? last.getBoundingClientRect().right - br.left + 2 : 8 };
+  }
+  barEl.addEventListener('dragstart', e => {
+    const el = tbCustomizing && e.target.closest && e.target.closest('#bar > [data-tb]');
+    if (!el) return;
+    tbDrag = el.dataset.tb;
+    e.dataTransfer.setData(TB_TYPE, tbDrag);
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => el.classList.add('tb-dragging'), 0);
+  });
+  $('tbPalette').addEventListener('dragstart', e => {
+    const c = e.target.closest && e.target.closest('.tbp-chip');
+    if (!c) return;
+    tbDrag = null;
+    e.dataTransfer.setData(TB_TYPE, 'new:' + c.dataset.tbNew);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  const tbDragging = e => tbCustomizing && [...e.dataTransfer.types].includes(TB_TYPE);
+  barEl.addEventListener('dragover', e => {
+    if (!tbDragging(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const spot = tbDropSpot(e.clientX);
+    let m = $('tbMarker');
+    if (!m) { m = document.createElement('div'); m.id = 'tbMarker'; barEl.appendChild(m); }
+    m.style.left = spot.left + 'px';
+  }, true);
+  barEl.addEventListener('dragleave', e => { if (tbCustomizing && !barEl.contains(e.relatedTarget)) { const m = $('tbMarker'); if (m) m.remove(); } });
+  barEl.addEventListener('drop', e => {
+    if (!tbDragging(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let id = e.dataTransfer.getData(TB_TYPE);
+    if (id.startsWith('new:')) { id = id.slice(4); if (id === 'flex' || id === 'space') id = `${id}-${Date.now().toString(36)}`; }
+    const spot = tbDropSpot(e.clientX);
+    if (spot.before !== id) tbMove(id, spot.before);
+    tbDrag = null;
+    tbClearMarker();
+    saveToolbar();
+  }, true);
+  $('tbPalette').addEventListener('dragover', e => {
+    if (!tbDragging(e) || !tbDrag) return;
+    e.preventDefault();
+    $('tbPalette').classList.add('drop-out');
+    const m = $('tbMarker'); if (m) m.remove();
+  });
+  $('tbPalette').addEventListener('dragleave', e => { if (!$('tbPalette').contains(e.relatedTarget)) $('tbPalette').classList.remove('drop-out'); });
+  $('tbPalette').addEventListener('drop', e => {
+    if (!tbDragging(e) || !tbDrag) return;
+    e.preventDefault();
+    const id = tbDrag;
+    tbDrag = null;
+    tbClearMarker();
+    tbRemove(id);
+  });
+  document.addEventListener('dragend', () => { if (tbCustomizing) { tbDrag = null; tbClearMarker(); } });
+
+  barEl.addEventListener('contextmenu', e => {
+    if (!tbCustomizing && e.target.closest('#bSave, input')) return;       // Save keeps its own menu; the search box its text menu
+    e.preventDefault();
+    e.stopPropagation();
+    const el = e.target.closest('#bar > [data-tb]');
+    const id = el && el.dataset.tb;
+    const items = [];
+    if (id) {
+      items.push({ label: `Remove “${tbName(id)}” from Toolbar`, run: () => tbRemove(id) });
+      if (tbCustomizing) items.push({ label: 'Move Left', run: () => tbNudge(id, -1) }, { label: 'Move Right', run: () => tbNudge(id, 1) });
+      items.push('-');
+    }
+    if (!tbCustomizing) items.push({ label: 'Customise Toolbar…', run: startCustomize });
+    else items.push({ label: 'Done Customising', run: endCustomize });
+    items.push({ label: 'Show or Hide Items…', run: () => showMenu(e.clientX, e.clientY, TB_DEFAULT.map(k => ({
+      label: TB_ITEMS[k], checked: !tbConf.hidden.includes(k), run: () => (tbConf.hidden.includes(k) ? tbShow(k) : tbRemove(k)),
+    }))) });
+    items.push({ label: 'Restore Default Toolbar', run: tbReset });
+    showMenu(e.clientX, e.clientY, items);
+  });
+  applyToolbar();
+
   $('subAllBtn').addEventListener('click', () => {
     const open = $('subAllBtn').dataset.open === '1';
     for (const t of subTargets) t.set(open);
