@@ -99,7 +99,9 @@ It behaves like a Finder window:
 | Move things | Drag onto any folder, in the sidebar or the main window. Drag between sidebar rows to reorder |
 | Save a link from your browser | Drag it from the address bar onto a folder |
 | Find anything | ⌘F, then type. Results show which folder each item is in |
-| Open in a separate window | ⌘-click |
+| Select several | ⌘-click to add or remove, ⇧-click for a range, ⌘A for everything in the folder, ⇧↑ ⇧↓ to extend. Works in the main window and the sidebar |
+| Act on several | Drag them together onto a folder, or right-click for New Folder with Items, Move To, Copy Links and Delete. ⌘⌫ deletes them |
+| Open in a separate window | Middle-click, or right-click and choose Open in New Window |
 | More options | Right-click anything, or empty space |
 
 **Inside Claude**

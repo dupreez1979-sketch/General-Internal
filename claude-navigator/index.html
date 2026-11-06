@@ -712,6 +712,7 @@
     treeEl.querySelectorAll('.row.selected, .row.context').forEach(r => r.classList.remove('selected', 'context'));
     const cr = state.loc.kind === 'page' && sideRowEl(state.ctxFolder);
     if (cr) cr.classList.add('context');
+    if (multi.side.size > 1) for (const id of multi.side) { const el = sideRowEl(id); if (el) el.classList.add('selected'); }
     const r = sideRowEl(state.sideSel);
     if (r) { r.classList.add('selected'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
   }
@@ -836,8 +837,8 @@
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
-    applyBrowseSel(false);
     renderPathbar(items.length);
+    applyBrowseSel(false);
   }
 
   function libVisible() {
@@ -1174,10 +1175,40 @@
   }
 
   const browseItemEl = id => id && browseEl.querySelector(`.item[data-id="${CSS.escape(id)}"]`);
+  // ---------- Multiple selection (Cmd/Ctrl-click to add, Shift-click for a range) ----------
+  // state.browseSel / state.sideSel stay the "main" item; these sets hold everything selected.
+  const multi = { browse: new Set(), side: new Set(), browseAnchor: null, sideAnchor: null, pending: null };
+  const browseIds = () => [...browseEl.querySelectorAll('.item[data-id]')].map(x => x.dataset.id);
+  const sideIds = () => [...treeEl.querySelectorAll('.row[data-id]')].map(x => x.dataset.id);
+  // Keeps only the outermost items (a folder's contents travel with it).
+  const outermost = ids => ids.filter(id => locate(id) && !ids.some(o => o !== id && contains(o, id)));
+  function selectedBrowse() {
+    if (!state.browseSel) return [];
+    return browseIds().filter(id => multi.browse.has(id));
+  }
+  function selectedSide() {
+    if (multi.side.size < 2) return [];
+    return sideIds().filter(id => multi.side.has(id));
+  }
+  function selectRange(list, set, fromId, toId) {
+    const a = list.indexOf(fromId), b = list.indexOf(toId);
+    if (a < 0 || b < 0) { set.clear(); set.add(toId); return; }
+    set.clear();
+    list.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(id => set.add(id));
+  }
+
   function applyBrowseSel(scroll = true) {
+    if (!state.browseSel) multi.browse.clear();
+    else if (!multi.browse.has(state.browseSel)) { multi.browse.clear(); multi.browse.add(state.browseSel); }
     browseEl.querySelectorAll('.item.selected').forEach(r => r.classList.remove('selected'));
+    for (const id of multi.browse) { const el = browseItemEl(id); if (el) el.classList.add('selected'); }
     const r = browseItemEl(state.browseSel);
-    if (r) { r.classList.add('selected'); if (scroll) r.scrollIntoView({ block: 'nearest' }); }
+    if (r && scroll) r.scrollIntoView({ block: 'nearest' });
+    const st = $('status');
+    if (st && state.loc.kind !== 'library') {
+      const count = browseIds().length;
+      st.textContent = multi.browse.size > 1 ? `${multi.browse.size} of ${count} selected` : `${count} item${count === 1 ? '' : 's'}`;
+    }
   }
 
   function renderPathbar(count) {
@@ -1819,6 +1850,79 @@
     toast(`Deleted “${n.name}”`, true);
   }
 
+  function removeNodes(ids) {
+    ids = outermost(ids);
+    if (!ids.length) return;
+    if (ids.length === 1) return removeNode(ids[0]);
+    let inside = 0;
+    ids.forEach(id => { const n = nodeOf(id); if (n.type === 'folder') walk(n.children, () => inside++); });
+    if (inside && !confirm(`Delete these ${ids.length} items, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders?`)) return;
+    snap();
+    for (const id of ids) {
+      const l = locate(id);
+      if (!l) continue;
+      if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
+        state.loc = { kind: 'folder', id: l.parent ? l.parent.id : null };
+        nav.hist[nav.pos] = state.loc;
+      }
+      l.list.splice(l.index, 1);
+    }
+    state.browseSel = null;
+    multi.browse.clear();
+    multi.side.clear();
+    commit();
+    toast(`Deleted ${ids.length} items`, true);
+  }
+  // Moves items into a folder (or before or after a sidebar row), keeping their order.
+  function moveNodes(ids, t) {
+    ids = outermost(ids);
+    if (!ids.length) return false;
+    if (t.id && ids.some(id => contains(id, t.id))) return false;
+    if (t.zone === 'into' && ids.every(id => parentIdOf(id) === t.id)) return false;    // already there
+    snap();
+    const nodes = ids.map(id => { const l = locate(id); l.list.splice(l.index, 1); return l.node; });
+    if (t.zone === 'into' || !t.id) nodes.forEach(n => insertInto(t.id, n));
+    else { const tgt = locate(t.id); tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, ...nodes); }
+    return true;
+  }
+  function moveManyPrompt(ids) {
+    ids = outermost(ids);
+    openDialog({
+      title: `Move ${ids.length} items to:`, folderId: parentIdOf(ids[0]), excludeId: ids, folderOnly: true,
+      onSave: ({ folderId }) => { if (moveNodes(ids, { id: folderId, zone: 'into' })) { commit(); toast(`Moved ${ids.length} items to ${folderId ? nodeOf(folderId).name : 'the top level'}`, true); } },
+    });
+  }
+  // Finder's "New Folder with Selection".
+  function newFolderWith(ids, scope) {
+    ids = outermost(ids);
+    if (!ids.length) return;
+    const first = locate(ids[0]);
+    snap();
+    const f = Folder('New Folder With Items');
+    f.open = true;
+    first.list.splice(first.index, 0, f);
+    for (const id of ids) { const l = locate(id); l.list.splice(l.index, 1); f.children.push(l.node); }
+    multi.browse.clear();
+    multi.side.clear();
+    const inView = state.loc.kind === 'folder' && state.loc.id === (first.parent ? first.parent.id : null) && scope === browseEl;
+    state.browseSel = inView ? f.id : null;
+    commit();
+    if (inView) { applyBrowseSel(); startRename(f.id, browseEl); }
+    else { state.sideSel = f.id; applySideSel(); startRename(f.id, treeEl); }
+  }
+  function menuForMany(ids, scope) {
+    const links = ids.map(nodeOf).filter(n => n && n.type === 'link');
+    const n = ids.length;
+    return [
+      { label: `New Folder with ${n} Items`, run: () => newFolderWith(ids, scope) },
+      { label: `Move ${n} Items To\u2026`, run: () => moveManyPrompt(ids) },
+      links.length > 0 && { label: `Copy ${links.length} Link${links.length === 1 ? '' : 's'}`, run: () => navigator.clipboard.writeText(links.map(l => l.url).join('\n')).then(() => toast('Links copied')) },
+      links.length > 0 && links.length <= 8 && { label: `Open ${links.length} in New Windows`, run: () => links.forEach(l => openNewWindow(l.url)) },
+      '-',
+      { label: `Delete ${n} Items`, key: K.del, run: () => removeNodes(ids) },
+    ];
+  }
+
   function duplicate(id) {
     const loc = locate(id);
     if (!loc) return;
@@ -1877,7 +1981,8 @@
     fFolder.replaceChildren(new Option('Top level', ''));
     walk(state.tree, (n, depth, path) => {
       if (n.type !== 'folder') return;
-      if (excludeId && (n.id === excludeId || path.some(p => p.id === excludeId))) return;
+      const ex = [].concat(excludeId || []);
+      if (ex.includes(n.id) || path.some(p => ex.includes(p.id))) return;
       fFolder.add(new Option('   '.repeat(depth + 1) + n.name, n.id));
     });
     fFolder.value = selectedId || '';
@@ -2093,9 +2198,22 @@
     const xa = e.target.closest('.xall');
     if (xa) return xa.dataset.all === '1' ? setSubtree(n, false, true) : setSubtree(n, true);
     if (e.altKey && n.type === 'folder' && (e.target.closest('.twisty') || row.classList.contains('section'))) return setSubtree(n, !n.open);
+    if (e.metaKey || e.ctrlKey) {
+      if (!multi.side.size && state.sideSel && nodeOf(state.sideSel)) multi.side.add(state.sideSel);
+      if (multi.side.has(n.id)) multi.side.delete(n.id); else multi.side.add(n.id);
+      multi.sideAnchor = n.id;
+      return applySideSel(false);
+    }
+    if (e.shiftKey) {
+      const from = multi.sideAnchor || (nodeOf(state.sideSel) ? state.sideSel : n.id);
+      selectRange(sideIds(), multi.side, from, n.id);
+      return applySideSel(false);
+    }
+    multi.side.clear();
+    multi.sideAnchor = n.id;
     if (row.classList.contains('section')) { state.sideSel = n.id; applySideSel(false); return toggle(n); }
     if (n.type === 'folder' && e.target.closest('.twisty')) return toggle(n);
-    openNode(n, { newWindow: e.metaKey || e.ctrlKey });
+    openNode(n);
   });
   treeEl.addEventListener('dblclick', e => {
     if (e.target.closest('.xall')) return;
@@ -2119,6 +2237,8 @@
       return;
     }
     const n = row && nodeOf(row.dataset.id);
+    if (n && multi.side.has(n.id) && multi.side.size > 1) return showMenu(e.clientX, e.clientY, menuForMany(selectedSide(), treeEl));
+    multi.side.clear();
     if (n) { state.sideSel = n.id; applySideSel(false); }
     showMenu(e.clientX, e.clientY, menuFor(n, treeEl));
   });
@@ -2157,7 +2277,10 @@
         break;
       case 'Enter': case ' ': if (n) (isSection ? toggle(n) : openNode(n)); break;
       case 'F2': if (n) startRename(n.id, treeEl); break;
-      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNode(n.id); break;
+      case 'Delete': case 'Backspace':
+        if (n && (mod || !isMac || e.key === 'Delete')) { if (multi.side.size > 1) removeNodes(selectedSide()); else removeNode(n.id); }
+        break;
+      case 'Escape': multi.side.clear(); applySideSel(false); break;
       default: return;
     }
     e.preventDefault();
@@ -2255,7 +2378,42 @@
     if (e.target.closest('input, button, .banner')) return;
     if (state.loc.kind === 'library') return libMouseDown(e);
     const it = e.target.closest('.item');
-    state.browseSel = it ? it.dataset.id : null;
+    multi.pending = null;
+    if (!it) { state.browseSel = null; applyBrowseSel(false); return; }
+    const id = it.dataset.id;
+    if (e.metaKey || e.ctrlKey) {
+      if (multi.browse.has(id) && multi.browse.size > 0) {
+        multi.browse.delete(id);
+        state.browseSel = state.browseSel === id ? ([...multi.browse].pop() || null) : state.browseSel;
+      } else {
+        if (state.browseSel && !multi.browse.size) multi.browse.add(state.browseSel);
+        multi.browse.add(id);
+        state.browseSel = id;
+      }
+      multi.browseAnchor = id;
+    } else if (e.shiftKey && (multi.browseAnchor || state.browseSel)) {
+      selectRange(browseIds(), multi.browse, multi.browseAnchor || state.browseSel, id);
+      state.browseSel = id;
+    } else if (multi.browse.has(id) && multi.browse.size > 1) {
+      if (e.button === 0) multi.pending = id;                // keep the group so it can be dragged
+      state.browseSel = id;
+    } else {
+      multi.browse.clear();
+      multi.browse.add(id);
+      state.browseSel = id;
+      multi.browseAnchor = id;
+    }
+    applyBrowseSel(false);
+  });
+  browseEl.addEventListener('click', e => {
+    if (state.loc.kind === 'library' || !multi.pending) return;
+    const id = multi.pending;
+    multi.pending = null;
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    multi.browse.clear();
+    multi.browse.add(id);
+    state.browseSel = id;
+    multi.browseAnchor = id;
     applyBrowseSel(false);
   });
   browseEl.addEventListener('dblclick', e => {
@@ -2272,6 +2430,9 @@
     if (e.target.closest('.lhead')) return showColumnMenu(e.clientX, e.clientY);
     if (state.loc.kind === 'library') return libContextMenu(e);
     const it = e.target.closest('.item');
+    if (it && multi.browse.has(it.dataset.id) && multi.browse.size > 1) {
+      return showMenu(e.clientX, e.clientY, menuForMany(selectedBrowse(), browseEl));
+    }
     state.browseSel = it ? it.dataset.id : null;
     applyBrowseSel(false);
     showMenu(e.clientX, e.clientY, menuFor(it ? nodeOf(it.dataset.id) : null, browseEl));
@@ -2285,7 +2446,19 @@
     const mod = e.metaKey || e.ctrlKey;
     const grid = browseEl.querySelector('.grid');
     const cols = grid ? Math.max(1, getComputedStyle(grid).gridTemplateColumns.split(' ').length) : 1;
-    const pick = j => { if (ids.length) { state.browseSel = ids[Math.max(0, Math.min(ids.length - 1, j))]; applyBrowseSel(); } };
+    const pick = j => {
+      if (!ids.length) return;
+      const to = ids[Math.max(0, Math.min(ids.length - 1, j))];
+      if (e.shiftKey) {
+        if (!multi.browseAnchor || !ids.includes(multi.browseAnchor)) multi.browseAnchor = state.browseSel || to;
+        selectRange(ids, multi.browse, multi.browseAnchor, to);
+      } else {
+        multi.browse.clear();
+        multi.browseAnchor = to;
+      }
+      state.browseSel = to;
+      applyBrowseSel();
+    };
     switch (e.key) {
       case 'ArrowDown': if (mod) { if (n) openNode(n); } else pick(i < 0 ? 0 : i + cols); break;
       case 'ArrowUp': if (mod) up(); else pick(i < 0 ? 0 : i - cols); break;
@@ -2296,7 +2469,13 @@
       case 'Enter': if (n) (isMac ? startRename(n.id, browseEl) : openNode(n)); break;
       case 'F2': if (n) startRename(n.id, browseEl); break;
       case 'o': case 'O': if (!(mod && n)) return; openNode(n); break;
-      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNode(n.id); break;
+      case 'Delete': case 'Backspace': if (n && (mod || !isMac || e.key === 'Delete')) removeNodes(selectedBrowse()); break;
+      case 'a': case 'A':
+        if (!mod || !ids.length) return;
+        ids.forEach(id => multi.browse.add(id));
+        state.browseSel = state.browseSel && ids.includes(state.browseSel) ? state.browseSel : ids[0];
+        applyBrowseSel(false);
+        break;
       case 'Escape': state.browseSel = null; applyBrowseSel(); break;
       default: return;
     }
@@ -2306,7 +2485,7 @@
   // ---------- Drag and drop (sidebar and main area) ----------
   const NAV_TYPE = 'application/x-claude-nav-id';
   const LIB_TYPE = 'application/x-claude-library';
-  let dropTarget = null, hoverId = null, hoverTimer = null, dragId = null;
+  let dropTarget = null, hoverId = null, hoverTimer = null, dragId = null, dragIds = [];
 
   function clearDrop() {
     treeEl.classList.remove('drop-root');
@@ -2347,17 +2526,32 @@
     const el = e.target.closest('[data-id]');
     if (!el) return;
     const n = nodeOf(el.dataset.id);
+    multi.pending = null;
+    const inTree = treeEl.contains(el);
+    const group = inTree ? (multi.side.has(n.id) ? selectedSide() : []) : (multi.browse.has(n.id) ? selectedBrowse() : []);
+    dragIds = group.length > 1 ? outermost(group) : [n.id];
     dragId = n.id;
     e.dataTransfer.effectAllowed = 'copyMove';
-    e.dataTransfer.setData(NAV_TYPE, n.id);
-    if (n.type === 'link') {
-      e.dataTransfer.setData('text/uri-list', n.url);
-      e.dataTransfer.setData('text/plain', n.url);
+    e.dataTransfer.setData(NAV_TYPE, dragIds.join(','));
+    const urls = dragIds.map(nodeOf).filter(x => x && x.type === 'link').map(x => x.url);
+    if (urls.length) {
+      e.dataTransfer.setData('text/uri-list', urls.join('\r\n'));
+      e.dataTransfer.setData('text/plain', urls.join('\n'));
+    }
+    if (dragIds.length > 1) {
+      const badge = document.createElement('div');
+      badge.className = 'drag-badge';
+      badge.textContent = `${dragIds.length} items`;
+      document.body.appendChild(badge);
+      e.dataTransfer.setDragImage(badge, 12, 12);
+      setTimeout(() => badge.remove(), 0);
+      dragIds.forEach(id => { const x = inTree ? sideRowEl(id) : browseItemEl(id); if (x) x.classList.add('dragging'); });
     }
     el.classList.add('dragging');
     hideMenu();
   }
   function onDragEnd() {
+    dragIds = [];
     document.querySelectorAll('.dragging').forEach(x => x.classList.remove('dragging'));
     clearDrop();
     clearTimeout(hoverTimer);
@@ -2372,7 +2566,7 @@
     return internal;
   }
   function blocked(e, folderId) {
-    if (dragId && folderId && contains(dragId, folderId)) { e.dataTransfer.dropEffect = 'none'; dropTarget = null; return true; }
+    if (folderId && dragIds.some(id => contains(id, folderId))) { e.dataTransfer.dropEffect = 'none'; dropTarget = null; return true; }
     return false;
   }
 
@@ -2406,7 +2600,7 @@
     if (state.loc.kind === 'library') { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
     const it = e.target.closest('.item');
     const n = it && nodeOf(it.dataset.id);
-    if (n && n.type === 'folder' && n.id !== dragId) {
+    if (n && n.type === 'folder' && !dragIds.includes(n.id)) {
       if (blocked(e, n.id)) return;
       it.classList.add('drop-into');
       dropTarget = { id: n.id, zone: 'into' };
@@ -2433,7 +2627,19 @@
       try { items = JSON.parse(libData); } catch (err) { /* ignore */ }
       return fileLibItems(items, t);
     }
-    const srcId = e.dataTransfer.getData(NAV_TYPE);
+    const srcIds = (e.dataTransfer.getData(NAV_TYPE) || '').split(',').filter(Boolean);
+    dragIds = [];
+    if (srcIds.length > 1) {
+      if (t.id && srcIds.includes(t.id)) return;
+      if (moveNodes(srcIds, t)) {
+        multi.side.clear();
+        commit();
+        const f = t.zone === 'into' || !t.id ? nodeOf(t.id) : (locate(t.id) || {}).parent;
+        toast(`Moved ${srcIds.length} items to ${f ? f.name : 'the top level'}`, true);
+      }
+      return;
+    }
+    const srcId = srcIds[0];
     let node, isNew = false;
     if (srcId) {
       if (t.id && contains(srcId, t.id)) return;
