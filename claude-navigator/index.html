@@ -918,7 +918,9 @@
     commit();
     toast('Undone');
   }
-  function commit() { save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
+  // Folders start closed; a chat's attached items start shown. The sidebar and the lists both use this.
+  const isOpen = n => n.type === 'link' ? n.open !== false : !!n.open;
+  function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
   function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
   function locate(id, nodes = state.tree, parent = null) {
@@ -1029,7 +1031,7 @@
     const addChildren = (nodes, depth, parent = null) => {
       for (const n of nodes) {
         if (n.type === 'link' && isArchived(n.url)) continue;     // archived: see Filter, Archived
-        const open = !!(n.children && n.children.length && n.open);
+        const open = !!(n.children && n.children.length && isOpen(n));
         frag.appendChild(sideRow(n, depth, open, parent));
         if (open) addChildren(n.children, depth + 1, n);
       }
@@ -1202,6 +1204,34 @@
     if (!list.includes(a)) { list.push(a); saveLib(); setTimeout(() => { try { autoAttachSiblings(); } catch (e) { /* ignore */ } }, 0); }
   }
   const isDetached = (chatUrl, itemUrl) => (lib.detached || []).includes(normUrl(chatUrl) + '|' + normUrl(itemUrl));
+  // A chat in your folders brings its artifacts with it: any artifact Claude made in that chat that is not
+  // filed anywhere yet is added under the chat. Ones you filed elsewhere stay where you put them, and ones
+  // you detached or removed are left out. Returns how many were added.
+  function fileRelatedArtifacts() {
+    if (!lib.related || !Object.keys(lib.related).length) return 0;
+    const filed = new Set();
+    walk(state.tree, n => { if (n.type === 'link') filed.add(normUrl(n.url)); });
+    const known = new Map();
+    for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) if (!known.has(normUrl(x.url))) known.set(normUrl(x.url), [x, k]);
+    const chats = [];
+    walk(state.tree, n => { if (n.type === 'link' && kindOf(n) === 'chat' && !isArchived(n.url)) chats.push(n); });
+    let added = 0;
+    for (const chat of chats) {
+      for (const a of lib.related[normUrl(chat.url)] || []) {
+        if (filed.has(a) || isDetached(chat.url, a)) continue;
+        const [x, k] = known.get(a) || [null, 'artifacts'];
+        const c = Link(x && hasWords(x.name) ? x.name : 'Untitled artifact', (x && x.url) || a);
+        c.autoName = true;
+        const kd = x ? libKind(x, k) : null;
+        if (kd && kd !== 'artifact' && G[kd]) c.as = kd;
+        if (!chat.children) chat.children = [];
+        chat.children.push(c);
+        filed.add(a);
+        added++;
+      }
+    }
+    return added;
+  }
   // An artifact sitting next to the chat it came from moves under that chat (never across folders).
   function autoAttachSiblings() {
     const moves = [];
@@ -1214,7 +1244,11 @@
         if (sib !== n && attachable(sib) && rel.has(normUrl(sib.url)) && !isDetached(n.url, sib.url)) moves.push([sib.id, n.id]);
       }
     });
-    if (!moves.length) return;
+    if (!moves.length) {
+      const added = fileRelatedArtifacts();     // and bring along artifacts Claude has only just linked to a filed chat
+      if (added) { save(); renderAll(); }
+      return;
+    }
     snap();
     for (const [id, chatId] of moves) {
       const l = locate(id), chat = nodeOf(chatId);
@@ -1224,6 +1258,7 @@
       chat.children.push(l.node);
       chat.open = true;
     }
+    fileRelatedArtifacts();
     save();
     renderAll();
     toast(moves.length === 1 ? `Attached \u201c${nodeOf(moves[0][0]).name}\u201d to the chat it came from` : `Attached ${moves.length} artifacts to the chats they came from`, true);
@@ -1407,9 +1442,9 @@
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
         const row = listRowFor(n, view, updated);
-        if (n.type === 'link' && n.children && n.children.length && !where) addDisclosure(row, n.open !== false, `${n.children.length} attached`);
+        if (n.type === 'link' && n.children && n.children.length && !where) addDisclosure(row, isOpen(n), `${n.children.length} attached`);
         l.appendChild(row);
-        if (n.type === 'link' && n.children && n.children.length && n.open !== false && !where) {
+        if (n.type === 'link' && n.children && n.children.length && isOpen(n) && !where) {
           for (const c of n.children) {
             const cr = listRowFor(c, view, updated);
             cr.classList.add('attached');
@@ -2883,7 +2918,7 @@
   }
   function toggle(n, force) {
     if (!n || !n.children) return;
-    n.open = force === undefined ? !n.open : force;
+    n.open = force === undefined ? !isOpen(n) : force;
     save();
     renderSide();
   }
@@ -2930,9 +2965,12 @@
       let c = 0;
       walk(n.children, () => c++);
       const what = n.type === 'folder' ? `the ${c} item${c === 1 ? '' : 's'} inside it` : `its ${c} attached item${c === 1 ? '' : 's'}`;
-      if (!confirm(`Delete \u201c${n.name}\u201d and ${what}?`)) return;
+      if (!confirm(n.type === 'folder'
+        ? `Delete the folder \u201c${n.name}\u201d and ${what}? Chats and artifacts in it stay in Claude.`
+        : `Remove \u201c${n.name}\u201d and ${what} from this folder? They stay in Claude.`)) return;
     }
     snap();
+    forgetAttachment(n, loc.parent);
     if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
       state.loc = { kind: 'folder', id: loc.parent ? loc.parent.id : null };
       nav.hist[nav.pos] = state.loc;
@@ -2941,6 +2979,7 @@
     if (state.browseSel === id) state.browseSel = null;
     commit();
     if (askedAboutFiles) toast(`Moved \u201c${n.name}\u201d to the Trash. Restore it from the Trash if you need it back.`);
+    else if (n.type === 'link') toast(`Removed \u201c${n.name}\u201d from the folder. It is still in Claude.`, true);
     else toast(`Deleted \u201c${n.name}\u201d`, true);
   }
 
@@ -2968,17 +3007,30 @@
     if (moveNodes([id], { id: chatId, zone: 'into' })) { commit(); toast(`Attached \u201c${n.name}\u201d to \u201c${chat.name}\u201d`, true); }
   }
 
+  // An artifact you take out from under its chat stays out: it is not filed under the chat again.
+  function forgetAttachment(n, parent) {
+    if (!n || n.type !== 'link' || !parent || parent.type !== 'link') return;
+    const pair = normUrl(parent.url) + '|' + normUrl(n.url);
+    if (!lib.detached.includes(pair)) { lib.detached.push(pair); saveLib(); }
+  }
+  // Claude items are only taken out of your folders, so they are "removed". Folders and files really go, so they are "deleted".
+  const removeWord = ids => ids.every(id => { const n = nodeOf(id); return n && n.type === 'link'; }) ? 'Remove' : 'Delete';
   function removeNodes(ids) {
     ids = outermost(ids);
     if (!ids.length) return;
     if (ids.length === 1) return removeNode(ids[0]);
     let inside = 0;
     ids.forEach(id => { const n = nodeOf(id); if (n.type === 'folder') walk(n.children, () => inside++); });
-    if (inside && !confirm(`Delete these ${ids.length} items, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders?`)) return;
+    const word = removeWord(ids);
+    let files = 0;
+    ids.forEach(id => walk([nodeOf(id)], x => { if (x.type === 'file') files++; }));
+    const trashNote = fsState.enabled && files ? ` The ${files} file${files === 1 ? '' : 's'} among them will be moved to the Trash.` : '';
+    if ((inside || trashNote) && !confirm(`${word} these ${ids.length} items${inside ? `, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders` : ''}?${trashNote} Chats and artifacts stay in Claude.`)) return;
     snap();
     for (const id of ids) {
       const l = locate(id);
       if (!l) continue;
+      forgetAttachment(l.node, l.parent);
       if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
         state.loc = { kind: 'folder', id: l.parent ? l.parent.id : null };
         nav.hist[nav.pos] = state.loc;
@@ -2989,7 +3041,7 @@
     multi.browse.clear();
     multi.side.clear();
     commit();
-    toast(`Deleted ${ids.length} items`, true);
+    toast(word === 'Remove' ? `Removed ${ids.length} items from the folder. They are still in Claude.` : `Deleted ${ids.length} items`, !trashNote);
   }
   // Moves items into a folder (or before or after a sidebar row), keeping their order.
   function moveNodes(ids, t) {
@@ -3040,7 +3092,7 @@
       links.length > 0 && { label: `Copy ${links.length} Link${links.length === 1 ? '' : 's'}`, run: () => navigator.clipboard.writeText(links.map(l => l.url).join('\n')).then(() => toast('Links copied')) },
       links.length > 0 && links.length <= 8 && { label: `Open ${links.length} in New Windows`, run: () => links.forEach(l => openNewWindow(l.url)) },
       '-',
-      { label: `Delete ${n} Items`, key: K.del, run: () => removeNodes(ids) },
+      { label: removeWord(ids) === 'Remove' ? `Remove ${n} Items from Folder` : `Delete ${n} Items`, key: K.del, run: () => removeNodes(ids) },
     ];
   }
 
@@ -3417,7 +3469,7 @@
         { label: 'Move To\u2026', run: () => moveTo(n.id) },
         { label: 'Copy Path', run: () => window.navigatorApp.fsAbs(n.path).then(p => navigator.clipboard.writeText(p)).then(() => toast('Path copied')) },
         '-',
-        { label: 'Move to Trash', key: K.del, run: () => removeNode(n.id) },
+        { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
       ];
     }
     if (n.type === 'folder') {
@@ -3436,8 +3488,9 @@
         { label: 'Move To…', run: () => moveTo(n.id) },
         { label: 'Duplicate', run: () => duplicate(n.id) },
         { label: 'Sort Contents by Name', run: () => sortFolder(n.id) },
+        ...(n.profile ? ['-', ...profileOrderItems(n)] : []),
         '-',
-        { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
+        { label: n.profile ? 'Delete Profile\u2026' : 'Delete Folder', key: K.del, run: () => n.profile ? openProfileDialog(n) : removeNode(n.id) },
       ];
     }
     return [
@@ -3460,7 +3513,7 @@
       kindOf(n) === 'chat' && n.children && n.children.length > 0 && { label: `Detach ${n.children.length} Attached Item${n.children.length === 1 ? '' : 's'}`, run: () => n.children.slice().forEach(c => detach(c.id)) },
       savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
-      { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
+      { label: 'Remove from Folder', key: K.del, run: () => removeNode(n.id) },
     ];
   }
 
@@ -3709,7 +3762,7 @@
         return renderLibrary();
       }
       const n = nodeOf(row.dataset.id);
-      if (n) { n.open = n.open === false ? true : false; save(); renderSide(); renderMain(); }
+      if (n) { n.open = !isOpen(n); save(); renderSide(); renderMain(); }
       return;
     }
     if (state.loc.kind === 'library') return libMouseDown(e);
@@ -3938,6 +3991,14 @@
     const rect = row.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height;
     const canAttach = kindOf(n) === 'chat' && !dragIds.some(id => { const x = nodeOf(id); return !attachable(x); });
+    const draggingProfile = dragIds.length > 0 && dragIds.every(id => { const x = nodeOf(id); return x && x.profile; });
+    if (draggingProfile || (n.profile && dragIds.some(id => { const x = nodeOf(id); return x && x.profile; }))) {
+      if (!n.profile || dragIds.includes(id)) { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
+      const z = y < 0.5 ? 'before' : 'after';
+      row.classList.add('drop-' + z);
+      dropTarget = { id, zone: z };
+      return;
+    }
     const zone = n.type === 'folder'
       ? (y < 0.25 ? 'before' : y > 0.75 && !row.classList.contains('section') ? 'after' : 'into')
       : canAttach ? (y < 0.3 ? 'before' : y > 0.7 ? 'after' : 'into')
@@ -4029,15 +4090,26 @@
     }
     // Files dragged in from Finder or the desktop are copied into the folder on disk.
     if (!srcIds.length && e.dataTransfer.files && e.dataTransfer.files.length && isApp) {
-      if (!fsState.enabled) return toast('Turn on Keep Folders on This Mac (in the ... menu) to add files');
-      let folder = t.zone === 'into' ? nodeOf(t.id) : t.id ? (locate(t.id) || {}).parent : null;
+      let folder = t && t.zone === 'into' ? nodeOf(t.id) : t && t.id ? (locate(t.id) || {}).parent : null;
       while (folder && folder.type !== 'folder') folder = (locate(folder.id) || {}).parent;
       if (!folder) folder = activeProfile();
-      if (!folder || !folder.path) return toast('Drop files onto a folder');
+      if (!folder) return toast('Drop files onto a folder');
       const paths = [...e.dataTransfer.files].map(f => window.navigatorApp.pathForFile(f)).filter(Boolean);
-      const done = await window.navigatorApp.fsImport(paths, folder.path);
-      await pullFromDisk();
-      return toast(`Copied ${done.length} file${done.length === 1 ? '' : 's'} into ${folder.name}`);
+      if (!paths.length) return;
+      const folderId = folder.id;
+      const copyIn = async () => {
+        const f = nodeOf(folderId);
+        if (!f || !f.path) return toast('Drop files onto a folder');
+        const done = await window.navigatorApp.fsImport(paths, f.path);
+        await pullFromDisk();
+        toast(`Copied ${done.length} file${done.length === 1 ? '' : 's'} into ${f.name}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(f.path) });
+      };
+      // Files need real folders on the Mac to live in: offer to switch that on, then copy them in.
+      if (!fsState.enabled) {
+        return toast(`To add files, your folders need to be real folders on your Mac (Documents \u203a Claude Navigator).`,
+          { label: 'Turn On and Add Files', run: async () => { await enableFolderSync(); await copyIn(); } });
+      }
+      return copyIn();
     }
     const srcId = srcIds[0];
     const intoLink = t.zone === 'into' && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link';
@@ -4363,6 +4435,33 @@
     renderAll();
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
   }
+  // Profiles keep the order you give them: in the sidebar, the switcher and the shortcuts.
+  function moveProfile(id, where) {
+    const list = profiles();
+    const i = list.findIndex(p => p.id === id);
+    if (i < 0) return;
+    const j = where === 'up' ? i - 1 : where === 'down' ? i + 1 : where === 'top' ? 0 : list.length - 1;
+    if (j < 0 || j >= list.length || j === i) return;
+    snap();
+    const order = list.slice();
+    const [p] = order.splice(i, 1);
+    order.splice(j, 0, p);
+    const slots = [];
+    state.tree.forEach((n, k) => { if (n.type === 'folder' && n.profile) slots.push(k); });
+    slots.forEach((k, m) => { state.tree[k] = order[m]; });
+    commit();
+    toast(`Moved \u201c${p.name}\u201d to number ${j + 1} of ${list.length}`, true);
+  }
+  function profileOrderItems(p) {
+    const list = profiles(), i = list.indexOf(p);
+    if (list.length < 2) return [];
+    return [
+      i > 0 && { label: 'Move Profile Up', run: () => moveProfile(p.id, 'up') },
+      i < list.length - 1 && { label: 'Move Profile Down', run: () => moveProfile(p.id, 'down') },
+      i > 1 && { label: 'Move to Top', run: () => moveProfile(p.id, 'top') },
+      i < list.length - 2 && { label: 'Move to Bottom', run: () => moveProfile(p.id, 'bottom') },
+    ];
+  }
   function showProfileMenu(x, y) {
     const ap = activeProfile();
     showMenu(x, y, [
@@ -4373,6 +4472,7 @@
       { label: 'New Profile\u2026', run: () => openProfileDialog(null) },
       ap && { label: `Edit \u201c${ap.name}\u201d\u2026`, run: () => openProfileDialog(ap) },
       !ap && profiles().length > 0 && { label: 'Edit a Profile\u2026', run: () => showMenu(x, y, profiles().map(p => ({ label: p.name, dot: p.color, run: () => openProfileDialog(p) }))) },
+      profiles().length > 1 && { label: 'Change Profile Order\u2026', run: () => showMenu(x, y, profiles().map((p, i) => ({ label: `${i + 1}. ${p.name}`, dot: p.color, run: () => showMenu(x, y, profileOrderItems(p)) }))) },
     ]);
   }
   $('profileBtn').addEventListener('click', e => {
@@ -4520,7 +4620,7 @@
     if (action) $('toastUndo').textContent = action.label;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('show'), action ? 6000 : 2600);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), action ? (action.run === undo ? 6000 : 10000) : 2600);
   }
   $('toastUndo').addEventListener('click', () => { toastEl.classList.remove('show'); if (toastAction) toastAction.run(); });
 
@@ -4563,6 +4663,7 @@
   } catch (e) { /* ignore */ }
   applyProfileTheme();
   repairGenericNames();
+  try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();
   renderSide();
   state.lastFolderId = startFolder;

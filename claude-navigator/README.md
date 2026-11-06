@@ -86,7 +86,7 @@ Turn on **Keep Folders on This Mac** (the app offers it once, and it is in the .
 - **Your own files** (Word, Excel, PowerPoint, PDF, images, anything) can live in the same folders. They show in the app with their own icons and open in their own apps.
 - **New files**: the + menu and right-click menus have **New Word Document**, **New Excel Spreadsheet**, **New PowerPoint Presentation** and **New Text File**. Give it a name and a folder; it is created there and opens in its app.
 - **Both ways**: what you do in the app (new folder, rename, move, delete) happens on disk, and what you do in Finder (add files, rename, move, delete) shows up in the app within a second or two.
-- **Drag files in** from Finder or the desktop onto any folder in the app to copy them there.
+- **Drag files in** from a Finder window or the desktop onto any folder in the sidebar, or into the open folder's list, to copy them there. If folders on your Mac are not switched on yet, the app offers **Turn On and Add Files**.
 - **Deleting** in the app moves things to the Mac Trash, so you can always get them back from there.
 - Right-click anything and choose **Show in Finder**. **Change Folder Location…** in the ... menu moves your folders somewhere else.
 
@@ -98,6 +98,7 @@ Your folders live in **profiles**, for example Monkey Baa, NCTI and Personal. Th
 - **All Profiles**: every profile as a top-level group with everything inside. Drag things between profiles here.
 - **New Profile…** and **Edit Profile…** in the switcher: a name, a colour (the Monkey Baa palette or any colour), and how strong the tint is (Subtle, Medium, Bold). Edit also lets you delete a profile.
 - ⌥⌘1, ⌥⌘2 … switch straight to a profile; ⌥⌘0 is All Profiles.
+- **Change the order**: in All Profiles, drag a profile above or below another. Or right-click a profile for **Move Profile Up / Down**, **Move to Top / Bottom**, or use **Change Profile Order…** in the switcher. The order is used everywhere, including the ⌥⌘ number shortcuts.
 
 Each profile ends with an **Other** group holding **Code**, **Design Systems** and **Schedules** folders.
 
@@ -135,7 +136,7 @@ Archived items are hidden everywhere, including the sidebar, until you choose Fi
 
 ## Artifacts stay with the chat they came from
 
-An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. Click the arrow beside the chat to hide or show its artifacts. They move together: drag either one and both go.
+An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. Click the arrow beside the chat to hide or show its artifacts. When you file a chat (for example by dragging it from All Chats into a folder), every artifact Claude made in that chat comes with it, unless you have already filed that artifact somewhere else. If you take an artifact out from under its chat, it stays out. They move together: drag either one and both go.
 
 - **Detach** an artifact (right-click, Detach from Chat) to move it on its own, for example when one chat made several artifacts that belong in different places. ⌥-drag also moves it on its own.
 - **Attach** it again by dropping it onto the chat, or right-click and choose Attach to Chat.
@@ -172,12 +173,12 @@ It behaves like a Finder window:
 | Save the Claude page you are looking at | ⌘S |
 | Add a link by pasting | ⌘L |
 | Rename | Select it, press Return (like Finder) |
-| Delete | ⌘⌫. Undo with ⌘Z or the Undo button |
+| Remove or delete | ⌘⌫. Chats and artifacts are only **removed** from the folder (they stay in Claude); folders and your own files are **deleted** (files go to the Trash). Undo with ⌘Z or the Undo button |
 | Move things | Drag onto any folder, in the sidebar or the main window. Drag between sidebar rows to reorder |
 | Save a link from your browser | Drag it from the address bar onto a folder |
 | Find anything | ⌘F, then type. Results show which folder each item is in |
 | Select several | ⌘-click to add or remove, ⇧-click for a range, ⌘A for everything in the folder, ⇧↑ ⇧↓ to extend. Works in the main window and the sidebar |
-| Act on several | Drag them together onto a folder, or right-click for New Folder with Items, Move To, Copy Links and Delete. ⌘⌫ deletes them |
+| Act on several | Drag them together onto a folder, or right-click for New Folder with Items, Move To, Copy Links and Remove (or Delete when folders or files are included). ⌘⌫ does the same |
 | Open in a separate window | Middle-click, or right-click and choose Open in New Window |
 | More options | Right-click anything, or empty space |
 
