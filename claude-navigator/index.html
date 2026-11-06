@@ -588,6 +588,7 @@
     `<circle cx="13" cy="11" r="1.8" fill="#00CA72"/></g>`;
   G.monday = () => MONDAY_MARK();
   G.mondaydoc = C => G.file(C) + MONDAY_MARK(4.4, 5.6, 0.48);
+  G.mondayfolder = C => G.folder(C);
   G.mondayws = C => `<rect x="1.8" y="2.2" width="12.4" height="11.6" rx="2.4" fill="none" stroke="${C}" stroke-width="1.3"/>` + MONDAY_MARK(3.4, 2.8, 0.58);
   G.file = C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
   G.word = C => G.file(C) + `<path d="M5.3 7.5l.9 4 .9-3 .9 3 .9-4" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -607,18 +608,18 @@
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
     doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
-    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF',
+    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF', mondayfolder: '#8A8AFF',
     word: '#6EA0F5', excel: '#4CC27C', powerpoint: '#F07A4E', pdf: '#F06A6A', image: '#B08CF0', video: '#E07BD0', audio: '#E7A24A', text: '#A0A7B0', archive: '#B0A090', file: '#A0A7B0',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
-    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF',
+    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF', mondayfolder: '#6161FF',
     word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
-    code: 'Code', schedule: 'Schedule', designsystem: 'Design system', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace',
+    code: 'Code', schedule: 'Schedule', designsystem: 'Design system', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace', mondayfolder: 'monday.com folder',
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
@@ -810,19 +811,21 @@
   const LIB_STORE = 'claudeNavigator.library.v1';
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
-  const LIB_KINDS = { chats: 'All Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled' };
+  const LIB_KINDS = { chats: 'All Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled', monday: 'monday.com' };
   // Shown in the Claude section (Projects and Design are still read: Design feeds Design Systems).
   const SIDEBAR_LIB = ['chats', 'artifacts'];
   const CLAUDE_OTHER = ['designsystems', 'code', 'scheduled'];      // under "Other", closed by default
-  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', designsystems: 'designsystem', design: 'design', code: 'code', scheduled: 'schedule' };
+  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', designsystems: 'designsystem', design: 'design', code: 'code', scheduled: 'schedule', monday: 'monday' };
   const LIB_TIPS = {
     chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account',
     artifacts: 'Artifacts listed on Claude\u2019s Artifacts page', code: 'Claude Code sessions listed on Claude\u2019s Code page',
     design: 'Designs and design systems on Claude\u2019s Design page', scheduled: 'Scheduled tasks on Claude\u2019s Scheduled page',
     designsystems: 'Design systems from Claude\u2019s Design and Artifacts pages',
+    monday: 'Your monday.com workspaces, folders and boards',
   };
   // The items in a Library list. Design Systems gathers them from the Design and Artifacts lists.
-  function libList(kind) {
+  function libList(kind, opts) {
+    if (kind === 'monday') return mondayEntries(state.loc.mkey || 'all', opts && opts.flat);
     if (kind !== 'designsystems') return lib[kind] || [];
     const seen = new Set(), out = [];
     for (const src of ['design', 'artifacts']) for (const x of lib[src] || []) {
@@ -1601,7 +1604,6 @@
     $('pathbar').hidden = showPage;
     if (showPage) return;
     if (state.loc.kind === 'library') return renderLibrary();
-    if (state.loc.kind === 'monday') return renderMonday();
 
     let items, where = false;
     if (state.query) {
@@ -1782,7 +1784,12 @@
   function libVisible() {
     const kind = state.loc.which;
     const idx = filedIndex();
-    let items = libList(kind);
+    // monday.com: workspaces and folders first, like Finder. With a filter or search, every board below this
+    // place is searched (folders are not filtered, they are left out).
+    const flat = kind === 'monday' && (!!state.query || activeFilterCount() > 0);
+    let items = libList(kind, { flat });
+    const places = kind === 'monday' ? items.filter(x => x.place) : [];
+    if (places.length) items = items.filter(x => !x.place);
     // Archived items (kept only in this app) show only when you ask for them.
     items = items.filter(x => (state.libFilter === 'archived') === isArchived(x.url));
     const ap = activeProfile();
@@ -1804,7 +1811,7 @@
       const m = searchMatcher(state.query);
       items = items.filter(x => m(x.name || ''));
     }
-    return { kind, idx, items: sortItems(items, 'library', { idx }) };
+    return { kind, idx, items: places.sort((a, b) => (a.place === 'w:main' ? -1 : b.place === 'w:main' ? 1 : byName(a, b))).concat(sortItems(items, 'library', { idx })) };
   }
 
   function emptyMsg(title, text) {
@@ -1837,7 +1844,12 @@
     }
     if (!isApp) {
       frag.appendChild(emptyMsg('Desktop app only', 'Your Claude Library appears in the desktop app, which is signed in to Claude.'));
-    } else if (lib.signedIn === false) {
+    } else if (kind === 'monday' && !mondayData.connected) {
+      frag.appendChild(emptyMsg('Connect monday.com first', 'Open monday.com under Systems in the sidebar and click Connect monday.com.'));
+    } else if (kind === 'monday' && !items.length) {
+      frag.appendChild(emptyMsg(mondayBusy ? 'Loading from monday.com\u2026' : state.query || activeFilterCount() ? 'Nothing matches' : 'Nothing here',
+        mondayBusy ? 'This takes a few seconds.' : state.query || activeFilterCount() ? 'Change the search or the filters.' : 'No boards here yet. Right-click and choose New Board to make one.'));
+    } else if (kind !== 'monday' && lib.signedIn === false) {
       frag.appendChild(emptyMsg('Sign in to Claude first', 'Open New Chat, sign in to Claude, then click Refresh at the top right.'));
     } else if (!items.length) {
       if (lib.busy && !all.length) frag.appendChild(emptyMsg('Loading from Claude\u2026', 'This takes a few seconds the first time.'));
@@ -1918,6 +1930,8 @@
   const libName = (x, kind) => hasWords(x.name) ? x.name : `Untitled ${KIND_NAME[libKind(x, kind)].toLowerCase()}`;
   // What kind of thing a Library item is: your own choice first, then what Claude's page says, then clear words in its name.
   function libKind(x, list) {
+    if (x && x.place) return x.place.startsWith('w:') ? 'mondayws' : 'mondayfolder';
+    if (list === 'monday') return x.mtype || 'monday';
     const mine = lib.kinds && lib.kinds[normUrl(x.url)];
     if (mine) return mine;
     if (list === 'designsystems') return 'designsystem';
@@ -1978,6 +1992,17 @@
       address: x.url.replace(/^https?:\/\//, ''),
     });
     r.title = `${libName(x, kind)}\n${x.url}`;
+    if (x.place) {
+      r.classList.add('mplace');
+      r.draggable = false;
+      r.children[1] && (r.children[1].textContent = KIND_NAME[k]);
+      const cols = visibleCols('library');
+      const fi = cols.indexOf('filed');
+      if (fi > 0) r.children[fi].textContent = `${x.count} board${x.count === 1 ? '' : 's'}`;
+      const ai = cols.indexOf('address');
+      if (ai > 0) r.children[ai].textContent = '';
+      r.title = `${x.name}: double-click to open`;
+    }
     return r;
   }
 
@@ -2028,9 +2053,9 @@
     if (!sel.length) return bar;
     b('File in Folder\u2026', () => fileLibPrompt(sel), '', 'Save them into one of your folders');
     const archivedView = state.libFilter === 'archived';
-    b(archivedView ? 'Unarchive' : 'Archive', () => archiveItems(sel, !archivedView), '', 'Hide them from this list (only in this app; Claude is not changed)');
+    b(archivedView ? 'Unarchive' : 'Archive', () => archiveItems(sel, !archivedView), '', `Hide them from this list (only in this app; ${kind === 'monday' ? 'monday.com' : 'Claude'} is not changed)`);
     if (kind === 'chats') b('Delete from Claude\u2026', () => deleteFromClaude(sel), 'danger', 'Delete these chats from your Claude account for good');
-    else if (sel.length === 1) b('Open in Claude to Delete', () => openLib(sel[0].url), '', 'Open it in Claude, where you can delete it');
+    else if (sel.length === 1 && kind !== 'monday') b('Open in Claude to Delete', () => openLib(sel[0].url), '', 'Open it in Claude, where you can delete it');
     b('Clear Selection', () => { libSel.clear(); renderLibrary(); });
     return bar;
   }
@@ -2114,6 +2139,31 @@
   function renderLibPathbar(kind, idx, shown) {
     const bar = $('pathbar');
     bar.replaceChildren();
+    if (kind === 'monday') {
+      const place = mondayPlace(state.loc.mkey || 'all');
+      const crumb = (label, key) => {
+        const c = document.createElement('span');
+        c.className = 'crumb';
+        c.textContent = label;
+        if (key) { c.style.cursor = 'pointer'; c.title = `Go to ${label}`; c.addEventListener('click', () => go({ kind: 'library', which: 'monday', mkey: key })); }
+        const sep = document.createElement('span');
+        sep.className = 'sep';
+        sep.textContent = ' \u203a ';
+        bar.append(c, sep);
+      };
+      crumb('monday.com', null);
+      for (const p of place.path) crumb(p.name, p.key);
+      const all = mondayEntries(state.loc.mkey || 'all', true);
+      const un = all.filter(x => !idx.has(normUrl(x.url))).length;
+      const s = document.createElement('span');
+      s.textContent = mondayBusy ? `${place.name} \u00b7 checking monday.com for changes\u2026` : `${place.name} \u00b7 ${all.length} board${all.length === 1 ? '' : 's'}, ${un} not in a folder. Updated ${ago(mondayData.fetchedAt)}.`;
+      const st = document.createElement('span');
+      st.id = 'status';
+      bar.append(s, st);
+      applyLibSel();
+      renderLibPager((state.libFiltered || []).length);
+      return;
+    }
     const s = document.createElement('span');
     const all = libList(kind).length;
     s.textContent = lib.busy
@@ -2498,7 +2548,7 @@
     $('bFwd').disabled = nav.pos >= nav.hist.length - 1;
     let title;
     const inLib = state.loc.kind === 'library';
-    if (inLib) title = LIB_KINDS[state.loc.which];
+    if (inLib) title = state.loc.which === 'monday' ? mondayPlace(state.loc.mkey || 'all').name : LIB_KINDS[state.loc.which];
     else if (state.query) title = 'Search';
     else if (page && state.autoFile) title = NEW_KINDS[state.autoFile.kind].title;
     else if (page && isBlankClaudePage(state.pageUrl) && /\/new/.test(state.pageUrl)) title = 'New chat';
@@ -2506,7 +2556,6 @@
       const saved = pageContext().linkId && nodeOf(pageContext().linkId);
       title = realTitle(state.pageTitle) || (saved && saved.name) || cleanTitle(state.pageTitle) || 'Claude';
     }
-    else if (state.loc.kind === 'monday') title = mondayPlace(state.loc.key).name || 'monday.com';
     else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : (activeProfile() ? activeProfile().name : 'All Profiles');
     const tEl = $('title');
     tEl.replaceChildren();
@@ -2593,7 +2642,7 @@
 
   // ---------- Navigation (Finder-style back and forward) ----------
   const sameLoc = (a, b) => !!(a && b && a.kind === b.kind && (a.kind === 'folder' ? a.id === b.id
-    : a.kind === 'library' ? a.which === b.which : a.kind === 'monday' ? a.key === b.key : normUrl(a.url) === normUrl(b.url)));
+    : a.kind === 'library' ? a.which === b.which && (a.mkey || '') === (b.mkey || '') : a.kind === 'monday' ? a.key === b.key : normUrl(a.url) === normUrl(b.url)));
 
   function go(loc, { push = true } = {}) {
     if (loc.kind === 'page' && !/^https?:\/\//i.test(loc.url || '')) { toast('That link is not a web address, so it was not opened'); return; }
@@ -2636,7 +2685,8 @@
     if (loc.kind !== 'page') closeFind();
     state.libPage = 0;
     if (loc.kind === 'library') {
-      libSel.clear(); libAnchor = null; state.lastFolderId = null; state.libPage = 0; refreshLibrary(false);
+      libSel.clear(); libAnchor = null; state.lastFolderId = null; state.libPage = 0;
+      if (loc.which === 'monday') mondayRefresh(false); else refreshLibrary(false);
       // The Claude lists always open newest first (Last Edited); a heading click changes it until you leave.
       colsFor('library').sort = { col: 'edited', dir: 'desc' };
       if (CLAUDE_OTHER.includes(loc.which) && ls.get('claudeNavigator.claudeOtherOpen') !== '1') { ls.set('claudeNavigator.claudeOtherOpen', '1'); renderSide(); }
@@ -3913,11 +3963,11 @@
     if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
     if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
-    if (row.dataset.action === 'monday-all') return go({ kind: 'monday', key: 'all' });
+    if (row.dataset.action === 'monday-all') return go({ kind: 'library', which: 'monday', mkey: 'all' });
     if (row.dataset.action === 'monday-new') return openNewBoard();
     if (row.dataset.action === 'monday-open') {
       if (e.target.closest('.twisty')) return toggleMondayOpen(row.dataset.key);
-      return go({ kind: 'monday', key: row.dataset.key });
+      return go({ kind: 'library', which: 'monday', mkey: row.dataset.key });
     }
     if (row.classList.contains('monday-board')) return go({ kind: 'page', url: row.dataset.url });
     if (row.dataset.action === 'claude-other') {
@@ -4048,11 +4098,13 @@
   const selectedLibItems = () => {
     const out = [], seen = new Set();
     for (const x of (state.libFiltered || []).concat([...libRowItems.values()])) {
+      if (x.place) continue;                    // monday.com workspaces and folders are opened, not filed
       if (libSel.has(x.url) && !seen.has(x.url)) { seen.add(x.url); out.push(x); }
     }
     return out;
   };
   function openLib(url, newWindow = false) {
+    if (String(url).startsWith(MONDAY_PLACE)) return go({ kind: 'library', which: 'monday', mkey: String(url).slice(MONDAY_PLACE.length) });
     if (newWindow) return openNewWindow(url);
     go({ kind: 'page', url });
   }
@@ -4100,6 +4152,12 @@
   });
   function libContextMenu(e) {
     const it = e.target.closest('.item.lib');
+    if (it && it.classList.contains('mplace')) return showMenu(e.clientX, e.clientY, [
+      { label: 'Open', key: K.open, run: () => openLib(it.dataset.key) },
+      '-',
+      { label: 'New Board Here\u2026', run: () => { const mkey = it.dataset.key.slice(MONDAY_PLACE.length); openNewBoard({ at: mkey }); } },
+      { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
+    ]);
     if (it && !libSel.has(it.dataset.key)) { libSel.clear(); libSel.add(it.dataset.key); libAnchor = it.dataset.key; applyLibSel(); }
     const sel = it ? selectedLibItems() : [];
     const one = sel.length === 1 ? sel[0] : null;
@@ -4113,15 +4171,16 @@
       one && isApp && /claude\.ai\/chat\//.test(one.url) && { label: 'Rename\u2026', run: () => renameChatInClaude(one.url, one.name) },
       sel.length > 0 && { label: state.libFilter === 'archived' ? `Unarchive${sel.length > 1 ? ` ${sel.length} Items` : ''}` : `Archive${sel.length > 1 ? ` ${sel.length} Items` : ''}`, run: () => archiveItems(sel, state.libFilter !== 'archived') },
       sel.length > 0 && state.loc.which === 'chats' && { label: `Delete ${sel.length > 1 ? `${sel.length} Chats` : 'Chat'} from Claude\u2026`, run: () => deleteFromClaude(sel) },
-      one && state.loc.which !== 'chats' && { label: 'Open in Claude to Delete', run: () => openLib(one.url) },
-      one && { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, libKind(one, state.loc.which), k => {
+      one && state.loc.which !== 'chats' && state.loc.which !== 'monday' && { label: 'Open in Claude to Delete', run: () => openLib(one.url) },
+      one && state.loc.which !== 'monday' && { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, libKind(one, state.loc.which), k => {
         lib.kinds[normUrl(one.url)] = k;
         savedLinksFor(one.url).forEach(n => { n.as = k; });
         saveLib(); save(); renderAll();
       }) },
       '-',
       { label: 'Select All', key: K.mod + 'A', run: () => { libKeys().forEach(k => libSel.add(k)); applyLibSel(); } },
-      { label: 'Refresh from Claude', run: () => refreshLibrary(true) },
+      state.loc.which === 'monday' ? { label: 'New Board\u2026', run: () => openNewBoard() } : null,
+      { label: state.loc.which === 'monday' ? 'Refresh from monday.com' : 'Refresh from Claude', run: () => state.loc.which === 'monday' ? mondayRefresh(true) : refreshLibrary(true) },
     ]);
   }
   function libKeyDown(e) {
@@ -4153,12 +4212,6 @@
   }
 
   browseEl.addEventListener('mousedown', e => {
-    if (state.loc.kind === 'monday') {                 // a monday.com workspace or folder: click selects
-      const it = e.target.closest('.item');
-      browseEl.querySelectorAll('.item.selected').forEach(x => x.classList.remove('selected'));
-      if (it) it.classList.add('selected');
-      return;
-    }
     if (e.target.closest('input:not(.lchk), button, .banner')) return;
     const disc = e.target.closest('.lrow .disc');
     if (disc) {
@@ -4231,13 +4284,6 @@
     applyBrowseSel(false);
   });
   browseEl.addEventListener('dblclick', e => {
-    if (state.loc.kind === 'monday') {                 // double-click opens, as in your own folders
-      const it = e.target.closest('.item');
-      if (!it) return;
-      if (it.dataset.mkey) return go({ kind: 'monday', key: it.dataset.mkey });
-      if (it.dataset.url) return go({ kind: 'page', url: it.dataset.url });
-      return;
-    }
     if (state.loc.kind === 'library') {
       const it = e.target.closest('.item.lib');
       if (it) openLib(it.dataset.key, e.metaKey || e.ctrlKey);
@@ -4649,7 +4695,7 @@
     ], { above: true });
   });
   const setLibFilter = v => { state.libFilter = v; state.libPage = 0; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
-  $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
+  $('bRefreshLib').addEventListener('click', () => (state.loc.which === 'monday' ? mondayRefresh(true) : refreshLibrary(true)));
   $('libFilterBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
@@ -4693,7 +4739,7 @@
     const all = row('lib-action', 1, small('mondayws', KIND_COLOUR.mondayws), 'All Workspaces',
       mondayData.workspaces ? `${mondayData.workspaces.length} workspaces, ${(mondayData.boards || []).length} boards. Open to browse them and drag boards into your folders.` : (mondayBusy ? 'Loading from monday.com\u2026' : 'Nothing loaded yet'));
     all.dataset.action = 'monday-all';
-    if (state.loc.kind === 'monday') all.classList.add('selected');
+    if (state.loc.kind === 'library' && state.loc.which === 'monday') all.classList.add('selected');
     if (mondayData.boards) {
       const c = document.createElement('span');
       c.className = 'count';
@@ -4702,6 +4748,25 @@
       all.appendChild(c);
     }
     if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
+  }
+  // monday.com rows for the shared list: workspaces and folders (opened by double-click) and boards.
+  const MONDAY_PLACE = 'navigator-monday:';
+  function mondayEntries(key, flat) {
+    const place = mondayPlace(key);
+    const boards = mondayData.boards || [], folders = mondayData.folders || [];
+    const board = b => ({ name: b.name, url: b.url, updated: b.updated, mtype: b.type === 'document' ? 'mondaydoc' : 'monday', private: b.private });
+    if (flat) {
+      const [t, id] = String(key).split(/:(.*)/s);
+      if (t === 'all') return boards.map(board);
+      if (t === 'w') return boards.filter(b => b.workspace === id).map(board);
+      const below = new Set([id]);
+      for (let grew = true; grew;) { grew = false; for (const f of folders) if (f.parent && below.has(f.parent) && !below.has(f.id)) { below.add(f.id); grew = true; } }
+      return boards.filter(b => below.has(b.folder)).map(board);
+    }
+    const out = [];
+    for (const w of place.workspaces || []) out.push({ name: w.name, url: MONDAY_PLACE + 'w:' + w.id, place: 'w:' + w.id, count: boards.filter(b => b.workspace === w.id).length });
+    for (const f of place.folders) out.push({ name: f.name, url: MONDAY_PLACE + 'f:' + f.id, place: 'f:' + f.id, count: boards.filter(b => b.folder === f.id).length });
+    return out.concat(place.boards.map(board));
   }
   // A workspace ('w:id') or folder ('f:id'): its name, the path to it, and what is directly inside.
   function mondayPlace(key) {
@@ -4727,68 +4792,6 @@
     path.unshift(ALL);
     return { name: f.name, path, workspace: f.workspace, folder: id, folders: folders.filter(x => x.parent === id), boards: boards.filter(b => b.folder === id) };
   }
-  function renderMonday() {
-    const place = mondayPlace(state.loc.key);
-    const frag = document.createDocumentFragment();
-    const items = [...(place.workspaces || []).slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b))).map(w => ({ ws: w })),
-      ...place.folders.slice().sort(byName).map(f => ({ folder: f })), ...place.boards.slice().sort(byName).map(b => ({ board: b }))];
-    if (!items.length) {
-      const e = document.createElement('div');
-      e.className = 'empty';
-      e.innerHTML = mondayData.workspaces ? '<b>Nothing here</b>No boards yet. Click New Board in the sidebar to make one here.' : '<b>Not loaded yet</b>Open monday.com under Systems to connect or refresh.';
-      frag.appendChild(e);
-    } else {
-      const l = makeList('folder');
-      for (const it of items) {
-        const r = document.createElement('div');
-        if (it.ws) {
-          const n = (mondayData.boards || []).filter(b => b.workspace === it.ws.id).length;
-          r.className = 'lrow item';
-          r.dataset.mkey = 'w:' + it.ws.id;
-          fillRow(r, 'folder', small('mondayws', KIND_COLOUR.mondayws), it.ws.name, { kind: 'monday.com workspace', items: `${n} board${n === 1 ? '' : 's'}` });
-          r.title = `${it.ws.name}: double-click to open`;
-        } else if (it.folder) {
-          const n = (mondayData.boards || []).filter(b => b.folder === it.folder.id).length;
-          r.className = 'lrow item';
-          r.dataset.mkey = 'f:' + it.folder.id;
-          fillRow(r, 'folder', small('folder', KIND_COLOUR.mondayws), it.folder.name, { kind: 'monday.com folder', items: `${n} board${n === 1 ? '' : 's'}`, where: place.name });
-          r.title = `${it.folder.name}: double-click to open`;
-        } else {
-          const b = it.board, kind = b.type === 'document' ? 'mondaydoc' : 'monday';
-          r.className = 'lrow item monday-board';
-          r.dataset.url = b.url;
-          r.dataset.name = b.name;
-          r.draggable = true;
-          fillRow(r, 'folder', small(kind, KIND_COLOUR[kind]), b.name, { kind: KIND_NAME[kind] + (b.private ? ' (private)' : ''), edited: fmtDate(b.updated), where: place.name, address: (b.url || '').replace(/^https?:\/\//, '') });
-          r.title = `${b.name}\nDouble-click to open it here; drag it into one of your folders to file it.${savedLinksFor(b.url).length ? '\nAlready in your folders.' : ''}`;
-        }
-        l.appendChild(r);
-      }
-      frag.appendChild(l);
-    }
-    browseEl.replaceChildren(frag);
-    // Path bar: monday.com › workspace › folder, each clickable.
-    const bar = $('pathbar');
-    bar.replaceChildren();
-    const crumb = (label, key) => {
-      const c = document.createElement('span');
-      c.className = 'crumb';
-      c.textContent = label;
-      if (key) { c.style.cursor = 'pointer'; c.title = `Go to ${label}`; c.addEventListener('click', () => go({ kind: 'monday', key })); }
-      bar.appendChild(c);
-      const sep = document.createElement('span');
-      sep.className = 'sep';
-      sep.textContent = ' \u203a ';
-      bar.appendChild(sep);
-    };
-    crumb('monday.com', null);
-    // (All Workspaces is the first step of every path below it.)
-    for (const p of place.path) crumb(p.name, p.key);
-    const here = document.createElement('span');
-    here.textContent = `${place.name} \u00b7 ${items.length} item${items.length === 1 ? '' : 's'}`;
-    bar.appendChild(here);
-    renderSide();
-  }
   async function mondayRefresh(force = true) {
     if (!isApp || mondayBusy) return;
     if (!force && mondayData.fetchedAt && Date.now() - mondayData.fetchedAt < 30 * 60e3) return;
@@ -4804,7 +4807,7 @@
     } else mondayData = res;
     ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
     renderSide();
-    if (state.loc.kind === 'monday') renderMain();
+    if (state.loc.kind === 'library' && state.loc.which === 'monday') { renderMain(); renderToolbar(); }
     if (force && res && !res.error && res.connected) toast(`Loaded ${res.boards.length} boards from monday.com`);
   }
   const mdlg = $('mondayDlg');
@@ -4835,10 +4838,10 @@
   // New Board: in the monday.com workspace/folder you are looking at (or one you pick). Made from one of your
   // folders (New ▸ monday.com Board), it is also filed in that folder.
   let mbFileInto = undefined;
-  function openNewBoard({ fileInto } = {}) {
+  function openNewBoard({ fileInto, at } = {}) {
     if (!mondayData.connected || !mondayData.workspaces) return openMondayConnect();
     mbFileInto = fileInto;
-    const here = state.loc.kind === 'monday' ? mondayPlace(state.loc.key) : {};
+    const here = at ? mondayPlace(at) : state.loc.kind === 'library' && state.loc.which === 'monday' ? mondayPlace(state.loc.mkey || 'all') : {};
     const wsSel = $('mbWs');
     wsSel.replaceChildren();
     for (const w of mondayData.workspaces.slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b)))) {
@@ -4889,7 +4892,7 @@
   function mondayMenu(x, y) {
     showMenu(x, y, [
       mondayData.connected && { label: 'New Board\u2026', run: () => openNewBoard() },
-      mondayData.connected && { label: 'All Workspaces', run: () => go({ kind: 'monday', key: 'all' }) },
+      mondayData.connected && { label: 'All Workspaces', run: () => go({ kind: 'library', which: 'monday', mkey: 'all' }) },
       mondayData.connected && '-',
       mondayData.connected && { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
       { label: mondayData.connected ? 'Change API Token\u2026' : 'Connect monday.com\u2026', run: openMondayConnect },
