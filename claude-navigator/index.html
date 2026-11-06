@@ -172,7 +172,46 @@
   .app-ic.nav { background: #3D8BE6; }
   .app-ic.cos { background: #1B5A68; }
   .app-ic svg { width: 20px; height: 20px; }
-  body.cos-mode #tree, body.cos-mode #sNewFolder, body.cos-mode #content, body.cos-mode #pathbar, body.cos-mode #bar, body.cos-mode #findbar, body.cos-mode #tbPalette { display: none !important; }
+  body.cos-mode #tree, body.cos-mode #sNewFolder, body.cos-mode #bar, body.cos-mode #findbar, body.cos-mode #tbPalette, body.cos-mode #splitLeft { display: none !important; }
+  body.cos-mode:not(.cos-adding) #content, body.cos-mode:not(.cos-adding) #pathbar { display: none !important; }
+  .cos-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cos-who { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; }
+  .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
+  .cos-who b { font-size: 17px; display: block; }
+  .cos-who span { font-size: 12.5px; color: var(--muted); }
+  .cos-tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
+  .cos-tabs button { background: none; border: 0; padding: 8px 12px; font: inherit; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .cos-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .cos-tabs button .n { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .cos-proj { flex: 1; min-height: 0; display: flex; }
+  .cos-plist { width: 230px; flex: none; border-right: 1px solid var(--line); overflow: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .cos-plist .pi { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
+  .cos-plist .pi:hover { background: var(--hover); }
+  .cos-plist .pi.on { background: var(--sel); font-weight: 600; }
+  .cos-plist .pi.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cos-plist .pi .c { margin-left: auto; font-size: 11px; color: var(--muted); }
+  .cos-plist .ph { font-size: 11px; color: var(--muted); font-weight: 600; padding: 10px 8px 4px; }
+  .cos-pbody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .cos-ptop { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .cos-ptop input { font: inherit; font-size: 15px; font-weight: 650; border: 0; background: none; color: var(--text); padding: 4px 6px; border-radius: 6px; min-width: 120px; flex: 1; }
+  .cos-ptop input:focus { background: var(--field); outline: none; }
+  .cos-ptop .tb.on { background: var(--sel); color: var(--text); }
+  .cos-items { flex: 1; overflow: auto; padding: 8px 10px 30px; }
+  .cos-items.drop-here { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
+  .cos-items .it { display: flex; align-items: center; gap: 8px; padding: 5px 8px; padding-left: calc(8px + var(--d, 0) * 18px); border-radius: 6px; font-size: 13px; cursor: default; user-select: none; }
+  .cos-items .it:hover { background: var(--hover); }
+  .cos-items .it.sel { background: var(--sel); }
+  .cos-items .it.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cos-items .it .tw { width: 14px; flex: none; display: inline-grid; place-items: center; color: var(--muted); }
+  .cos-items .it .tw.open svg { transform: rotate(90deg); }
+  .cos-items .it .icon { flex: none; display: inline-grid; place-items: center; }
+  .cos-items .it .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-items .it .kind { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .cos-src { width: 46%; min-width: 360px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-height: 0; }
+  .cos-src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .cos-src-head .tb.on { background: var(--sel); color: var(--text); }
+  .cos-src-head input { margin-left: auto; font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 150px; color: var(--text); }
+  .cos-src #content { flex: 1; min-height: 0; }
   #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
   #cosSide[hidden], #cosMain[hidden] { display: none; }
   #cosMain { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -1985,7 +2024,7 @@
       else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
     } else {
       if (state.libSelectMode) frag.appendChild(libActionBar(kind));     // only in Select mode, so the list never jumps
-      if (state.view === 'icons') {
+      if (libView === 'icons') {
         const g = document.createElement('div');
         g.className = 'grid';
         libRowItems = new Map();
@@ -2789,8 +2828,8 @@
     $('libAttachedBtn').classList.toggle('on', !!state.libShowAttached);
     $('bRefreshLib').hidden = !inLib;
     $('bRefreshLib').disabled = lib.busy;
-    $('vIcons').classList.toggle('on', state.view === 'icons');
-    $('vList').classList.toggle('on', state.view === 'list');
+    $('vIcons').classList.toggle('on', curView() === 'icons');
+    $('vList').classList.toggle('on', curView() === 'list');
     $('bReload').hidden = !page;
     $('bExternal').hidden = !page;
     $('bSave').hidden = !page;
@@ -4058,7 +4097,7 @@
         '-',
         scope === browseEl && { label: 'as Icons', key: K.mod + '1', run: () => setView('icons') },
         scope === browseEl && { label: 'as List', key: K.mod + '2', run: () => setView('list') },
-        scope === browseEl && state.view === 'list' && { label: 'Choose Columns\u2026', run: () => showColumnMenu(lastMenuX, lastMenuY) },
+        scope === browseEl && curView() === 'list' && { label: 'Choose Columns\u2026', run: () => showColumnMenu(lastMenuX, lastMenuY) },
         { label: 'Sort by Name', run: () => sortFolder(here) },
         '-',
         { label: 'Expand All in Sidebar', run: () => setAllOpen(true) },
@@ -4137,9 +4176,12 @@
     applyBrowseSel();
   }
 
+  // Your folders and the Claude / monday.com lists each remember their own view (the lists start as lists).
+  var libView = ls.get('claudeNavigator.libView') === 'icons' ? 'icons' : 'list';
+  const curView = () => (state.loc.kind === 'library' ? libView : state.view);
   function setView(v) {
-    state.view = v;
-    ls.set(VIEW_STORE, v);
+    if (state.loc.kind === 'library') { libView = v; ls.set('claudeNavigator.libView', v); }
+    else { state.view = v; ls.set(VIEW_STORE, v); }
     renderMain();
     renderToolbar();
   }
@@ -5281,6 +5323,7 @@
   // The nine-dot button switches between the apps. Each keeps its own place.
   var currentApp = ls.get('claudeNavigator.app') === 'cos' ? 'cos' : 'navigator';
   function setApp(a) {
+    if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding'); cosReturnSource(); }
     currentApp = a === 'cos' ? 'cos' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
@@ -5368,7 +5411,8 @@
       { label: 'Add Staff Below', run: () => cosAdd('staff', n.id) },
       { label: 'Add Department Below', run: () => cosAdd('dept', n.id) },
       '-',
-      { label: 'Edit…', run: () => { cosUi.sel = n.id; renderCos(); } },
+      n.kind === 'staff' && { label: 'Open Page', run: () => openStaff(n.id) },
+      { label: 'Edit…', run: () => { cosUi.page = null; cosUi.sel = n.id; renderCos(); } },
       n.kind === 'staff' && parent && parent.kind === 'dept' && { label: n.lead ? 'Stop Leading the Department' : `Lead “${parent.name}”`, run: () => cosChange(() => {
         const was = n.lead;
         cosKids(t, parent.id).forEach(k => { k.lead = false; });
@@ -5431,7 +5475,13 @@
   }
   function renderCosDetail(t) {
     const n = cosNode(t, cosUi.sel);
-    if (!n) return null;
+    if (!n) {
+      // Always there (so the chart never shifts under your mouse); a hint until someone is selected.
+      const d = document.createElement('div');
+      d.className = 'cos-detail';
+      d.innerHTML = '<h2>Team</h2><div class="soon">Click someone to edit them. Double-click a staff member to open their page (projects, actions, functions and routines).<br><br>Drag a box onto another to move it; right-click for more.</div>';
+      return d;
+    }
     const d = document.createElement('div');
     d.className = 'cos-detail';
     const parentOpts = t.nodes.filter(x => x.id !== n.id && !cosUnder(t, n.id, x.id));
@@ -5441,6 +5491,7 @@
       <label>${n.kind === 'dept' ? 'What this department does' : 'What they do and how (for you and for Claude)'}<textarea name="about"></textarea></label>
       ${n.chief ? '' : `<label>${n.kind === 'dept' ? 'Sits under' : 'Reports to'}<select name="parent"></select></label>`}
       <label>Colour<div class="cos-swatches"></div></label>
+      ${n.kind === 'staff' ? '<button class="btn-primary" data-a="open">Open Page</button>' : ''}
       <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
       ${n.kind === 'staff' ? '<div class="soon">Projects, actions, functions and routines for this staff member come in the next steps.</div>' : ''}`;
     d.querySelector('h2').textContent = n.chief ? 'Chief of Staff' : n.kind === 'dept' ? 'Department' : 'Staff member';
@@ -5465,6 +5516,8 @@
       sw.appendChild(b);
     }
     d.querySelector('[data-a="staff"]').addEventListener('click', () => cosAdd('staff', n.id));
+    const op = d.querySelector('[data-a="open"]');
+    if (op) op.addEventListener('click', () => openStaff(n.id));
     d.querySelector('[data-a="dept"]').addEventListener('click', () => cosAdd('dept', n.id));
     const rm = d.querySelector('[data-a="remove"]');
     if (rm) rm.addEventListener('click', () => cosRemove(n.id));
@@ -5512,16 +5565,29 @@
     return l;
   }
   function renderCos() {
-    if (currentApp !== 'cos') return;
+    if (currentApp !== 'cos') { cosReturnSource(); document.body.classList.remove('cos-adding'); return; }
     const p = activeProfile();
     const main = $('cosMain');
+    cosReturnSource();                       // take Navigator's list back before rebuilding
     main.replaceChildren();
     const head = document.createElement('div');
     head.className = 'cos-head';
     const t = cosTeam(p);
     head.innerHTML = `<h1></h1><span class="sp"></span>`;
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
-    if (t) {
+    const staff = t && cosUi.page && cosNode(t, cosUi.page);
+    if (!staff) cosUi.page = null;
+    document.body.classList.toggle('cos-adding', !!(staff && cosUi.tab === 'projects' && cosUi.adding));
+    if (staff) {
+      const back = document.createElement('button');
+      back.className = 'tb';
+      back.innerHTML = `${UI.back}<span class="t">Team</span>`;
+      back.title = 'Back to the team';
+      back.addEventListener('click', () => { cosUi.page = null; cosUi.adding = false; renderCos(); });
+      head.insertBefore(back, head.firstChild);
+      head.querySelector('h1').textContent = `${staff.name} · ${p.name}`;
+    }
+    if (t && !staff) {
       const seg = document.createElement('div');
       seg.className = 'seg';
       seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button>`;
@@ -5547,6 +5613,8 @@
       e.innerHTML = '<b>Choose a profile</b><span>Each profile has its own team. Pick one to see or build its team.</span><div class="row2"></div>';
       for (const pr of profiles()) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = pr.name; b.addEventListener('click', () => { setProfile(pr.id); renderCos(); }); e.querySelector('.row2').appendChild(b); }
       body.appendChild(e);
+    } else if (staff) {
+      renderStaffPage(t, staff, body);
     } else {
       if (cosUi.sel && !cosNode(t, cosUi.sel)) cosUi.sel = null;
       if (cosUi.view === 'list') body.appendChild(cosListEl(t));
@@ -5565,21 +5633,36 @@
     cosUi.zoom = Math.max(0.4, +z.toFixed(2));
     renderCos();
   }
+  // Selecting only updates the highlight and the side panel (so a double-click still lands on the same box).
+  function cosSelect(id) {
+    cosUi.sel = id;
+    document.querySelectorAll('#cosMain [data-cid], #cosSide [data-cid]').forEach(x => x.classList.toggle(x.classList.contains('ocbox') ? 'sel' : 'sel', x.dataset.cid === id));
+    const body = document.querySelector('#cosMain .cos-body');
+    const old = body && body.querySelector('.cos-detail');
+    if (old) old.remove();
+    const t = cosTeam();
+    const det = t && !cosUi.page ? renderCosDetail(t) : null;
+    if (det && body) body.appendChild(det);
+  }
   // Clicks, right-clicks and drags on boxes, list rows and sidebar rows.
   const cosTarget = e => e.target.closest('[data-cid]');
   for (const el of [$('cosMain'), $('cosSide')]) {
+    el.addEventListener('dblclick', e => {
+      const x = e.target.closest('.ocbox[data-cid], .crow[data-cid], .cos-side-row[data-cid]');
+      const n = x && cosNode(cosTeam(), x.dataset.cid);
+      if (n && n.kind === 'staff') openStaff(n.id);
+    });
     el.addEventListener('click', e => {
-      if (e.target.closest('.cos-detail, .cos-head')) return;
+      if (e.target.closest('.cos-detail, .cos-head, .cos-page')) return;
+      if (el === $('cosSide') && cosUi.page) { const x = cosTarget(e); const n = x && cosNode(cosTeam(), x.dataset.cid); if (n && n.kind === 'staff') return openStaff(n.id); }
       const x = cosTarget(e);
-      cosUi.sel = x ? x.dataset.cid : null;
-      renderCos();
+      cosSelect(x ? x.dataset.cid : null);
     });
     el.addEventListener('contextmenu', e => {
       const x = cosTarget(e);
       if (!x) return;
       e.preventDefault();
-      cosUi.sel = x.dataset.cid;
-      renderCos();
+      if (!cosUi.page) cosSelect(x.dataset.cid);
       cosMenu(e.clientX, e.clientY, x.dataset.cid);
     });
   }
@@ -5608,6 +5691,296 @@
     cosUi.dragId = null;
   });
   document.addEventListener('dragend', () => { cosUi.dragId = null; });
+
+  // ---------- Chief of Staff: a staff member's page (Projects; Actions, Functions and Routines follow) ----------
+  // A project: { id, name, archived, created, items: [ folder | link | file nodes, like your folders ] }
+  Object.assign(cosUi, { page: null, tab: 'projects', proj: null, adding: false, showArchived: false, itemSel: null, srcFrom: 'chats' });
+  const COS_TABS = [['projects', 'Projects'], ['actions', 'Actions'], ['functions', 'Functions'], ['routines', 'Routines']];
+  function openStaff(id) { cosUi.page = id; cosUi.sel = id; cosUi.proj = null; cosUi.itemSel = null; renderCos(); }
+  const cosProjects = n => n.projects || (n.projects = []);
+  const cosProject = (n, id) => cosProjects(n).find(p => p.id === id);
+  function cosItemLocate(list, id, parent = null) {
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].id === id) return { node: list[i], list, index: i, parent };
+      if (list[i].children) { const r = cosItemLocate(list[i].children, id, list[i]); if (r) return r; }
+    }
+    return null;
+  }
+  const cosCount = items => { let c = 0; const w = l => l.forEach(x => { if (x.type !== 'folder') c++; if (x.children) w(x.children); }); w(items); return c; };
+  function cosNewProject(n) {
+    cosChange(() => { const p = { id: uid(), name: 'New project', archived: false, created: Date.now(), items: [] }; cosProjects(n).unshift(p); cosUi.proj = p.id; }, null);
+    setTimeout(() => { const f = document.querySelector('.cos-ptop input'); if (f) { f.focus(); f.select(); } }, 30);
+  }
+  function cosCloneNav(node) {
+    const c = JSON.parse(JSON.stringify(node));
+    const re = x => { x.id = uid(); delete x.path; delete x.ino; if (x.children) x.children.forEach(re); };
+    re(c);
+    return c;
+  }
+  // Adding things: from a Claude or monday.com list, from your folders, or a web address.
+  function cosDropInto(e, project, folderId) {
+    let added = [];
+    const libData = e.dataTransfer.getData(LIB_TYPE);
+    const navIds = (e.dataTransfer.getData(NAV_TYPE) || '').split(',').filter(Boolean);
+    if (libData) { try { added = JSON.parse(libData).filter(x => x && x.url).map(x => Object.assign(Link(hasWords(x.name) ? x.name : guessName(x.url), x.url), { autoName: true })); } catch (err) { /* ignore */ } }
+    else if (navIds.length) added = navIds.map(nodeOf).filter(Boolean).map(cosCloneNav);
+    else { const url = extractUrl(e.dataTransfer); if (url) added = [Link(guessName(url), url)]; }
+    if (!added.length) return toast('Drag chats, artifacts, boards or folders here');
+    const target = folderId ? cosItemLocate(project.items, folderId) : null;
+    const have = new Set();
+    const w = l => l.forEach(x => { if (x.url) have.add(normUrl(x.url)); if (x.children) w(x.children); });
+    w(project.items);
+    const fresh = added.filter(a => !a.url || !have.has(normUrl(a.url)));
+    if (!fresh.length) return toast('Already in this project');
+    cosChange(() => {
+      const list = target && target.node.type === 'folder' ? (target.node.children || (target.node.children = [])) : project.items;
+      list.push(...fresh);
+      if (target) target.node.open = true;
+    }, `Added ${fresh.length} item${fresh.length === 1 ? '' : 's'} to “${project.name}”${target ? ` › ${target.node.name}` : ''}`);
+  }
+  function cosNewFolder(project, parentId) {
+    const t = parentId ? cosItemLocate(project.items, parentId) : null;
+    const f = { id: uid(), type: 'folder', name: 'New folder', children: [], open: true };
+    cosChange(() => { (t ? (t.node.children || (t.node.children = [])) : project.items).push(f); if (t) t.node.open = true; cosUi.itemSel = f.id; }, null);
+  }
+  function cosOpenItem(it) {
+    if (it.type === 'file') return fsState.enabled && it.path ? window.navigatorApp.fsOpen(it.path) : toast('That file is not on this Mac');
+    if (it.url) openNewWindow(it.url);
+  }
+  function cosItemMenu(x, y, project, id) {
+    const loc = cosItemLocate(project.items, id);
+    if (!loc) return;
+    const it = loc.node;
+    showMenu(x, y, [
+      it.type !== 'folder' && { label: 'Open', run: () => cosOpenItem(it) },
+      it.type === 'link' && { label: 'Open in Navigator', run: () => { setApp('navigator'); go({ kind: 'page', url: it.url }); } },
+      it.type === 'link' && { label: 'Copy Link', run: () => navigator.clipboard.writeText(it.url).then(() => toast('Link copied')) },
+      it.type === 'folder' && { label: 'New Folder Inside', run: () => cosNewFolder(project, it.id) },
+      '-',
+      { label: 'Rename…', run: () => openDialog({ title: 'Rename', name: it.name, nameOnly: true, noPicker: true, okLabel: 'Rename', onSave: ({ name }) => { if (name) cosChange(() => { it.name = name; it.autoName = false; }, null); } }) },
+      { label: 'Remove from Project', run: () => cosChange(() => { loc.list.splice(loc.index, 1); }, `Removed “${it.name}” from the project`) },
+    ]);
+  }
+  // The Claude, monday.com or folder list shown beside a project: Navigator's own list, borrowed while adding.
+  function cosShowSource() {
+    const k = cosUi.srcFrom;
+    if (k === 'folders') { if (state.loc.kind !== 'folder') go({ kind: 'folder', id: activeProfile() ? activeProfile().id : null }); }
+    else if (k === 'monday') { if (!(state.loc.kind === 'library' && state.loc.which === 'monday')) go({ kind: 'library', which: 'monday', mkey: 'all' }); }
+    else if (!(state.loc.kind === 'library' && state.loc.which === k)) go({ kind: 'library', which: k });
+  }
+  function cosReturnSource() {
+    const main = $('main');
+    if ($('content').parentElement !== main) main.insertBefore($('content'), $('cosMain'));
+    if ($('pathbar').parentElement !== main) main.insertBefore($('pathbar'), $('cosMain'));
+  }
+  function cosSourcePane() {
+    const pane = document.createElement('div');
+    pane.className = 'cos-src';
+    const head = document.createElement('div');
+    head.className = 'cos-src-head';
+    const srcs = [['chats', 'All Chats'], ['artifacts', 'Artifacts'], ...(mondayData.connected ? [['monday', 'monday.com']] : []), ['folders', 'My Folders']];
+    for (const [k, label] of srcs) {
+      const b = document.createElement('button');
+      b.className = 'tb' + (cosUi.srcFrom === k ? ' on' : '');
+      b.innerHTML = '<span class="t"></span>';
+      b.firstChild.textContent = label;
+      b.addEventListener('click', () => { cosUi.srcFrom = k; cosShowSource(); renderCos(); });
+      head.appendChild(b);
+    }
+    const q = document.createElement('input');
+    q.type = 'search';
+    q.placeholder = 'Search';
+    q.value = state.query || '';
+    q.addEventListener('input', () => { searchEl.value = q.value; searchEl.dispatchEvent(new Event('input')); });
+    head.appendChild(q);
+    pane.append(head, $('content'), $('pathbar'));
+    return pane;
+  }
+  function renderStaffPage(t, n, body) {
+    const page = document.createElement('div');
+    page.className = 'cos-page';
+    const who = document.createElement('div');
+    who.className = 'cos-who';
+    who.innerHTML = '<span class="av"></span><div><b></b><span class="who-role"></span></div>';
+    who.querySelector('.av').style.background = n.color;
+    who.querySelector('.av').textContent = cosInitials(n);
+    who.querySelector('b').textContent = n.name;
+    who.querySelector('.who-role').textContent = n.role || '';
+    const tabs = document.createElement('div');
+    tabs.className = 'cos-tabs';
+    for (const [k, label] of COS_TABS) {
+      const b = document.createElement('button');
+      b.className = cosUi.tab === k ? 'on' : '';
+      b.textContent = label;
+      if (k === 'projects') { const c = document.createElement('span'); c.className = 'n'; c.textContent = cosProjects(n).filter(p => !p.archived).length; b.appendChild(c); }
+      b.addEventListener('click', () => { cosUi.tab = k; renderCos(); });
+      tabs.appendChild(b);
+    }
+    page.append(who, tabs);
+    if (cosUi.tab !== 'projects') {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      const what = { actions: 'One-off jobs with a status and due date, each linked to the chat where it is done', functions: 'What they do well on request (board papers, account audits), each linked to a Claude chat or skill, with a Run button', routines: 'Their scheduled work, linked to Claude schedules, shown as cards and on a week timeline' }[cosUi.tab];
+      e.innerHTML = '<b>Coming next</b><span></span>';
+      e.querySelector('span').textContent = what + '.';
+      page.appendChild(e);
+      body.appendChild(page);
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'cos-proj';
+    const pl = document.createElement('div');
+    pl.className = 'cos-plist';
+    const nb = document.createElement('button');
+    nb.className = 'btn';
+    nb.textContent = 'New Project';
+    nb.addEventListener('click', () => cosNewProject(n));
+    pl.appendChild(nb);
+    const projs = cosProjects(n);
+    const active = projs.filter(p => !p.archived), archived = projs.filter(p => p.archived);
+    if (!cosUi.proj || !cosProject(n, cosUi.proj)) cosUi.proj = (active[0] || {}).id || null;
+    const pitem = p => {
+      const r = document.createElement('div');
+      r.className = 'pi' + (cosUi.proj === p.id ? ' on' : '');
+      r.dataset.pid = p.id;
+      r.innerHTML = `${small('folder', KIND_COLOUR.folder)}<span></span><span class="c">${cosCount(p.items) || ''}</span>`;
+      r.children[1].textContent = p.name;
+      r.title = `${p.name}: drop items here to add them`;
+      pl.appendChild(r);
+    };
+    const h1 = document.createElement('div'); h1.className = 'ph'; h1.textContent = 'Projects'; pl.appendChild(h1);
+    active.forEach(pitem);
+    if (!active.length) { const e = document.createElement('div'); e.className = 'ph'; e.style.fontWeight = '400'; e.textContent = 'No projects yet.'; pl.appendChild(e); }
+    if (archived.length) {
+      const h2 = document.createElement('div'); h2.className = 'ph'; h2.style.cursor = 'pointer';
+      h2.textContent = `${cosUi.showArchived ? '▾' : '▸'} Archived (${archived.length})`;
+      h2.addEventListener('click', () => { cosUi.showArchived = !cosUi.showArchived; renderCos(); });
+      pl.appendChild(h2);
+      if (cosUi.showArchived) archived.forEach(pitem);
+    }
+    pl.addEventListener('click', e => { const r = e.target.closest('.pi'); if (r) { cosUi.proj = r.dataset.pid; cosUi.itemSel = null; renderCos(); } });
+    pl.addEventListener('contextmenu', e => {
+      const r = e.target.closest('.pi'); if (!r) return; e.preventDefault();
+      const p = cosProject(n, r.dataset.pid);
+      showMenu(e.clientX, e.clientY, [
+        { label: p.archived ? 'Unarchive' : 'Archive', run: () => cosChange(() => { p.archived = !p.archived; }, `${p.archived ? 'Archived' : 'Unarchived'} “${p.name}”`) },
+        { label: 'Delete Project…', run: () => { if (confirm(`Delete the project “${p.name}”? Its links are removed from here (nothing changes in Claude, monday.com or your folders).`)) cosChange(() => { n.projects = cosProjects(n).filter(x => x !== p); }, `Deleted “${p.name}”`); } },
+      ]);
+    });
+    pl.addEventListener('dragover', e => { const r = e.target.closest('.pi'); pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!r) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; r.classList.add('drop'); });
+    pl.addEventListener('dragleave', e => { if (!pl.contains(e.relatedTarget)) pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
+    pl.addEventListener('drop', e => { const r = e.target.closest('.pi'); if (!r) return; e.preventDefault(); e.stopPropagation(); cosDropInto(e, cosProject(n, r.dataset.pid), null); });
+    wrap.appendChild(pl);
+    const pb = document.createElement('div');
+    pb.className = 'cos-pbody';
+    const p = cosProject(n, cosUi.proj);
+    if (!p) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.innerHTML = '<b>No project selected</b><span>Projects collect what this staff member is working on: chats, artifacts, monday.com boards and folders. Click New Project to start one.</span>';
+      pb.appendChild(e);
+    } else {
+      const top = document.createElement('div');
+      top.className = 'cos-ptop';
+      const name = document.createElement('input');
+      name.value = p.name;
+      name.title = 'Project name';
+      name.addEventListener('change', () => { const v = name.value.trim(); if (v && v !== p.name) cosChange(() => { p.name = v; }, null); });
+      name.addEventListener('keydown', e => { if (e.key === 'Enter') name.blur(); });
+      const bt = (label, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.title = title; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
+      const selFolder = () => { const s2 = cosUi.itemSel && cosItemLocate(p.items, cosUi.itemSel); return s2 && s2.node.type === 'folder' ? s2.node.id : null; };
+      top.append(name,
+        bt('New Folder', 'A folder inside this project', () => cosNewFolder(p, selFolder())),
+        bt(cosUi.adding ? 'Done Adding' : 'Add Items', 'Show your Claude chats and artifacts, monday.com boards or folders beside this project, and drag them in', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) cosShowSource(); renderCos(); }, cosUi.adding),
+        bt(p.archived ? 'Unarchive' : 'Archive', p.archived ? 'Bring it back to the project list' : 'Keep it, but hide it under Archived', () => cosChange(() => { p.archived = !p.archived; }, `${p.archived ? 'Archived' : 'Unarchived'} “${p.name}”`)));
+      const list = document.createElement('div');
+      list.className = 'cos-items';
+      const row = (it, d) => {
+        const r = document.createElement('div');
+        r.className = 'it' + (cosUi.itemSel === it.id ? ' sel' : '');
+        r.dataset.iid = it.id;
+        r.draggable = true;
+        r.style.setProperty('--d', d);
+        const isF = it.type === 'folder';
+        const k = isF ? 'folder' : kindOf(it);
+        const cnt = isF ? cosCount(it.children || []) : 0;
+        r.innerHTML = `<span class="tw${it.open ? ' open' : ''}">${isF ? UI.chev : ''}</span><span class="icon">${isF ? small('folder', KIND_COLOUR.folder) : colourIcon(k)}</span><span class="label"></span><span class="kind"></span>`;
+        r.querySelector('.label').textContent = it.name;
+        r.querySelector('.kind').textContent = isF ? `${cnt} item${cnt === 1 ? '' : 's'}` : (KIND_NAME[k] || '');
+        r.title = isF ? `${it.name}: drop items here` : `${it.name}\nDouble-click to open`;
+        list.appendChild(r);
+        if (isF && it.open) for (const c of it.children || []) row(c, d + 1);
+      };
+      for (const it of p.items) row(it, 0);
+      if (!p.items.length) {
+        const e = document.createElement('div');
+        e.className = 'cos-empty';
+        e.style.marginTop = '40px';
+        e.innerHTML = '<b>Nothing here yet</b><span>Click Add Items to drag in chats, artifacts, monday.com boards or folders.</span>';
+        list.appendChild(e);
+      }
+      list.addEventListener('click', e => {
+        const r = e.target.closest('.it');
+        if (!r) { cosUi.itemSel = null; return renderCos(); }
+        const loc = cosItemLocate(p.items, r.dataset.iid);
+        if (e.target.closest('.tw') && loc.node.type === 'folder') { loc.node.open = !loc.node.open; saveCos(); }
+        cosUi.itemSel = r.dataset.iid;
+        renderCos();
+      });
+      list.addEventListener('dblclick', e => {
+        const r = e.target.closest('.it'); if (!r) return;
+        const loc = cosItemLocate(p.items, r.dataset.iid);
+        if (loc.node.type === 'folder') { loc.node.open = !loc.node.open; saveCos(); renderCos(); } else cosOpenItem(loc.node);
+      });
+      list.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        const r = e.target.closest('.it');
+        if (!r) return showMenu(e.clientX, e.clientY, [{ label: 'New Folder', run: () => cosNewFolder(p, null) }, { label: 'Add Items…', run: () => { cosUi.adding = true; cosShowSource(); renderCos(); } }]);
+        cosUi.itemSel = r.dataset.iid;
+        cosItemMenu(e.clientX, e.clientY, p, r.dataset.iid);
+      });
+      list.addEventListener('dragstart', e => { const r = e.target.closest('.it'); if (!r) return; e.dataTransfer.setData('application/x-navigator-cos-item', r.dataset.iid); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); });
+      const clearDrops = () => { list.classList.remove('drop-here'); list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); };
+      list.addEventListener('dragover', e => {
+        const types = [...e.dataTransfer.types];
+        if (!types.some(x => x === LIB_TYPE || x === NAV_TYPE || x === 'text/uri-list' || x === 'application/x-navigator-cos-item')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        clearDrops();
+        const r = e.target.closest('.it');
+        const loc = r && cosItemLocate(p.items, r.dataset.iid);
+        if (loc && loc.node.type === 'folder') r.classList.add('drop'); else list.classList.add('drop-here');
+        e.dataTransfer.dropEffect = types.includes('application/x-navigator-cos-item') ? 'move' : 'copy';
+      });
+      list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) clearDrops(); });
+      list.addEventListener('drop', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearDrops();
+        const r = e.target.closest('.it');
+        const tloc = r && cosItemLocate(p.items, r.dataset.iid);
+        const folderId = tloc && tloc.node.type === 'folder' ? tloc.node.id : null;
+        const moving = e.dataTransfer.getData('application/x-navigator-cos-item');
+        if (moving) {
+          if (moving === folderId) return;
+          const src = cosItemLocate(p.items, moving);
+          if (!src || (folderId && cosItemLocate(src.node.children || [], folderId))) return;
+          return cosChange(() => {
+            src.list.splice(src.index, 1);
+            const dest = folderId ? cosItemLocate(p.items, folderId).node : null;
+            (dest ? (dest.children || (dest.children = [])) : p.items).push(src.node);
+            if (dest) dest.open = true;
+          }, null);
+        }
+        cosDropInto(e, p, folderId);
+      });
+      pb.append(top, list);
+    }
+    wrap.appendChild(pb);
+    if (cosUi.adding && p) wrap.appendChild(cosSourcePane());
+    page.appendChild(wrap);
+    body.appendChild(page);
+  }
 
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):

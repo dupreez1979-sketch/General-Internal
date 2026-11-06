@@ -108,7 +108,13 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 - In a department, right-click a staff member and choose **Lead** to make them its leader.
 - Changes can be undone from the message that appears. The team is included in the automatic daily backups.
 
-Coming next: each staff member's projects, actions, functions and routines (see CHIEF-OF-STAFF-PLAN.md).
+**A staff member's page**: double-click anyone (or click **Open Page** in the side panel) to open their page, with tabs for **Projects**, Actions, Functions and Routines.
+
+- **Projects** are what they are working on. **New Project** makes one; each has its own folders (**New Folder**). Right-click a project to **Archive** it (kept under Archived) or **Delete** it.
+- **Add Items** shows All Chats, Artifacts, monday.com or My Folders beside the project, without leaving Chief of Staff. Drag items onto the project, onto one of its folders, or onto another project in the list. Items are links: nothing moves or changes in Claude, monday.com or your folders.
+- Double-click an item to open it in its own window; right-click for **Open in Navigator**, **Rename** or **Remove from Project**. Drag items onto a project folder to move them inside it.
+
+Coming next: actions, functions and routines (see CHIEF-OF-STAFF-PLAN.md).
 
 ## Systems: Claude and monday.com
 

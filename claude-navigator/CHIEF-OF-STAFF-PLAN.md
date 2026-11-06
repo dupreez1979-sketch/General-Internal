@@ -73,3 +73,4 @@ Each phase is tried in Live Preview before it goes into a release.
 ## 9. Progress
 
 - Phase 1 (shell and team): **done**. App switcher, one team per profile, Chief of Staff at the top, staff and departments with leaders, org chart and list views, editing panel, drag to restructure, undo, backups.
+- Phase 2 (staff pages and projects): **done**. Staff pages with tabs; projects with their own folders; Add Items shows Navigator's Claude, monday.com and folder lists beside the project for dragging in; archive and delete projects.
