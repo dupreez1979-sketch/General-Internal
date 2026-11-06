@@ -40,13 +40,18 @@ macOS may ask again for microphone permission after an update, because each buil
 
 Double-click `index.html`. The folder tree works the same, but links open Claude in a separate browser tab, because claude.ai does not allow itself to be shown inside another web page.
 
-## New chats, artifacts and projects go straight into a folder
+## New chats, docs, slides, designs, dashboards and projects go straight into a folder
 
-Right-click a folder (or empty space inside one) and choose **New Chat Here**, **New Artifact Here** or **New Project Here**. The + button at the top does the same, and ⌘N starts a new chat in the folder you are in.
+Right-click a folder (or empty space inside one), or click the + button at the top, and choose what to make: **Chat, Doc, Slides, Design, Dashboard, Project**, or **Artifact in a Chat**. ⌘N starts a new chat in the folder you are in.
 
-The top bar shows "Saves in Board once created". As soon as you send your first message (or click Create Project), it is saved in that folder automatically, named with Claude's title for it.
+- **Chat**: saved in the folder as soon as you send your first message.
+- **Doc, Slides, Design, Dashboard**: the app opens Claude's "Make something new" and picks the right tile for you. Whatever Claude creates is saved in the folder, with a matching icon, even if Claude opens it in a separate window.
+- **Project**: the app opens Claude's Create Project box. Name it, click Create Project, and it is saved in the folder.
+- **Artifact in a Chat**: starts a chat for you to ask Claude for an artifact; the chat is saved with an artifact icon.
 
-In Claude, artifacts are made inside chats, so New Artifact starts a chat. Ask Claude for what you want; the chat is saved in the folder with an artifact icon.
+While it waits, the top bar shows "Saves in Board once created". Click the ✕ on that tag if you do not want it in a folder.
+
+**Made something with Claude's own buttons?** If you start a new chat with Claude's own button while you are working in a folder, it is set to save in that folder too (with the same ✕ to cancel). If you make a Doc, Slides, Design or Dashboard from Claude's own menus, the app offers a one-click "Save in Board" instead of filing it without asking.
 
 **Always know where you are.** While Claude is open, the top bar shows the folder path, for example Work › Monkey Baa › Board › Budget questions. Click any part to go there. The sidebar highlights that folder and the chat inside it. A chat that is not in any folder shows "Not in a folder"; press ⌘S to save it.
 

@@ -164,6 +164,16 @@ app.on('web-contents-created', (_event, contents) => {
   // open in an app window that shares your Claude sign-in.
   contents.setWindowOpenHandler(() => ({ action: 'allow', overrideBrowserWindowOptions: childWindowOptions() }));
 
+  // Tell the folder page where pop-up windows go, so a Doc or Slides that opens in its own
+  // window can still be filed and named.
+  contents.on('did-create-window', (win) => {
+    const report = () => {
+      if (win.isDestroyed()) return;
+      send('child-navigated', { url: win.webContents.getURL(), title: win.webContents.getTitle() });
+    };
+    ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => win.webContents.on(ev, report));
+  });
+
   // Navigator shortcuts keep working while you are typing inside Claude.
   // (Preventing the key here also stops the menu bar firing it a second time.)
   contents.on('before-input-event', (event, input) => {

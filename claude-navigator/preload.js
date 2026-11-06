@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('navigatorApp', {
   onDownload: (fn) => ipcRenderer.on('download', (_e, info) => fn(info)),
   refreshLibrary: () => ipcRenderer.invoke('library-refresh'),
   harvestPane: (webContentsId, kind) => ipcRenderer.invoke('harvest-pane', webContentsId, kind),
+  onChildNavigated: (fn) => ipcRenderer.on('child-navigated', (_e, info) => fn(info)),
   onContextAction: (fn) => ipcRenderer.on('context-action', (_e, info) => fn(info)),
 });

@@ -40,7 +40,7 @@
     background: var(--win); color: var(--text);
     font: 13px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    display: grid; grid-template-columns: var(--side-w) 1px 1fr; overflow: hidden;
+    display: grid; grid-template-columns: var(--side-w) 1px 1fr; grid-template-rows: minmax(0, 1fr); overflow: hidden;
     user-select: none; -webkit-user-select: none; cursor: default;
   }
   body.resizing { cursor: col-resize; }
@@ -50,7 +50,7 @@
   input { user-select: text; -webkit-user-select: text; }
 
   /* ---------- Sidebar ---------- */
-  #side { background: var(--side); display: flex; flex-direction: column; min-width: 0; }
+  #side { background: var(--side); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   .side-top { height: 52px; flex: none; display: flex; align-items: center; padding: 0 16px; color: var(--muted); font-weight: 600; font-size: 12px; }
   #tree { flex: 1; overflow: auto; padding: 0 10px 24px; outline: none; }
   #tree.drop-root { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
@@ -105,7 +105,7 @@
   .btn { background: var(--win); border: .5px solid var(--line); border-radius: 6px; padding: 4px 14px; box-shadow: 0 .5px 1px rgba(0,0,0,.1); }
 
   /* ---------- Main ---------- */
-  #main { display: flex; flex-direction: column; min-width: 0; background: var(--win); position: relative; }
+  #main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--win); position: relative; }
   #bar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 10px; border-bottom: 1px solid var(--line); }
   .nav-btns { display: flex; gap: 2px; }
   #title { font-size: 15px; font-weight: 700; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; display: flex; align-items: center; gap: 4px; }
@@ -116,6 +116,10 @@
   #title .tc.none:hover { background: none; color: var(--muted); }
   #title .ts { color: var(--muted); font-weight: 400; font-size: 13px; flex: none; }
   #title .tn { flex: 1 1 auto; min-width: 60px; overflow: hidden; text-overflow: ellipsis; }
+  #title .chip .chip-x { margin-left: 6px; opacity: .7; cursor: default; }
+  #title .chip .chip-x:hover { opacity: 1; }
+  .mac-app #bar #title .chip { -webkit-app-region: no-drag; }
+  #menu .mi { width: 18px; flex: none; display: grid; place-items: center; margin-right: 4px; }
   #title .chip { flex: none; font-size: 11px; font-weight: 500; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 10px; padding: 2px 8px; }
   .mac-app #bar #title .tc { -webkit-app-region: no-drag; }
   .row.context > .label { font-weight: 600; }
@@ -368,12 +372,22 @@
     chat: C => `<path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5.5A1.5 1.5 0 0112 11H7l-3 2.5V11a1.5 1.5 0 01-1.5-1.5z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
     project: C => `<rect x="2" y="4.5" width="12" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1M2 8h12" fill="none" stroke="${C}" stroke-width="1.3"/>`,
     artifact: C => `<path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="${C}" stroke-width="1.3"/>`,
+    doc: C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
+    slides: C => `<rect x="2" y="2.5" width="12" height="8" rx="1" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 10.5v2.5M5.5 14.2L8 13l2.5 1.2" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
+    dashboard: C => `<rect x="2.5" y="7" width="3" height="6.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="6.5" y="2.5" width="3" height="11" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="10.5" y="5" width="3" height="8.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/>`,
     design: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="6.3" r="1" fill="${C}"/><circle cx="9.8" cy="5.6" r="1" fill="${C}"/><circle cx="10.8" cy="9.2" r="1" fill="${C}"/>`,
     claude: C => `<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" stroke="${C}" stroke-width="1.5" stroke-linecap="round"/>`,
     link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
-  const KIND_COLOUR = { chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', design: '#8A5CD1', link: '#7A7A7A' };
-  const KIND_NAME = { folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', design: 'Canva design', claude: 'Claude page', link: 'Web link' };
+  G.canva = G.design;
+  const KIND_COLOUR = {
+    chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
+    doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
+  };
+  const KIND_NAME = {
+    folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
+    doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
+  };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
 
   const BIG_FOLDER = `<svg width="64" height="54" viewBox="0 0 64 54">
@@ -527,18 +541,22 @@
   }
   function kindOf(n) {
     if (n.type === 'folder') return 'folder';
-    if (n.as === 'artifact') return 'artifact';
+    if (n.as && G[n.as]) return n.as;
     const u = n.url || '';
     if (/claude\.ai\/chat\//.test(u)) return 'chat';
     if (/claude\.ai\/project\//.test(u)) return 'project';
     if (/artifact/i.test(u)) return 'artifact';
-    if (/canva\.com/.test(u)) return 'design';
+    if (/canva\.com/.test(u)) return 'canva';
     if (/claude\.ai/.test(u)) return 'claude';
     return 'link';
   }
   const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude\s*$/i, '').trim();
   // A page title worth using as a name (not just "Claude" while a page loads).
-  const realTitle = t => { const c = cleanTitle(t); return c && !/^(claude|new chat|just a moment\.*|loading\.*)$/i.test(c) ? c : ''; };
+  const realTitle = t => {
+    const c = cleanTitle(t);
+    if (!/[\p{L}\p{N}]/u.test(c)) return '';
+    return c && !/^(claude|new chat|just a moment\.*|loading\.*|untitled|404.*|.*not found|error.*|page unavailable)$/i.test(c) ? c : '';
+  };
   // Names you have not typed yourself follow the chat's title in Claude.
   const isAutoName = n => n.autoName === true || (n.autoName === undefined && /^Untitled (chat|project|artifact|link)$/.test(n.name));
   function guessName(url) {
@@ -849,13 +867,16 @@
     renderLibPathbar(kind, idx, items.length);
   }
 
+  const hasWords = t => /[\p{L}\p{N}]/u.test(t || '');
+  const libName = (x, kind) => hasWords(x.name) ? x.name : { chats: 'Untitled chat', projects: 'Untitled project', artifacts: 'Untitled artifact' }[kind];
+
   function libRow(x, kind, idx) {
     const r = document.createElement('div');
     const where = idx.get(normUrl(x.url));
     r.className = 'lrow item lib' + (where ? ' filed' : '');
     r.dataset.key = x.url;
     r.draggable = true;
-    fillRow(r, 'library', small(LIB_ICON[kind]), x.name || 'Untitled', {
+    fillRow(r, 'library', small(LIB_ICON[kind]), libName(x, kind), {
       edited: fmtDate(x.updated),
       filed: where ? where.join(', ') : '',
       address: x.url.replace(/^https?:\/\//, ''),
@@ -1172,7 +1193,7 @@
     const inLib = state.loc.kind === 'library';
     if (inLib) title = LIB_KINDS[state.loc.which];
     else if (state.query) title = 'Search';
-    else if (page && state.autoFile) title = { chat: 'New chat', artifact: 'New artifact', project: 'New project' }[state.autoFile.kind];
+    else if (page && state.autoFile) title = NEW_KINDS[state.autoFile.kind].title;
     else if (page && isBlankClaudePage(state.pageUrl) && /\/new/.test(state.pageUrl)) title = 'New chat';
     else if (page) title = cleanTitle(state.pageTitle) || 'Claude';
     else title = state.loc.id ? (nodeOf(state.loc.id) || {}).name : 'Folders';
@@ -1200,8 +1221,16 @@
         add('ts', '\u203a');
       }
       add('tn', title);
-      if (c.status === 'pending') add('chip', `Saves in ${nodeOf(c.folderId).name} once created`).title =
-        `This ${state.autoFile.kind} appears in \u201c${nodeOf(c.folderId).name}\u201d as soon as Claude creates it`;
+      if (c.status === 'pending') {
+        const chip = add('chip', `Saves in ${nodeOf(c.folderId).name} once created`);
+        chip.title = `This ${NEW_KINDS[state.autoFile.kind].title.replace(/^New /, '')} appears in \u201c${nodeOf(c.folderId).name}\u201d as soon as Claude creates it`;
+        const x = document.createElement('span');
+        x.className = 'chip-x';
+        x.textContent = '\u2715';
+        x.title = 'Don\u2019t save this one in a folder';
+        x.addEventListener('click', () => { state.autoFile = null; state.lastFolderId = null; renderToolbar(); syncSideSel(); });
+        chip.appendChild(x);
+      }
     } else {
       tEl.textContent = title;
     }
@@ -1239,6 +1268,7 @@
 
   function go(loc, { push = true } = {}) {
     state.autoFile = null;
+    state.pendingClick = null;
     if (loc.kind === 'page') {
       const opened = savedLinksFor(loc.url);
       if (opened.length) { opened.forEach(n => { n.opened = Date.now(); }); save(); }
@@ -1277,7 +1307,8 @@
       if (normUrl(cur) !== normUrl(loc.url)) {
         state.pageUrl = loc.url;
         state.pageTitle = '';
-        if (viewReady) view.loadURL(loc.url); else view.setAttribute('src', loc.url);
+        if (viewReady) view.loadURL(loc.url).catch(() => { /* replaced by a newer page: fine */ });
+        else view.setAttribute('src', loc.url);
       } else {
         syncNames(state.pageUrl, state.pageTitle); // already showing: catch up on its title
       }
@@ -1324,57 +1355,192 @@
     return null;
   }
   const isBlankClaudePage = url => { try { return /^\/(new|projects?)(\/|$)/.test(new URL(url).pathname) && !/^\/project\/[0-9a-f-]{8}/i.test(new URL(url).pathname); } catch (e) { return false; } };
-  const NEW_URL = { chat: HOME, artifact: HOME, project: 'https://claude.ai/projects' };
+  // What each kind of new thing opens, and which button the app presses for you there.
+  const ARTIFACTS_PAGE = 'https://claude.ai/artifacts';
+  const NEW_KINDS = {
+    chat: { title: 'New chat', label: 'Chat', icon: 'chat', url: HOME },
+    doc: { title: 'New doc', label: 'Doc', icon: 'doc', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^docs?$', section: true, tile: 'Docs' },
+    slides: { title: 'New slides', label: 'Slides', icon: 'slides', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^slides$', section: true, tile: 'Slides' },
+    design: { title: 'New design', label: 'Design', icon: 'design', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^design$', section: true, tile: 'Design' },
+    dashboard: { title: 'New dashboard', label: 'Dashboard', icon: 'dashboard', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^(beta\\s*)?dashboard(\\s*beta)?$', section: true, tile: 'Dashboard' },
+    project: { title: 'New project', label: 'Project', icon: 'project', url: 'https://claude.ai/projects', path: '/projects', click: '^(\\+\\s*)?(new|create) project$' },
+    artifactChat: { title: 'New artifact', label: 'Artifact in a Chat', icon: 'artifact', url: HOME },
+  };
+  const ARTIFACT_KINDS = new Set(['doc', 'slides', 'design', 'dashboard']);
+
+  // Addresses Claude gives to things it creates.
+  const ITEM_RE = {
+    chat: /^\/chat\/[0-9a-f-]{8,}/i,
+    project: /^\/project\/[0-9a-f-]{8,}/i,
+    artifact: /^\/(code\/)?(artifacts?|docs?|slides|designs?|dashboards?)\/(?!(new|create|edit)$)[A-Za-z0-9_-]{6,}/i,
+  };
+  const itemKindOf = path => Object.keys(ITEM_RE).find(k => ITEM_RE[k].test(path)) || null;
+  const pathOf = url => { try { return new URL(url).pathname; } catch (e) { return ''; } };
+  const knownItem = url => savedLinksFor(url).length > 0 ||
+    ['chats', 'projects', 'artifacts'].some(k => (lib[k] || []).some(x => normUrl(x.url) === normUrl(url)));
+
+  function newItemsMenu(folderId, suffix = '') {
+    const add = kind => ({ label: `New ${NEW_KINDS[kind].label}${suffix}`, icon: NEW_KINDS[kind].icon, key: kind === 'chat' ? K.mod + 'N' : undefined, run: () => newInFolder(kind, folderId) });
+    return [
+      add('chat'),
+      isApp && '-',
+      isApp && add('doc'), isApp && add('slides'), isApp && add('design'), isApp && add('dashboard'),
+      isApp && '-',
+      isApp && add('project'), isApp && add('artifactChat'),
+      '-',
+    ];
+  }
+
+  // Presses a button or tile on a Claude page (for example "Docs" under "Make something new").
+  const clickScript = (pattern, inSection) => `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const re = new RegExp(${JSON.stringify(pattern)}, 'i');
+    const text = e => (e.innerText || e.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim();
+    for (let i = 0; i < 20; i++) {
+      let scope = document;
+      if (${inSection ? 'true' : 'false'}) {
+        const head = [...document.querySelectorAll('h1,h2,h3,h4,p,span,div')].find(e => e.children.length === 0 && /make something new/i.test(e.textContent));
+        scope = null;
+        for (let n = head && head.parentElement, d = 0; n && d < 5; n = n.parentElement, d++) {
+          if ([...n.querySelectorAll('*')].some(e => e.children.length === 0 && re.test(e.textContent.trim()))) { scope = n; break; }
+        }
+      }
+      if (scope) {
+        let el = [...scope.querySelectorAll('button, a, [role="button"], [role="menuitem"]')].find(e => re.test(text(e)));
+        if (!el) {
+          const leaf = [...scope.querySelectorAll('*')].find(e => e.children.length === 0 && re.test(e.textContent.trim()));
+          if (leaf) el = leaf.closest('button, a, [role="button"], [role="menuitem"], [tabindex]') || leaf;
+        }
+        if (el) { el.click(); return 'clicked'; }
+      }
+      await sleep(400);
+    }
+    return 'not found';
+  })()`;
+  // Keeps trying (for example while Claude shows its "Just a moment" check) for up to 30 seconds.
+  function runPendingClick(url) {
+    const pc = state.pendingClick;
+    if (!pc || !view || !pathOf(url).startsWith(pc.path)) return;
+    if (pc.running && pc.runUrl === url) return;            // already trying on this page
+    if (!pc.started) pc.started = Date.now();
+    const run = pc.run = (pc.run || 0) + 1;
+    pc.running = true;
+    pc.runUrl = url;
+    const giveUp = () => { if (state.pendingClick === pc) { state.pendingClick = null; toast(pc.fallback); } };
+    // A page that is replaced mid-try never answers, so stop waiting after 10 seconds.
+    const timeout = new Promise(res => setTimeout(() => res('timeout'), 10000));
+    Promise.race([view.executeJavaScript(clickScript(pc.click, pc.section)), timeout]).then(res => {
+      if (run !== pc.run) return;                           // a newer try has taken over
+      pc.running = false;
+      if (res === 'clicked') { if (state.pendingClick === pc) state.pendingClick = null; return; }
+      if (Date.now() - pc.started > 30000) return giveUp();
+      setTimeout(() => { let u = ''; try { u = view.getURL(); } catch (e) { /* ignore */ } runPendingClick(u); }, 1500);
+    }).catch(() => {
+      // The page changed under the script (for example Claude's check finished): try again on the new page.
+      if (run !== pc.run) return;
+      pc.running = false;
+      if (Date.now() - pc.started > 30000) return giveUp();
+      setTimeout(() => { let u = ''; try { u = view.getURL(); } catch (e) { /* ignore */ } runPendingClick(u); }, 1000);
+    });
+  }
+
   function newInFolder(kind = 'chat', folderId = newHereFolder()) {
+    const k = NEW_KINDS[kind] || NEW_KINDS.chat;
     state.lastFolderId = folderId;
-    go({ kind: 'page', url: NEW_URL[kind] });
+    go({ kind: 'page', url: k.url });
+    const f = folderId && nodeOf(folderId) ? nodeOf(folderId).name : null;
+    if (isApp && k.click) {
+      state.pendingClick = {
+        path: k.path, click: k.click, section: !!k.section,
+        fallback: k.tile
+          ? `Choose ${k.tile} under “Make something new”${f ? `. It will be saved in ${f}.` : '.'}`
+          : `Click Create Project${f ? `. The new project will be saved in ${f}.` : '.'}`,
+      };
+      let current = '';
+      try { current = view.getURL(); } catch (e) { /* not ready */ }
+      runPendingClick(current);   // only presses now if that page is already showing
+    }
     if (!isApp || !folderId) return;
-    state.autoFile = { folderId, kind, lastPath: null };
+    state.autoFile = { folderId, kind, lastPath: null, since: Date.now() };
     lastRevealed = null;
     renderToolbar();
     syncSideSel();
-    const f = nodeOf(folderId).name;
-    if (kind === 'artifact') toast(`Ask Claude to make your artifact. The chat is saved in ${f} as soon as you send it.`);
-    else if (kind === 'project') toast(`Click Create Project. The new project is saved in ${f}.`);
+    if (kind === 'artifactChat') toast(`Ask Claude to make your artifact. The chat is saved in ${f} as soon as you send it.`);
+    else if (kind === 'project') toast(`Name your project and click Create Project. It is saved in ${f}.`);
+    else if (ARTIFACT_KINDS.has(kind)) toast(`Opening ${k.tile}. It is saved in ${f} once Claude creates it.`);
     else toast(`This chat is saved in ${f} as soon as you send your first message.`);
   }
   const newChat = () => newInFolder('chat');
 
-  // Watches a new chat or project become real (Claude gives it its own address), then files it.
-  function checkAutoFile(url, title) {
+  function fileNewItem(a, url, title) {
+    state.autoFile = null;
+    if (!nodeOf(a.folderId)) return;
+    const link = addLink(a.folderId, realTitle(title), url, { autoName: true });
+    if (a.kind !== 'chat' && a.kind !== 'project') { link.as = a.kind === 'artifactChat' ? 'artifact' : a.kind; save(); renderSide(); }
+    toast(`Saved in ${nodeOf(a.folderId).name}`, true);
+    renderToolbar();
+    syncSideSel();
+  }
+
+  // Watches for the new thing to become real (Claude gives it its own address), then files it.
+  // Also: starting a chat with Claude's own button while you work in a folder arms it for that folder,
+  // and a new Doc / Slides / Design / Dashboard made from Claude's own menus gets a one-click Save offer.
+  const offered = new Set();
+  function checkAutoFile(url, title, fromPopup = false) {
+    const path = pathOf(url);
+    if (!path || (!fromPopup && state.loc.kind !== 'page')) return;
     const a = state.autoFile;
-    if (!a || state.loc.kind !== 'page') return;
-    let path = '';
-    try { path = new URL(url).pathname; } catch (e) { return; }
-    const prev = a.lastPath;
-    const isProject = a.kind === 'project';
-    const re = isProject ? /^\/project\/[0-9a-f-]{8,}/i : /^\/chat\/[0-9a-f-]{8,}/i;
-    const cameFrom = isProject ? /^\/projects(\/|$)/ : /^\/new(\/|$)/;
-    if (!re.test(path)) {
-      if (cameFrom.test(path)) a.lastPath = path;          // on the new-chat (or projects) page
-      else if (prev) state.autoFile = null;                 // went somewhere else instead
+    const kind = itemKindOf(path);
+
+    if (!a) {
+      if (fromPopup) return offerSave(url, title, kind);
+      if (/^\/new(\/|$)/.test(path) && state.lastFolderId && nodeOf(state.lastFolderId)) {
+        state.autoFile = { folderId: state.lastFolderId, kind: 'chat', lastPath: path, since: Date.now(), auto: true };
+        renderToolbar();
+        syncSideSel();
+        return;
+      }
+      return offerSave(url, title, kind);
+    }
+
+    // Docs, Slides, Design, Dashboard: the first new artifact address, in this window or a pop-up.
+    if (ARTIFACT_KINDS.has(a.kind)) {
+      if (kind === 'artifact' && !knownItem(url)) return fileNewItem(a, url, title);
+      if (Date.now() - a.since > 30 * 60e3) state.autoFile = null;
       return;
     }
-    if (!prev) return;                                      // a late signal from the page being left
-    if (!cameFrom.test(prev)) { state.autoFile = null; return; }
-    const known = (lib[isProject ? 'projects' : 'chats'] || []).some(x => normUrl(x.url) === normUrl(url));
-    state.autoFile = null;
-    if (known || !nodeOf(a.folderId)) return;
-    const link = addLink(a.folderId, realTitle(title), url, { autoName: true });
-    if (a.kind === 'artifact') { link.as = 'artifact'; save(); renderSide(); }
-    toast(`Saved in ${nodeOf(a.folderId).name}`, true);
+    if (fromPopup) return;
+
+    // Chats and projects: the address Claude switches to right after the new-chat or projects page.
+    const isProject = a.kind === 'project';
+    const prev = a.lastPath;
+    const cameFrom = isProject ? /^\/projects(\/|$)/ : /^\/new(\/|$)/;
+    if (kind !== (isProject ? 'project' : 'chat')) {
+      if (cameFrom.test(path)) a.lastPath = path;            // on the new-chat (or projects) page
+      else if (prev) state.autoFile = null;                   // went somewhere else instead
+      return;
+    }
+    if (!prev) return;                                        // a late signal from the page being left
+    if (!cameFrom.test(prev) || knownItem(url)) { state.autoFile = null; return; }
+    fileNewItem(a, url, title);
+  }
+  function offerSave(url, title, kind) {
+    const f = nodeOf(state.lastFolderId);
+    if (kind !== 'artifact' || !f || knownItem(url) || offered.has(normUrl(url))) return;
+    offered.add(normUrl(url));
+    toast(`New in Claude. Save it in ${f.name}?`, {
+      label: `Save in ${f.name}`,
+      run: () => { addLink(f.id, realTitle(title), url, { autoName: true }); toast(`Saved in ${f.name}`, true); },
+    });
   }
 
   function showNewMenu(x, y, folderId = newHereFolder()) {
     const f = nodeOf(folderId);
-    const where = f ? ` in \u201c${f.name}\u201d` : '';
+    const where = f ? ` in “${f.name}”` : '';
     showMenu(x, y, [
-      { label: `New Chat${where}`, key: K.mod + 'N', run: () => newInFolder('chat', folderId) },
-      isApp && { label: `New Artifact${where}`, run: () => newInFolder('artifact', folderId) },
-      isApp && { label: `New Project${where}`, run: () => newInFolder('project', folderId) },
-      '-',
-      { label: `New Folder${where}`, key: K.mod + K.shift + 'N', run: () => newFolder(folderId) },
-      { label: `Add Link${where}\u2026`, key: K.mod + 'L', run: () => promptNewLink(folderId) },
+      ...newItemsMenu(folderId, where),
+      { label: `New Folder${where}`, icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) },
+      { label: `Add Link${where}…`, icon: 'link', key: K.mod + 'L', run: () => promptNewLink(folderId) },
     ]);
   }
 
@@ -1394,6 +1560,7 @@
       // Moving around inside Claude updates the current history entry rather than adding one.
       syncNames(url, title);
       checkAutoFile(url, title);
+      runPendingClick(url);
       if (state.loc.kind === 'page') {
         state.loc.url = url;
         ls.set(LOC_STORE, JSON.stringify({ loc: state.loc, lastFolderId: state.lastFolderId }));
@@ -1751,7 +1918,7 @@
     if (!items.length || !t) return;
     snap();
     const nodes = items.map(x => {
-      const l = Link(x.name || guessName(x.url), x.url);
+      const l = Link(hasWords(x.name) ? x.name : guessName(x.url), x.url);
       l.autoName = true;
       return l;
     });
@@ -1793,12 +1960,13 @@
     lastMenuY = y;
     menu.replaceChildren();
     const checks = items.some(it => it && it !== '-' && it.checked !== undefined);
+    const icons = items.some(it => it && it !== '-' && it.icon);
     for (const it of items) {
       if (!it) continue;
       if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
       b.querySelector('.lb').textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
@@ -1821,9 +1989,7 @@
     if (!n) {
       const here = scope === browseEl ? hereFolder() : null;
       return [
-        { label: 'New Chat Here', key: K.mod + 'N', run: () => newInFolder('chat', here) },
-        isApp && { label: 'New Artifact Here', run: () => newInFolder('artifact', here) },
-        isApp && { label: 'New Project Here', run: () => newInFolder('project', here) },
+        ...newItemsMenu(here, ' Here'),
         '-',
         { label: 'New Folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) },
         { label: 'Add Link…', key: K.mod + 'L', run: () => promptNewLink(here) },
@@ -1844,9 +2010,7 @@
         { label: 'Open', key: K.open, run: () => openNode(n) },
         searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
         '-',
-        { label: 'New Chat Here', key: K.mod + 'N', run: () => newInFolder('chat', n.id) },
-        isApp && { label: 'New Artifact Here', run: () => newInFolder('artifact', n.id) },
-        isApp && { label: 'New Project Here', run: () => newInFolder('project', n.id) },
+        ...newItemsMenu(n.id, ' Here'),
         '-',
         { label: 'New Folder Inside', run: () => newFolder(n.id) },
         { label: 'Add Link Inside…', run: () => promptNewLink(n.id) },
@@ -2401,6 +2565,12 @@
       if (d.state === 'started') toast(`Downloading “${d.name}”…`);
       else if (d.state === 'completed') toast(`Downloaded “${d.name}”`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(d.path) });
       else toast(`Download of “${d.name}” did not finish`);
+    });
+
+    // Pop-up windows from Claude: keep names current and catch newly created items.
+    window.navigatorApp.onChildNavigated(({ url, title }) => {
+      syncNames(url, title);
+      checkAutoFile(url, title, true);
     });
 
     // "Save Link to a Folder" from the right-click menu inside Claude.
