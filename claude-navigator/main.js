@@ -861,6 +861,18 @@ ipcMain.handle('monday-connect', async (_e, token) => {
   }
 });
 ipcMain.handle('monday-disconnect', () => { monday.clearToken(); return { ok: true }; });
+ipcMain.handle('monday-rename-board', async (_e, id, name) => {
+  name = typeof name === 'string' ? name.trim() : '';
+  if (!/^\d+$/.test(String(id)) || !name) return { error: 'Nothing to rename' };
+  try { return await monday.renameBoard(id, name); } catch (e) { return { error: e.code === 'token' ? 'monday.com no longer accepts your token' : e.message }; }
+});
+ipcMain.handle('monday-delete-boards', async (_e, ids) => {
+  const out = { deleted: [], failed: [] };
+  for (const id of (Array.isArray(ids) ? ids : []).filter(x => /^\d+$/.test(String(x)))) {
+    try { await monday.deleteBoard(id); out.deleted.push(String(id)); } catch (e) { out.failed.push({ id: String(id), status: e.message }); }
+  }
+  return out;
+});
 ipcMain.handle('monday-create-board', async (_e, opts) => {
   const name = opts && typeof opts.name === 'string' ? opts.name.trim() : '';
   if (!name) return { error: 'Give the board a name' };

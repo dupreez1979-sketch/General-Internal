@@ -873,7 +873,7 @@
   const libSel = new Set();
   let libRowItems = new Map();
   const PAGE_SIZE = 100;
-  Object.assign(state, { libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0, libSelectMode: false, libFiltered: [] });
+  Object.assign(state, { libType: 'any', libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0, libSelectMode: false, libFiltered: [] });
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
@@ -1725,7 +1725,7 @@
     code: 'Code', projects: 'Projects', files: 'Files on This Mac (Word, PDF, images\u2026)', links: 'Other links',
   };
   const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard']);
-  state.ff = { kind: 'any', when: 'any', archived: false };
+  state.ff = { kind: 'any', when: 'any', archived: false, arts: 'any' };
   function folderFilter(items) {
     const f = state.ff;
     const upd = libUpdatedIndex();
@@ -1738,6 +1738,10 @@
           : f.kind === 'code' ? k === 'code' : f.kind === 'projects' ? k === 'project' : n.type === 'link' && !['chat', 'code', 'project'].includes(k) && !ARTIFACTY.has(k);
         if (!ok) return false;
       }
+      if (f.arts !== 'any') {
+        if (k !== 'chat') return false;
+        if ((relatedFor(n.url).length > 0 || !!(n.children && n.children.length)) !== (f.arts === 'with')) return false;
+      }
       if (f.when !== 'any') {
         const t = toTime(editedOf(n, upd)) || n.added || 0;
         const day = 864e5, now = Date.now(), start = new Date(); start.setHours(0, 0, 0, 0);
@@ -1748,7 +1752,7 @@
       return true;
     });
   }
-  const folderFilterCount = () => (state.ff.kind !== 'any' ? 1 : 0) + (state.ff.when !== 'any' ? 1 : 0) + (state.ff.archived ? 1 : 0);
+  const folderFilterCount = () => (state.ff.kind !== 'any' ? 1 : 0) + (state.ff.when !== 'any' ? 1 : 0) + (state.ff.archived ? 1 : 0) + (state.ff.arts !== 'any' ? 1 : 0);
   function showFolderFilterMenu(x, y) {
     const set = (k, v) => () => { state.ff[k] = v; state.libPage = 0; renderMain(); renderToolbar(); };
     showMenu(x, y, [
@@ -1756,9 +1760,13 @@
       '-',
       ...Object.keys(WHEN).map(k => ({ label: WHEN[k], checked: state.ff.when === k, run: set('when', k) })),
       '-',
+      { label: 'Chats With or Without Artifacts', checked: state.ff.arts === 'any', run: set('arts', 'any') },
+      { label: 'Chats With Artifacts', checked: state.ff.arts === 'with', run: set('arts', 'with') },
+      { label: 'Chats Without Artifacts', checked: state.ff.arts === 'without', run: set('arts', 'without') },
+      '-',
       { label: 'Archived Only', checked: state.ff.archived, run: set('archived', !state.ff.archived) },
       '-',
-      { label: 'Reset Filters', disabled: !folderFilterCount(), run: () => { state.ff = { kind: 'any', when: 'any', archived: false }; state.libPage = 0; renderMain(); renderToolbar(); } },
+      { label: 'Reset Filters', disabled: !folderFilterCount(), run: () => { state.ff = { kind: 'any', when: 'any', archived: false, arts: 'any' }; state.libPage = 0; renderMain(); renderToolbar(); } },
     ]);
   }
   // The bar shown in Select mode for folder and search lists.
@@ -1828,6 +1836,7 @@
           : state.libWhen === 'month' ? t >= now - 30 * day : t < now - 30 * day;
       });
     }
+    if (state.libType !== 'any') items = items.filter(x => libKind(x, kind) === state.libType);
     if (kind === 'chats' && state.libArts !== 'any') items = items.filter(x => (relatedFor(x.url).length > 0) === (state.libArts === 'with'));
     if (kind === 'chats' && state.libStarred) items = items.filter(x => x.starred);
     if (state.query) {
@@ -1884,6 +1893,31 @@
       else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
     } else {
       if (state.libSelectMode) frag.appendChild(libActionBar(kind));     // only in Select mode, so the list never jumps
+      if (state.view === 'icons') {
+        const g = document.createElement('div');
+        g.className = 'grid';
+        libRowItems = new Map();
+        for (const x of pageItems) {
+          libRowItems.set(x.url, x);
+          const k = libKind(x, kind);
+          const t = document.createElement('div');
+          t.className = 'tile item lib' + (x.place ? ' mplace' : '') + (idx.get(normUrl(x.url)) ? ' filed' : '');
+          t.dataset.key = x.url;
+          t.draggable = !x.place;
+          t.innerHTML = `${state.libSelectMode && !x.place ? `<input type="checkbox" class="lchk" title="Select"${libSel.has(x.url) ? ' checked' : ''}>` : ''}<div class="big">${x.place ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
+          t.querySelector('.label').textContent = libName(x, kind);
+          const rel = kind === 'chats' ? relatedFor(x.url) : [];
+          if (rel.length) { const b = document.createElement('span'); b.className = 'att'; b.textContent = `+${rel.length}`; b.title = `${rel.length} artifact${rel.length === 1 ? '' : 's'} made in this chat (switch to list view to see them)`; t.appendChild(b); }
+          t.title = x.place ? `${x.name}: double-click to open` : `${libName(x, kind)}\n${KIND_NAME[k]}${idx.get(normUrl(x.url)) ? `\nIn: ${idx.get(normUrl(x.url)).join(', ')}` : ''}`;
+          g.appendChild(t);
+        }
+        frag.appendChild(g);
+        browseEl.replaceChildren(frag);
+        updateSubAll();
+        applyLibSel();
+        renderLibPathbar(kind, idx, items.length);
+        return;
+      }
       const l = makeList('library', 'lib-list');
       if (state.libSelectMode) {
         const all2 = document.createElement('input');
@@ -2054,7 +2088,7 @@
   }
 
   function activeFilterCount() {
-    return (state.libFilter !== 'all' ? 1 : 0) + (state.libWhen !== 'any' ? 1 : 0) + (state.libArts !== 'any' ? 1 : 0) + (state.libStarred ? 1 : 0);
+    return (state.libType !== 'any' ? 1 : 0) + (state.libFilter !== 'all' ? 1 : 0) + (state.libWhen !== 'any' ? 1 : 0) + (state.libArts !== 'any' ? 1 : 0) + (state.libStarred ? 1 : 0);
   }
   function libActionBar(kind) {
     const sel = selectedLibItems();
@@ -2078,7 +2112,8 @@
     b('File in Folder\u2026', () => fileLibPrompt(sel), '', 'Save them into one of your folders');
     const archivedView = state.libFilter === 'archived';
     b(archivedView ? 'Unarchive' : 'Archive', () => archiveItems(sel, !archivedView), '', `Hide them from this list (only in this app; ${kind === 'monday' ? 'monday.com' : 'Claude'} is not changed)`);
-    if (kind === 'chats') b('Delete from Claude\u2026', () => deleteFromClaude(sel), 'danger', 'Delete these chats from your Claude account for good');
+    if (kind === 'chats') b('Delete\u2026', () => deleteFromClaude(sel), 'danger', 'Delete these chats from your Claude account for good');
+    else if (kind === 'monday') b('Delete\u2026', () => deleteMondayBoards(sel.map(x => x.url)), 'danger', 'Delete these boards in monday.com (restorable from monday.com\u2019s trash for 30 days)');
     else if (sel.length === 1 && kind !== 'monday') b('Open in Claude to Delete', () => openLib(sel[0].url), '', 'Open it in Claude, where you can delete it');
     b('Clear Selection', () => { libSel.clear(); renderLibrary(); });
     return bar;
@@ -2107,7 +2142,14 @@
   function showLibFilterMenu(x, y) {
     const kind = state.loc.which;
     const set = (k, v) => () => { state[k] = v; state.libPage = 0; if (k === 'libFilter') ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
+    const types = [...new Set(libList(kind, { flat: true }).filter(x => !x.place).map(x => libKind(x, kind)))];
+    if (state.libType !== 'any' && !types.includes(state.libType)) types.push(state.libType);
     showMenu(x, y, [
+      ...(types.length > 1 ? [
+        { label: 'All Kinds', checked: state.libType === 'any', run: set('libType', 'any') },
+        ...types.sort().map(k => ({ label: KIND_NAME[k] || k, icon: G[k] ? k : undefined, checked: state.libType === k, run: set('libType', k) })),
+        '-',
+      ] : []),
       { label: 'Everything', checked: state.libFilter === 'all', run: set('libFilter', 'all') },
       { label: 'Not in a Folder', checked: state.libFilter === 'unfiled', run: set('libFilter', 'unfiled') },
       { label: 'In a Folder', checked: state.libFilter === 'filed', run: set('libFilter', 'filed') },
@@ -2121,7 +2163,7 @@
       kind === 'chats' && '-',
       kind === 'chats' && { label: 'Starred Only', checked: state.libStarred, run: set('libStarred', !state.libStarred) },
       '-',
-      { label: 'Reset Filters', disabled: !activeFilterCount(), run: () => { Object.assign(state, { libFilter: 'all', libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0 }); ls.set(LIB_FILTER_STORE, 'all'); renderMain(); renderToolbar(); } },
+      { label: 'Reset Filters', disabled: !activeFilterCount(), run: () => { Object.assign(state, { libType: 'any', libFilter: 'all', libWhen: 'any', libArts: 'any', libStarred: false, libPage: 0 }); ls.set(LIB_FILTER_STORE, 'all'); renderMain(); renderToolbar(); } },
     ]);
   }
   // Archive: only in this app (Claude has no chat archive to sync with).
@@ -2213,13 +2255,18 @@
     address: { label: 'Address', w: 260 },
   };
   const VIEW_COLS = {
-    folder: ['name', 'kind', 'edited', 'added', 'opened', 'items', 'address'],
-    search: ['name', 'kind', 'where', 'edited', 'added', 'opened', 'address'],
+    folder: ['name', 'kind', 'edited', 'added', 'opened', 'items', 'filed', 'address'],
+    search: ['name', 'kind', 'where', 'filed', 'edited', 'added', 'opened', 'address'],
     library: ['name', 'kind', 'edited', 'filed', 'address'],
   };
-  const DEFAULT_COLS = { folder: ['name', 'kind', 'edited', 'items'], search: ['name', 'kind', 'where'], library: ['name', 'kind', 'edited', 'filed'] };
+  const DEFAULT_COLS = { folder: ['name', 'kind', 'edited', 'items'], search: ['name', 'kind', 'where', 'filed'], library: ['name', 'kind', 'edited', 'filed'] };
   const COL_STORE = 'claudeNavigator.columns.v1';
   const colPrefs = (() => { try { return JSON.parse(ls.get(COL_STORE)) || {}; } catch (e) { return {}; } })();
+  if (!ls.get('claudeNavigator.searchFiledCol') && colPrefs.search && Array.isArray(colPrefs.search.cols) && !colPrefs.search.cols.includes('filed')) {
+    colPrefs.search.cols.push('filed');      // once: search results show every folder something is in
+    ls.set(COL_STORE, JSON.stringify(colPrefs));
+  }
+  ls.set('claudeNavigator.searchFiledCol', '1');
   function colsFor(view) {
     const p = colPrefs[view] || (colPrefs[view] = {});
     if (!Array.isArray(p.cols)) p.cols = DEFAULT_COLS[view].slice();
@@ -2462,6 +2509,14 @@
       opened: fmtDate(n.opened),
       items: n.type === 'folder' ? `${n.children.length} item${n.children.length === 1 ? '' : 's'}` : '',
       where: displayPath(n.id).slice(0, -1).map(p => p.name).join(' \u203a ') || 'Top level',
+      filed: n.type === 'link' ? (() => {
+        // Every folder this item is in (in search) or the other folders it is also in (in a folder).
+        if (!allFiledCache) allFiledCache = filedIndex(true);
+        const all = allFiledCache.get(normUrl(n.url)) || [];
+        const here = view === 'search' ? null : ((locate(n.id) || {}).parent || {}).name;
+        const rest = here ? all.filter(x => x !== here) : all;
+        return view === 'search' ? rest.join(', ') : rest.length ? `Also in ${rest.join(', ')}` : '';
+      })() : '',
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
@@ -2628,7 +2683,7 @@
       tEl.textContent = title;
     }
     document.title = title + ' \u2013 Claude Navigator';
-    $('viewSeg').hidden = page || !!state.query || inLib;
+    $('viewSeg').hidden = page || (!!state.query && !inLib);
     $('libAttachedBtn').hidden = !((inLib && state.loc.which === 'chats') || (state.loc.kind === 'folder' && !state.query && !page));
     $('splitBtn').hidden = page;
     try { renderSplit(); } catch (e) { /* during start-up */ }
@@ -3361,7 +3416,16 @@
     if (!ids.length) return;
     const nodes = ids.map(nodeOf).filter(Boolean);
     const chats = isApp ? nodes.filter(isClaudeChat) : [];
-    const others = nodes.filter(n => !chats.includes(n));
+    const boards = isApp ? nodes.filter(isMondayBoard) : [];
+    const others = nodes.filter(n => !chats.includes(n) && !boards.includes(n));
+    if (boards.length && !chats.length) {
+      const o = others.length, c = boards.length;
+      if (!confirm(`Delete ${c === 1 ? `\u201c${boards[0].name}\u201d` : `${c} boards`} in monday.com?\n\n${c === 1 ? 'It goes' : 'They go'} to monday.com's trash (restorable for 30 days) and ${c === 1 ? 'is' : 'are'} removed from your folders.` +
+        (o ? `\n\nThe other ${o} selected item${o === 1 ? '' : 's'} ${o === 1 ? 'is' : 'are'} deleted here too.` : ''))) return;
+      if (o) removeNodes(others.map(n => n.id), { asked: true });
+      return deleteMondayBoards(boards.map(n => n.url), { asked: true });
+    }
+    if (boards.length) others.push(...boards);       // chats and boards together: boards are only removed here
     if (!chats.length) {
       if (others.length === 1) {
         const n = others[0];
@@ -3559,6 +3623,9 @@
       if (changed) { snap(); n.name = v; n.autoName = false; }
       commit();
       // A chat is renamed in Claude as well, so its name is the same everywhere.
+      if (changed && isApp && isMondayBoard(n)) {
+        renameMondayBoard(n.url, v, old).then(res => toast(res.ok ? `Renamed to \u201c${v}\u201d here and in monday.com` : `Renamed here, but not in monday.com (${res.why}).`));
+      }
       if (changed && isApp && isClaudeChat(n)) {
         renameInClaude(n.url, v, old).then(res => {
           if (res.ok) toast(`Renamed to \u201c${v}\u201d here and in Claude`);
@@ -4194,9 +4261,11 @@
       sel.length > 0 && { label: sel.length > 1 ? `File ${sel.length} Items in Folder\u2026` : 'File in Folder\u2026', run: () => fileLibPrompt(sel) },
       saved.length > 0 && { label: 'Show in Folder', run: () => revealInFolder(saved[0].id) },
       one && { label: 'Copy Link', run: () => navigator.clipboard.writeText(one.url).then(() => toast('Link copied')) },
-      one && isApp && /claude\.ai\/chat\//.test(one.url) && { label: 'Rename\u2026', run: () => renameChatInClaude(one.url, one.name) },
+      one && isApp && /claude\.ai\/chat\//.test(one.url) && { label: 'Rename\u2026', key: K.rename, run: () => renameChatInClaude(one.url, one.name) },
+      one && isApp && state.loc.which === 'monday' && { label: 'Rename\u2026', key: K.rename, run: () => renameMondayPrompt(one.url) },
       sel.length > 0 && { label: state.libFilter === 'archived' ? `Unarchive${sel.length > 1 ? ` ${sel.length} Items` : ''}` : `Archive${sel.length > 1 ? ` ${sel.length} Items` : ''}`, run: () => archiveItems(sel, state.libFilter !== 'archived') },
-      sel.length > 0 && state.loc.which === 'chats' && { label: `Delete ${sel.length > 1 ? `${sel.length} Chats` : 'Chat'} from Claude\u2026`, run: () => deleteFromClaude(sel) },
+      sel.length > 0 && state.loc.which === 'chats' && { label: sel.length > 1 ? `Delete ${sel.length} Chats\u2026` : 'Delete\u2026', key: K.del, run: () => deleteFromClaude(sel) },
+      sel.length > 0 && state.loc.which === 'monday' && isApp && { label: sel.length > 1 ? `Delete ${sel.length} Boards\u2026` : 'Delete\u2026', key: K.del, run: () => deleteMondayBoards(sel.map(x => x.url)) },
       one && state.loc.which !== 'chats' && state.loc.which !== 'monday' && { label: 'Open in Claude to Delete', run: () => openLib(one.url) },
       one && state.loc.which !== 'monday' && { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, libKind(one, state.loc.which), k => {
         lib.kinds[normUrl(one.url)] = k;
@@ -4224,12 +4293,32 @@
       if (el) el.scrollIntoView({ block: 'nearest' });
     };
     const first = () => selectedLibItems()[0];
+    const openCur = () => { if (libAnchor && String(libAnchor).startsWith(MONDAY_PLACE)) return openLib(libAnchor); if (first()) openLib(first().url); };
+    const which = state.loc.which;
     switch (e.key) {
-      case 'ArrowDown': if (mod) { if (first()) openLib(first().url); } else move(cur + 1); break;
+      case 'ArrowDown': if (mod) openCur(); else move(cur + 1); break;
+      case 'Delete': case 'Backspace': {
+        // Like your folders: Cmd+Backspace (Mac) or Delete deletes what is selected, after asking.
+        if (isMac && e.key === 'Backspace' && !mod) return;
+        const sel = selectedLibItems();
+        if (!sel.length) return;
+        if (which === 'chats') deleteFromClaude(sel);
+        else if (which === 'monday') deleteMondayBoards(sel.map(x => x.url));
+        else toast('Artifacts can only be deleted inside Claude. Right-click and choose Open in Claude to Delete.');
+        break;
+      }
+      case 'F2': case 'Enter': {
+        // Like Finder: Return renames (chats and boards); anything else opens.
+        const sel = selectedLibItems();
+        if (e.key === 'Enter' && (!isMac || mod || sel.length !== 1)) { openCur(); break; }
+        if (sel.length === 1 && which === 'chats' && /claude\.ai\/chat\//.test(sel[0].url)) renameChatInClaude(sel[0].url, sel[0].name);
+        else if (sel.length === 1 && which === 'monday') renameMondayPrompt(sel[0].url);
+        else openCur();
+        break;
+      }
       case 'ArrowUp': move(cur <= 0 ? 0 : cur - 1); break;
       case 'Home': move(0); break;
       case 'End': move(keys.length - 1); break;
-      case 'Enter': if (first()) openLib(first().url); break;
       case 'a': case 'A': if (!mod) return; keys.forEach(k => libSel.add(k)); applyLibSel(); break;
       case 'Escape': libSel.clear(); applyLibSel(); break;
       default: return;
@@ -4775,6 +4864,53 @@
     }
     if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
   }
+  // ----- Renaming and deleting boards in monday.com (from the lists and from your folders) -----
+  const mondayBoardFor = url => (mondayData.boards || []).find(b => normUrl(b.url) === normUrl(url || ''));
+  const isMondayBoard = n => !!n && n.type === 'link' && /monday\.com\//.test(n.url || '') && !!mondayBoardFor(n.url) && !!mondayData.connected;
+  async function renameMondayBoard(url, name, old) {
+    const b = mondayBoardFor(url);
+    if (!b) return { ok: false, why: 'it is not in your monday.com list (try Refresh)' };
+    const res = await window.navigatorApp.mondayRenameBoard(b.id, name);
+    if (!res || res.error) return { ok: false, why: res ? res.error : 'no answer' };
+    b.name = name;
+    ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
+    walk(state.tree, n => { if (n.type === 'link' && normUrl(n.url) === normUrl(url) && (n.autoName !== false || n.name === old)) { n.name = name; n.autoName = true; } });
+    save();
+    renderAll();
+    return { ok: true };
+  }
+  function renameMondayPrompt(url) {
+    const b = mondayBoardFor(url);
+    if (!b) return toast('That board is not in your monday.com list. Refresh and try again.');
+    openDialog({
+      title: 'Rename Board', name: b.name, nameOnly: true, noPicker: true, okLabel: 'Rename',
+      onSave: async ({ name }) => {
+        if (!name || name === b.name) return;
+        const old = b.name;
+        const res = await renameMondayBoard(url, name, old);
+        toast(res.ok ? `Renamed to \u201c${name}\u201d in monday.com${savedLinksFor(url).length ? ' and in your folders' : ''}` : `Could not rename it in monday.com (${res.why}). Nothing was changed.`);
+      },
+    });
+  }
+  async function deleteMondayBoards(urls, { asked = false } = {}) {
+    const boards = urls.map(mondayBoardFor).filter(Boolean);
+    if (!boards.length) return toast('Those boards are not in your monday.com list. Refresh and try again.');
+    const n = boards.length;
+    if (!asked && !confirm(`Delete ${n === 1 ? `\u201c${boards[0].name}\u201d` : `${n} boards`} in monday.com?\n\n${n === 1 ? 'It goes' : 'They go'} to monday.com's trash, where ${n === 1 ? 'it' : 'they'} can be restored for 30 days, and ${n === 1 ? 'is' : 'are'} removed from your folders here.`)) return;
+    toast(`Deleting ${n} board${n === 1 ? '' : 's'} in monday.com\u2026`);
+    const res = await window.navigatorApp.mondayDeleteBoards(boards.map(b => b.id));
+    const gone = new Set(res.deleted);
+    const goneUrls = new Set(boards.filter(b => gone.has(b.id)).map(b => normUrl(b.url)));
+    mondayData.boards = (mondayData.boards || []).filter(b => !gone.has(b.id));
+    ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
+    const drop = [];
+    walk(state.tree, x => { if (x.type === 'link' && goneUrls.has(normUrl(x.url))) drop.push(x.id); });
+    for (const id of drop) { const l = locate(id); if (l) { queueTrash([l.node]); l.list.splice(l.index, 1, ...(l.node.children || [])); } }
+    libSel.clear();
+    commit();
+    toast(res.failed.length ? `Deleted ${res.deleted.length} of ${n}. ${res.failed.length} could not be deleted (${res.failed[0].status}).` : `Deleted ${n} board${n === 1 ? '' : 's'} in monday.com`);
+  }
+
   // monday.com rows for the shared list: workspaces and folders (opened by double-click) and boards.
   const MONDAY_PLACE = 'navigator-monday:';
   function mondayEntries(key, flat) {

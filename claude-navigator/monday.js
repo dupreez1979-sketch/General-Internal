@@ -99,4 +99,18 @@ async function createBoard({ name, kind, workspace, folder }) {
     url: b.url, updated: new Date().toISOString() };
 }
 
-module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll, createBoard };
+async function renameBoard(id, name) {
+  const token = readToken();
+  if (!token) throw new Error('monday.com is not connected');
+  await gql(token, 'mutation ($id: ID!, $v: String!) { update_board(board_id: $id, board_attribute: name, new_value: $v) }', { id: String(id), v: String(name).slice(0, 255) });
+  return { ok: true };
+}
+// Deletes a board; monday.com keeps it in its trash for 30 days, where it can be restored.
+async function deleteBoard(id) {
+  const token = readToken();
+  if (!token) throw new Error('monday.com is not connected');
+  await gql(token, 'mutation ($id: ID!) { delete_board(board_id: $id) { id } }', { id: String(id) });
+  return { ok: true };
+}
+
+module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll, createBoard, renameBoard, deleteBoard };
