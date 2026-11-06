@@ -779,10 +779,10 @@
     } catch (e) { /* ignore */ }
     return Object.assign(base, { busy: false });
   })();
-  const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
+  const saveLib = () => (bumpCaches(), ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
     kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
-  }));
+  })));
   state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
   if (lib.scanVersion !== 2) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 2; }   // new ways to find links: look again
   const libSel = new Set();
@@ -792,7 +792,7 @@
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
-  function save() { ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) { fsState.savedAt = Date.now(); scheduleApply(); } }
+  function save() { bumpCaches(); ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) { fsState.savedAt = Date.now(); scheduleApply(); } }
 
   // ---------- Folders on this computer (Documents › Claude Navigator) ----------
   // The disk mirrors the app: app changes are written to disk shortly after; Finder changes come back in.
@@ -1110,12 +1110,21 @@
     if (k === 'artifact') return 'Untitled artifact';
     try { return new URL(url).hostname.replace(/^www\./, '') || 'Untitled link'; } catch (e) { return 'Untitled link'; }
   }
+  // Lookups that would otherwise walk every folder for every row. Rebuilt after any change (see bumpCaches).
+  var caches = {}, allFiledCache = null;   // var: these may be cleared during start-up, before this line runs
+  function bumpCaches() { caches = {}; allFiledCache = null; }
+  function linkIndex() {
+    caches = caches || {};
+    if (!caches.links) {
+      const m = new Map();
+      walk(state.tree, n => { if (n.type === 'link' && n.url) { const k = normUrl(n.url); if (!m.has(k)) m.set(k, []); m.get(k).push(n); } });
+      caches.links = m;
+    }
+    return caches.links;
+  }
   function savedLinksFor(url) {
-    const out = [];
-    if (!url) return out;
-    const u = normUrl(url);
-    walk(state.tree, n => { if (n.type === 'link' && normUrl(n.url) === u) out.push(n); });
-    return out;
+    if (!url) return [];
+    return (linkIndex().get(normUrl(url)) || []).slice();
   }
 
   // ---------- Elements ----------
@@ -1312,7 +1321,9 @@
     const known = new Map();
     for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) if (!known.has(normUrl(x.url))) known.set(normUrl(x.url), [x, k]);
     const chats = [];
-    walk(state.tree, n => { if (n.type === 'link' && kindOf(n) === 'chat' && !isArchived(n.url)) chats.push(n); });
+    const ap = activeProfile();
+    if (ap) walk([ap], n => { if (n.type === 'link' && kindOf(n) === 'chat' && !isArchived(n.url)) chats.push(n); });
+    walk(state.tree, n => { if (n.type === 'link' && kindOf(n) === 'chat' && !isArchived(n.url) && !chats.includes(n)) chats.push(n); });
     let added = 0;
     for (const chat of chats) {
       for (const a of lib.related[normUrl(chat.url)] || []) {
@@ -1373,8 +1384,12 @@
     const c = normUrl(chatUrl);
     const urls = new Set(lib.related[c] || []);
     for (const n of savedLinksFor(chatUrl)) for (const k of n.children || []) if (k.url) urls.add(normUrl(k.url));
-    const known = new Map();
-    for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) known.set(normUrl(x.url), [x, k]);
+    caches = caches || {};
+    if (!caches.known) {
+      caches.known = new Map();
+      for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) caches.known.set(normUrl(x.url), [x, k]);
+    }
+    const known = caches.known;
     return [...urls].map(u => {
       const saved = savedLinksFor(u)[0];
       const [x, k] = known.get(u) || [null, 'artifacts'];
@@ -1436,7 +1451,6 @@
     });
     return map;
   }
-  let allFiledCache = null;
   // In a profile, a Claude item shows if it is filed in this profile, or not filed anywhere yet.
   function inThisProfileOrUnfiled(url, idx) {
     if (!activeProfile()) return true;
@@ -1446,7 +1460,11 @@
     return !allFiledCache.has(k);
   }
   // "Not in a folder" counts mean not filed in any profile.
-  const unfiledCount = (kind) => { const all = filedIndex(true); return libList(kind).filter(x => !all.has(normUrl(x.url)) && !(lib.archived || []).includes(normUrl(x.url))).length; };
+  const unfiledCount = (kind) => {
+    if (!allFiledCache) allFiledCache = filedIndex(true);
+    const all = allFiledCache;
+    return libList(kind).filter(x => !all.has(normUrl(x.url)) && !isArchived(x.url)).length;
+  };
   function fmtDate(s) {
     if (!s) return '';
     const d = new Date(s);
@@ -1658,7 +1676,13 @@
     return bar;
   }
 
-  const isArchived = url => (lib.archived || []).includes(normUrl(url));
+  const isArchived = url => {
+    caches = caches || {};
+    if (!caches.archived || caches.archivedFrom !== lib.archived || caches.archivedLen !== (lib.archived || []).length) {
+      caches.archived = new Set(lib.archived || []); caches.archivedFrom = lib.archived; caches.archivedLen = (lib.archived || []).length;
+    }
+    return caches.archived.has(normUrl(url));
+  };
   const WHEN = { any: 'Any time', today: 'Today', week: 'Last 7 days', month: 'Last 30 days', older: 'Older than 30 days' };
   function libVisible() {
     const kind = state.loc.which;
@@ -2459,7 +2483,7 @@
     $('bNewChat').title = `New Chat${here ? ` in \u201c${nodeOf(here).name}\u201d` : ''} (${K.mod}N)`;
   }
 
-  function renderAll() { allFiledCache = null; renderAllInner(); }
+  function renderAll() { bumpCaches(); renderAllInner(); }
   function renderAllInner() { renderSide(); renderMain(); renderToolbar(); syncSideSel(); }
 
   // ---------- Navigation (Finder-style back and forward) ----------
@@ -3562,11 +3586,18 @@
     });
   }
 
-  function saveCurrent(folderId = state.lastFolderId) {
+  function saveCurrent(folderId) {
+    const explicit = folderId !== undefined;       // "Save … Inside" a chosen folder always saves there
+    if (!explicit) folderId = state.lastFolderId;
     if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
     if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
     if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
-    if (pageContext().status === 'none') return saveAs();      // not in a folder: ask where
+    const ctx = pageContext();
+    if (ctx.status === 'none') return saveAs();      // not in a folder: ask where
+    if (ctx.status === 'saved' && !explicit) {
+      const f = ctx.folderId && nodeOf(ctx.folderId);
+      return toast(`Already saved${f ? ` in ${f.name}` : ''}. Use Save As (${K.mod}${K.shift}S) to save a copy somewhere else.`);
+    }
     const url = state.pageUrl;
     const name = realTitle(state.pageTitle) || guessName(url);
     addLink(folderId, name, url, { autoName: true });
@@ -4197,6 +4228,7 @@
       }
       return;
     }
+    if (dragIds.some(id => { const x = nodeOf(id); return x && x.profile; })) { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
     const it = e.target.closest('.item');
     const n = it && nodeOf(it.dataset.id);
     const attachHere = n && kindOf(n) === 'chat' && !dragIds.includes(n.id) && !dragIds.some(id => !attachable(nodeOf(id)));
@@ -4285,10 +4317,7 @@
       if (moveNodes([srcId], t)) { commit(); toast(`Attached \u201c${mv.name}\u201d to \u201c${nodeOf(t.id).name}\u201d`, true); }
       return;
     }
-    if (srcId && attachedTo(srcId) && !dragIds.length) {
-      const was = attachedTo(srcId);
-      if (was) removeRelation(was.url, nodeOf(srcId).url);    // Option-dragged out of its chat
-    }
+    const wasChat = srcId ? attachedTo(srcId) : null;     // Option-dragged out from under its chat
     let node, isNew = false;
     if (srcId) {
       if (t.id && contains(srcId, t.id)) return;
@@ -4311,6 +4340,13 @@
       tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, node);
     }
     commit();
+    if (wasChat && attachedTo(srcId) !== wasChat) {
+      // It stays detached: a later refresh from Claude does not put it back under the chat.
+      const pair = normUrl(wasChat.url) + '|' + normUrl(node.url);
+      if (!lib.detached.includes(pair)) lib.detached.push(pair);
+      removeRelation(wasChat.url, node.url);
+      saveLib();
+    }
     if (isNew) startRename(node.id, browseItemEl(node.id) ? browseEl : treeEl);
   }
 
@@ -4700,6 +4736,7 @@
   });
 
   document.addEventListener('keydown', e => {
+    if (document.querySelector('dialog[open]') || tbCustomizing) return;    // a dialog is open: its own keys only
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.altKey && /^Digit[0-9]$/.test(e.code)) {
       const n = +e.code.slice(5);
@@ -4749,7 +4786,7 @@
     window.navigatorApp.onShortcut(k => {
       const m = /^profile-(\d)$/.exec(k);
       if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);
-      if (!dlg.open && actions[k]) actions[k]();
+      if (!document.querySelector('dialog[open]') && !tbCustomizing && actions[k]) actions[k]();
     });
 
     // Files saved from Claude land in Downloads.
