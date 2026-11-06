@@ -146,7 +146,12 @@
   #browse.drop-here { box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 60%, transparent); }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, 104px); gap: 6px; align-content: start; }
-  .tile { display: flex; flex-direction: column; align-items: center; padding: 6px 4px 4px; border-radius: 8px; }
+  .tile { display: flex; flex-direction: column; align-items: center; padding: 6px 4px 4px; border-radius: 8px; position: relative; }
+  .tile .att { position: absolute; top: 4px; right: 14px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 600; border-radius: 8px; padding: 0 5px; line-height: 16px; }
+  .twisty.conn, .lrow .conn { color: var(--muted); }
+  .lrow .conn { display: grid; place-items: center; width: 14px; margin-left: 6px; flex: none; }
+  .list .item.selected .conn { color: inherit; }
+  #libAttachedBtn.on { color: var(--text); background: var(--sel); }
   .tile .big { width: 72px; height: 66px; display: grid; place-items: center; border-radius: 6px; }
   .tile .label { margin-top: 4px; text-align: center; max-width: 100%; padding: 1px 5px; border-radius: 4px; line-height: 1.3; flex: none;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; word-break: break-word; }
@@ -307,6 +312,7 @@
       <button class="tb" id="libAll" title="Show everything"><span class="t">All</span></button>
       <button class="tb" id="libUnfiled" title="Show only items not yet in one of your folders"><span class="t">Not Filed</span></button>
     </div>
+    <button class="tb" id="libAttachedBtn" title="Show or hide the artifacts made in each chat" hidden><span data-icon="attach"></span><span class="t">Attached</span></button>
     <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
@@ -455,6 +461,7 @@
     expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     account: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5.6" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    attach: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 2v6.5a2 2 0 002 2h7M10.5 7.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
   };
@@ -529,15 +536,26 @@
   const LIB_STORE = 'claudeNavigator.library.v1';
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
-  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts', code: 'Code', design: 'Design', scheduled: 'Scheduled' };
-  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', code: 'code', design: 'design', scheduled: 'schedule' };
+  const LIB_KINDS = { chats: 'Recent Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled' };
+  const LIB_ICON = { chats: 'chat', projects: 'project', artifacts: 'artifact', designsystems: 'designsystem', design: 'design', code: 'code', scheduled: 'schedule' };
   const LIB_TIPS = {
     chats: 'Every chat in your Claude account', projects: 'Every project in your Claude account',
     artifacts: 'Artifacts listed on Claude\u2019s Artifacts page', code: 'Claude Code sessions listed on Claude\u2019s Code page',
     design: 'Designs and design systems on Claude\u2019s Design page', scheduled: 'Scheduled tasks on Claude\u2019s Scheduled page',
+    designsystems: 'Design systems from Claude\u2019s Design and Artifacts pages',
   };
+  // The items in a Library list. Design Systems gathers them from the Design and Artifacts lists.
+  function libList(kind) {
+    if (kind !== 'designsystems') return lib[kind] || [];
+    const seen = new Set(), out = [];
+    for (const src of ['design', 'artifacts']) for (const x of lib[src] || []) {
+      const k = normUrl(x.url);
+      if (!seen.has(k) && libKind(x, src) === 'designsystem') { seen.add(k); out.push(x); }
+    }
+    return out;
+  }
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -546,10 +564,12 @@
   })();
   const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
-    kinds: lib.kinds, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    kinds: lib.kinds, related: lib.related, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
   }));
   state.libFilter = ls.get(LIB_FILTER_STORE) === 'unfiled' ? 'unfiled' : 'all';
   const libSel = new Set();
+  let libRowItems = new Map();
+  state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
   function save() { ls.set(STORE, JSON.stringify(state.tree)); }
@@ -568,7 +588,7 @@
     for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i];
       if (n.id === id) return { node: n, list: nodes, index: i, parent };
-      if (n.type === 'folder') {
+      if (n.children) {
         const r = locate(id, n.children, n);
         if (r) return r;
       }
@@ -579,12 +599,12 @@
   function contains(aId, bId) {
     if (aId === bId) return true;
     const a = locate(aId);
-    return !!(a && a.node.type === 'folder' && locate(bId, a.node.children));
+    return !!(a && a.node.children && locate(bId, a.node.children));
   }
   function walk(nodes, fn, depth = 0, path = []) {
     for (const n of nodes) {
       fn(n, depth, path);
-      if (n.type === 'folder') walk(n.children, fn, depth + 1, path.concat(n));
+      if (n.children) walk(n.children, fn, depth + 1, path.concat(n));
     }
   }
   function pathTo(id) {
@@ -593,7 +613,7 @@
     while (loc) { out.unshift(loc.node); loc = loc.parent ? locate(loc.parent.id) : null; }
     return out;
   }
-  const childrenOf = id => (id ? (nodeOf(id) || { children: [] }).children : state.tree);
+  const childrenOf = id => (id ? (nodeOf(id) || {}).children || [] : state.tree);
 
   // ---------- URL helpers ----------
   function normUrl(u) {
@@ -648,11 +668,11 @@
   // Top-level folders become Finder-style sections; everything inside is a tree.
   function renderSide() {
     const frag = document.createDocumentFragment();
-    const addChildren = (nodes, depth) => {
+    const addChildren = (nodes, depth, parent = null) => {
       for (const n of nodes) {
-        const open = n.type === 'folder' && n.open && n.children.length > 0;
-        frag.appendChild(sideRow(n, depth, open));
-        if (open) addChildren(n.children, depth + 1);
+        const open = !!(n.children && n.children.length && n.open);
+        frag.appendChild(sideRow(n, depth, open, parent));
+        if (open) addChildren(n.children, depth + 1, n);
       }
     };
     if (isApp) {
@@ -735,17 +755,21 @@
     return `<span class="xall" data-all="${all ? 1 : 0}" title="${tip}${isMac ? ' (\u2325-click an arrow does the same)' : ''}">${all ? UI.collapseAll : UI.expandAll}</span>`;
   }
 
-  function sideRow(n, depth, open) {
+  function sideRow(n, depth, open, parent = null) {
     const r = document.createElement('div');
     r.className = 'row';
     r.dataset.id = n.id;
     r.draggable = true;
     r.setAttribute('role', 'treeitem');
     r.style.setProperty('--depth', depth);
-    const hasKids = n.type === 'folder' && n.children.length > 0;
-    if (n.type === 'folder') r.setAttribute('aria-expanded', String(open));
+    const hasKids = !!(n.children && n.children.length);
+    const attached = !!(parent && parent.type === 'link');
+    if (attached) r.classList.add('attached');
+    if (hasKids) r.setAttribute('aria-expanded', String(open));
     const twTip = hasKids ? ` title="${open ? 'Collapse' : 'Expand'}${isMac ? ' (\u2325-click: everything inside)' : ' (Alt-click: everything inside)'}"` : '';
-    r.innerHTML = `<span class="twisty${open ? ' open' : ''}"${twTip}>${hasKids ? UI.chev : ''}</span>` +
+    const twisty = hasKids ? UI.chev : attached ? UI.attach : '';
+    const twTip2 = attached && !hasKids ? ` title="Attached to \u201c${parent.name.replace(/"/g, '&quot;')}\u201d. It moves with that chat."` : twTip;
+    r.innerHTML = `<span class="twisty${open ? ' open' : ''}${attached && !hasKids ? ' conn' : ''}"${twTip2}>${twisty}</span>` +
       `<span class="icon">${n.type === 'folder' ? small('folder') : colourIcon(kindOf(n))}</span><span class="label"></span>${n.type === 'folder' ? xallButton(n) : ''}`;
     r.querySelector('.label').textContent = n.name;
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
@@ -769,12 +793,47 @@
   // Which folder the open Claude page belongs to:
   // saved (it is in a folder), pending (a new item that will be saved there), or none.
   const parentIdOf = id => ((locate(id) || {}).parent || {}).id || null;
+  // Artifacts made in a chat stay linked to it (learned when you open one from a chat, or attach it yourself).
+  function addRelation(chatUrl, itemUrl) {
+    const c = normUrl(chatUrl), a = normUrl(itemUrl);
+    if (!/\/chat\//.test(c) || c === a) return;
+    const list = lib.related[c] || (lib.related[c] = []);
+    if (!list.includes(a)) { list.push(a); saveLib(); }
+  }
+  function removeRelation(chatUrl, itemUrl) {
+    const c = normUrl(chatUrl), a = normUrl(itemUrl);
+    if (!lib.related[c]) return;
+    lib.related[c] = lib.related[c].filter(x => x !== a);
+    if (!lib.related[c].length) delete lib.related[c];
+    saveLib();
+  }
+  // Everything attached to a chat: what Claude showed us, plus what you attached in your folders.
+  function relatedFor(chatUrl) {
+    const c = normUrl(chatUrl);
+    const urls = new Set(lib.related[c] || []);
+    for (const n of savedLinksFor(chatUrl)) for (const k of n.children || []) if (k.url) urls.add(normUrl(k.url));
+    const known = new Map();
+    for (const k of ['artifacts', 'design', 'code']) for (const x of lib[k] || []) known.set(normUrl(x.url), [x, k]);
+    return [...urls].map(u => {
+      const saved = savedLinksFor(u)[0];
+      const [x, k] = known.get(u) || [null, 'artifacts'];
+      return { name: (saved && saved.name) || (x && x.name) || 'Untitled artifact', url: (x && x.url) || (saved && saved.url) || u, meta: x && x.meta, list: k };
+    });
+  }
+
+  function folderIdOf(id) {
+    let l = locate(id);
+    while (l && l.parent && l.parent.type !== 'folder') l = locate(l.parent.id);
+    return l && l.parent ? l.parent.id : null;
+  }
+  const attachedTo = id => { const l = locate(id); return l && l.parent && l.parent.type === 'link' ? l.parent : null; };
   function pageContext() {
     const url = state.pageUrl || state.loc.url || '';
     const hits = isBlankClaudePage(url) ? [] : savedLinksFor(url);
     if (hits.length) {
-      const h = hits.find(x => parentIdOf(x.id) === state.lastFolderId) || hits[0];
-      return { status: 'saved', folderId: parentIdOf(h.id), linkId: h.id };
+      const h = hits.find(x => folderIdOf(x.id) === state.lastFolderId) || hits[0];
+      const chat = attachedTo(h.id);
+      return { status: 'saved', folderId: folderIdOf(h.id), linkId: h.id, attachedTo: chat ? chat.id : null };
     }
     if (state.autoFile && nodeOf(state.autoFile.folderId)) return { status: 'pending', folderId: state.autoFile.folderId, linkId: null };
     return { status: 'none', folderId: null, linkId: null };
@@ -807,13 +866,14 @@
     walk(state.tree, (n, depth, path) => {
       if (n.type !== 'link') return;
       const k = normUrl(n.url);
-      const where = path.length ? path[path.length - 1].name : 'Top level';
+      const folders = path.filter(p => p.type === 'folder');
+      const where = folders.length ? folders[folders.length - 1].name : 'Top level';
       if (!map.has(k)) map.set(k, []);
       if (!map.get(k).includes(where)) map.get(k).push(where);
     });
     return map;
   }
-  const unfiledCount = (kind, idx = filedIndex()) => (lib[kind] || []).filter(x => !idx.has(normUrl(x.url))).length;
+  const unfiledCount = (kind, idx = filedIndex()) => libList(kind).filter(x => !idx.has(normUrl(x.url))).length;
   function fmtDate(s) {
     if (!s) return '';
     const d = new Date(s);
@@ -881,7 +941,21 @@
       const view = where ? 'search' : 'folder';
       const l = makeList(view);
       const updated = libUpdatedIndex();
-      for (const n of items) l.appendChild(listRowFor(n, view, updated));
+      for (const n of items) {
+        l.appendChild(listRowFor(n, view, updated));
+        if (n.type === 'link' && n.children && n.children.length && n.open !== false && !where) {
+          for (const c of n.children) {
+            const cr = listRowFor(c, view, updated);
+            cr.classList.add('attached');
+            const conn = document.createElement('span');
+            conn.className = 'conn';
+            conn.innerHTML = UI.attach;
+            conn.title = `Attached to \u201c${n.name}\u201d`;
+            cr.querySelector('.nm').prepend(conn);
+            l.appendChild(cr);
+          }
+        }
+      }
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
@@ -892,7 +966,7 @@
   function libVisible() {
     const kind = state.loc.which;
     const idx = filedIndex();
-    let items = lib[kind] || [];
+    let items = libList(kind);
     if (state.libFilter === 'unfiled') items = items.filter(x => !idx.has(normUrl(x.url)));
     if (state.query) {
       const q = state.query.toLowerCase();
@@ -912,7 +986,7 @@
 
   function renderLibrary() {
     const { kind, idx, items } = libVisible();
-    const all = lib[kind] || [];
+    const all = libList(kind);
     const frag = document.createDocumentFragment();
     if (!ls.get(LIB_TIP_STORE) && all.length) {
       const b = document.createElement('div');
@@ -933,7 +1007,25 @@
       else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
     } else {
       const l = makeList('library', 'lib-list');
-      for (const x of items) l.appendChild(libRow(x, kind, idx));
+      libRowItems = new Map();
+      for (const x of items) {
+        libRowItems.set(x.url, x);
+        l.appendChild(libRow(x, kind, idx));
+        if (kind === 'chats' && state.libShowAttached) {
+          for (const a of relatedFor(x.url)) {
+            if (libRowItems.has(a.url)) continue;
+            libRowItems.set(a.url, a);
+            const ar = libRow(a, a.list, idx);
+            ar.classList.add('attached');
+            const conn = document.createElement('span');
+            conn.className = 'conn';
+            conn.innerHTML = UI.attach;
+            conn.title = `Made in \u201c${libName(x, 'chats')}\u201d`;
+            ar.querySelector('.nm').prepend(conn);
+            l.appendChild(ar);
+          }
+        }
+      }
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
@@ -948,6 +1040,7 @@
   function libKind(x, list) {
     const mine = lib.kinds && lib.kinds[normUrl(x.url)];
     if (mine) return mine;
+    if (list === 'designsystems') return 'designsystem';
     if (list === 'chats') return 'chat';
     if (list === 'projects') return 'project';
     if (list === 'code') return 'code';
@@ -998,7 +1091,7 @@
     const bar = $('pathbar');
     bar.replaceChildren();
     const s = document.createElement('span');
-    const all = (lib[kind] || []).length;
+    const all = libList(kind).length;
     s.textContent = lib.busy
       ? 'Checking Claude for changes\u2026'
       : `${all} in Claude, ${unfiledCount(kind, idx)} not in a folder. Updated ${ago(lib.fetchedAt)}.`;
@@ -1225,6 +1318,13 @@
     t.innerHTML = `<div class="big">${k === 'folder' ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
     t.querySelector('.label').textContent = n.name;
     t.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (n.type === 'link' && n.children && n.children.length) {
+      const b = document.createElement('span');
+      b.className = 'att';
+      b.textContent = `+${n.children.length}`;
+      b.title = n.children.map(c => c.name).join('\n') + '\n(attached; switch to list view to see them)';
+      t.appendChild(b);
+    }
     return t;
   }
 
@@ -1347,6 +1447,13 @@
           cr.addEventListener('click', () => go({ kind: 'folder', id: f.id }));
           add('ts', '\u203a');
         }
+        if (c.attachedTo) {
+          const chat = nodeOf(c.attachedTo);
+          const cr = add('tc', chat.name, small('chat', 'currentColor', 12));
+          cr.title = `Open the chat this is attached to`;
+          cr.addEventListener('click', () => openNode(chat));
+          add('ts', '\u203a');
+        }
       } else {
         const nf = add('tc none', 'Not in a folder');
         nf.title = `Click (or press ${K.mod}S) to choose a folder to save this in`;
@@ -1370,6 +1477,8 @@
     document.title = title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || !!state.query || inLib;
     $('libSeg').hidden = !inLib;
+    $('libAttachedBtn').hidden = !(inLib && state.loc.which === 'chats');
+    $('libAttachedBtn').classList.toggle('on', !!state.libShowAttached);
     $('bRefreshLib').hidden = !inLib;
     $('bRefreshLib').disabled = lib.busy;
     $('libAll').classList.toggle('on', state.libFilter === 'all');
@@ -1468,8 +1577,7 @@
     if (!n) return;
     if (n.type === 'folder') return go({ kind: 'folder', id: n.id });
     if (newWindow) return openNewWindow(n.url);
-    const loc = locate(n.id);
-    state.lastFolderId = loc && loc.parent ? loc.parent.id : null;
+    state.lastFolderId = folderIdOf(n.id);
     go({ kind: 'page', url: n.url });
   }
   function openNewWindow(url) {
@@ -1658,6 +1766,15 @@
     fileNewItem(a, url, title);
   }
   function offerSave(url, title, kind) {
+    const ctx = pageContext();
+    const chat = ctx.linkId && nodeOf(ctx.linkId);
+    if (kind === 'artifact' && chat && kindOf(chat) === 'chat' && !knownItem(url) && !offered.has(normUrl(url))) {
+      offered.add(normUrl(url));
+      return toast(`New artifact from this chat. Attach it to \u201c${chat.name}\u201d?`, {
+        label: 'Attach',
+        run: () => { snap(); const l = Link(realTitle(title) || 'Untitled artifact', url); l.autoName = true; l.as = 'artifact'; insertInto(chat.id, l); commit(); toast(`Attached to \u201c${chat.name}\u201d`, true); },
+      });
+    }
     const f = nodeOf(state.lastFolderId);
     if (kind !== 'artifact' || !f || knownItem(url) || offered.has(normUrl(url))) return;
     offered.add(normUrl(url));
@@ -1688,6 +1805,7 @@
       let url = '', title = '';
       try { url = view.getURL(); title = view.getTitle(); } catch (e) { return; }
       if (!url || url === 'about:blank') return;
+      if (state.pageUrl && /^\/chat\//.test(pathOf(state.pageUrl)) && itemKindOf(pathOf(url)) === 'artifact') addRelation(state.pageUrl, url);
       state.pageUrl = url;
       state.pageTitle = title;
       // Moving around inside Claude updates the current history entry rather than adding one.
@@ -1886,11 +2004,13 @@
   }
   function insertInto(folderId, node) {
     const f = folderId ? nodeOf(folderId) : null;
+    if (f && !f.children) f.children = [];
     (f ? f.children : state.tree).push(node);
     if (f) f.open = true;
+    if (f && f.type === 'link' && node.url) addRelation(f.url, node.url);   // attached to a chat
   }
   function toggle(n, force) {
-    if (!n || n.type !== 'folder') return;
+    if (!n || !n.children) return;
     n.open = force === undefined ? !n.open : force;
     save();
     renderSide();
@@ -1930,10 +2050,11 @@
     const loc = locate(id);
     if (!loc) return;
     const n = loc.node;
-    if (n.type === 'folder' && n.children.length) {
+    if (n.children && n.children.length) {
       let c = 0;
       walk(n.children, () => c++);
-      if (!confirm(`Delete “${n.name}” and the ${c} item${c === 1 ? '' : 's'} inside it?`)) return;
+      const what = n.type === 'folder' ? `the ${c} item${c === 1 ? '' : 's'} inside it` : `its ${c} attached item${c === 1 ? '' : 's'}`;
+      if (!confirm(`Delete \u201c${n.name}\u201d and ${what}?`)) return;
     }
     snap();
     if (state.loc.kind === 'folder' && state.loc.id && contains(id, state.loc.id)) {
@@ -1944,6 +2065,26 @@
     if (state.browseSel === id) state.browseSel = null;
     commit();
     toast(`Deleted “${n.name}”`, true);
+  }
+
+  const attachable = n => n && n.type === 'link' && kindOf(n) !== 'chat';
+  const siblingChats = n => { const l = locate(n.id); return l ? l.list.filter(x => x !== n && x.type === 'link' && kindOf(x) === 'chat') : []; };
+  function detach(id) {
+    const l = locate(id);
+    if (!l || !l.parent || l.parent.type !== 'link') return;
+    const chat = l.parent;
+    snap();
+    l.list.splice(l.index, 1);
+    const pl = locate(chat.id);
+    pl.list.splice(pl.index + 1, 0, l.node);
+    removeRelation(chat.url, l.node.url);
+    commit();
+    toast(`Detached \u201c${l.node.name}\u201d from \u201c${chat.name}\u201d`, true);
+  }
+  function attachTo(id, chatId) {
+    const n = nodeOf(id), chat = nodeOf(chatId);
+    if (!attachable(n) || !chat) return;
+    if (moveNodes([id], { id: chatId, zone: 'into' })) { commit(); toast(`Attached \u201c${n.name}\u201d to \u201c${chat.name}\u201d`, true); }
   }
 
   function removeNodes(ids) {
@@ -1974,6 +2115,9 @@
     ids = outermost(ids);
     if (!ids.length) return false;
     if (t.id && ids.some(id => contains(id, t.id))) return false;
+    const target = t.zone === 'into' && t.id ? nodeOf(t.id) : null;
+    if (target && target.type === 'link') ids = ids.filter(id => attachable(nodeOf(id)));   // only non-chat items attach to a chat
+    if (!ids.length) return false;
     if (t.zone === 'into' && ids.every(id => parentIdOf(id) === t.id)) return false;    // already there
     snap();
     const nodes = ids.map(id => { const l = locate(id); l.list.splice(l.index, 1); return l.node; });
@@ -2250,14 +2394,40 @@
       l.autoName = true;
       return l;
     });
-    if (t.zone === 'into' || !t.id) nodes.forEach(n => insertInto(t.id, n));
+    for (const node of nodes) {
+      if (kindOf(node) !== 'chat') continue;
+      const extra = relatedFor(node.url).filter(a => !savedLinksFor(a.url).length).map(a => {
+        const l = Link(hasWords(a.name) ? a.name : 'Untitled artifact', a.url);
+        const k = libKind(a, a.list);
+        if (!['chat', 'project', 'link'].includes(k)) l.as = k;
+        l.autoName = true;
+        return l;
+      });
+      if (extra.length) { node.children = extra; node.open = true; }
+    }
+    const intoFolder = t.zone === 'into' || !t.id;
+    if (intoFolder && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link') {
+      const keep = nodes.filter(attachable);                    // only non-chat items attach to a chat
+      if (!keep.length) { undoStack.pop(); return toast('Only artifacts and other items can be attached to a chat'); }
+      nodes.length = 0;
+      nodes.push(...keep);
+    }
+    const destChats = intoFolder ? childrenOf(t.id).filter(x => x.type === 'link' && kindOf(x) === 'chat') : [];
+    const placed = [];
+    for (const node of nodes) {
+      const home = attachable(node) && destChats.find(c => relatedFor(c.url).some(a => normUrl(a.url) === normUrl(node.url)));
+      if (home) { insertInto(home.id, node); placed.push(node); }
+    }
+    const rest = nodes.filter(n => !placed.includes(n));
+    if (intoFolder) rest.forEach(n => insertInto(t.id, n));
     else {
       const tgt = locate(t.id);
-      tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, ...nodes);
+      tgt.list.splice(tgt.index + (t.zone === 'after' ? 1 : 0), 0, ...rest);
     }
     commit();
-    const f = t.zone === 'into' || !t.id ? nodeOf(t.id) : (locate(t.id) || {}).parent;
-    toast(`Filed ${nodes.length === 1 ? `\u201c${nodes[0].name}\u201d` : `${nodes.length} items`} in ${f ? f.name : 'the top level'}`, true);
+    const f = intoFolder ? nodeOf(t.id) : (locate(t.id) || {}).parent;
+    const what = nodes.length === 1 ? `\u201c${nodes[0].name}\u201d` : `${nodes.length} items`;
+    toast(f && f.type === 'link' ? `Attached ${what} to \u201c${f.name}\u201d` : `Filed ${what} in ${f ? f.name : 'the top level'}`, true);
   }
   function fileLibPrompt(items) {
     if (!items.length) return;
@@ -2385,6 +2555,11 @@
       { label: 'Duplicate', run: () => duplicate(n.id) },
       { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
       { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
+      '-',
+      attachedTo(n.id) && { label: `Detach from \u201c${attachedTo(n.id).name}\u201d`, run: () => detach(n.id) },
+      !attachedTo(n.id) && attachable(n) && siblingChats(n).length > 0 && { label: 'Attach to Chat\u2026', run: () =>
+        showMenu(lastMenuX, lastMenuY, siblingChats(n).map(c => ({ label: c.name, icon: 'chat', run: () => attachTo(n.id, c.id) }))) },
+      kindOf(n) === 'chat' && n.children && n.children.length > 0 && { label: `Detach ${n.children.length} Attached Item${n.children.length === 1 ? '' : 's'}`, run: () => n.children.slice().forEach(c => detach(c.id)) },
       savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
       { label: 'Delete', key: K.del, run: () => removeNode(n.id) },
@@ -2507,7 +2682,7 @@
 
   // ---------- Main area events ----------
   const libKeys = () => [...browseEl.querySelectorAll('.item.lib')].map(r => r.dataset.key);
-  const libItem = key => (lib[state.loc.which] || []).find(x => x.url === key);
+  const libItem = key => libRowItems.get(key) || libList(state.loc.which).find(x => x.url === key);
   const selectedLibItems = () => libKeys().filter(k => libSel.has(k)).map(libItem).filter(Boolean);
   function openLib(url, newWindow = false) {
     if (newWindow) return openNewWindow(url);
@@ -2754,6 +2929,11 @@
     const inTree = treeEl.contains(el);
     const group = inTree ? (multi.side.has(n.id) ? selectedSide() : []) : (multi.browse.has(n.id) ? selectedBrowse() : []);
     dragIds = group.length > 1 ? outermost(group) : [n.id];
+    // An attached item travels with its chat, unless Option/Alt is held to move it on its own.
+    if (dragIds.length === 1 && attachedTo(n.id) && !e.altKey) {
+      dragIds = [attachedTo(n.id).id];
+      if (!ls.get('claudeNavigator.attachDragTip')) { ls.set('claudeNavigator.attachDragTip', '1'); toast(`Moving it with its chat. ${isMac ? '\u2325' : 'Alt'}-drag, or right-click and Detach, to move it on its own.`); }
+    }
     dragId = n.id;
     e.dataTransfer.effectAllowed = 'copyMove';
     e.dataTransfer.setData(NAV_TYPE, dragIds.join(','));
@@ -2804,9 +2984,11 @@
     if (blocked(e, id)) return;
     const rect = row.getBoundingClientRect();
     const y = (e.clientY - rect.top) / rect.height;
+    const canAttach = kindOf(n) === 'chat' && !dragIds.some(id => { const x = nodeOf(id); return !attachable(x); });
     const zone = n.type === 'folder'
       ? (y < 0.25 ? 'before' : y > 0.75 && !row.classList.contains('section') ? 'after' : 'into')
-      : (y < 0.5 ? 'before' : 'after');
+      : canAttach ? (y < 0.3 ? 'before' : y > 0.7 ? 'after' : 'into')
+        : (y < 0.5 ? 'before' : 'after');
     row.classList.add('drop-' + zone);
     dropTarget = { id, zone };
     // Hovering over a closed folder opens it.
@@ -2824,7 +3006,8 @@
     if (state.loc.kind === 'library') { dropTarget = null; e.dataTransfer.dropEffect = 'none'; return; }
     const it = e.target.closest('.item');
     const n = it && nodeOf(it.dataset.id);
-    if (n && n.type === 'folder' && !dragIds.includes(n.id)) {
+    const attachHere = n && kindOf(n) === 'chat' && !dragIds.includes(n.id) && !dragIds.some(id => !attachable(nodeOf(id)));
+    if (n && (n.type === 'folder' || attachHere) && !dragIds.includes(n.id)) {
       if (blocked(e, n.id)) return;
       it.classList.add('drop-into');
       dropTarget = { id: n.id, zone: 'into' };
@@ -2864,6 +3047,16 @@
       return;
     }
     const srcId = srcIds[0];
+    const intoLink = t.zone === 'into' && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link';
+    if (srcId && intoLink) {
+      const mv = nodeOf(srcId);
+      if (moveNodes([srcId], t)) { commit(); toast(`Attached \u201c${mv.name}\u201d to \u201c${nodeOf(t.id).name}\u201d`, true); }
+      return;
+    }
+    if (srcId && attachedTo(srcId) && !dragIds.length) {
+      const was = attachedTo(srcId);
+      if (was) removeRelation(was.url, nodeOf(srcId).url);    // Option-dragged out of its chat
+    }
     let node, isNew = false;
     if (srcId) {
       if (t.id && contains(srcId, t.id)) return;
@@ -2950,6 +3143,12 @@
   $('libAll').addEventListener('click', () => setLibFilter('all'));
   $('libUnfiled').addEventListener('click', () => setLibFilter('unfiled'));
   $('bRefreshLib').addEventListener('click', () => refreshLibrary(true));
+  $('libAttachedBtn').addEventListener('click', () => {
+    state.libShowAttached = !state.libShowAttached;
+    ls.set('claudeNavigator.libShowAttached', state.libShowAttached ? 'on' : 'off');
+    renderMain();
+    renderToolbar();
+  });
 
   searchEl.addEventListener('input', () => {
     state.query = searchEl.value.trim();
@@ -3069,6 +3268,7 @@
 
     // Pop-up windows from Claude: keep names current and catch newly created items.
     window.navigatorApp.onChildNavigated(({ url, title }) => {
+      if (/^\/chat\//.test(pathOf(state.pageUrl)) && itemKindOf(pathOf(url)) === 'artifact') addRelation(state.pageUrl, url);
       syncNames(url, title);
       checkAutoFile(url, title, true);
     });

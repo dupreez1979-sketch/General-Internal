@@ -80,6 +80,17 @@ Below your own folders are four more sections that work exactly the same way (fo
 
 Items get the right icon where Claude says what they are, or where the name makes it clear (for example "… Design System" or "… Slides"). Right-click anything and choose **Change Icon…** to correct it.
 
+## Artifacts stay with the chat they came from
+
+An artifact made in a chat sits underneath that chat (with a small ↳ arrow), in the sidebar and in list view. They move together: drag either one and both go.
+
+- **Detach** an artifact (right-click, Detach from Chat) to move it on its own, for example when one chat made several artifacts that belong in different places. ⌥-drag also moves it on its own.
+- **Attach** it again by dropping it onto the chat, or right-click and choose Attach to Chat.
+- The app learns these links when you open an artifact from a chat. Filing that chat then brings its artifacts along, and an artifact filed into the folder that holds its chat goes under the chat.
+- In **Recent Chats**, the **Attached** button at the top shows or hides each chat's artifacts underneath it.
+
+The Claude section also has **Design Systems** (gathered from the Design and Artifacts lists), **Design**, **Code** and **Scheduled**, ready to drag into your App Code, Design Systems and Schedules groups.
+
 ## Your Claude account
 
 Claude's own sidebar is hidden, so its account menu lives in the person button at the bottom of the sidebar: Settings, Usage, Language, Help, Upgrade, Apps, API keys and Log out.
