@@ -445,7 +445,7 @@ async function openHidden(win, url) {
 const relationsScript = (chats, artifacts) => `(async () => {
   const chats = ${JSON.stringify(chats)};
   const arts = ${JSON.stringify(artifacts)};
-  const out = { relations: [], scanned: {}, notes: [] };
+  const out = { relations: [], byName: [], scanned: {}, notes: [], failedStatus: {} };
   const json = async u => { const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } }); return r.ok ? r : null; };
   let orgs = [];
   try { const r = await json('/api/organizations'); const x = r ? await r.json() : []; orgs = Array.isArray(x) ? x : (x.data || []); } catch (e) { out.notes.push('relations: ' + e.message); }
@@ -453,13 +453,21 @@ const relationsScript = (chats, artifacts) => `(async () => {
     let text = null;
     for (const o of orgs) {
       for (const q of ['?tree=True&rendering_mode=messages&render_all_tools=true', '']) {
-        try { const r = await json('/api/organizations/' + o.uuid + '/chat_conversations/' + c.uuid + q); if (r) { text = await r.text(); break; } } catch (e) { /* try the next way */ }
+        try {
+          const r = await fetch('/api/organizations/' + o.uuid + '/chat_conversations/' + c.uuid + q, { credentials: 'include', headers: { accept: 'application/json' } });
+          if (r.ok) { text = await r.text(); break; }
+          out.failedStatus[r.status] = (out.failedStatus[r.status] || 0) + 1;
+        } catch (e) { out.failedStatus[String(e.message || e)] = 1; }
       }
       if (text) break;
     }
     if (text === null) continue;
     out.scanned[c.url] = c.updated || 'seen';
-    for (const a of arts) if (a.id.length >= 8 && text.includes(a.id)) out.relations.push([c.url, a.url]);
+    for (const a of arts) {
+      if (a.id.length >= 8 && text.includes(a.id)) out.relations.push([c.url, a.url]);
+      else if (a.name && a.name.length >= 12 && (text.includes(a.name) || text.includes(JSON.stringify(a.name).slice(1, -1)))) out.byName.push([c.url, a.url]);
+    }
+    if (!out.sample) out.sample = { status: 'ok', length: text.length, mentionsArtifact: /artifact/i.test(text), head: text.slice(0, 300) };
   }
   return out;
 })()`;
@@ -471,7 +479,7 @@ async function fetchLibrary(opts = {}) {
     webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false },
   });
   win.webContents.setAudioMuted(true);
-  const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 150000);
+  const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 600000);
   try {
     await openHidden(win, 'https://claude.ai/recents');
     if (/\/(login|logout|signup)/.test(win.webContents.getURL())) { result.signedIn = false; return result; }
@@ -510,15 +518,47 @@ async function fetchLibrary(opts = {}) {
         .filter(c => c.url && seen[c.url] !== (c.updated || 'seen'))
         .slice(0, 150)
         .map(c => ({ url: c.url, uuid: c.url.split('/chat/')[1], updated: c.updated || null }));
-      const artUrls = new Set([...(opts.knownArtifacts || []), ...(result.artifacts || []).map(a => a.url), ...(result.design || []).map(a => a.url)]);
-      const arts = [...artUrls].map(u => ({ url: u, id: u.replace(/\/+$/, '').split('/').pop() }));
+      const known = new Map();
+      for (const a of [...(opts.knownArtifacts || []), ...(result.artifacts || []), ...(result.design || [])]) {
+        const x = typeof a === 'string' ? { url: a } : a;
+        if (x && x.url && !known.has(x.url)) known.set(x.url, x.name || (known.get(x.url) || {}).name || '');
+        else if (x && x.url && x.name) known.set(x.url, x.name);
+      }
+      const arts = [...known].map(([u, name]) => ({ url: u, name, id: u.replace(/\/+$/, '').split('/').pop() }));
+      result.relations = [];
+      result.diag = { chatsToCheck: toScan.length, artifactsKnown: arts.length };
       if (toScan.length && arts.length) {
         await openHidden(win, 'https://claude.ai/recents');
-        const rel = await win.webContents.executeJavaScript(relationsScript(toScan, arts), true).catch(e => ({ relations: [], scanned: {}, notes: [String(e)] }));
-        result.relations = rel.relations;
+        const rel = await win.webContents.executeJavaScript(relationsScript(toScan, arts), true).catch(e => ({ relations: [], byName: [], scanned: {}, notes: [String(e)] }));
+        // A name counts only when exactly one chat mentions it (common names are ignored).
+        const chatsPerArt = new Map();
+        for (const [c, a] of rel.byName || []) chatsPerArt.set(a, (chatsPerArt.get(a) || new Set()).add(c));
+        const byName = [...chatsPerArt].filter(([, cs]) => cs.size === 1).map(([a, cs]) => [[...cs][0], a]);
+        result.relations = rel.relations.concat(byName);
         result.scanned = rel.scanned;
-        result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${rel.relations.length}`, ...rel.notes);
+        Object.assign(result.diag, { chatsChecked: Object.keys(rel.scanned).length, byId: rel.relations.length, byName: byName.length, nameAmbiguous: chatsPerArt.size - byName.length, failedStatus: rel.failedStatus, sample: rel.sample || null });
+        result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${result.relations.length}`, ...(rel.notes || []));
       }
+      // Artifacts still without a chat: open their page and look for a link back to the chat it was made in.
+      const linked = new Set(result.relations.map(([, a]) => a).concat(opts.linkedArtifacts || []));
+      const pagesToCheck = arts.filter(a => !linked.has(a.url) && !(opts.pageChecked || {})[a.url]).slice(0, 25);
+      result.pageChecked = {};
+      let byPage = 0;
+      for (const a of pagesToCheck) {
+        if (win.isDestroyed()) break;
+        await openHidden(win, a.url);
+        const chats = await win.webContents.executeJavaScript(`(() => {
+          const out = new Set();
+          for (const el of document.querySelectorAll('a[href*="/chat/"]')) {
+            if (el.closest('nav, aside, [role="navigation"], [data-testid*="sidebar" i]')) continue;   // not Claude's sidebar
+            try { const u = new URL(el.getAttribute('href'), location.href); if (/^\\/chat\\/[0-9a-fA-F-]{8,}/.test(u.pathname)) out.add(u.origin + u.pathname); } catch (e) {}
+          }
+          return [...out];
+        })()`, true).catch(() => []);
+        result.pageChecked[a.url] = chats.length;
+        if (chats.length === 1) { result.relations.push([chats[0], a.url]); byPage++; }
+      }
+      if (result.diag) Object.assign(result.diag, { artifactPagesChecked: pagesToCheck.length, byArtifactPage: byPage });
     }
   } catch (e) {
     result.notes.push(String(e && e.message || e));

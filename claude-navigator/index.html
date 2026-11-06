@@ -154,6 +154,7 @@
   @media (max-width: 1150px) { #libFilterBtn .t, #libSelectBtn .t, #libAttachedBtn .t, #bSaveText { display: none; } }
   @media (max-width: 900px) { .search, .search:focus-within { width: 130px; } #libSeg { display: none !important; } }
   .tile .lchk { position: absolute; top: 6px; left: 12px; z-index: 2; }
+  #bSaveMore { min-width: 18px; padding: 0 3px; margin-left: -4px; }
   .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
   .libbar b { margin-right: 6px; }
   .libbar .danger { color: #c0392b; }
@@ -377,6 +378,7 @@
     <button class="tb" id="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" title="Reload"><span data-icon="reload"></span></button>
     <button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button>
+    <button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button>
     <button class="tb" id="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bNewMenu" title="New chat, artifact, project, folder or link here"><span data-icon="plus"></span></button>
@@ -545,6 +547,7 @@
     attach: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 2v6.5a2 2 0 002 2h7M10.5 7.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     filter: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
     check: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chevDown: '<svg width="10" height="10" viewBox="0 0 16 16"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
   };
@@ -712,7 +715,7 @@
     return out;
   }
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, scanned: {}, detached: [], archived: [], fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], kinds: {}, related: {}, scanned: {}, detached: [], archived: [], pageChecked: {}, scanVersion: 0, fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -721,9 +724,10 @@
   })();
   const saveLib = () => ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled,
-    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
+    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn,
   }));
   state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
+  if (lib.scanVersion !== 2) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 2; }   // new ways to find links: look again
   const libSel = new Set();
   let libRowItems = new Map();
   const PAGE_SIZE = 100;
@@ -2067,14 +2071,16 @@
     $('bReload').hidden = !page;
     $('bExternal').hidden = !page;
     $('bSave').hidden = !page;
+    $('bSaveMore').hidden = !page;
     if (page) {
       const c = pageContext();
       const f = nodeOf(c.folderId || state.lastFolderId);
       const saved = c.status === 'saved';
       $('bSave').hidden = c.status === 'pending' || isBlankClaudePage(state.pageUrl);
+      $('bSaveMore').hidden = $('bSave').hidden;
       $('bSave').firstElementChild.innerHTML = saved ? UI.starFilled : UI.star;
       $('bSaveText').textContent = saved ? 'Saved' : f ? `Save to ${f.name}` : 'Save';
-      $('bSave').title = (saved ? 'Already saved. Click to save another copy' : 'Save this page') +
+      $('bSave').title = (saved ? 'Saved. Click for Save a Copy As, Move, Show in Folder or Remove' : 'Save this page') +
         (f ? ` in \u201c${f.name}\u201d` : '') + ` (${K.mod}S)`;
     }
     const here = newHereFolder();
@@ -2484,7 +2490,9 @@
     try {
       const r = await window.navigatorApp.refreshLibrary({
         scanned: lib.scanned,
-        knownArtifacts: (lib.artifacts || []).concat(lib.design || []).map(x => x.url),
+        knownArtifacts: (lib.artifacts || []).concat(lib.design || []).map(x => ({ url: x.url, name: x.name })),
+        linkedArtifacts: [].concat(...Object.values(lib.related || {})),
+        pageChecked: lib.pageChecked,
       });
       lib.signedIn = r.signedIn !== false;
       if (lib.signedIn) {
@@ -2504,6 +2512,8 @@
       }
       // Links Claude's chats reveal: remember them, then tuck artifacts under their chats where both sit in one folder.
       if (r.scanned) Object.assign(lib.scanned, r.scanned);
+      if (r.pageChecked) lib.pageChecked = Object.assign(lib.pageChecked || {}, r.pageChecked);
+      lib.diag = Object.assign({ at: new Date().toISOString(), notes: r.notes || [] }, r.diag || {});
       for (const [c, a] of r.relations || []) if (!isDetached(c, a)) addRelation(c, a);
       autoAttachSiblings();
       repairGenericNames();
@@ -3784,14 +3794,26 @@
   $('vIcons').addEventListener('click', () => setView('icons'));
   $('vList').addEventListener('click', () => setView('list'));
   $('bReload').addEventListener('click', () => view && view.reload());
-  $('bSave').addEventListener('click', () => saveCurrent());
-  $('bSave').addEventListener('contextmenu', e => {
-    e.preventDefault();
-    showMenu(e.clientX, e.clientY, [
-      { label: 'Save', key: K.mod + 'S', run: () => saveCurrent() },
-      { label: 'Save As\u2026', key: K.shift + K.mod + 'S', run: saveAs },
+  // Save menu: Save As (a copy anywhere), move, show or remove the saved one.
+  function showSaveMenu(x, y) {
+    const c = pageContext();
+    const saved = c.status === 'saved' && nodeOf(c.linkId);
+    const where = saved ? (nodeOf(c.folderId) || {}).name || 'the top level' : null;
+    showMenu(x, y, [
+      !saved && { label: 'Save', key: K.mod + 'S', run: () => saveCurrent() },
+      { label: saved ? 'Save a Copy As\u2026' : 'Save As\u2026', key: K.shift + K.mod + 'S', run: saveAs },
+      saved && '-',
+      saved && { label: `Move to Another Folder\u2026`, run: () => moveTo(saved.id) },
+      saved && { label: `Show in \u201c${where}\u201d`, run: () => revealInFolder(saved.id) },
+      saved && { label: `Remove from \u201c${where}\u201d`, run: () => removeNode(saved.id) },
     ]);
+  }
+  $('bSave').addEventListener('click', e => {
+    if (pageContext().status === 'saved') { const b = e.currentTarget.getBoundingClientRect(); return showSaveMenu(b.left, b.bottom + 4); }
+    saveCurrent();
   });
+  $('bSave').addEventListener('contextmenu', e => { e.preventDefault(); showSaveMenu(e.clientX, e.clientY); });
+  $('bSaveMore').addEventListener('click', e => { const b = $('bSave').getBoundingClientRect(); showSaveMenu(b.left, b.bottom + 4); });
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
   $('bNewMenu').addEventListener('click', e => {
@@ -3870,6 +3892,13 @@
       '-',
       isApp && { label: 'Hide Claude\u2019s Own Sidebar', checked: hideClaudeSidebar(), run: () => setHideClaudeSidebar(!hideClaudeSidebar()) },
       isApp && '-',
+      isApp && { label: 'Copy Link Diagnostics', run: () => {
+        const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
+        const report = { chats: (lib.chats || []).length, artifacts: (lib.artifacts || []).length, linkedPairs: pairs,
+          chatsCheckedSoFar: Object.keys(lib.scanned || {}).length, artifactPagesCheckedSoFar: Object.keys(lib.pageChecked || {}).length,
+          sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null };
+        navigator.clipboard.writeText(JSON.stringify(report, null, 2)).then(() => toast('Diagnostics copied. Paste them into your chat with Claude Code.'));
+      } },
       { label: 'Back Up Folders to a File…', run: exportTree },
       { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
       '-',

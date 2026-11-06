@@ -72,6 +72,8 @@ How it works: Claude has no official way for other apps to read your chat list, 
 
 ## Saving anything to a folder
 
+Once a page is saved, the Save button says **Saved**; click it (or the small arrow beside it) for **Save a Copy As…**, **Move to Another Folder…**, **Show in Folder** and **Remove from Folder**.
+
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
 ## Profiles
@@ -123,7 +125,7 @@ An artifact made in a chat sits underneath that chat (with a small ↳ arrow), i
 
 - **Detach** an artifact (right-click, Detach from Chat) to move it on its own, for example when one chat made several artifacts that belong in different places. ⌥-drag also moves it on its own.
 - **Attach** it again by dropping it onto the chat, or right-click and choose Attach to Chat.
-- The app learns these links by itself: when you open an artifact from a chat, and by reading your recent chats in the background (as Claude's own page does) for the artifacts they mention. Where an artifact and its chat sit in the same folder, the artifact moves under the chat automatically (with Undo). A detached artifact is never reattached automatically.
+- The app learns these links by itself, in the background: from chats that mention an artifact's ID or its full name (a name mentioned by several chats is ignored rather than guessed), from an artifact's own page linking back to its chat, and when you open an artifact from a chat in the app. Where an artifact and its chat sit in the same folder, the artifact moves under the chat automatically (with Undo). A detached artifact is never reattached automatically. If links are not appearing, choose **Copy Link Diagnostics** in the ... menu and paste the result to Claude Code.
 - The app learns these links when you open an artifact from a chat. Filing that chat then brings its artifacts along, and an artifact filed into the folder that holds its chat goes under the chat.
 - In **Recent Chats**, the **Attached** button at the top shows or hides each chat's artifacts underneath it.
 
