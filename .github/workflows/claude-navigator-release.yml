@@ -1,8 +1,8 @@
 # Builds Claude Navigator on a Mac, signs it with your Developer ID, has Apple notarise it,
 # and publishes it to the public releases repository, where the app looks for updates.
 #
-# Runs when a tag like "claude-navigator-v0.2.0" is pushed, or by hand from the Actions tab.
-# The version in claude-navigator/package.json must match the tag.
+# Runs when the version in claude-navigator/package.json changes (a new version is published once; a version
+# that is already published is skipped), when a tag like "claude-navigator-v0.2.0" is pushed, or by hand.
 # Secrets it needs (Settings > Secrets and variables > Actions) are listed in claude-navigator/RELEASING.md.
 
 name: Release Claude Navigator (Mac)
@@ -10,6 +10,8 @@ name: Release Claude Navigator (Mac)
 on:
   push:
     tags: ['claude-navigator-v*']
+    branches: ['**']
+    paths: ['claude-navigator/package.json']
   workflow_dispatch:
 
 permissions:
@@ -40,7 +42,18 @@ jobs:
             exit 1
           fi
 
+      - name: Skip if this version is already published
+        id: published
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/dupreez1979-sketch/claude-navigator-releases/releases/tags/$v")
+          if [ "$code" = "200" ]; then echo "Version $v is already published; nothing to do."; echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+
       - name: Check the secrets are set
+        if: steps.published.outputs.skip != 'true'
         env:
           CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -53,8 +66,10 @@ jobs:
           if [ -n "$missing" ]; then echo "Missing secrets:$missing (see claude-navigator/RELEASING.md)"; exit 1; fi
 
       - run: npm ci
+        if: steps.published.outputs.skip != 'true'
 
       - name: Build, sign, notarise and publish
+        if: steps.published.outputs.skip != 'true'
         env:
           CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
           CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}

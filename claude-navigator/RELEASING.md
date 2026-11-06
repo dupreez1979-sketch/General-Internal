@@ -79,7 +79,7 @@ Tell Claude when this is done. Claude will then publish the first release.
 Claude does this for you. For the record, these are the steps:
 
 1. Raise `version` in `claude-navigator/package.json` (for example 0.2.0 to 0.2.1) and commit it.
-2. Push a tag with the same number, for example `claude-navigator-v0.2.1`.
+2. Push it. GitHub notices the new version number and starts the release (a version that is already published is skipped).
 3. GitHub builds, signs and notarises the app (about 15 minutes), then publishes it to `claude-navigator-releases`. You can watch it under **Actions** in `General-Internal`.
 4. Every installed copy picks it up within a few hours, or straight away with **… › Check for Updates…**
 
