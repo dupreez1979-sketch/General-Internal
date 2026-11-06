@@ -96,6 +96,24 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## Systems: Claude and monday.com
+
+The top of the sidebar is **Systems**: the places your folders draw from. **Claude** and **monday.com** each start closed; click one to open it (the app remembers).
+
+### monday.com
+
+1. Open **monday.com** under Systems and click **Connect monday.com…**.
+2. In monday.com, click your profile picture, then **Developers › My access tokens**, then **Show** and **Copy**.
+3. Paste the token into the box and click **Connect**.
+
+The token is stored encrypted in your Mac's Keychain and only ever sent to monday.com. Your workspaces appear, with their folders and boards (each board marked with monday.com's red, yellow and green mark):
+
+- **Click a board** to open it on the right, inside the app (sign in to monday.com there once).
+- **Drag a board** into any of your folders to file it, next to your Claude chats and files.
+- Right-click monday.com for **Refresh**, **Change API Token…** or **Disconnect**. The list also refreshes by itself every so often.
+
+Deleting a board from your folders only removes it from the folder; nothing is changed in monday.com.
+
 ## Search
 
 The search box looks through all your folders (names and addresses), or through the Claude list you are viewing. Capitals never matter.

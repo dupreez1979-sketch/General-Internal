@@ -24,6 +24,7 @@
       "preload.js",
       "index.html",
       "fsync.js",
+      "monday.js",
       "templates/**"
     ],
     "win": {

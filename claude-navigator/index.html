@@ -357,6 +357,14 @@
   html.profiled #side { position: relative; }
   html.profiled #side::before { left: 0; right: 0; }
 
+  /* Systems (Claude, monday.com) */
+  .row.sys-row .label { font-weight: 600; }
+  .row.monday-board .label { font-weight: 400; }
+  .mdl-tip { margin: 0; font-size: 12.5px; color: var(--muted); max-width: 420px; }
+  .mdl-steps { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+  .mdl-msg { min-height: 18px; font-size: 12.5px; color: #99351E; }
+  #mondayForm { gap: 12px; }
+
   /* Profile editor */
   #profileDlg form { gap: 14px; }
   .swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -445,6 +453,24 @@
 </main>
 
 <div id="menu" role="menu"></div>
+
+<dialog id="mondayDlg">
+  <form method="dialog" id="mondayForm">
+    <h2>Connect monday.com</h2>
+    <p class="mdl-tip">Claude Navigator reads your workspaces and boards with a personal API token. It is stored encrypted in your Mac's Keychain and only ever sent to monday.com.</p>
+    <ol class="mdl-steps">
+      <li>In monday.com, click your profile picture, then <b>Developers</b>.</li>
+      <li>Choose <b>My access tokens</b>, then <b>Show</b> and <b>Copy</b>.</li>
+      <li>Paste it here.</li>
+    </ol>
+    <label>API token:<input id="mondayToken" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your monday.com API token"></label>
+    <div id="mondayMsg" class="mdl-msg" role="status"></div>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel" formnovalidate>Cancel</button>
+      <button class="btn-primary" value="ok" id="mondayOk">Connect</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog id="profileDlg">
   <form method="dialog">
@@ -535,6 +561,14 @@
     link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
   G.canva = G.design;
+  // monday.com: three tilted capsules in monday's red, yellow and green, so boards are recognisable anywhere.
+  const MONDAY_MARK = (x = 0, y = 0, s = 1) => `<g transform="translate(${x} ${y}) scale(${s})">` +
+    `<rect x="1.2" y="5.2" width="3" height="7.6" rx="1.5" fill="#FB275D" transform="rotate(32 2.7 9)"/>` +
+    `<rect x="6.2" y="5.2" width="3" height="7.6" rx="1.5" fill="#FFCB00" transform="rotate(32 7.7 9)"/>` +
+    `<circle cx="13" cy="11" r="1.8" fill="#00CA72"/></g>`;
+  G.monday = () => MONDAY_MARK();
+  G.mondaydoc = C => G.file(C) + MONDAY_MARK(4.4, 5.6, 0.48);
+  G.mondayws = C => `<rect x="1.8" y="2.2" width="12.4" height="11.6" rx="2.4" fill="none" stroke="${C}" stroke-width="1.3"/>` + MONDAY_MARK(3.4, 2.8, 0.58);
   G.file = C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
   G.word = C => G.file(C) + `<path d="M5.3 7.5l.9 4 .9-3 .9 3 .9-4" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>`;
   G.excel = C => G.file(C) + `<path d="M5.5 7.5l3.4 4.2M8.9 7.5l-3.4 4.2" fill="none" stroke="${C}" stroke-width="1.1" stroke-linecap="round"/>`;
@@ -553,18 +587,18 @@
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
     doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
-    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2',
+    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF',
     word: '#6EA0F5', excel: '#4CC27C', powerpoint: '#F07A4E', pdf: '#F06A6A', image: '#B08CF0', video: '#E07BD0', audio: '#E7A24A', text: '#A0A7B0', archive: '#B0A090', file: '#A0A7B0',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
-    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8',
+    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF',
     word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
-    code: 'Code', schedule: 'Schedule', designsystem: 'Design system',
+    code: 'Code', schedule: 'Schedule', designsystem: 'Design system', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace',
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
@@ -1093,6 +1127,8 @@
     if (/claude\.ai\/project\//.test(u)) return 'project';
     if (/artifact/i.test(u)) return 'artifact';
     if (/canva\.com/.test(u)) return 'canva';
+    if (/(^|\.|\/\/)monday\.com\/docs\//.test(u)) return 'mondaydoc';
+    if (/(^|\.|\/\/)([a-z0-9-]+\.)?monday\.com\//.test(u)) return 'monday';
     if (/claude\.ai/.test(u)) return 'claude';
     return 'link';
   }
@@ -1161,14 +1197,29 @@
       }
     };
     if (isApp) {
+      // Systems: Claude and monday.com, each closed until you open it (remembered).
       const h = document.createElement('div');
-      h.className = 'row section open lib-head';
-      h.innerHTML = '<span class="label">Claude</span>';
-      h.title = 'Everything in your Claude account';
+      h.className = 'row section open lib-head sys-head';
+      h.innerHTML = '<span class="label">Systems</span>';
+      h.title = 'The systems your folders draw from. Drag anything from here into your folders.';
       frag.appendChild(h);
+      const sysRow = (key, label, icon, tip, extra = '') => {
+        const open = sysOpen(key);
+        const r = document.createElement('div');
+        r.className = 'row lib-action sys-row' + extra;
+        r.dataset.action = 'sys-' + key;
+        r.setAttribute('aria-expanded', String(open));
+        r.title = `${tip}. Click to ${open ? 'hide' : 'show'}.`;
+        r.innerHTML = `<span class="twisty${open ? ' open' : ''}">${UI.chev}</span><span class="icon">${icon}</span><span class="label"></span>`;
+        r.querySelector('.label').textContent = label;
+        frag.appendChild(r);
+        return open;
+      };
+      if (sysRow('claude', 'Claude', small('claude', KIND_COLOUR.claude), 'Everything in your Claude account')) {
       const nc = document.createElement('div');
       nc.className = 'row lib-action';
       nc.dataset.action = 'new-chat';
+      nc.style.setProperty('--depth', 1);
       nc.innerHTML = `<span class="twisty"></span><span class="icon">${UI.compose}</span><span class="label">New Chat</span>`;
       const here = newHereFolder();
       nc.title = here ? `New chat, saved in \u201c${nodeOf(here).name}\u201d once you send it (${K.mod}N)` : `New chat (${K.mod}N)`;
@@ -1193,13 +1244,14 @@
         }
         frag.appendChild(r);
       };
-      for (const k of SIDEBAR_LIB) libRowFor(k, 0);
+      for (const k of SIDEBAR_LIB) libRowFor(k, 1);
       // "Other": Design Systems, Code and Scheduled, closed until you open it.
       const open = ls.get('claudeNavigator.claudeOtherOpen') === '1';
       const o = document.createElement('div');
       o.className = 'row lib-action';
       o.dataset.action = 'claude-other';
       o.setAttribute('aria-expanded', String(open));
+      o.style.setProperty('--depth', 1);
       o.title = `${open ? 'Hide' : 'Show'} Design Systems, Code and Scheduled`;
       o.innerHTML = `<span class="twisty${open ? ' open' : ''}">${UI.chev}</span><span class="icon">${small('folder')}</span><span class="label">Other</span>`;
       const waiting = CLAUDE_OTHER.reduce((t, k) => t + unfiledCount(k, idx), 0);
@@ -1211,7 +1263,11 @@
         o.appendChild(b);
       }
       frag.appendChild(o);
-      if (open) for (const k of CLAUDE_OTHER) libRowFor(k, 1);
+      if (open) for (const k of CLAUDE_OTHER) libRowFor(k, 2);
+      }
+      if (sysRow('monday', 'monday.com', small('monday'), mondayData.connected ? `Your monday.com workspaces and boards${mondayData.me && mondayData.me.account ? ` (${mondayData.me.account})` : ''}` : 'Connect your monday.com account')) {
+        renderMondayRows(frag);
+      }
     }
     const sectionHead = (n, extra = '') => {
       const r = document.createElement('div');
@@ -3168,7 +3224,7 @@
     if (state.browseSel === id) state.browseSel = null;
     commit();
     if (askedAboutFiles) toast(`Moved \u201c${n.name}\u201d to the Trash. Restore it from the Trash if you need it back.`);
-    else if (n.type === 'link') toast(`Removed \u201c${n.name}\u201d from the folder. It is still in Claude.`, true);
+    else if (n.type === 'link') toast(`Removed \u201c${n.name}\u201d from the folder.${/monday\.com/.test(n.url || '') ? ' It is still in monday.com.' : /claude\.ai/.test(n.url || '') ? ' It is still in Claude.' : ''}`, true);
     else toast(`Deleted \u201c${n.name}\u201d`, true);
   }
 
@@ -3610,8 +3666,8 @@
     snap();
     const nodes = items.map(x => {
       const l = Link(hasWords(x.name) ? x.name : guessName(x.url), x.url);
-      const k = libKind(x, state.loc.kind === 'library' ? state.loc.which : 'artifacts');
-      if (!['chat', 'project', 'link'].includes(k)) l.as = k;
+      const k = x.system === 'monday' ? null : libKind(x, state.loc.kind === 'library' ? state.loc.which : 'artifacts');
+      if (k && !['chat', 'project', 'link'].includes(k)) l.as = k;
       l.autoName = true;
       return l;
     });
@@ -3830,6 +3886,11 @@
     const row = e.target.closest('.row');
     if (!row) return;
     if (row.dataset.action === 'new-chat') return newChat();
+    if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
+    if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
+    if (row.dataset.action === 'monday-connect') return openMondayConnect();
+    if (row.dataset.action === 'monday-open') return toggleMondayOpen(row.dataset.key);
+    if (row.classList.contains('monday-board')) return go({ kind: 'page', url: row.dataset.url });
     if (row.dataset.action === 'claude-other') {
       ls.set('claudeNavigator.claudeOtherOpen', ls.get('claudeNavigator.claudeOtherOpen') === '1' ? '0' : '1');
       return renderSide();
@@ -3878,8 +3939,25 @@
       showNewMenu(e.clientX, e.clientY);
       return;
     }
-    if (row && (row.dataset.lib || row.classList.contains('lib-head'))) {
-      showMenu(e.clientX, e.clientY, [{ label: 'Refresh from Claude', run: () => refreshLibrary(true) }]);
+    if (row && (row.dataset.action === 'sys-monday' || row.classList.contains('monday-node') || row.classList.contains('monday-board') || row.dataset.action === 'monday-connect')) {
+      if (row.classList.contains('monday-board')) {
+        const url = row.dataset.url;
+        return showMenu(e.clientX, e.clientY, [
+          { label: 'Open', run: () => go({ kind: 'page', url }) },
+          { label: 'Open in Web Browser', run: () => openExternal(url) },
+          { label: 'Copy Link', run: () => navigator.clipboard.writeText(url).then(() => toast('Link copied')) },
+          savedLinksFor(url).length > 0 && { label: 'Show in Folder', run: () => revealInFolder(savedLinksFor(url)[0].id) },
+          '-',
+          { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
+        ]);
+      }
+      return mondayMenu(e.clientX, e.clientY);
+    }
+    if (row && (row.dataset.lib || row.classList.contains('lib-head') || row.dataset.action === 'sys-claude')) {
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Refresh from Claude', run: () => refreshLibrary(true) },
+        isApp && row.classList.contains('sys-head') && { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
+      ]);
       return;
     }
     const n = row && nodeOf(row.dataset.id);
@@ -4201,6 +4279,17 @@
   const hasUrl = dt => [...dt.types].some(t => t === 'text/uri-list' || t === 'text/plain' || t === 'Files');
 
   function onDragStart(e) {
+    const board = e.target.closest && e.target.closest('.row.monday-board');
+    if (board) {
+      const item = { name: board.dataset.name, url: board.dataset.url, system: 'monday' };
+      e.dataTransfer.effectAllowed = 'copy';
+      e.dataTransfer.setData(LIB_TYPE, JSON.stringify([item]));
+      e.dataTransfer.setData('text/uri-list', item.url);
+      e.dataTransfer.setData('text/plain', item.url);
+      dragId = null;
+      hideMenu();
+      return;
+    }
     const libEl = e.target.closest('.item.lib');
     if (libEl) {
       libPendingSingle = null;
@@ -4521,6 +4610,141 @@
     const b = e.currentTarget.getBoundingClientRect();
     if (state.loc.kind === 'library') showLibFilterMenu(b.left, b.bottom + 4); else showFolderFilterMenu(b.left, b.bottom + 4);
   });
+  // ---------- monday.com ----------
+  // Workspaces, folders and boards from your monday.com account (read with your API token in the main process).
+  var mondayData = (() => { try { return JSON.parse(ls.get('claudeNavigator.monday.v1')) || { connected: false }; } catch (e) { return { connected: false }; } })();
+  var mondayBusy = false;
+  function sysOpen(key) { return ls.get('claudeNavigator.sysOpen.' + key) === '1'; }
+  function setSysOpen(key, open) {
+    ls.set('claudeNavigator.sysOpen.' + key, open ? '1' : '0');
+    renderSide();
+    if (key === 'monday' && open) mondayRefresh(false);
+  }
+  const mondayOpen = new Set((() => { try { return JSON.parse(ls.get('claudeNavigator.mondayOpen')) || []; } catch (e) { return []; } })());
+  function toggleMondayOpen(key) {
+    if (mondayOpen.has(key)) mondayOpen.delete(key); else mondayOpen.add(key);
+    ls.set('claudeNavigator.mondayOpen', JSON.stringify([...mondayOpen]));
+    renderSide();
+  }
+  const byName = (a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' });
+  function renderMondayRows(frag) {
+    const row = (cls, depth, icon, label, tip) => {
+      const r = document.createElement('div');
+      r.className = 'row ' + cls;
+      r.style.setProperty('--depth', depth);
+      r.innerHTML = `<span class="twisty"></span><span class="icon">${icon}</span><span class="label"></span>`;
+      r.querySelector('.label').textContent = label;
+      if (tip) r.title = tip;
+      frag.appendChild(r);
+      return r;
+    };
+    if (!mondayData.connected || mondayData.error === 'token') {
+      const r = row('lib-action', 1, `<span class="mi-plus">${UI.plus}</span>`, mondayData.connected ? 'Reconnect monday.com\u2026' : 'Connect monday.com\u2026',
+        'Paste a monday.com API token to list your workspaces and boards here');
+      r.dataset.action = 'monday-connect';
+      return;
+    }
+    if (!mondayData.workspaces) { row('lib-action', 1, '', mondayBusy ? 'Loading from monday.com\u2026' : 'Nothing loaded yet'); return; }
+    const boards = mondayData.boards || [], folders = mondayData.folders || [];
+    const tw = (r, key) => { const open = mondayOpen.has(key); r.querySelector('.twisty').innerHTML = UI.chev; r.querySelector('.twisty').classList.toggle('open', open); r.setAttribute('aria-expanded', String(open)); return open; };
+    const boardRow = (b, depth) => {
+      const kind = b.type === 'document' ? 'mondaydoc' : 'monday';
+      const filed = savedLinksFor(b.url).length;
+      const r = row('monday-board', depth, small(kind, KIND_COLOUR[kind]), b.name,
+        `${b.name}\n${KIND_NAME[kind]}${b.private ? ' (private)' : ''}. Click to open it here; drag it into one of your folders to file it.${filed ? '\nAlready in your folders.' : ''}`);
+      r.dataset.url = b.url;
+      r.dataset.name = b.name;
+      r.draggable = true;
+    };
+    const folderRows = (wsId, parentId, depth) => {
+      for (const f of folders.filter(f => f.workspace === wsId && (f.parent || null) === parentId).sort(byName)) {
+        const r = row('lib-action monday-node', depth, small('folder', KIND_COLOUR.mondayws), f.name, f.name);
+        r.dataset.action = 'monday-open';
+        r.dataset.key = 'f:' + f.id;
+        if (tw(r, 'f:' + f.id)) {
+          folderRows(wsId, f.id, depth + 1);
+          for (const b of boards.filter(b => b.folder === f.id).sort(byName)) boardRow(b, depth + 1);
+        }
+      }
+    };
+    const known = new Set(folders.map(f => f.id));
+    for (const w of (mondayData.workspaces || []).slice().sort((a, b) => (a.id === 'main' ? -1 : b.id === 'main' ? 1 : byName(a, b)))) {
+      const inWs = boards.filter(b => b.workspace === w.id);
+      if (!inWs.length && !folders.some(f => f.workspace === w.id)) continue;
+      const r = row('lib-action monday-node', 1, small('mondayws', KIND_COLOUR.mondayws), w.name, `${w.name}: ${inWs.length} board${inWs.length === 1 ? '' : 's'}`);
+      r.dataset.action = 'monday-open';
+      r.dataset.key = 'w:' + w.id;
+      const c = document.createElement('span');
+      c.className = 'count';
+      c.textContent = inWs.length;
+      r.appendChild(c);
+      if (tw(r, 'w:' + w.id)) {
+        folderRows(w.id, null, 2);
+        for (const b of inWs.filter(b => !b.folder || !known.has(b.folder)).sort(byName)) boardRow(b, 2);
+      }
+    }
+    if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
+  }
+  async function mondayRefresh(force = true) {
+    if (!isApp || mondayBusy) return;
+    if (!force && mondayData.fetchedAt && Date.now() - mondayData.fetchedAt < 30 * 60e3) return;
+    if (!mondayData.connected) { const st = await window.navigatorApp.mondayStatus(); if (!st.connected) return; mondayData.connected = true; }
+    mondayBusy = true;
+    if (!mondayData.workspaces) renderSide();
+    const res = await window.navigatorApp.mondayFetch();
+    mondayBusy = false;
+    if (!res || res.connected === false) mondayData = { connected: false };
+    else if (res.error) {
+      mondayData.error = res.error;
+      if (force) toast(res.error === 'token' ? 'monday.com no longer accepts your token. Reconnect it from the monday.com section.' : `Could not refresh from monday.com: ${res.error}`);
+    } else mondayData = res;
+    ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
+    renderSide();
+    if (force && res && !res.error && res.connected) toast(`Loaded ${res.boards.length} boards from monday.com`);
+  }
+  const mdlg = $('mondayDlg');
+  function openMondayConnect() {
+    $('mondayToken').value = '';
+    $('mondayMsg').textContent = '';
+    mdlg.showModal();
+    $('mondayToken').focus();
+  }
+  $('mondayForm').addEventListener('submit', async e => {
+    if (e.submitter && e.submitter.value === 'cancel') return;
+    e.preventDefault();
+    const token = $('mondayToken').value.trim();
+    if (!token) return;
+    $('mondayOk').disabled = true;
+    $('mondayMsg').style.color = 'var(--muted)';
+    $('mondayMsg').textContent = 'Checking with monday.com\u2026';
+    const res = await window.navigatorApp.mondayConnect(token);
+    $('mondayOk').disabled = false;
+    if (!res || res.error) { $('mondayMsg').style.color = ''; $('mondayMsg').textContent = res ? res.error : 'Could not connect.'; return; }
+    $('mondayToken').value = '';
+    mdlg.close();
+    mondayData = { connected: true, me: res.me };
+    ls.set('claudeNavigator.sysOpen.monday', '1');
+    toast(`Connected to monday.com as ${res.me.name}${res.me.account ? ` (${res.me.account})` : ''}`);
+    mondayRefresh(true);
+  });
+  function mondayMenu(x, y) {
+    showMenu(x, y, [
+      mondayData.connected && { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
+      { label: mondayData.connected ? 'Change API Token\u2026' : 'Connect monday.com\u2026', run: openMondayConnect },
+      mondayData.connected && { label: 'Disconnect monday.com', run: async () => {
+        if (!confirm('Disconnect monday.com? The token is removed from this Mac. Boards already in your folders stay there.')) return;
+        await window.navigatorApp.mondayDisconnect();
+        mondayData = { connected: false };
+        ls.set('claudeNavigator.monday.v1', JSON.stringify(mondayData));
+        renderSide();
+      } },
+    ]);
+  }
+  if (isApp && window.navigatorApp.mondayStatus) {
+    setTimeout(() => mondayRefresh(false), 4000);
+    setInterval(() => { if (sysOpen('monday')) mondayRefresh(false); }, 10 * 60e3);
+  }
+
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
   //   cape town            both words, in any order

@@ -9,6 +9,7 @@ const {
 const path = require('path');
 const fs = require('fs');
 const { FolderSync } = require('./fsync');
+const monday = require('./monday');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -804,7 +805,7 @@ function setUpLivePreview() {
   pull();
   setInterval(pull, 20000);
   let timer = null, restart = false;
-  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'package.json'];
+  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'monday.js', 'package.json'];
   fs.watch(__dirname, (_ev, name) => {
     if (!name || !files.includes(String(name))) return;
     if (!['index.html'].includes(String(name))) restart = true;
@@ -845,6 +846,25 @@ ipcMain.handle('update-check', async () => {
   return Object.assign({ current: app.getVersion() }, update);
 });
 ipcMain.handle('update-install', () => { if (updater && update.state === 'ready') setImmediate(() => updater.quitAndInstall()); });
+
+// ---------- monday.com ----------
+ipcMain.handle('monday-status', () => ({ connected: monday.hasToken() }));
+ipcMain.handle('monday-connect', async (_e, token) => {
+  token = typeof token === 'string' ? token.trim() : '';
+  if (token.length < 20) return { error: 'That does not look like a monday.com API token.' };
+  try {
+    const me = await monday.check(token);
+    monday.saveToken(token);
+    return { ok: true, me };
+  } catch (e) {
+    return { error: e.code === 'token' ? 'monday.com did not accept that token. Copy it again from Developers \u203a My access tokens.' : `Could not reach monday.com: ${e.message}` };
+  }
+});
+ipcMain.handle('monday-disconnect', () => { monday.clearToken(); return { ok: true }; });
+let mondayRun = null;
+ipcMain.handle('monday-fetch', () => mondayRun || (mondayRun = monday.fetchAll()
+  .catch(e => ({ connected: monday.hasToken(), error: e.code === 'token' ? 'token' : e.message }))
+  .finally(() => { mondayRun = null; })));
 
 // ---------- Automatic backups ----------
 // One backup a day of your folders (and the app's links between chats and artifacts), the last 30 kept.
