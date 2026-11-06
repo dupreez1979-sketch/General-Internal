@@ -180,7 +180,8 @@
   .lhead .sa { display: inline-block; margin-left: 4px; vertical-align: -1px; }
   .lhead .sa svg { display: inline; }
   .lhead { color: var(--muted); font-size: 11px; font-weight: 500; padding: 0 10px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
-  .lrow { height: 26px; padding: 0 10px; border-radius: 6px; }
+  .lrow { height: 26px; padding: 0 10px; border-radius: 6px; white-space: nowrap; }
+  .lrow .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lrow:nth-child(odd) { background: var(--hover); }
   .lrow .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .lrow .icon { color: var(--accent); display: grid; }
@@ -881,7 +882,7 @@
       filed: where ? where.join(', ') : '',
       address: x.url.replace(/^https?:\/\//, ''),
     });
-    r.title = x.url;
+    r.title = `${libName(x, kind)}\n${x.url}`;
     return r;
   }
 
@@ -1143,7 +1144,7 @@
       where: pathTo(n.id).slice(0, -1).map(p => p.name).join(' \u203a ') || 'Top level',
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
-    r.title = n.type === 'link' ? n.url : n.name;
+    r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     return r;
   }
 
