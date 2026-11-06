@@ -43,8 +43,10 @@ fi
 # Fetch it straight from Electron's official releases if it is missing.
 EDIR="node_modules/electron"
 EBIN="Electron.app/Contents/MacOS/Electron"
-if [ ! -x "$EDIR/dist/$EBIN" ]; then
-  EVER="$(node -p "require('./$EDIR/package.json').version")"
+EVER="$(node -p "require('./$EDIR/package.json').version")"
+EFW="$EDIR/dist/Electron.app/Contents/Frameworks/Electron Framework.framework/Electron Framework"
+# Download again unless the engine is complete and the right version (a half-unpacked copy is replaced).
+if [ ! -x "$EDIR/dist/$EBIN" ] || [ ! -e "$EFW" ] || [ "$(cat "$EDIR/dist/version" 2>/dev/null)" != "v$EVER" ]; then
   if [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ]; then EARCH=arm64; else EARCH=x64; fi
   printf '\n\033[1mDownloading the Electron engine %s (about 100 MB, once)\033[0m\n' "$EVER"
   ZIP="$(mktemp -t electron).zip"
