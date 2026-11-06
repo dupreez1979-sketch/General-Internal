@@ -6,6 +6,7 @@
 const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
 const path = require('path');
 
+const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
 
 // Present as a normal Chrome browser so sign-in pages treat the app like one.
@@ -37,7 +38,15 @@ function createWindow() {
     minHeight: 480,
     title: 'Claude Navigator',
     autoHideMenuBar: true,
-    backgroundColor: '#f3f3f3',
+    ...(isMac
+      ? {
+          titleBarStyle: 'hiddenInset',          // traffic lights sit inside the sidebar
+          trafficLightPosition: { x: 16, y: 16 },
+          vibrancy: 'sidebar',                    // frosted sidebar, like Finder
+          visualEffectState: 'active',
+          backgroundColor: '#00000000',
+        }
+      : { backgroundColor: '#f3f3f3' }),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -101,7 +110,8 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.whenReady().then(() => {
-    if (process.platform !== 'darwin') Menu.setApplicationMenu(null);
+    // On a Mac keep the standard menu bar (Edit menu gives Cmd+C, Cmd+V, Cmd+Q).
+    if (!isMac) Menu.setApplicationMenu(null);
     createWindow();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
   });

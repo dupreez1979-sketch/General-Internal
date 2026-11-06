@@ -47,6 +47,14 @@
   /* ---------- Sidebar ---------- */
   #side { background: var(--side); display: flex; flex-direction: column; min-width: 0; position: relative; }
   .side-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 8px; }
+  .mac body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; }
+  .mac-app .side-head { padding-top: 44px; -webkit-app-region: drag; }
+  .mac-app .pane-bar { min-height: 44px; -webkit-app-region: drag; }
+  .mac-app .side-head button, .mac-app .pane-bar button { -webkit-app-region: no-drag; }
+  /* Frosted sidebar like Finder and Notes. */
+  .mac-app body { background: transparent; }
+  .mac-app #side { background: color-mix(in srgb, var(--side) 55%, transparent); }
+  .mac-app #main { background: var(--bg); }
   .brand { font-weight: 600; font-size: 14px; flex: 1; display: flex; align-items: center; gap: 8px; }
   .brand-dot { width: 18px; height: 18px; border-radius: 5px; background: var(--accent); }
   .btn-primary {
@@ -243,6 +251,19 @@
   const LAST_URL = 'claudeNavigator.lastUrl';
   const HOME = 'https://claude.ai/new';
   const isApp = !!(window.navigatorApp && window.navigatorApp.isElectron);
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  const K = isMac
+    ? { mod: '\u2318', shift: '\u21e7', del: '\u232b', enter: 'Return', rename: 'Return', open: '\u2318\u2193' }
+    : { mod: 'Ctrl+', shift: 'Shift+', del: 'Del', enter: 'Enter', rename: 'F2', open: 'Enter' };
+  if (isMac) document.documentElement.classList.add('mac');
+  if (isApp && isMac) document.documentElement.classList.add('mac-app');
+  // Show the right shortcut symbols in tooltips and placeholders.
+  document.querySelectorAll('[title], [placeholder]').forEach(el => {
+    for (const a of ['title', 'placeholder']) {
+      const v = el.getAttribute(a);
+      if (v && v.includes('Ctrl+')) el.setAttribute(a, v.replace(/Ctrl\+Shift\+/g, K.mod + K.shift).replace(/Ctrl\+/g, K.mod));
+    }
+  });
 
   const I = {
     chev: '<svg width="12" height="12" viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -724,7 +745,7 @@
         <h1>Your Claude folders</h1>
         <p>Click any link in the tree and it opens in Claude in a separate tab, with every Claude feature available.</p>
         <p>Claude does not allow itself to be shown inside another web page. Run the desktop app version to see Claude right here, next to your folders.</p>
-        <p>Tip: drag a link from the browser address bar onto any folder to save it. Right-click for more options. <kbd>F2</kbd> renames, <kbd>Del</kbd> deletes, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes.</p>
+        <p>Tip: drag a link from the browser address bar onto any folder to save it. Right-click for more options. <kbd>${K.rename}</kbd> renames, <kbd>${K.del}</kbd> deletes, <kbd>${K.mod.replace('+', '')}</kbd>+<kbd>Z</kbd> undoes.</p>
       </div>`;
   }
 
@@ -812,26 +833,26 @@
         isApp && { label: 'Save current page here', icon: 'star', run: () => saveCurrent(n) },
         { label: 'New chat, then save here', icon: 'chat', run: () => { state.selectedId = n.id; openUrl(HOME); toast('When the chat has a title, click Save page'); } },
         '-',
-        { label: 'Rename', key: 'F2', run: () => startRename(n.id) },
+        { label: 'Rename', key: K.rename, run: () => startRename(n.id) },
         { label: 'Move to...', run: () => moveTo(n.id) },
         { label: 'Duplicate', run: () => duplicate(n.id) },
         { label: 'Sort contents A to Z', run: () => sortFolder(n) },
         '-',
-        { label: 'Delete', key: 'Del', danger: true, run: () => removeNode(n.id) },
+        { label: 'Delete', key: K.del, danger: true, run: () => removeNode(n.id) },
       ];
     }
     return [
-      { label: 'Open', key: 'Enter', run: () => openUrl(n.url) },
+      { label: 'Open', key: K.open, run: () => openUrl(n.url) },
       { label: 'Open in new window', run: () => openUrl(n.url, { newWindow: true }) },
       { label: 'Open in web browser', icon: 'external', run: () => openExternal(n.url) },
       { label: 'Copy link', run: () => { navigator.clipboard.writeText(n.url).then(() => toast('Link copied')); } },
       '-',
-      { label: 'Rename', key: 'F2', run: () => startRename(n.id) },
+      { label: 'Rename', key: K.rename, run: () => startRename(n.id) },
       { label: 'Edit link or move...', run: () => editLink(n.id) },
       isApp && { label: 'Replace with current page', run: () => { snap(); n.url = view.getURL(); commit(); toast('Link updated'); } },
       { label: 'Duplicate', run: () => duplicate(n.id) },
       '-',
-      { label: 'Delete', key: 'Del', danger: true, run: () => removeNode(n.id) },
+      { label: 'Delete', key: K.del, danger: true, run: () => removeNode(n.id) },
     ];
   }
 
@@ -869,7 +890,10 @@
     const cur = i >= 0 ? locate(ids[i]) : null;
     const n = cur && cur.node;
     switch (e.key) {
-      case 'ArrowDown': select(ids[Math.min(ids.length - 1, i + 1)]); break;
+      case 'ArrowDown':
+        if (e.metaKey && n) { n.type === 'folder' ? toggle(n, true) : openUrl(n.url); break; }
+        select(ids[Math.min(ids.length - 1, i + 1)]);
+        break;
       case 'ArrowUp': select(ids[i <= 0 ? 0 : i - 1]); break;
       case 'Home': select(ids[0]); break;
       case 'End': select(ids[ids.length - 1]); break;
@@ -885,7 +909,15 @@
           else if (cur.parent) select(cur.parent.id);
         }
         break;
-      case 'Enter': if (n) n.type === 'folder' ? toggle(n) : openUrl(n.url); break;
+      case 'Enter':
+        if (!n) break;
+        if (isMac) startRename(n.id);
+        else n.type === 'folder' ? toggle(n) : openUrl(n.url);
+        break;
+      case 'o': case 'O':
+        if (!(e.metaKey || e.ctrlKey) || !n) return;
+        n.type === 'folder' ? toggle(n, true) : openUrl(n.url);
+        break;
       case 'F2': if (n) startRename(n.id); break;
       case 'Delete': case 'Backspace': if (n) removeNode(n.id); break;
       case 'ContextMenu': {
@@ -1045,7 +1077,7 @@
     showMenu(r.left, r.bottom + 4, [
       { label: 'Expand all', run: () => setAllOpen(true) },
       { label: 'Collapse all', run: () => setAllOpen(false) },
-      { label: 'Undo', key: 'Ctrl+Z', disabled: !history.length, run: undo },
+      { label: 'Undo', key: K.mod + 'Z', disabled: !history.length, run: undo },
       '-',
       { label: 'Back up folders to a file', run: exportTree },
       { label: 'Restore folders from a file', run: () => document.getElementById('importFile').click() },
