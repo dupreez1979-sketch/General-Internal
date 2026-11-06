@@ -121,6 +121,10 @@
   #progress.on { width: 70%; opacity: 1; }
 
   #content { flex: 1; position: relative; min-height: 0; display: flex; }
+  #findbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--win); }
+  #findbar .search, #findbar .search:focus-within { width: 260px; }
+  #findCount { color: var(--muted); font-size: 12px; min-width: 70px; }
+  #findbar .spacer { flex: 1; }
   #pane { flex: 1; display: flex; }
   #pane webview { flex: 1; border: 0; }
   #browse { flex: 1; overflow: auto; outline: none; padding: 14px 18px 30px; }
@@ -251,6 +255,16 @@
     </div>
   </div>
   <div id="progress"></div>
+  <div id="findbar" hidden>
+    <div class="search"><span data-icon="search"></span><input id="findInput" type="search" placeholder="Find on this page" autocomplete="off" spellcheck="false"></div>
+    <div class="seg">
+      <button class="tb" id="findPrev" title="Previous (Ctrl+Shift+G)"><span data-icon="back"></span></button>
+      <button class="tb" id="findNext" title="Next (Ctrl+G)"><span data-icon="fwd"></span></button>
+    </div>
+    <span id="findCount"></span>
+    <span class="spacer"></span>
+    <button class="btn" id="findDone">Done</button>
+  </div>
   <div id="content">
     <div id="browse" tabindex="0" aria-label="Folder contents"></div>
     <div id="pane" hidden></div>
@@ -454,12 +468,16 @@
     return 'link';
   }
   const cleanTitle = t => (t || '').replace(/\s*[-|–]\s*Claude\s*$/i, '').trim();
+  // A page title worth using as a name (not just "Claude" while a page loads).
+  const realTitle = t => { const c = cleanTitle(t); return c && !/^(claude|new chat|just a moment\.*|loading\.*)$/i.test(c) ? c : ''; };
+  // Names you have not typed yourself follow the chat's title in Claude.
+  const isAutoName = n => n.autoName === true || (n.autoName === undefined && /^Untitled (chat|project|artifact|link)$/.test(n.name));
   function guessName(url) {
     const k = kindOf({ type: 'link', url });
     if (k === 'chat') return 'Untitled chat';
     if (k === 'project') return 'Untitled project';
     if (k === 'artifact') return 'Untitled artifact';
-    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
+    try { return new URL(url).hostname.replace(/^www\./, '') || 'Untitled link'; } catch (e) { return 'Untitled link'; }
   }
   function savedLinksFor(url) {
     const out = [];
@@ -725,6 +743,7 @@
 
   function show() {
     const loc = state.loc;
+    if (loc.kind !== 'page') closeFind();
     if (loc.kind === 'folder') {
       state.lastFolderId = loc.id;
       if (state.browseSel && !childrenOf(loc.id).some(c => c.id === state.browseSel)) state.browseSel = null;
@@ -736,6 +755,8 @@
         state.pageUrl = loc.url;
         state.pageTitle = '';
         if (viewReady) view.loadURL(loc.url); else view.setAttribute('src', loc.url);
+      } else {
+        syncNames(state.pageUrl, state.pageTitle); // already showing: catch up on its title
       }
     }
     ls.set(LOC_STORE, JSON.stringify({ loc, lastFolderId: state.lastFolderId }));
@@ -791,6 +812,7 @@
       state.pageUrl = url;
       state.pageTitle = title;
       // Moving around inside Claude updates the current history entry rather than adding one.
+      syncNames(url, title);
       if (state.loc.kind === 'page') {
         state.loc.url = url;
         ls.set(LOC_STORE, JSON.stringify({ loc: state.loc, lastFolderId: state.lastFolderId }));
@@ -802,6 +824,64 @@
     ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => view.addEventListener(ev, update));
     view.addEventListener('did-start-loading', () => $('progress').classList.add('on'));
     view.addEventListener('did-stop-loading', () => { $('progress').classList.remove('on'); update(); });
+  }
+
+  // When Claude gives a chat its title, or you rename it in Claude, saved links follow.
+  function syncNames(url, title) {
+    const t = realTitle(title);
+    if (!t) return;
+    let changed = false;
+    for (const n of savedLinksFor(url)) {
+      if (isAutoName(n) && n.name !== t) { n.name = t; n.autoName = true; changed = true; }
+    }
+    if (changed) { save(); renderSide(); }
+  }
+
+  // ---------- Find on page (Claude pane) ----------
+  const findbar = $('findbar'), findInput = $('findInput');
+  let findText = '';
+  const pageShowing = () => isApp && state.loc.kind === 'page' && !state.query;
+  function openFind() {
+    if (!pageShowing()) { searchEl.focus(); searchEl.select(); return; }
+    findbar.hidden = false;
+    findInput.focus();
+    findInput.select();
+  }
+  function closeFind() {
+    if (findbar.hidden) return;
+    findbar.hidden = true;
+    findText = '';
+    $('findCount').textContent = '';
+    try { view.stopFindInPage('clearSelection'); } catch (e) { /* ignore */ }
+    if (pageShowing()) view.focus();
+  }
+  function findStep(forward = true) {
+    if (!pageShowing()) return;
+    if (findbar.hidden || !findInput.value) return openFind();
+    const t = findInput.value;
+    view.findInPage(t, { forward, findNext: t === findText });
+    findText = t;
+  }
+  if (isApp) {
+    findInput.addEventListener('input', () => {
+      const t = findInput.value;
+      findText = '';
+      if (!t) { view.stopFindInPage('clearSelection'); $('findCount').textContent = ''; return; }
+      view.findInPage(t);
+      findText = t;
+    });
+    findInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); findStep(!e.shiftKey); }
+      if (e.key === 'Escape') { e.preventDefault(); closeFind(); }
+    });
+    $('findNext').addEventListener('click', () => findStep(true));
+    $('findPrev').addEventListener('click', () => findStep(false));
+    $('findDone').addEventListener('click', closeFind);
+    view.addEventListener('found-in-page', e => {
+      const r = e.result;
+      if (r.matches !== undefined) $('findCount').textContent = r.matches ? `${r.activeMatchOrdinal} of ${r.matches}` : 'Not found';
+      if (!findbar.hidden && document.activeElement !== findInput) findInput.focus();
+    });
   }
 
   // ---------- Editing ----------
@@ -839,9 +919,11 @@
     }
   }
 
-  function addLink(parentId, name, url, { rename = false } = {}) {
+  function addLink(parentId, name, url, { rename = false, autoName = !name } = {}) {
     snap();
     const l = Link(name || guessName(url), url);
+    l.autoName = autoName;
+    if (autoName && isApp && normUrl(url) === normUrl(state.pageUrl) && realTitle(state.pageTitle)) l.name = realTitle(state.pageTitle);
     insertInto(parentId, l);
     commit();
     const inView = showingFolder(parentId);
@@ -908,7 +990,7 @@
       if (done) return;
       done = true;
       const v = input.value.trim();
-      if (ok && v && v !== n.name) { snap(); n.name = v; }
+      if (ok && v && v !== n.name) { snap(); n.name = v; n.autoName = false; }
       commit();
       (scope === browseEl ? browseEl : treeEl).focus({ preventScroll: true });
     };
@@ -956,7 +1038,7 @@
   function promptNewLink(folderId = hereFolder()) {
     openDialog({
       title: 'Add Link', folderId,
-      onSave: ({ name, url, folderId }) => { if (url) addLink(folderId, name || guessName(url), url); },
+      onSave: ({ name, url, folderId }) => { if (url) addLink(folderId, name, url); },
     });
   }
   function editLink(id) {
@@ -968,7 +1050,7 @@
         if (!url) return;
         snap();
         const cur = locate(id);
-        cur.node.name = name || cur.node.name;
+        if (name && name !== cur.node.name) { cur.node.name = name; cur.node.autoName = false; }
         cur.node.url = url;
         moveNode(cur, folderId);
         commit();
@@ -992,8 +1074,8 @@
   function saveCurrent(folderId = state.lastFolderId) {
     if (!isApp || state.loc.kind !== 'page') return promptNewLink(folderId);
     const url = state.pageUrl;
-    const name = cleanTitle(state.pageTitle) || guessName(url);
-    addLink(folderId, name, url);
+    const name = realTitle(state.pageTitle) || guessName(url);
+    addLink(folderId, name, url, { autoName: true });
     const f = nodeOf(folderId);
     toast(`Saved “${name}” to ${f ? f.name : 'top level'}`, true);
   }
@@ -1311,6 +1393,7 @@
       if (!url) return;
       snap();
       node = Link(guessName(url), url);
+      node.autoName = true;
       isNew = true;
     }
     if (t.zone === 'into') insertInto(t.id, node);
@@ -1408,7 +1491,10 @@
     if (!mod || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const k = e.key.toLowerCase();
-    if (k === 'f') { searchEl.focus(); searchEl.select(); }
+    if (k === 'f') openFind();
+    else if (k === 'g' && pageShowing()) findStep(!e.shiftKey);
+    else if (k === 'r' && pageShowing()) view.reload();
+    else if (k === 'p' && pageShowing()) view.print();
     else if (k === 'n' && e.shiftKey) newFolder();
     else if (k === 'n') newChat();
     else if (k === 'l') promptNewLink();
@@ -1424,25 +1510,56 @@
   });
   // Shortcuts pressed while typing inside Claude are passed on by the desktop app.
   if (isApp && window.navigatorApp.onShortcut) {
-    window.navigatorApp.onShortcut(k => {
-      if (k === 'save') saveCurrent();
-      if (k === 'new-folder') newFolder();
-      if (k === 'back') back();
-      if (k === 'forward') forward();
+    const actions = {
+      'new-chat': newChat,
+      'new-folder': () => newFolder(),
+      'add-link': () => promptNewLink(),
+      save: () => saveCurrent(),
+      find: openFind,
+      'find-next': () => findStep(true),
+      'find-prev': () => findStep(false),
+      print: () => { if (pageShowing()) view.print(); else window.print(); },
+      reload: () => { if (pageShowing()) view.reload(); },
+      back, forward, up,
+      'view-icons': () => setView('icons'),
+      'view-list': () => setView('list'),
+    };
+    window.navigatorApp.onShortcut(k => { if (!dlg.open && actions[k]) actions[k](); });
+
+    // Files saved from Claude land in Downloads.
+    window.navigatorApp.onDownload(d => {
+      if (d.state === 'started') toast(`Downloading “${d.name}”…`);
+      else if (d.state === 'completed') toast(`Downloaded “${d.name}”`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(d.path) });
+      else toast(`Download of “${d.name}” did not finish`);
+    });
+
+    // "Save Link to a Folder" from the right-click menu inside Claude.
+    window.navigatorApp.onContextAction(a => {
+      if (a.action !== 'save-link') return;
+      const text = a.text && a.text.length < 120 ? a.text : '';
+      openDialog({
+        title: 'Save Link', name: text, url: a.url, folderId: state.lastFolderId,
+        onSave: ({ name, url, folderId }) => { if (url) addLink(folderId, name, url, { autoName: !name }); },
+      });
     });
   }
 
   // ---------- Toast ----------
   const toastEl = $('toast');
   let toastTimer = null;
-  function toast(msg, withUndo = false) {
+  // toast(message), toast(message, true) for an Undo button, or toast(message, { label, run }).
+  let toastAction = null;
+  function toast(msg, action = null) {
+    if (action === true) action = { label: 'Undo', run: undo };
+    toastAction = action;
     $('toastMsg').textContent = msg;
-    $('toastUndo').hidden = !withUndo;
+    $('toastUndo').hidden = !action;
+    if (action) $('toastUndo').textContent = action.label;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toastEl.classList.remove('show'), withUndo ? 6000 : 2600);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), action ? 6000 : 2600);
   }
-  $('toastUndo').addEventListener('click', () => { toastEl.classList.remove('show'); undo(); });
+  $('toastUndo').addEventListener('click', () => { toastEl.classList.remove('show'); if (toastAction) toastAction.run(); });
 
   // ---------- Resizable sidebar ----------
   const clampW = w => Math.max(180, Math.min(520, w));

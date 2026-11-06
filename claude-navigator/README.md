@@ -78,6 +78,15 @@ It behaves like a Finder window:
 | Open in a separate window | ⌘-click |
 | More options | Right-click anything, or empty space |
 
+**Inside Claude**
+
+- **Right-click** works as in Safari: copy, paste, spelling suggestions, open a link in a new window or your browser, copy an image, and "Save Link to a Folder" for any link in a chat.
+- **Find on page**: ⌘F opens a find bar while Claude is showing (⌘G and ⌘⇧G for next and previous). In a folder, ⌘F searches your folders instead.
+- **Downloads** from Claude (artifacts, exports, images) go straight to your Downloads folder, with a "Show in Finder" button.
+- **Print or save a chat as a PDF** with ⌘P.
+- **Voice mode**: macOS asks once for microphone permission.
+- **Names stay current**: a saved chat takes Claude's title for it, and follows if you rename the chat in Claude. If you rename it yourself in your folders, your name sticks.
+
 On Windows the same shortcuts use Ctrl, F2 renames and Enter opens.
 
 ## Your data
