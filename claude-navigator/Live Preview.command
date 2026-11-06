@@ -57,6 +57,8 @@ if [ ! -x "$EDIR/dist/$EBIN" ]; then
   printf 'v%s' "$EVER" > "$EDIR/dist/version"
   [ -x "$EDIR/dist/$EBIN" ] || fail "Electron did not unpack as expected. Send this window's text to Claude."
 fi
+# Keep npm's pointer to the engine in place too (harmless if it is already there).
+[ "$(cat "$EDIR/path.txt" 2>/dev/null)" = "$EBIN" ] || printf '%s' "$EBIN" > "$EDIR/path.txt"
 
 printf '\n\033[32mStarting the live preview. Keep this window open; close it (or quit the app) to stop.\033[0m\n'
-CLAUDE_NAV_LIVE=1 npx electron . 
+CLAUDE_NAV_LIVE=1 "$EDIR/dist/$EBIN" .
