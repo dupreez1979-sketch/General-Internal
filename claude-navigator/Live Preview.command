@@ -39,10 +39,23 @@ if [ ! -d node_modules ] || [ package.json -nt node_modules ] || [ package-lock.
   npm ci --no-audit --no-fund || fail "Download failed. Check your internet connection and try again."
   touch node_modules
 fi
-# The Electron engine is a separate download; fetch it if it is missing or incomplete.
-if [ ! -f node_modules/electron/path.txt ] || [ ! -d node_modules/electron/dist ]; then
-  printf '\n\033[1mDownloading the Electron engine (about 100 MB, once)\033[0m\n'
-  node node_modules/electron/install.js || fail "Could not download Electron. Check your internet connection and try again."
+# The Electron engine is a separate download, which newer versions of npm no longer do by themselves.
+# Fetch it straight from Electron's official releases if it is missing.
+EDIR="node_modules/electron"
+EBIN="Electron.app/Contents/MacOS/Electron"
+if [ ! -x "$EDIR/dist/$EBIN" ]; then
+  EVER="$(node -p "require('./$EDIR/package.json').version")"
+  if [ "$(sysctl -n hw.optional.arm64 2>/dev/null || echo 0)" = "1" ]; then EARCH=arm64; else EARCH=x64; fi
+  printf '\n\033[1mDownloading the Electron engine %s (about 100 MB, once)\033[0m\n' "$EVER"
+  ZIP="$(mktemp -t electron).zip"
+  curl -fL --progress-bar -o "$ZIP" "https://github.com/electron/electron/releases/download/v$EVER/electron-v$EVER-darwin-$EARCH.zip" \
+    || fail "Could not download Electron. Check your internet connection and try again."
+  rm -rf "$EDIR/dist" && mkdir -p "$EDIR/dist"
+  ditto -x -k "$ZIP" "$EDIR/dist" || fail "Could not unpack Electron."
+  rm -f "$ZIP"
+  printf '%s' "$EBIN" > "$EDIR/path.txt"
+  printf 'v%s' "$EVER" > "$EDIR/dist/version"
+  [ -x "$EDIR/dist/$EBIN" ] || fail "Electron did not unpack as expected. Send this window's text to Claude."
 fi
 
 printf '\n\033[32mStarting the live preview. Keep this window open; close it (or quit the app) to stop.\033[0m\n'
