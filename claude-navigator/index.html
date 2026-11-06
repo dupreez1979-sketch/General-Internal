@@ -212,6 +212,36 @@
   .cos-src-head .tb.on { background: var(--sel); color: var(--text); }
   .cos-src-head input { margin-left: auto; font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 150px; color: var(--text); }
   .cos-src #content { flex: 1; min-height: 0; }
+  .cos-tabbody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .cos-tabbody .cos-ptop input { font-size: 13.5px; font-weight: 400; background: var(--field); }
+  .cos-tabnote { font-size: 12px; color: var(--muted); flex: 1; }
+  .cos-grouph { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 12px 8px 4px; user-select: none; }
+  .act { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 7px; font-size: 13px; }
+  .act:hover { background: var(--hover); }
+  .act.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+  .act.done .at { text-decoration: line-through; color: var(--muted); }
+  .act .at { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .act .meta { display: flex; align-items: center; gap: 6px; flex: none; }
+  .act select { font: inherit; font-size: 12px; background: var(--field); border: 0; border-radius: 6px; padding: 3px 6px; color: var(--text); }
+  .due { font-size: 11.5px; color: var(--muted); background: var(--field); border-radius: 8px; padding: 2px 8px; }
+  .due.late { color: #fff; background: #99351E; }
+  .due.today { color: #fff; background: #B36E24; }
+  .cos-chip { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; font-size: 12px; background: var(--field); border-radius: 8px; padding: 2px 8px; cursor: pointer; }
+  .cos-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-chip:hover { background: var(--hover); }
+  .cos-chip .x { border: 0; background: none; color: var(--muted); padding: 0 0 0 2px; font-size: 13px; line-height: 1; }
+  .cos-cards { flex: 1; overflow: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start; }
+  .fcard { background: var(--win); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 8px; align-content: start; }
+  .fcard.drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--win)); }
+  .fcard b { font-size: 14px; }
+  .fcard p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+  .fcard .row2 { display: flex; align-items: center; gap: 6px; }
+  .fcard .last { margin-left: auto; font-size: 11px; color: var(--muted); }
+  .cos-form { display: grid; gap: 12px; min-width: 420px; }
+  .cos-form .ff { display: grid; gap: 10px; }
+  .cos-form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .cos-form input, .cos-form textarea, .cos-form select { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 0; border-radius: 7px; padding: 7px 9px; }
+  .cos-form textarea { min-height: 80px; resize: vertical; }
   #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
   #cosSide[hidden], #cosMain[hidden] { display: none; }
   #cosMain { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -5577,7 +5607,7 @@
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
-    document.body.classList.toggle('cos-adding', !!(staff && cosUi.tab === 'projects' && cosUi.adding));
+    document.body.classList.toggle('cos-adding', !!(staff && cosUi.tab !== 'routines' && cosUi.adding));
     if (staff) {
       const back = document.createElement('button');
       back.className = 'tb';
@@ -5812,11 +5842,21 @@
       const b = document.createElement('button');
       b.className = cosUi.tab === k ? 'on' : '';
       b.textContent = label;
-      if (k === 'projects') { const c = document.createElement('span'); c.className = 'n'; c.textContent = cosProjects(n).filter(p => !p.archived).length; b.appendChild(c); }
-      b.addEventListener('click', () => { cosUi.tab = k; renderCos(); });
+      const cnt = k === 'projects' ? cosProjects(n).filter(p => !p.archived).length : k === 'actions' ? cosActions(n).filter(a => a.status !== 'done').length : k === 'functions' ? cosFunctions(n).length : 0;
+      if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
+      b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; renderCos(); });
       tabs.appendChild(b);
     }
     page.append(who, tabs);
+    if (cosUi.tab === 'actions' || cosUi.tab === 'functions') {
+      const wrap2 = document.createElement('div');
+      wrap2.className = 'cos-proj';
+      (cosUi.tab === 'actions' ? renderActions : renderFunctions)(n, wrap2);
+      if (cosUi.adding) wrap2.appendChild(cosSourcePane());
+      page.appendChild(wrap2);
+      body.appendChild(page);
+      return;
+    }
     if (cosUi.tab !== 'projects') {
       const e = document.createElement('div');
       e.className = 'cos-empty';
@@ -5980,6 +6020,281 @@
     if (cosUi.adding && p) wrap.appendChild(cosSourcePane());
     page.appendChild(wrap);
     body.appendChild(page);
+  }
+
+  // ---------- Chief of Staff: Actions and Functions ----------
+  // Action:   { id, title, notes, status: 'todo' | 'doing' | 'done', due: 'YYYY-MM-DD' | '', link: { name, url } | null, created, doneAt }
+  // Function: { id, name, about, prompt, link: { name, url } | null, created, lastRun }
+  const cosActions = n => n.actions || (n.actions = []);
+  const cosFunctions = n => n.functions || (n.functions = []);
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const fmtDue = s => { if (!s) return ''; const d = new Date(s + 'T12:00:00'); return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); };
+  // The first thing dragged in (a chat, artifact, board or link), as { name, url }.
+  function cosDroppedLink(e) {
+    try { const x = JSON.parse(e.dataTransfer.getData(LIB_TYPE) || '[]')[0]; if (x && x.url) return { name: hasWords(x.name) ? x.name : guessName(x.url), url: x.url }; } catch (err) { /* ignore */ }
+    const id = (e.dataTransfer.getData(NAV_TYPE) || '').split(',')[0];
+    const n = id && nodeOf(id);
+    if (n && n.url) return { name: n.name, url: n.url };
+    const url = extractUrl(e.dataTransfer);
+    return url ? { name: guessName(url), url } : null;
+  }
+  const cosAccepts = e => [...e.dataTransfer.types].some(x => x === LIB_TYPE || x === NAV_TYPE || x === 'text/uri-list');
+  // A small form for adding and editing (fields: name, label, type: text | textarea | date | select, options, value, placeholder).
+  function cosForm(title, fields, okLabel, onSave) {
+    let dlg = $('cosDlg');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'cosDlg';
+      dlg.innerHTML = '<form method="dialog" class="cos-form"><h2></h2><div class="ff"></div><div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn-primary" value="ok"></button></div></form>';
+      document.body.appendChild(dlg);
+    }
+    dlg.querySelector('h2').textContent = title;
+    dlg.querySelector('.btn-primary').textContent = okLabel;
+    const ff = dlg.querySelector('.ff');
+    ff.replaceChildren();
+    for (const f of fields) {
+      const l = document.createElement('label');
+      l.textContent = f.label;
+      const el = document.createElement(f.type === 'textarea' ? 'textarea' : f.type === 'select' ? 'select' : 'input');
+      el.name = f.name;
+      if (f.type === 'date') el.type = 'date';
+      if (f.type === 'select') for (const [v, t] of f.options) { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); }
+      if (f.placeholder) el.placeholder = f.placeholder;
+      el.value = f.value || '';
+      l.appendChild(el);
+      ff.appendChild(l);
+    }
+    dlg.onclose = () => {
+      if (dlg.returnValue !== 'ok') return;
+      const out = {};
+      for (const f of fields) out[f.name] = ff.querySelector(`[name="${f.name}"]`).value.trim();
+      onSave(out);
+    };
+    dlg.returnValue = '';
+    dlg.showModal();
+    const first = ff.querySelector('input, textarea');
+    if (first) { first.focus(); first.select(); }
+  }
+  // Pick one of your recent Claude chats to link.
+  function cosPickChat(x, y, onPick) {
+    const chats = (lib.chats || []).slice().sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || ''))).slice(0, 20);
+    if (!chats.length) return toast('No Claude chats loaded yet. Open All Chats in Navigator to load them, or drag a chat on.');
+    showMenu(x, y, chats.map(c => ({ label: c.name || 'Untitled chat', icon: 'chat', run: () => onPick({ name: c.name || 'Untitled chat', url: c.url }) })));
+  }
+  function cosLinkChip(link, onRemove) {
+    const c = document.createElement('span');
+    c.className = 'cos-chip';
+    const k = kindOf({ type: 'link', url: link.url });
+    c.innerHTML = `${colourIcon(k)}<span></span>`;
+    c.children[1].textContent = link.name;
+    c.title = `${link.name}\nClick to open in its own window`;
+    c.addEventListener('click', e => { e.stopPropagation(); openNewWindow(link.url); });
+    if (onRemove) {
+      const x = document.createElement('button');
+      x.className = 'x';
+      x.textContent = '×';
+      x.title = 'Unlink';
+      x.addEventListener('click', e => { e.stopPropagation(); onRemove(); });
+      c.appendChild(x);
+    }
+    return c;
+  }
+
+  // ----- Actions -----
+  const ACTION_STATUS = [['todo', 'To do'], ['doing', 'Doing'], ['done', 'Done']];
+  function editAction(n, a) {
+    const isNew = !a;
+    cosForm(isNew ? 'New Action' : 'Edit Action', [
+      { name: 'title', label: 'What needs doing', value: a ? a.title : '', placeholder: 'e.g. Draft the Q3 finance report for the board' },
+      { name: 'notes', label: 'Notes (optional)', type: 'textarea', value: a ? a.notes : '' },
+      { name: 'status', label: 'Status', type: 'select', options: ACTION_STATUS, value: a ? a.status : 'todo' },
+      { name: 'due', label: 'Due (optional)', type: 'date', value: a ? a.due : '' },
+    ], isNew ? 'Add Action' : 'Save', v => {
+      if (!v.title) return;
+      cosChange(() => {
+        if (isNew) cosActions(n).unshift({ id: uid(), title: v.title, notes: v.notes, status: v.status, due: v.due, link: null, created: Date.now(), doneAt: v.status === 'done' ? Date.now() : null });
+        else Object.assign(a, { title: v.title, notes: v.notes, due: v.due, doneAt: v.status === 'done' && a.status !== 'done' ? Date.now() : a.doneAt, status: v.status });
+      }, null);
+    });
+  }
+  function renderActions(n, host) {
+    const box = document.createElement('div');
+    box.className = 'cos-tabbody';
+    const top = document.createElement('div');
+    top.className = 'cos-ptop';
+    const quick = document.createElement('input');
+    quick.placeholder = 'Add an action and press Return';
+    quick.title = 'A one-off job for this staff member';
+    quick.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || !quick.value.trim()) return;
+      const title = quick.value.trim();
+      cosChange(() => { cosActions(n).unshift({ id: uid(), title, notes: '', status: 'todo', due: '', link: null, created: Date.now(), doneAt: null }); }, null);
+      setTimeout(() => { const q = document.querySelector('.cos-tabbody .cos-ptop input'); if (q) q.focus(); }, 20);
+    });
+    const more = document.createElement('button');
+    more.className = 'tb';
+    more.innerHTML = '<span class="t">New Action…</span>';
+    more.title = 'Add an action with notes, status and a due date';
+    more.addEventListener('click', () => editAction(n, null));
+    const add = document.createElement('button');
+    add.className = 'tb' + (cosUi.adding ? ' on' : '');
+    add.innerHTML = `<span class="t">${cosUi.adding ? 'Done Linking' : 'Link Chats'}</span>`;
+    add.title = 'Show your chats beside the actions, and drag one onto an action to link it';
+    add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) cosShowSource(); renderCos(); });
+    top.append(quick, more, add);
+    box.appendChild(top);
+    const list = document.createElement('div');
+    list.className = 'cos-items cos-actions';
+    const today = todayStr();
+    const acts = cosActions(n);
+    for (const [st, label] of ACTION_STATUS) {
+      const group = acts.filter(a => a.status === st).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
+      if (st === 'done' && !group.length) continue;
+      const h = document.createElement('div');
+      h.className = 'cos-grouph';
+      const showDone = st !== 'done' || cosUi.showDone;
+      h.textContent = `${st === 'done' ? (showDone ? '▾ ' : '▸ ') : ''}${label} (${group.length})`;
+      if (st === 'done') { h.style.cursor = 'pointer'; h.addEventListener('click', () => { cosUi.showDone = !cosUi.showDone; renderCos(); }); }
+      list.appendChild(h);
+      if (!showDone) continue;
+      for (const a of group) {
+        const r = document.createElement('div');
+        r.className = 'act' + (a.status === 'done' ? ' done' : '');
+        r.dataset.aid = a.id;
+        const late = a.due && a.status !== 'done' && a.due < today;
+        r.innerHTML = `<input type="checkbox" title="Done"${a.status === 'done' ? ' checked' : ''}><span class="at"></span><span class="meta"></span><select title="Status">${ACTION_STATUS.map(([v, t]) => `<option value="${v}"${v === a.status ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
+        r.querySelector('.at').textContent = a.title;
+        r.title = (a.notes ? a.notes + '\n' : '') + 'Double-click to edit; drag a chat onto it to link it; right-click for more.';
+        const meta = r.querySelector('.meta');
+        if (a.due) { const d = document.createElement('span'); d.className = 'due' + (late ? ' late' : a.due === today ? ' today' : ''); d.textContent = late ? `Overdue · ${fmtDue(a.due)}` : a.due === today ? 'Today' : fmtDue(a.due); meta.appendChild(d); }
+        if (a.link) meta.appendChild(cosLinkChip(a.link, () => cosChange(() => { a.link = null; }, null)));
+        r.querySelector('input').addEventListener('change', e => cosChange(() => { a.status = e.target.checked ? 'done' : 'todo'; a.doneAt = e.target.checked ? Date.now() : null; }, null));
+        r.querySelector('select').addEventListener('change', e => cosChange(() => { a.status = e.target.value; a.doneAt = a.status === 'done' ? Date.now() : null; }, null));
+        list.appendChild(r);
+      }
+    }
+    if (!acts.length) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.style.marginTop = '30px';
+      e.innerHTML = '<b>No actions yet</b><span>Actions are one-off jobs for this staff member. Type one above and press Return.</span>';
+      list.appendChild(e);
+    }
+    list.addEventListener('dblclick', e => { const r = e.target.closest('.act'); if (r && !e.target.closest('input, select, .cos-chip')) editAction(n, cosActions(n).find(a => a.id === r.dataset.aid)); });
+    list.addEventListener('contextmenu', e => {
+      const r = e.target.closest('.act'); if (!r) return; e.preventDefault();
+      const a = cosActions(n).find(x => x.id === r.dataset.aid);
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Edit…', run: () => editAction(n, a) },
+        a.link && { label: 'Open Linked Chat', run: () => openNewWindow(a.link.url) },
+        { label: a.link ? 'Link a Different Chat…' : 'Link a Chat…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { a.link = link; }, null)) },
+        { label: 'Start a Chat for This', run: () => { navigator.clipboard.writeText(a.title + (a.notes ? '\n\n' + a.notes : '')); openNewWindow('https://claude.ai/new'); toast('Opened a new chat. The action is copied: paste it in. Drag the chat onto the action afterwards to link it.'); } },
+        '-',
+        { label: 'Delete Action', run: () => cosChange(() => { n.actions = cosActions(n).filter(x => x !== a); }, `Deleted “${a.title}”`) },
+      ]);
+    });
+    list.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const r = e.target.closest('.act'); list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!r) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; r.classList.add('drop'); });
+    list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
+    list.addEventListener('drop', e => {
+      const r = e.target.closest('.act'); if (!r) return;
+      e.preventDefault(); e.stopPropagation();
+      const link = cosDroppedLink(e);
+      const a = cosActions(n).find(x => x.id === r.dataset.aid);
+      if (link && a) cosChange(() => { a.link = link; }, `Linked “${link.name}” to “${a.title}”`);
+    });
+    box.appendChild(list);
+    host.appendChild(box);
+  }
+
+  // ----- Functions -----
+  function editFunction(n, f) {
+    const isNew = !f;
+    cosForm(isNew ? 'New Function' : 'Edit Function', [
+      { name: 'name', label: 'Function', value: f ? f.name : '', placeholder: 'e.g. Board paper' },
+      { name: 'about', label: 'What it does', type: 'textarea', value: f ? f.about : '', placeholder: 'e.g. Writes a board paper from the brief, in our template and tone' },
+      { name: 'prompt', label: 'Instructions for Claude (copied when you run it)', type: 'textarea', value: f ? f.prompt : '', placeholder: 'e.g. Using the board paper template in this project, draft a paper on: ' },
+    ], isNew ? 'Add Function' : 'Save', v => {
+      if (!v.name) return;
+      cosChange(() => {
+        if (isNew) cosFunctions(n).push({ id: uid(), name: v.name, about: v.about, prompt: v.prompt, link: null, created: Date.now(), lastRun: null });
+        else Object.assign(f, v);
+      }, null);
+    });
+  }
+  // Run: opens the linked chat, project or artifact (or a new chat) in its own window, with the instructions copied.
+  function runFunction(f) {
+    const url = f.link ? (/claude\.ai\/project\//.test(f.link.url) ? f.link.url : f.link.url) : 'https://claude.ai/new';
+    if (f.prompt) navigator.clipboard.writeText(f.prompt);
+    openNewWindow(url);
+    f.lastRun = Date.now();
+    saveCos();
+    renderCos();
+    toast(f.prompt ? `Opened ${f.link ? `“${f.link.name}”` : 'a new chat'}. The instructions are copied: paste them in and add the details.` : `Opened ${f.link ? `“${f.link.name}”` : 'a new chat'}.`);
+  }
+  function renderFunctions(n, host) {
+    const box = document.createElement('div');
+    box.className = 'cos-tabbody';
+    const top = document.createElement('div');
+    top.className = 'cos-ptop';
+    top.innerHTML = '<span class="cos-tabnote">What this staff member does well, on request. Link each to the Claude chat, project or skill it uses.</span>';
+    const nb = document.createElement('button');
+    nb.className = 'tb';
+    nb.innerHTML = '<span class="t">New Function…</span>';
+    nb.addEventListener('click', () => editFunction(n, null));
+    const add = document.createElement('button');
+    add.className = 'tb' + (cosUi.adding ? ' on' : '');
+    add.innerHTML = `<span class="t">${cosUi.adding ? 'Done Linking' : 'Link Items'}</span>`;
+    add.title = 'Show your chats, artifacts and boards beside the functions, and drag one onto a function to link it';
+    add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) cosShowSource(); renderCos(); });
+    top.append(nb, add);
+    box.appendChild(top);
+    const grid = document.createElement('div');
+    grid.className = 'cos-cards';
+    for (const f of cosFunctions(n)) {
+      const c = document.createElement('div');
+      c.className = 'fcard';
+      c.dataset.fid = f.id;
+      c.innerHTML = '<b></b><p></p><div class="links"></div><div class="row2"><button class="btn-primary run">Run</button><button class="btn edit">Edit</button><span class="last"></span></div>';
+      c.querySelector('b').textContent = f.name;
+      c.querySelector('p').textContent = f.about || 'No description yet.';
+      if (f.link) c.querySelector('.links').appendChild(cosLinkChip(f.link, () => cosChange(() => { f.link = null; }, null)));
+      else { const h = document.createElement('span'); h.className = 'cos-tabnote'; h.textContent = 'Drag a chat, project or artifact here to link it'; c.querySelector('.links').appendChild(h); }
+      if (f.lastRun) c.querySelector('.last').textContent = `Last run ${ago(f.lastRun)}`;
+      c.querySelector('.run').title = f.prompt ? 'Open it in its own window, with the instructions copied' : 'Open it in its own window';
+      c.querySelector('.run').addEventListener('click', () => runFunction(f));
+      c.querySelector('.edit').addEventListener('click', () => editFunction(n, f));
+      grid.appendChild(c);
+    }
+    if (!cosFunctions(n).length) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.style.marginTop = '30px';
+      e.innerHTML = '<b>No functions yet</b><span>Functions are what this staff member does well on request, like writing board papers or auditing the chart of accounts. Click New Function to add one.</span>';
+      grid.appendChild(e);
+    }
+    grid.addEventListener('contextmenu', e => {
+      const c = e.target.closest('.fcard'); if (!c) return; e.preventDefault();
+      const f = cosFunctions(n).find(x => x.id === c.dataset.fid);
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Run', run: () => runFunction(f) },
+        { label: 'Edit…', run: () => editFunction(n, f) },
+        { label: f.link ? 'Link a Different Chat…' : 'Link a Chat…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { f.link = link; }, null)) },
+        f.prompt && { label: 'Copy Instructions', run: () => navigator.clipboard.writeText(f.prompt).then(() => toast('Instructions copied')) },
+        '-',
+        { label: 'Delete Function', run: () => cosChange(() => { n.functions = cosFunctions(n).filter(x => x !== f); }, `Deleted “${f.name}”`) },
+      ]);
+    });
+    grid.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const c = e.target.closest('.fcard'); grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!c) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; c.classList.add('drop'); });
+    grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
+    grid.addEventListener('drop', e => {
+      const c = e.target.closest('.fcard'); if (!c) return;
+      e.preventDefault(); e.stopPropagation();
+      const link = cosDroppedLink(e);
+      const f = cosFunctions(n).find(x => x.id === c.dataset.fid);
+      if (link && f) cosChange(() => { f.link = link; }, `Linked “${link.name}” to “${f.name}”`);
+    });
+    box.appendChild(grid);
+    host.appendChild(box);
   }
 
   // ---------- Search ----------

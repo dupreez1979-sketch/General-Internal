@@ -114,7 +114,11 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 - **Add Items** shows All Chats, Artifacts, monday.com or My Folders beside the project, without leaving Chief of Staff. Drag items onto the project, onto one of its folders, or onto another project in the list. Items are links: nothing moves or changes in Claude, monday.com or your folders.
 - Double-click an item to open it in its own window; right-click for **Open in Navigator**, **Rename** or **Remove from Project**. Drag items onto a project folder to move them inside it.
 
-Coming next: actions, functions and routines (see CHIEF-OF-STAFF-PLAN.md).
+**Actions** (one-off jobs): type one and press Return, or **New Action…** for notes, status and a due date. Tick to mark it done (Done is folded away); change status with its menu; overdue dates show in red. Link the chat where the work happens by dragging it onto the action (**Link Chats** shows your chats beside them) or right-click, **Link a Chat…**. **Start a Chat for This** opens a new chat with the action copied, ready to paste.
+
+**Functions** (what a staff member does well on request, like board papers or a chart-of-accounts audit): **New Function…** with what it does and the instructions to give Claude. Link the chat, project or artifact it uses (drag it on, or right-click, **Link a Chat…**). **Run** opens it in its own window with the instructions copied, ready to paste.
+
+Coming next: routines (see CHIEF-OF-STAFF-PLAN.md).
 
 ## Systems: Claude and monday.com
 
