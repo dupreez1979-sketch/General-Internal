@@ -174,7 +174,7 @@
   .app-ic svg { width: 20px; height: 20px; }
   body.cos-mode #tree, body.cos-mode #sNewFolder, body.cos-mode #bar, body.cos-mode #findbar, body.cos-mode #tbPalette, body.cos-mode #splitLeft { display: none !important; }
   body.cos-mode:not(.cos-adding) #content, body.cos-mode:not(.cos-adding) #pathbar { display: none !important; }
-  .cos-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cos-page { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
   .cos-who { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; }
   .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
   .cos-who b { font-size: 17px; display: block; }
@@ -184,16 +184,19 @@
   .cos-tabs button { background: none; border: 0; padding: 8px 12px; font: inherit; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .cos-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .cos-tabs button .n { font-size: 11px; color: var(--muted); margin-left: 4px; }
-  .cos-proj { flex: 1; min-height: 0; display: flex; }
-  .cos-plist { width: 230px; flex: none; border-right: 1px solid var(--line); overflow: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .cos-proj { flex: 1; min-width: 0; min-height: 0; display: flex; }
+  .cos-plist { width: 230px; flex: 0 1 auto; min-width: 150px; border-right: 1px solid var(--line); overflow: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
   .cos-plist .pi { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
   .cos-plist .pi:hover { background: var(--hover); }
   .cos-plist .pi.on { background: var(--sel); font-weight: 600; }
   .cos-plist .pi.drop { box-shadow: inset 0 0 0 2px var(--accent); }
   .cos-plist .pi .c { margin-left: auto; font-size: 11px; color: var(--muted); }
   .cos-plist .ph { font-size: 11px; color: var(--muted); font-weight: 600; padding: 10px 8px 4px; }
-  .cos-pbody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .cos-ptop { display: flex; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .cos-pbody { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
+  .cos-ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .cos-ptop .tb, .split-btn { white-space: nowrap; flex: none; }
+  .split-btn { display: inline-flex; align-items: center; }
+  .split-btn .more svg { transform: rotate(90deg); }
   .cos-ptop input { font: inherit; font-size: 15px; font-weight: 650; border: 0; background: none; color: var(--text); padding: 4px 6px; border-radius: 6px; min-width: 120px; flex: 1; }
   .cos-ptop input:focus { background: var(--field); outline: none; }
   .cos-ptop .tb.on { background: var(--sel); color: var(--text); }
@@ -208,11 +211,22 @@
   .cos-items .it .icon { flex: none; display: inline-grid; place-items: center; }
   .cos-items .it .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cos-items .it .kind { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
-  .cos-src { width: 46%; min-width: 360px; flex: none; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-height: 0; }
+  .cos-src { width: 46%; min-width: 280px; flex: 0 1 auto; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-height: 0; }
   .cos-src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   .cos-src-head .tb.on { background: var(--sel); color: var(--text); }
   .cos-src-head input { margin-left: auto; font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 150px; color: var(--text); }
-  .cos-src #content { flex: 1; min-height: 0; }
+  #cosSrcRs, #cosSrcHead { display: none; }
+  body.cos-mode.cos-adding #main { display: grid; grid-template-columns: minmax(var(--cos-left-min, 300px), 1fr) 7px minmax(280px, var(--cos-src-w, 46%)); grid-template-rows: auto minmax(0, 1fr) auto; }
+  body.cos-mode.cos-adding #cosMain { grid-column: 1; grid-row: 1 / -1; }
+  body.cos-mode.cos-adding #cosSrcRs { display: block; grid-column: 2; grid-row: 1 / -1; margin: 0 -3px 0 -4px; }
+  body.cos-mode.cos-adding #cosSrcHead { display: block; grid-column: 3; grid-row: 1; border-left: 1px solid var(--line); min-width: 0; }
+  body.cos-mode.cos-adding #content { grid-column: 3; grid-row: 2; min-height: 0; min-width: 0; border-left: 1px solid var(--line); }
+  body.cos-mode.cos-adding #pathbar { grid-column: 3; grid-row: 3; border-left: 1px solid var(--line); }
+  .col-rs { flex: none; width: 7px; margin: 0 -3px; position: relative; z-index: 5; cursor: col-resize; align-self: stretch; }
+  .col-rs::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: transparent; transition: background .12s; }
+  .col-rs:hover::after, body.col-dragging .col-rs::after { background: var(--accent); width: 2px; left: 2.5px; }
+  body.col-dragging { cursor: col-resize; user-select: none; }
+  body.col-dragging webview, body.col-dragging iframe { pointer-events: none; }
   .cos-src-sub { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--win)); }
   .cos-src-sub[hidden] { display: none; }
   .cos-src-sub .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
@@ -296,12 +310,12 @@
   .cos-week.big { align-content: start; }
   #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
   #cosSide[hidden], #cosMain[hidden] { display: none; }
-  #cosMain { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #cosMain { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
   .cos-head { height: 52px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--line); -webkit-app-region: drag; }
   .cos-head > * { -webkit-app-region: no-drag; }
   .cos-head h1 { font-size: 15px; margin: 0 6px 0 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-app-region: drag; }
   .cos-head .sp { flex: 1; -webkit-app-region: drag; }
-  .cos-body { flex: 1; min-height: 0; display: flex; }
+  .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
   .cos-chart { display: inline-block; min-width: 100%; padding: 36px 40px 60px; transform-origin: top left; }
   .oc ul { display: flex; justify-content: center; padding: 22px 0 0; margin: 0; position: relative; }
@@ -332,7 +346,7 @@
   .ocbox .tag.ext { background: #D9468C; }
   .ocbox .tag { position: absolute; top: -9px; right: 10px; font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 8px; padding: 1px 7px; }
   .ocbox .kids { font-size: 10.5px; color: var(--muted); }
-  .cos-detail { width: 300px; flex: none; border-left: 1px solid var(--line); overflow: auto; padding: 16px; display: grid; align-content: start; gap: 12px; background: var(--win); }
+  .cos-detail { width: 300px; flex: 0 1 auto; min-width: 240px; border-left: 1px solid var(--line); overflow: auto; padding: 16px; display: grid; align-content: start; gap: 12px; background: var(--win); }
   .cos-detail h2 { margin: 0; font-size: 15px; }
   .cos-detail label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
   .cos-detail input, .cos-detail textarea, .cos-detail select { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 0; border-radius: 7px; padding: 7px 9px; }
@@ -692,6 +706,8 @@
   </div>
   <div id="pathbar"></div>
   <div id="cosMain" hidden></div>
+  <div id="cosSrcRs" class="col-rs" title="Drag to resize; double-click to reset"></div>
+  <div id="cosSrcHead"></div>
 </main>
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="navigator"><span class="app-ic nav"></span><b>Navigator</b><span>Your folders, Claude chats and artifacts, monday.com boards and files</span></button>
@@ -3042,8 +3058,10 @@
         state.pageTitle = '';
         // While the pane is being moved (Chief of Staff shows it beside the team) it is briefly detached and
         // loadURL throws; setting its address then loads the page as soon as it is attached again.
-        try { if (!viewReady) throw new Error('not ready'); view.loadURL(loc.url).catch(() => { /* replaced by a newer page: fine */ }); }
-        catch (e) { view.setAttribute('src', loc.url); }
+        // Its address attribute may already say this page (it only changes when set), so the page is also
+        // remembered and loaded the moment the pane is ready again.
+        try { if (!viewReady) throw new Error('not ready'); view.loadURL(loc.url).catch(() => { /* replaced by a newer page: fine */ }); state.loadWhenReady = null; }
+        catch (e) { loadInPaneSoon(loc.url); }
       } else {
         syncNames(state.pageUrl, state.pageTitle); // already showing: catch up on its title
       }
@@ -3340,6 +3358,19 @@
 
   // ---------- Claude pane (desktop app only) ----------
   let view = null, viewReady = false;
+  // Loads a page in the pane while it is being moved (Chief of Staff shows it beside the team): the pane
+  // refuses loadURL for a moment after it is moved, so keep trying for a few seconds until it accepts.
+  let paneLoadTimer = null;
+  function loadInPaneSoon(url) {
+    clearTimeout(paneLoadTimer);
+    let tries = 0;
+    const attempt = () => {
+      if (state.loc.kind !== 'page' || normUrl(state.loc.url) !== normUrl(url)) return;   // you went elsewhere meanwhile
+      try { view.loadURL(url).catch(() => { /* replaced by a newer page: fine */ }); return; }
+      catch (e) { if (++tries < 40) paneLoadTimer = setTimeout(attempt, 150); else if (view.getAttribute('src') !== url) view.setAttribute('src', url); }
+    };
+    paneLoadTimer = setTimeout(attempt, 0);
+  }
   // The Claude pane throws (rather than failing quietly) if it is asked to do anything in the moment
   // before its page has started. These wrappers turn that into a quiet no-op.
   const viewExec = code => { try { return view ? view.executeJavaScript(code) : Promise.reject(new Error('no pane')); } catch (e) { return Promise.reject(e); } };
@@ -3368,6 +3399,7 @@
       syncSideSel();
     };
     view.addEventListener('dom-ready', () => { viewReady = true; update(); setTimeout(collapseClaudeSidebar, 600); });
+    view.addEventListener('did-navigate-in-page', e => { if (e.isMainFrame !== false) setTimeout(collapseClaudeSidebar, 400); });
     ['did-navigate', 'did-navigate-in-page', 'page-title-updated'].forEach(ev => view.addEventListener(ev, update));
     view.addEventListener('did-start-loading', () => $('progress').classList.add('on'));
     view.addEventListener('did-stop-loading', () => { $('progress').classList.remove('on'); update(); });
@@ -3379,19 +3411,28 @@
   // You can still open it with Claude's button; turn this off in the ... menu.
   const HIDE_SIDEBAR_STORE = 'claudeNavigator.hideClaudeSidebar';
   const hideClaudeSidebar = () => ls.get(HIDE_SIDEBAR_STORE) !== 'off';
+  // Closes Claude's own sidebar (Navigator and Chief of Staff already give you the navigation). Waits out
+  // Claude's security check, tries the likely sidebar buttons, and checks the sidebar really closed.
   const COLLAPSE_SCRIPT = `(async () => {
     const sleep = ms => new Promise(r => setTimeout(r, ms));
-    for (let i = 0; i < 12; i++) {
-      const navs = [...document.querySelectorAll('nav, aside, [data-testid*="sidebar" i]')].filter(el => {
-        const r = el.getBoundingClientRect();
-        return r.left < 40 && r.height > innerHeight * 0.6;
-      });
-      const nav = navs.sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
+    const navNow = () => [...document.querySelectorAll('nav, aside, [data-testid*="sidebar" i]')]
+      .filter(el => { const r = el.getBoundingClientRect(); return r.left < 40 && r.height > innerHeight * 0.6 && r.width > 0; })
+      .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0];
+    const label = b => [b.getAttribute('aria-label'), b.getAttribute('title'), b.getAttribute('data-testid')].filter(Boolean).join(' ');
+    for (let i = 0; i < 40; i++) {
+      const nav = navNow();
       if (nav) {
         if (nav.getBoundingClientRect().width < 120) return 'already collapsed';
-        const label = b => (b.getAttribute('aria-label') || b.getAttribute('title') || '') + ' ' + (b.getAttribute('data-testid') || '');
-        const btn = [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)) && !/open|expand/i.test(label(b)));
-        if (btn) { btn.click(); return 'collapsed'; }
+        const tries = [...document.querySelectorAll('button, [role="button"]')].filter(b => {
+          const l = label(b);
+          return /sidebar|side bar|collapse|navigation/i.test(l) && !/open|expand|show/i.test(l);
+        });
+        for (const btn of tries) {
+          btn.click();
+          await sleep(350);
+          const after = navNow();
+          if (!after || after.getBoundingClientRect().width < 120) return 'collapsed';
+        }
       }
       await sleep(500);
     }
@@ -3446,6 +3487,7 @@
       lib.signedIn = r.signedIn !== false;
       if (lib.signedIn) {
         if (r.pagePaths) lib.pagePaths = Object.assign({}, lib.pagePaths, r.pagePaths);
+        if (Array.isArray(r.scheduled) && r.scheduled.length) setTimeout(() => { try { cosCheckRoutinesAgainst(r.scheduled); } catch (e) { /* Chief of Staff not ready */ } }, 0);
         for (const k of Object.keys(LIB_KINDS)) {
           if (!Array.isArray(r[k]) || !r[k].length) continue;
           if (k === 'chats' || k === 'projects') { lib[k] = r[k]; continue; }   // complete lists from Claude
@@ -5626,6 +5668,45 @@
     };
     for (const r of t.nodes.filter(n => !n.parent)) walkN(r, 0);
   }
+  // Adjustable columns: drag the divider beside the project list, the side panel or the pane on the right.
+  // The divider sits between the columns (so it stays put when a column scrolls); this returns it.
+  // Double-click an edge to put it back. Widths are remembered.
+  const COS_COLS = 'claudeNavigator.cosCols';
+  const cosCols = (() => { try { return JSON.parse(ls.get(COS_COLS) || '{}') || {}; } catch (e) { return {}; } })();
+  function cosColResize(el, key, edge, min, maxFrac) {
+    const max = () => {
+      const row = el.parentElement;
+      if (!row || !row.clientWidth) return Math.max(min + 40, Math.round(window.innerWidth * maxFrac));
+      const others = [...row.children].filter(c => c !== el && /\b(cos-plist|cos-src|cos-detail)\b/.test(c.className)).reduce((a, c) => a + c.getBoundingClientRect().width, 0);
+      return Math.max(min, Math.min(Math.round(window.innerWidth * maxFrac), row.clientWidth - others - 300));
+    };
+    if (cosCols[key]) el.style.width = Math.min(max(), Math.max(min, cosCols[key])) + 'px';
+    const h = document.createElement('div');
+    h.className = 'col-rs col-' + key;
+    h.title = 'Drag to resize; double-click to reset';
+    h.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const x0 = e.clientX, w0 = el.getBoundingClientRect().width;
+      document.body.classList.add('col-dragging');
+      const move = ev => {
+        const dx = ev.clientX - x0;
+        const w = Math.min(max(), Math.max(min, Math.round(edge === 'right' ? w0 + dx : w0 - dx)));
+        el.style.width = w + 'px';
+        cosCols[key] = w;
+      };
+      const up = () => {
+        document.removeEventListener('mousemove', move);
+        document.removeEventListener('mouseup', up);
+        document.body.classList.remove('col-dragging');
+        ls.set(COS_COLS, JSON.stringify(cosCols));
+      };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+    h.addEventListener('dblclick', () => { delete cosCols[key]; ls.set(COS_COLS, JSON.stringify(cosCols)); el.style.width = ''; });
+    return h;
+  }
   function renderCosDetail(t) {
     const n = cosNode(t, cosUi.sel);
     if (!n) {
@@ -5782,7 +5863,7 @@
       else if (cosUi.view === 'list') body.appendChild(cosListEl(t));
       else { const cv = document.createElement('div'); cv.className = 'cos-canvas'; cv.appendChild(cosChartEl(t)); body.appendChild(cv); }
       const det = renderCosDetail(t);
-      if (det) body.appendChild(det);
+      if (det) body.append(cosColResize(det, 'detail', 'left', 240, 0.5), det);
     }
     main.appendChild(body);
   }
@@ -5802,9 +5883,10 @@
     const body = document.querySelector('#cosMain .cos-body');
     const old = body && body.querySelector('.cos-detail');
     if (old) old.remove();
+    if (body) body.querySelectorAll(':scope > .col-detail').forEach(x => x.remove());
     const t = cosTeam();
     const det = t && !cosUi.page ? renderCosDetail(t) : null;
-    if (det && body) body.appendChild(det);
+    if (det && body) body.append(cosColResize(det, 'detail', 'left', 240, 0.5), det);
   }
   // Clicks, right-clicks and drags on boxes, list rows and sidebar rows.
   const cosTarget = e => e.target.closest('[data-cid]');
@@ -5959,14 +6041,12 @@
     else if (k === 'monday') { if (!(state.loc.kind === 'library' && state.loc.which === 'monday')) go({ kind: 'library', which: 'monday', mkey: 'all' }); }
     else if (!(state.loc.kind === 'library' && state.loc.which === k)) go({ kind: 'library', which: k });
   }
-  function cosReturnSource() {
-    const main = $('main');
-    if ($('content').parentElement !== main) main.insertBefore($('content'), $('cosMain'));
-    if ($('pathbar').parentElement !== main) main.insertBefore($('pathbar'), $('cosMain'));
-  }
+  // Navigator's list and the Claude pane are never moved (a moved Claude pane reloads an older page);
+  // the layout just places them on the right of Chief of Staff while adding. This only clears the header.
+  function cosReturnSource() { if (!cosUi.adding) $('cosSrcHead').replaceChildren(); }
   function cosSourcePane() {
-    const pane = document.createElement('div');
-    pane.className = 'cos-src';
+    const host = $('cosSrcHead');
+    host.replaceChildren();
     const head = document.createElement('div');
     head.className = 'cos-src-head';
     const srcs = [['claude', 'Claude'], ['chats', 'All Chats'], ['artifacts', 'Artifacts'], ...(mondayData.connected ? [['monday', 'monday.com']] : []), ['folders', 'My Folders']];
@@ -5987,10 +6067,33 @@
     head.appendChild(q);
     const sub = document.createElement('div');
     sub.className = 'cos-src-sub';
-    pane.append(head, sub, $('content'), $('pathbar'));
+    host.append(head, sub);
     cosPaintSrcSub(sub);
-    return pane;
+    if (cosCols.src) $('main').style.setProperty('--cos-src-w', cosCols.src + 'px');
+    $('main').style.setProperty('--cos-left-min', ((cosUi.tab === 'projects' && cosUi.page ? (cosCols.plist || 230) : 0) + 300) + 'px');
+    return document.createDocumentFragment();     // nothing to place inside Chief of Staff itself
   }
+  // The divider between Chief of Staff and the pane on the right (Chief of Staff keeps at least 300px).
+  (() => {
+    const rs = $('cosSrcRs'), main = $('main');
+    rs.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const x0 = e.clientX, w0 = $('content').getBoundingClientRect().width;
+      document.body.classList.add('col-dragging');
+      const pl = document.querySelector('#cosMain .cos-plist');
+      const leftMin = (pl ? pl.getBoundingClientRect().width : 0) + 300;   // the project list plus a usable middle
+      const move = ev => {
+        const w = Math.max(280, Math.min(main.clientWidth - leftMin - 7, Math.round(w0 - (ev.clientX - x0))));
+        main.style.setProperty('--cos-src-w', w + 'px');
+        cosCols.src = w;
+      };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.body.classList.remove('col-dragging'); ls.set(COS_COLS, JSON.stringify(cosCols)); };
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    });
+    rs.addEventListener('dblclick', () => { delete cosCols.src; ls.set(COS_COLS, JSON.stringify(cosCols)); main.style.removeProperty('--cos-src-w'); });
+  })();
   // The line under the source tabs: what is being made (with Link This Page), or where you are in My Folders (with Back).
   function cosPaintSrcSub(sub = document.querySelector('.cos-src-sub')) {
     if (!sub) return;
@@ -6118,7 +6221,7 @@
     pl.addEventListener('dragover', e => { const r = e.target.closest('.pi'); pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!r) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; r.classList.add('drop'); });
     pl.addEventListener('dragleave', e => { if (!pl.contains(e.relatedTarget)) pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
     pl.addEventListener('drop', e => { const r = e.target.closest('.pi'); if (!r) return; e.preventDefault(); e.stopPropagation(); cosDropInto(e, cosProject(n, r.dataset.pid), null); });
-    wrap.appendChild(pl);
+    wrap.append(pl, cosColResize(pl, 'plist', 'right', 150, 0.45));
     const pb = document.createElement('div');
     pb.className = 'cos-pbody';
     const p = cosProject(n, cosUi.proj);
@@ -6200,7 +6303,7 @@
       list.addEventListener('contextmenu', e => {
         e.preventDefault();
         const r = e.target.closest('.it');
-        if (!r) return showMenu(e.clientX, e.clientY, [{ label: 'New Action', run: () => cosNewAction(() => p.items, { ctx: 'project', where: `\u201c${p.name}\u201d` }) }, { label: 'New Folder', run: () => cosNewFolder(p, null) }, { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
+        if (!r) return cosNewHereMenu(e.clientX, e.clientY, () => p.items, { ctx: 'project', where: `\u201c${p.name}\u201d` }, [{ label: 'New Folder', run: () => cosNewFolder(p, null) }]);
         cosUi.itemSel = r.dataset.iid;
         cosItemMenu(e.clientX, e.clientY, p, r.dataset.iid);
       });
@@ -6388,7 +6491,9 @@
     }
     list.addEventListener('dblclick', e => { const r = e.target.closest('.act'); if (!r || e.target.closest('input, select, .cos-chip')) return; const a = cosActions(n).find(x => x.id === r.dataset.aid); if (a.link) cosOpenLink(a.link); else editAction(n, a); });
     list.addEventListener('contextmenu', e => {
-      const r = e.target.closest('.act'); if (!r) return; e.preventDefault();
+      const r = e.target.closest('.act');
+      e.preventDefault();
+      if (!r) return cosNewHereMenu(e.clientX, e.clientY, () => cosActions(n), { ctx: 'staff' });
       const a = cosActions(n).find(x => x.id === r.dataset.aid);
       showMenu(e.clientX, e.clientY, [
         { label: 'Edit…', run: () => editAction(n, a) },
@@ -6486,7 +6591,9 @@
       grid.appendChild(e);
     }
     grid.addEventListener('contextmenu', e => {
-      const c = e.target.closest('.fcard'); if (!c) return; e.preventDefault();
+      const c = e.target.closest('.fcard');
+      e.preventDefault();
+      if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Function', icon: 'chat', run: () => cosNewFunction(n) }, '-', { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
       const f = cosFunctions(n).find(x => x.id === c.dataset.fid);
       showMenu(e.clientX, e.clientY, [
         { label: 'Run', run: () => runFunction(f) },
@@ -6676,7 +6783,9 @@
       grid.appendChild(e);
     }
     grid.addEventListener('contextmenu', e => {
-      const c = e.target.closest('.rcard'); if (!c) return; e.preventDefault();
+      const c = e.target.closest('.rcard');
+      e.preventDefault();
+      if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Routine', icon: 'schedule', run: () => cosNewRoutine(n) }]);
       const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
       showMenu(e.clientX, e.clientY, [
         r.link && { label: 'Read from Claude Again', run: () => cosReadRoutine(n, r) },
@@ -7269,14 +7378,24 @@ body { width: max-content !important; min-width: 0 !important; }
     try {
       const d = await window.navigatorApp.claudePageDetails(r.link.url);
       if (!d || !d.ok) { if (!quiet) toast(`Could not read it from Claude: ${(d && d.status) || 'no answer'}`); return; }
+      if (d.gone) {
+        if (!cosRoutines(n).includes(r)) return;
+        return cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `\u201c${r.name}\u201d was deleted in Claude, so it is removed here too`);
+      }
       const got = routineFromPage(d);
       cosChange(() => { Object.assign(r, got, { readAt: Date.now() }); if (got.name) { r.autoName = false; r.link.name = got.name; r.link.auto = false; } }, null);
       if (!quiet) toast(got.freq ? `Read “${r.name}” from Claude: ${routineWhen(r)}` : `Read “${r.name}” from Claude, but not when it runs. Check its schedule in Claude, then choose Read from Claude Again.`);
     } finally { routineReading.delete(r.id); }
   }
-  // Routines read more than 12 hours ago are read again, quietly, when their tab is shown.
+  // Routines are read again, quietly, when their tab is shown (at most every 10 minutes), so changes and
+  // deletions made in Claude show up here.
   function cosRefreshRoutines(n) {
-    for (const r of cosRoutines(n)) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 12 * 3600e3) cosReadRoutine(n, r, { quiet: true });
+    for (const r of cosRoutines(n).slice()) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 10 * 60e3) cosReadRoutine(n, r, { quiet: true });
+  }
+  function cosCheckRoutinesAgainst(list) {
+    const have = new Set(list.map(x => normUrl(x.url)));
+    for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || [])
+      for (const r of (n.routines || []).slice()) if (r.link && /claude\.ai/.test(r.link.url || '') && !have.has(normUrl(r.link.url))) cosReadRoutine(n, r, { quiet: true });
   }
   // A new action: straight into Claude (a chat, or what you pick from the arrow), named after what Claude makes.
   function cosNewAction(list, { kind = 'chat', ctx = 'staff', where = '' } = {}) {
@@ -7286,6 +7405,16 @@ body { width: max-content !important; min-width: 0 !important; }
       list().unshift(act);
       cosUi.itemSel = act.id;
     } });
+  }
+  // Right-click on empty space in a list: start something new there, or link something you already have.
+  function cosNewHereMenu(x, y, list, opts, extra = []) {
+    showMenu(x, y, [
+      { label: 'New Action', icon: 'chat', run: () => cosNewAction(list, opts) },
+      ...cosStartOptions().filter(([k]) => k !== 'none' && k !== 'chat').map(([k, label]) => ({ label: `New Action as ${label.replace(/^A new |^New /, '')}`, icon: NEW_KINDS[k] ? NEW_KINDS[k].icon : k === 'monday' ? 'monday' : k, run: () => cosNewAction(list, Object.assign({}, opts, { kind: k })) })),
+      '-',
+      ...extra,
+      { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } },
+    ]);
   }
   function cosNewActionButtons(list, opts) {
     const wrap = document.createElement('span');

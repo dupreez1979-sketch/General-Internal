@@ -122,6 +122,8 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 
 **No forms: the work and its details live in Claude.** **New Action**, **New Function** and **New Routine** open Claude on the right, beside the team, and link what you make the moment Claude creates it. Names, schedules and instructions are taken from Claude. The only thing you type here is a project's name. If a link does not happen by itself, click **Link This Page** above Claude. **Link Existing** instead shows your chats, artifacts, monday.com boards or folders on the right, so you can drag in what you already have. In **My Folders** there, **Back** takes you up a folder.
 
+**Adjustable columns**: drag the dividers between the project list, the project and the pane on the right (and, on the team page, the side panel). Double-click a divider to put it back. Widths are remembered, and the middle always keeps enough room. Right-click empty space in Projects, Actions, Functions or Routines to start something new there. Claude's own sidebar is closed in the pane, since the app gives you the navigation.
+
 **Projects** are folders of work. **New Project** puts you straight into its name. Everything in a project is an **action** (in folders if you like):
 
 - **New Action** starts a new Claude chat; the arrow beside it starts a Claude artifact, Doc, Slides, Design, Dashboard or project, a Word, Excel, PowerPoint or text file, or a monday.com board instead. The action is named after what Claude makes.
@@ -136,7 +138,7 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 **Routines** are what a staff member does on a schedule (a weekly finance check, a monthly board report):
 
 - **New Routine** opens Claude's scheduled tasks on the right. Make the task there; as soon as you save it, it is linked here and its name, instructions and schedule are read from Claude's page.
-- **Read Again** (on the card) picks up changes you make in Claude. Routines are also read again by themselves when their tab is shown, at most twice a day.
+- **Read Again** (on the card) picks up changes you make in Claude. A routine whose task is deleted in Claude is removed here too (with Undo). Routines are also read again by themselves when their tab is shown (at most every 10 minutes) and when Navigator refreshes its Claude lists.
 - Drag a chat onto a card to say where its results go. If Claude's page cannot be read, right-click, **Correct the Schedule by Hand…**.
 - Each card shows the plain-English schedule, whether it is linked, and the next run. A week strip above the cards shows what runs on each day.
 - **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.

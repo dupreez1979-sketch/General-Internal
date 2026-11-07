@@ -781,7 +781,13 @@ ipcMain.handle('claude-page-details', async (_e, url) => {
     if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
     if (!cleared) return { ok: false, status: 'Claude’s security check did not finish; try again' };
     await sleep(2500);
-    return Object.assign({ ok: true }, await withTimeout(win.webContents.executeJavaScript(PAGE_DETAILS, true), 20000, 'Reading the page'));
+    const d = await withTimeout(win.webContents.executeJavaScript(PAGE_DETAILS, true), 20000, 'Reading the page');
+    // Deleted in Claude: Claude says so, or sends you somewhere else (such as the list of tasks).
+    const asked = new URL(url).pathname.replace(/\/+$/, '');
+    let now = '';
+    try { now = new URL(win.webContents.getURL()).pathname.replace(/\/+$/, ''); } catch (e) { /* ignore */ }
+    const notFound = /\b(page not found|not found|doesn.t exist|does not exist|no longer exists|was deleted|has been deleted|404)\b/i.test(((d.heading || '') + '\n' + (d.text || '').slice(0, 600)));
+    return Object.assign({ ok: true, gone: notFound || (now && now !== asked && !now.startsWith(asked + '/')) }, d);
   } catch (e) {
     return { ok: false, status: String(e && e.message || e) };
   } finally {
