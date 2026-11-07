@@ -729,7 +729,7 @@
         <div class="look-line"><span>Second colour</span><div class="swatches" id="lookSecond"></div></div>
         <div class="look-line"><span>Headings</span><select id="lookHead"></select></div>
         <div class="look-line"><span>Text</span><select id="lookText"></select></div>
-        <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Chief of Staff</label>
+        <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Navigator and Chief of Staff</label>
       </div>
     </div></div>
     <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
@@ -7120,7 +7120,7 @@
     const p = activeProfile();
     const root = document.documentElement;
     root.classList.toggle('profiled', !!p);
-    for (const v of ['--tint', '--tint-side', '--tint-bar', '--accent', '--accent-text']) root.style.removeProperty(v);
+    for (const v of ['--tint', '--tint-side', '--tint-bar', '--accent', '--accent-text', '--look-second']) root.style.removeProperty(v);
     if (p) {
       const [side, bar] = TINTS[p.tint] || TINTS.medium;
       root.style.setProperty('--tint', p.color);
@@ -7130,6 +7130,15 @@
       const accent = luminance(p.color) > 0.45 ? darken(p.color, 0.35) : p.color;
       root.style.setProperty('--accent', accent);
       root.style.setProperty('--accent-text', luminance(accent) > 0.5 ? '#000000' : '#ffffff');
+      // The profile's design system look (if any) replaces the profile colour, in Navigator and Chief of Staff alike.
+      const lk = lookOf(p);
+      const la = lk && lookColour(lk.accent), l2 = lk && lookColour(lk.second);
+      if (la) {
+        root.style.setProperty('--tint', lk.accent);
+        root.style.setProperty('--accent', la);
+        root.style.setProperty('--accent-text', luminance(la) > 0.5 ? '#000000' : '#ffffff');
+      }
+      if (l2) root.style.setProperty('--look-second', l2);
     }
     const btn = $('profileBtn');
     btn.querySelector('.pname').textContent = p ? p.name : 'All Profiles';
@@ -7293,36 +7302,35 @@
     return pal.length >= 3 ? [...new Set([...pal, ...COS_COLOURS])].slice(0, 16) : COS_COLOURS;
   }
   const lookTried = new Set();
+  // A design system colour made readable as an accent (very light colours darkened, very dark ones lightened in dark mode).
+  const lookColour = h => { if (!HEX.test(h || '')) return ''; const dark = matchMedia('(prefers-color-scheme: dark)').matches; return !dark && luminance(h) > 0.45 ? darken(h, 0.35) : dark && luminance(h) < 0.05 ? lighten(h, 0.45) : h; };
   function applyCosLook() {
     let st = $('cosLook');
     if (!st) { st = document.createElement('style'); st.id = 'cosLook'; document.head.appendChild(st); }
     const p = activeProfile();
-    // A profile with a design system but no look yet: read it once, quietly, the first time Chief of Staff is shown.
-    if (p && p.designSystem && !p.look && currentApp === 'cos' && !lookTried.has(p.id) && window.navigatorApp && window.navigatorApp.designLook) {
+    // A profile with a design system but no look yet: read it once, quietly, the first time the profile is shown.
+    if (p && p.designSystem && !p.look && !lookTried.has(p.id) && window.navigatorApp && window.navigatorApp.designLook) {
       lookTried.add(p.id);
       window.navigatorApp.designLook(p.designSystem.url).then(r => {
         if (!r || !r.ok || p.look) return;
         p.look = Object.assign(r.look, { from: p.designSystem.url });
         commit();
-        applyCosLook();
+        applyProfileTheme();
         if (currentApp === 'cos') renderCos();
-        toast(`Chief of Staff now uses the colours and fonts of “${p.designSystem.name}”. Adjust them in Edit Profile.`);
+        toast(`${p.name} now uses the colours and fonts of “${p.designSystem.name}”. Adjust them in Edit Profile.`);
       }).catch(() => {});
     }
     const lk = lookOf(p);
     if (!lk) { st.textContent = ''; return; }
-    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
-    const fix = h => !HEX.test(h || '') ? '' : !dark && luminance(h) > 0.45 ? darken(h, 0.35) : dark && luminance(h) < 0.05 ? lighten(h, 0.45) : h;
-    const accent = fix(lk.accent), second = fix(lk.second);
+    const second = lookColour(lk.second);
     const faces = (lk.fonts || []).map(f => `@font-face { font-family: ${cssName(f.family)}; src: url(${cssName(fileUrl(f.file))}); font-weight: ${/^[\d ]+$|^(normal|bold)$/.test(f.weight || '') ? f.weight : 'normal'}; font-style: ${/^(normal|italic|oblique)$/.test(f.style || '') ? f.style : 'normal'}; }`).join('\n');
     const body = lk.bodyFont ? `${cssName(lk.bodyFont)}, ${SYS_STACK}` : '';
     const head = lk.headFont ? `${cssName(lk.headFont)}, ${body || SYS_STACK}` : '';
     st.textContent = `${faces}
-body.cos-mode { ${accent ? `--accent: ${accent}; --accent-text: ${luminance(accent) > 0.5 ? '#000000' : '#ffffff'}; --tint: ${accent};` : ''} ${second ? `--cos-second: ${second};` : ''} }
-${body ? `body.cos-mode #cosMain, body.cos-mode #cosSide, #cosDlg, #cosRoutineDlg { font-family: ${body}; }` : ''}
-${head ? `body.cos-mode :is(#cosMain, #cosSide) :is(h1, h2, h3, .cos-who b, .ocbox .nm, .fcard b, .cos-side-h, .cos-tabs button), #cosDlg h2, #cosRoutineDlg h2 { font-family: ${head}; letter-spacing: -0.01em; }` : ''}
-${second ? `body.cos-mode .ocbox.dept { background: color-mix(in srgb, var(--cos-second) 9%, var(--win)); border-color: color-mix(in srgb, var(--cos-second) 55%, var(--line)); }
-body.cos-mode .ocbox.dept .tag, body.cos-mode .rcard .when { color: var(--cos-second); }` : ''}`;
+${body ? `body, dialog, #menu { font-family: ${body}; }` : ''}
+${head ? `#title, #slPath, .row.context > .label, .lsub, dialog h2, .cos-head h1, .cos-who b, .ocbox .nm, .fcard b, .rcard b, .cos-tabs button, .cos-side-h { font-family: ${head}; letter-spacing: -0.01em; }` : ''}
+${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, var(--win)); border-color: color-mix(in srgb, var(--look-second) 55%, var(--line)); }
+.rcard .when { color: var(--look-second); }` : ''}`;
   }
 
   // The Look section of Edit Profile.
@@ -7335,7 +7343,7 @@ body.cos-mode .ocbox.dept .tag, body.cos-mode .rcard .when { color: var(--cos-se
     $('lookNote').textContent = pf.lookBusy ? 'Opening the design system in Claude. This takes about 10 seconds.'
       : pf.lookError ? `Could not read it: ${pf.lookError}.`
       : lk ? (lk.from && lk.from !== ds ? 'These were read from a different design system. Click Read Again.' : `${(lk.colours || []).length} colours${lk.headFont ? `, ${lk.headFont}` : ''}${lk.bodyFont && lk.bodyFont !== lk.headFont ? ` and ${lk.bodyFont}` : ''}. Click a colour to choose it.`)
-      : 'Chief of Staff can use this design system’s colours and fonts.';
+      : 'Navigator and Chief of Staff can use this design system’s colours and fonts.';
     $('lookBody').hidden = !lk;
     if (!lk) return;
     for (const [id, key] of [['lookMain', 'accent'], ['lookSecond', 'second']]) {
