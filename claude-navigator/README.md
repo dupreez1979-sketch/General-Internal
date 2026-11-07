@@ -100,7 +100,7 @@ When a chat, artifact or anything else is open and not yet in a folder, the top 
 
 Clara schedules meetings by email: copy Clara (clara@monkeybaa.com.au) into an email and Clara finds a time with everyone.
 
-- **Systems › Clara** in the sidebar: **Open Dashboard** shows Clara's dashboard (beta.claralabs.com) in the right-hand pane, and you stay signed in. **Ask Clara to Schedule…** asks who to meet and what about, then opens a new email in your Mac's mail app (Outlook, if that is your default) with Clara copied in, ready to check and send.
+- **Systems › Clara** in the sidebar: **Open Dashboard** shows Clara's dashboard (beta.claralabs.com) in the right-hand pane, and you stay signed in. **Ask Clara to Schedule…** asks who to meet and what about, then opens a new email in Outlook with Clara copied in, ready to check and send.
 - In **Chief of Staff**, choose **… › Add Clara (External Assistant)** to put Clara in the org chart, marked External. Clara's page has the same two buttons, and each request is kept as one of Clara's actions so you can tick it off once the meeting is booked.
 - Right-click Clara in the sidebar for **Clara Settings…** to change the email address or dashboard.
 

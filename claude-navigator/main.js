@@ -1009,6 +1009,16 @@ ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.op
 // Starts an email in the Mac's mail app (used for Clara). Only mailto: links, and nothing that could attach files.
 ipcMain.handle('open-mail', (_e, url) => {
   if (typeof url !== 'string' || !/^mailto:/i.test(url) || url.length > 8000 || /[?&](attach|attachment)=/i.test(url)) return false;
+  // On a Mac, open it in the Outlook desktop app (Kevin's mail app), even if another app is the default for email.
+  // If Outlook is not there, fall back to the default mail app.
+  if (process.platform === 'darwin') {
+    return new Promise(resolve => {
+      require('child_process').execFile('/usr/bin/open', ['-b', 'com.microsoft.Outlook', url], err => {
+        if (!err) return resolve(true);
+        shell.openExternal(url).then(() => resolve(true), () => resolve(false));
+      });
+    });
+  }
   return shell.openExternal(url).then(() => true, () => false);
 });
 const inDownloads = f => {
