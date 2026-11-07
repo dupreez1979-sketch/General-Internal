@@ -3386,11 +3386,30 @@
     });
   }
 
+  // A new chat in a Claude Project starts from the message box on the project's page (Claude has no address
+  // for "a new chat in this project"). So when the app opens a project to start a chat, it puts the cursor
+  // straight in that box: type, send, and it is a chat in the project.
+  const FOCUS_COMPOSER = `(async () => {
+    for (let i = 0; i < 24; i++) {
+      const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
+      if (box) { box.scrollIntoView({ block: 'center' }); box.focus(); return 'focused'; }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    return 'none';
+  })()`;
+  function focusComposerSoon(url) { state.focusComposer = { path: pathOf(url), until: Date.now() + 20e3 }; }
+  function maybeFocusComposer(url) {
+    const f = state.focusComposer;
+    if (!f || Date.now() > f.until || pathOf(url) !== f.path) return;
+    state.focusComposer = null;
+    viewExec(FOCUS_COMPOSER).catch(() => {});
+  }
+  const startInProject = url => { go({ kind: 'page', url }); if (/\/project\//.test(url)) focusComposerSoon(url); };
   function newInFolder(kind = 'chat', folderId = newHereFolder()) {
     const k = NEW_KINDS[kind] || NEW_KINDS.chat;
     state.lastFolderId = folderId;
     const proj = (kind === 'chat' || kind === 'artifactChat') && folderId ? staffProjectFor(folderId) : null;   // Chief of Staff
-    go({ kind: 'page', url: proj ? proj.url : k.url });
+    if (proj) startInProject(proj.url); else go({ kind: 'page', url: k.url });
     const f = folderId && nodeOf(folderId) ? nodeOf(folderId).name : null;
     if (isApp && k.click) {
       state.pendingClick = {
@@ -3539,6 +3558,7 @@
       syncNames(url, title);
       checkAutoFile(url, title);
       runPendingClick(url);
+      maybeFocusComposer(url);
       if (state.loc.kind === 'page') {
         state.loc.url = url;
         ls.set(LOC_STORE, JSON.stringify({ loc: state.loc, lastFolderId: state.lastFolderId, listLoc: state.listLoc }));
@@ -6779,8 +6799,8 @@
     const t = cosTeam();
     navigator.clipboard.writeText(cosBrief(n, t)).catch(() => {});
     const url = n.claudeProject && n.claudeProject.url || HOME;
-    if (cosUi.tab === 'work' && cosUi.page) go({ kind: 'page', url });
-    else { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url }); }
+    if (cosUi.tab === 'work' && cosUi.page) startInProject(url);
+    else { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); startInProject(url); }
     toast(`A new chat is open${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''}. Where ${n.chief ? 'the team is' : `${n.name} is`} up to is copied: paste it, then ask your question.`);
   }
 
@@ -7031,7 +7051,7 @@
     const c = teamCtxOf(id), staff = c && staffNodeOf(c.staff);
     if (kindOf(it) === 'skill') {
       navigator.clipboard.writeText(`Use my “${it.name}” skill. `).catch(() => {});
-      go({ kind: 'page', url: staff && staff.claudeProject ? staff.claudeProject.url : HOME });
+      startInProject(staff && staff.claudeProject ? staff.claudeProject.url : HOME);
       toast(`A new chat is open${staff && staff.claudeProject ? ` in ${staff.name}’s Claude Project` : ''}. Paste to use “${it.name}”, then say what you need.`);
     } else {
       if (it.prompt) navigator.clipboard.writeText(it.prompt).catch(() => {});
@@ -7864,6 +7884,7 @@ body { width: max-content !important; min-width: 0 !important; }
     cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude';
     renderCos();
     go({ kind: 'page', url: start });                        // (go clears what was being made before)
+    if (url && /\/project\//.test(url)) focusComposerSoon(url);
     cosUi.making = { label: k.title, what, done };
     cosPaintSrcSub();
     if (k.click && !url) {
