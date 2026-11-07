@@ -178,6 +178,7 @@
   .cos-who { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; }
   .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
   .cos-who b { font-size: 17px; display: block; }
+  .cos-who .who-btns .tb .t { margin-left: 4px; }
   .cos-who .who-btns { margin-left: auto; display: flex; gap: 8px; }
   .cos-who span { font-size: 12.5px; color: var(--muted); }
   .cos-tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
@@ -185,37 +186,28 @@
   .cos-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .cos-tabs button .n { font-size: 11px; color: var(--muted); margin-left: 4px; }
   .cos-proj { flex: 1; min-width: 0; min-height: 0; display: flex; }
-  .cos-plist { width: 230px; flex: 0 1 auto; min-width: 150px; border-right: 1px solid var(--line); overflow: auto; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
-  .cos-plist .pi { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
-  .cos-plist .pi:hover { background: var(--hover); }
-  .cos-plist .pi.on { background: var(--sel); font-weight: 600; }
-  .cos-plist .pi.drop { box-shadow: inset 0 0 0 2px var(--accent); }
-  .cos-plist .pi .c { margin-left: auto; font-size: 11px; color: var(--muted); }
-  .cos-plist .ph { font-size: 11px; color: var(--muted); font-weight: 600; padding: 10px 8px 4px; }
-  .cos-pbody { flex: 1; min-width: 300px; display: flex; flex-direction: column; }
   .cos-ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  .cos-ptop .tb, .split-btn { white-space: nowrap; flex: none; }
-  .split-btn { display: inline-flex; align-items: center; }
-  .split-btn .more svg { transform: rotate(90deg); }
+  .cos-ptop .tb { white-space: nowrap; flex: none; }
   .cos-ptop input { font: inherit; font-size: 15px; font-weight: 650; border: 0; background: none; color: var(--text); padding: 4px 6px; border-radius: 6px; min-width: 120px; flex: 1; }
   .cos-ptop input:focus { background: var(--field); outline: none; }
   .cos-ptop .tb.on { background: var(--sel); color: var(--text); }
-  .cos-items { flex: 1; overflow: auto; padding: 8px 10px 30px; }
-  .cos-items.drop-here { box-shadow: inset 0 0 0 2px var(--accent); border-radius: 8px; }
-  .cos-items .it { display: flex; align-items: center; gap: 8px; padding: 5px 8px; padding-left: calc(8px + var(--d, 0) * 18px); border-radius: 6px; font-size: 13px; cursor: default; user-select: none; }
-  .cos-items .it:hover { background: var(--hover); }
-  .cos-items .it.sel { background: var(--sel); }
-  .cos-items .it.drop { box-shadow: inset 0 0 0 2px var(--accent); }
-  .cos-items .it .tw { width: 14px; flex: none; display: inline-grid; place-items: center; color: var(--muted); }
-  .cos-items .it .tw.open svg { transform: rotate(90deg); }
-  .cos-items .it .icon { flex: none; display: inline-grid; place-items: center; }
-  .cos-items .it .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cos-items .it .kind { margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
   .cos-src { width: 46%; min-width: 280px; flex: 0 1 auto; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-height: 0; }
   .cos-src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   .cos-src-head .tb.on { background: var(--sel); color: var(--text); }
   .cos-src-head input { margin-left: auto; font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 150px; color: var(--text); }
   #cosSrcRs, #cosSrcHead { display: none; }
+  /* Work tab: the staff header on top, then Navigator's own toolbar, folder view (or split view) and path bar */
+  body.cos-mode.cos-work #cosMain { flex: none; order: -1; }
+  body.cos-mode.cos-work #cosMain .cos-body { flex: none; }
+  body.cos-mode.cos-work #bar { display: flex !important; }
+  body.cos-mode.cos-work #content, body.cos-mode.cos-work #pathbar { display: flex !important; }
+  body.cos-mode.cos-work #splitLeft:not([hidden]) { display: flex !important; }
+  body.cos-mode.cos-work .cos-detail, body.cos-mode.cos-work .col-detail { display: none; }
+  .lrow .dchk { margin: 0 6px 0 0; flex: none; }
+  .lrow.done .label, .tile.done .label { text-decoration: line-through; color: var(--muted); }
+  .lrow.selected.done .label { color: inherit; opacity: .75; }
+  .cos-who .who-btns .tb.on { color: var(--text); }
+  .cos-who .who-btns .more svg { transform: rotate(90deg); }
   body.cos-mode.cos-adding #main { display: grid; grid-template-columns: minmax(var(--cos-left-min, 300px), 1fr) 7px minmax(280px, var(--cos-src-w, 46%)); grid-template-rows: auto minmax(0, 1fr) auto; }
   body.cos-mode.cos-adding #cosMain { grid-column: 1; grid-row: 1 / -1; }
   body.cos-mode.cos-adding #cosSrcRs { display: block; grid-column: 2; grid-row: 1 / -1; margin: 0 -3px 0 -4px; }
@@ -231,20 +223,9 @@
   .cos-src-sub[hidden] { display: none; }
   .cos-src-sub .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
   .cos-src-sub .tb:disabled { opacity: .4; }
-  .cos-items .it.pa .tw input { margin: 0; }
-  .cos-items .it.pa.done .label { text-decoration: line-through; color: var(--muted); }
-  .cos-items .it .kind.late { color: #C0392B; font-weight: 600; }
   .cos-tabbody { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   .cos-tabbody .cos-ptop input { font-size: 13.5px; font-weight: 400; background: var(--field); }
   .cos-tabnote { font-size: 12px; color: var(--muted); flex: 1; }
-  .cos-grouph { font-size: 11.5px; font-weight: 600; color: var(--muted); padding: 12px 8px 4px; user-select: none; }
-  .act { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 7px; font-size: 13px; }
-  .act:hover { background: var(--hover); }
-  .act.drop { box-shadow: inset 0 0 0 2px var(--accent); }
-  .act.done .at { text-decoration: line-through; color: var(--muted); }
-  .act .at { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .act .meta { display: flex; align-items: center; gap: 6px; flex: none; }
-  .act select { font: inherit; font-size: 12px; background: var(--field); border: 0; border-radius: 6px; padding: 3px 6px; color: var(--text); }
   .due { font-size: 11.5px; color: var(--muted); background: var(--field); border-radius: 8px; padding: 2px 8px; }
   .due.late { color: #fff; background: #99351E; }
   .due.today { color: #fff; background: #B36E24; }
@@ -267,7 +248,7 @@
   .cos-form [hidden] { display: none !important; }
   .cos-form .days { display: flex; flex-wrap: wrap; gap: 6px; }
   .cos-form .day { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; font-size: 12.5px; color: var(--text); background: var(--field); border-radius: 7px; padding: 4px 8px; }
-  .rcard .rhead { display: flex; align-items: center; gap: 8px; }
+  .rcard .rhead, .fcard .rhead { display: flex; align-items: center; gap: 8px; }
   .rcard .rclock { display: inline-grid; place-items: center; }
   .rcard .rstate { margin-left: auto; font-size: 10.5px; font-weight: 700; border-radius: 8px; padding: 1px 8px; }
   .rcard .rstate.on { color: #fff; background: #328276; }
@@ -711,7 +692,7 @@
 </main>
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="navigator"><span class="app-ic nav"></span><b>Navigator</b><span>Your folders, Claude chats and artifacts, monday.com boards and files</span></button>
-  <button class="app-tile" data-app="cos"><span class="app-ic cos"></span><b>Chief of Staff</b><span>Your AI team: who does what, their projects, functions and routines</span></button>
+  <button class="app-tile" data-app="cos"><span class="app-ic cos"></span><b>Chief of Staff</b><span>Your AI team: who does what, their work, skills and routines</span></button>
 </div>
 
 <div id="menu" role="menu"></div>
@@ -2697,6 +2678,15 @@
     ]);
   }
 
+  // The Done tick on actions in a staff member's folder (Chief of Staff).
+  browseEl.addEventListener('click', e => {
+    const box = e.target.closest('.dchk');
+    if (!box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const row = box.closest('[data-id]');
+    if (row) toggleDone(row.dataset.id);
+  }, true);
   // Row checkboxes show the app's selection; stop the box's own click from flipping it back.
   browseEl.addEventListener('click', e => {
     if (!e.target.closest('.lchk:not(.lchk-all)')) return;
@@ -2754,6 +2744,7 @@
     const k = kindOf(n);
     t.innerHTML = `${state.libSelectMode ? '<input type="checkbox" class="lchk" title="Select">' : ''}<div class="big">${k === 'folder' ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
     t.querySelector('.label').textContent = n.name;
+    if (n.done && n.type !== 'folder' && teamCtxOf(n.id)) t.classList.add('done');
     t.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
     if (n.type === 'link' && n.children && n.children.length) {
       const b = document.createElement('span');
@@ -2773,6 +2764,8 @@
     const k = kindOf(n);
     const edited = editedOf(n, updated);
 
+    const teamItem = n.type !== 'folder' && view === 'folder' && teamCtxOf(n.id);
+    if (teamItem && n.done) r.classList.add('done');
     fillRow(r, view, colourIcon(k), n.name, {
       kind: KIND_NAME[k],
       edited: fmtDate(edited),
@@ -2791,6 +2784,13 @@
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (teamItem) {                       // Chief of Staff: the Done tick, before the icon
+      const box = document.createElement('input');
+      box.type = 'checkbox'; box.className = 'dchk'; box.title = n.done ? 'Done: click to mark it not done' : 'Mark done';
+      box.checked = !!n.done;
+      const nm = r.querySelector('.nm');
+      nm.insertBefore(box, nm.querySelector('.icon'));
+    }
     if (goneFromClaude(n)) {
       r.classList.add('gone');
       r.title = `${n.name}\n${GONE_TIP}`;
@@ -3247,7 +3247,8 @@
   function newInFolder(kind = 'chat', folderId = newHereFolder()) {
     const k = NEW_KINDS[kind] || NEW_KINDS.chat;
     state.lastFolderId = folderId;
-    go({ kind: 'page', url: k.url });
+    const proj = (kind === 'chat' || kind === 'artifactChat') && folderId ? staffProjectFor(folderId) : null;   // Chief of Staff
+    go({ kind: 'page', url: proj ? proj.url : k.url });
     const f = folderId && nodeOf(folderId) ? nodeOf(folderId).name : null;
     if (isApp && k.click) {
       state.pendingClick = {
@@ -3261,7 +3262,7 @@
       runPendingClick(current);   // only presses now if that page is already showing
     }
     if (!isApp || !folderId) return;
-    state.autoFile = { folderId, kind, lastPath: null, since: Date.now() };
+    state.autoFile = { folderId, kind, lastPath: null, since: Date.now(), from: proj ? pathOf(proj.url) : null };
     lastRevealed = null;
     renderToolbar();
     syncSideSel();
@@ -3319,7 +3320,9 @@
     // Chats and projects: the address Claude switches to right after the new-chat or projects page.
     const isProject = a.kind === 'project';
     const prev = a.lastPath;
-    const cameFrom = isProject ? /^\/projects(\/|$)/ : /^\/new(\/|$)/;
+    // A new chat starts on the new-chat page, or on a Claude Project's page (a staff member's project).
+    const fromRe = a.from ? new RegExp('^(' + a.from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '|/new)(/|$)') : /^\/new(\/|$)/;
+    const cameFrom = isProject ? /^\/projects(\/|$)/ : fromRe;
     if (kind !== (isProject ? 'project' : 'chat')) {
       if (cameFrom.test(path)) a.lastPath = path;            // on the new-chat (or projects) page
       else if (prev) state.autoFile = null;                   // went somewhere else instead
@@ -4267,7 +4270,15 @@
   window.addEventListener('blur', hideMenu);
   window.addEventListener('resize', hideMenu);
 
+  // In a staff member's folder (Chief of Staff), items can be ticked off as done.
   function menuFor(n, scope) {
+    const items = menuForBase(n, scope);
+    if (!n || n.type === 'folder' || !teamCtxOf(n.id)) return items;
+    const i = items.indexOf('-');
+    items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) });
+    return items;
+  }
+  function menuForBase(n, scope) {
     const savePage = isApp && state.pageUrl;
     if (!n) {
       const here = scope === browseEl ? hereFolder() : null;
@@ -5515,8 +5526,14 @@
   // ---------- Apps: Navigator and Chief of Staff ----------
   // The nine-dot button switches between the apps. Each keeps its own place.
   var currentApp = ls.get('claudeNavigator.app') === 'cos' ? 'cos' : 'navigator';
+  function cosEndMaking() {
+    if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
+    state.cosWatch = null;
+    if (typeof cosUi !== 'undefined') cosUi.making = null;
+  }
   function setApp(a) {
-    if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding'); cosReturnSource(); }
+    cosEndMaking();
+    if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work'); cosReturnSource(); }
     currentApp = a === 'cos' ? 'cos' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
@@ -5549,7 +5566,7 @@
   var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
   const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
   const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null };
-  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); if (typeof cosMirrorSoon === 'function') try { cosMirrorSoon(); } catch (e) { /* starting up */ } }
+  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
     if (!cos.teams[p.id]) {
@@ -5562,12 +5579,30 @@
   const cosKids = (t, id) => t.nodes.filter(n => n.parent === id);
   const cosInitials = n => (n.name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
   function cosUnder(t, aId, bId) { for (let n = cosNode(t, bId); n; n = cosNode(t, n.parent)) if (n.id === aId) return true; return false; }
+  const cosUndoStack = [];
   function cosChange(fn, msg) {
-    const before = JSON.stringify(cos);
+    cosUndoStack.push(JSON.stringify(cos));
+    if (cosUndoStack.length > 40) cosUndoStack.shift();
     fn();
     saveCos();
+    cosRender();
+    if (msg) toast(msg, { label: 'Undo', run: cosUndo });
+  }
+  function cosUndo() {
+    if (!cosUndoStack.length) return toast('Nothing to undo');
+    cos = JSON.parse(cosUndoStack.pop());
+    saveCos();
     renderCos();
-    if (msg) toast(msg, { label: 'Undo', run: () => { cos = JSON.parse(before); saveCos(); renderCos(); } });
+  }
+  // Redraw, but not while you are typing in Chief of Staff (that would throw your typing away): wait until you finish.
+  let cosRenderPending = false;
+  function cosRender() {
+    const a = document.activeElement;
+    if (a && $('cosMain').contains(a) && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) {
+      if (!cosRenderPending) { cosRenderPending = true; a.addEventListener('blur', () => { cosRenderPending = false; setTimeout(renderCos, 0); }, { once: true }); }
+      return;
+    }
+    renderCos();
   }
   function cosAdd(kind, parentId) {
     const t = cosTeam();
@@ -5583,7 +5618,7 @@
     const n = cosNode(t, id);
     if (!n || n.chief) return;
     const kids = cosKids(t, id);
-    if (!confirm(`Remove ${n.kind === 'dept' ? 'the department' : ''} “${n.name}”?${kids.length ? ` The ${kids.length} ${kids.length === 1 ? 'member' : 'members'} below ${kids.length === 1 ? 'moves' : 'move'} up to ${(cosNode(t, n.parent) || {}).name}.` : ''}`)) return;
+    if (!confirm(`Remove ${n.kind === 'dept' ? 'the department ' : ''}“${n.name}”?${kids.length ? ` The ${kids.length} ${kids.length === 1 ? 'member' : 'members'} below ${kids.length === 1 ? 'moves' : 'move'} up to ${(cosNode(t, n.parent) || {}).name}.` : ''}`)) return;
     cosChange(() => {
       for (const k of kids) { k.parent = n.parent; if (n.kind === 'dept') k.lead = false; }
       t.nodes = t.nodes.filter(x => x.id !== id);
@@ -5677,7 +5712,7 @@
     const max = () => {
       const row = el.parentElement;
       if (!row || !row.clientWidth) return Math.max(min + 40, Math.round(window.innerWidth * maxFrac));
-      const others = [...row.children].filter(c => c !== el && /\b(cos-plist|cos-src|cos-detail)\b/.test(c.className)).reduce((a, c) => a + c.getBoundingClientRect().width, 0);
+      const others = [...row.children].filter(c => c !== el && /\b(cos-detail)\b/.test(c.className)).reduce((a, c) => a + c.getBoundingClientRect().width, 0);
       return Math.max(min, Math.min(Math.round(window.innerWidth * maxFrac), row.clientWidth - others - 300));
     };
     if (cosCols[key]) el.style.width = Math.min(max(), Math.max(min, cosCols[key])) + 'px';
@@ -5713,7 +5748,7 @@
       // Always there (so the chart never shifts under your mouse); a hint until someone is selected.
       const d = document.createElement('div');
       d.className = 'cos-detail';
-      d.innerHTML = '<h2>Team</h2><div class="soon">Click someone to edit them. Double-click a staff member to open their page (projects, actions, functions and routines).<br><br>Drag a box onto another to move it; right-click for more.</div>';
+      d.innerHTML = '<h2>Team</h2><div class="soon">Click someone to edit them. Double-click a staff member to open their page (their work, skills and routines).<br><br>Drag a box onto another to move it; right-click for more.</div>';
       return d;
     }
     const d = document.createElement('div');
@@ -5727,7 +5762,7 @@
       <label>Colour<div class="cos-swatches"></div></label>
       ${n.kind === 'staff' ? '<button class="btn-primary" data-a="open">Open Page</button>' : ''}
       <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
-      ${n.kind === 'staff' ? `<div class="soon">${(() => { const c = [[cosProjects(n).filter(p => !p.archived).length, 'project'], [cosActions(n).filter(a => a.status !== 'done').length, 'open action'], [cosFunctions(n).length, 'function'], [(n.routines || []).filter(r => !r.paused).length, 'routine']].filter(x => x[0]).map(([k, w]) => `${k} ${w}${k === 1 ? '' : 's'}`); return c.length ? c.join(', ').replace(/, ([^,]*)$/, ' and $1') + '. Open Page to see them.' : 'No projects, actions, functions or routines yet. Open Page to add them.'; })()}</div>` : ''}`;
+      ${n.kind === 'staff' ? `<div class="soon">${(() => { const f = n.folderId && nodeOf(n.folderId); const c = [[workItems(f).filter(x => !x.done).length, 'open action'], [(n.skills || []).length, 'skill'], [(n.routines || []).filter(r => !r.paused).length, 'routine']].filter(x => x[0]).map(([k, w]) => `${k} ${w}${k === 1 ? '' : 's'}`); return (c.length ? c.join(', ').replace(/, ([^,]*)$/, ' and $1') + '.' : 'Nothing yet.') + (n.claudeProject ? ' Has a Claude Project.' : '') + ' Open Page to see them.'; })()}</div>` : ''}`;
     d.querySelector('h2').textContent = n.chief ? 'Chief of Staff' : n.kind === 'dept' ? 'Department' : 'Staff member';
     const f = name => d.querySelector(`[name="${name}"]`);
     f('name').value = n.name || '';
@@ -5738,7 +5773,14 @@
       f('parent').value = n.parent;
       f('parent').addEventListener('change', () => cosMove(n.id, f('parent').value));
     }
-    const commitField = (k, v) => { if ((n[k] || '') === v) return; n[k] = v; saveCos(); renderCosChartOnly(); };
+    const commitField = (k, v) => {
+      if ((n[k] || '') === v) return;
+      n[k] = v;
+      saveCos();
+      const f = k === 'name' && n.folderId && nodeOf(n.folderId);
+      if (f) { f.name = v; save(); }
+      renderCosChartOnly();
+    };
     for (const k of ['name', 'role', 'about']) if (f(k)) f(k).addEventListener('input', () => commitField(k, f(k).value.trim() || (k === 'name' ? 'Untitled' : '')));
     const sw = d.querySelector('.cos-swatches');
     for (const c of cosColours()) {
@@ -5811,6 +5853,10 @@
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
+    if (!COS_TABS.some(([k]) => k === cosUi.tab)) cosUi.tab = cosUi.tab === 'functions' ? 'skills' : cosUi.tab === 'routines' ? 'routines' : 'work';
+    const work = !!(staff && cosUi.tab === 'work' && staff.external !== 'clara');
+    if (work) cosUi.adding = false;
+    document.body.classList.toggle('cos-work', work);
     document.body.classList.toggle('cos-adding', !!(staff && cosUi.adding));
     if (staff) {
       const back = document.createElement('button');
@@ -5824,12 +5870,12 @@
     if (t && !staff) {
       const seg = document.createElement('div');
       seg.className = 'seg';
-      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team"><span class="t">Week</span></button>`;
+      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team">${small('schedule', 'currentColor')}</button>`;
       seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { cosUi.view = b.dataset.v; ls.set('claudeNavigator.cosView', cosUi.view); renderCos(); } });
       const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
       head.append(
-        btn('Add Staff', 'Add a staff member under the one selected (or under the Chief of Staff)', () => cosAdd('staff', cosUi.sel)),
-        btn('Add Department', 'Add a department under the one selected', () => cosAdd('dept', cosUi.sel)),
+        btn('', `Add a staff member under the one selected (${K.mod}N)`, () => cosAdd('staff', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Staff</span>`),
+        btn('', `Add a department under the one selected (${K.mod}${K.shift}N)`, () => cosAdd('dept', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Department</span>`),
         ...(cosUi.view === 'week' ? [] : cosUi.view === 'chart' ? [
           btn('', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); }, '<span class="t">−</span>'),
           btn('', 'Fit to window', () => cosFit(), '<span class="t">Fit</span>'),
@@ -5890,6 +5936,14 @@
   }
   // Clicks, right-clicks and drags on boxes, list rows and sidebar rows.
   const cosTarget = e => e.target.closest('[data-cid]');
+  $('cosMain').addEventListener('contextmenu', e => {
+    if (e.defaultPrevented || cosUi.page || cosTarget(e) || !e.target.closest('.cos-canvas, .cos-list')) return;
+    e.preventDefault();
+    showMenu(e.clientX, e.clientY, [
+      { label: 'Add Staff', key: K.mod + 'N', run: () => cosAdd('staff', cosUi.sel) },
+      { label: 'Add Department', key: K.mod + K.shift + 'N', run: () => cosAdd('dept', cosUi.sel) },
+    ]);
+  });
   for (const el of [$('cosMain'), $('cosSide')]) {
     el.addEventListener('dblclick', e => {
       const x = e.target.closest('.ocbox[data-cid], .crow[data-cid], .cos-side-row[data-cid]');
@@ -5936,104 +5990,297 @@
   });
   document.addEventListener('dragend', () => { cosUi.dragId = null; });
 
-  // ---------- Chief of Staff: a staff member's page (Projects; Actions, Functions and Routines follow) ----------
-  // A project: { id, name, archived, created, items: [ folder | link | file nodes, like your folders ] }
-  Object.assign(cosUi, { page: null, tab: 'projects', proj: null, adding: false, showArchived: false, itemSel: null, srcFrom: 'chats' });
-  const COS_TABS = [['projects', 'Projects'], ['actions', 'Actions'], ['functions', 'Functions'], ['routines', 'Routines']];
-  function openStaff(id) { cosUi.page = id; cosUi.sel = id; cosUi.proj = null; cosUi.itemSel = null; renderCos(); }
-  const cosProjects = n => n.projects || (n.projects = []);
-  const cosProject = (n, id) => cosProjects(n).find(p => p.id === id);
-  function cosItemLocate(list, id, parent = null) {
-    for (let i = 0; i < list.length; i++) {
-      if (list[i].id === id) return { node: list[i], list, index: i, parent };
-      if (list[i].children) { const r = cosItemLocate(list[i].children, id, list[i]); if (r) return r; }
+  // ---------- Chief of Staff: a staff member's page ----------
+  // Three tabs. Work: the staff member's own Navigator folder (Team › name › project folders), shown with
+  // Navigator's own list, toolbar, menus and split view; everything in it is an action, ticked when done.
+  // Skills: what they do on request (each a Claude chat or project you go back to). Routines: Claude's
+  // scheduled tasks. Each staff member can have a Claude Project, so their chats start with their role.
+  const COS_TABS = [['work', 'Work'], ['skills', 'Skills'], ['routines', 'Routines']];
+  function openStaff(id) { cosUi.page = id; cosUi.sel = id; renderCos(); }
+
+  // Where a Navigator item sits in the team: { team, staff } folders, or null outside the Team folder.
+  function teamCtxOf(id) {
+    let staff = null;
+    for (let x = id && nodeOf(id); x; x = nodeOf(parentIdOf(x.id))) {
+      if (x.staffId && !staff) staff = x;
+      if (x.team) return { team: x, staff };
+      if (x.profile) return null;
     }
     return null;
   }
-  const cosCount = items => { let c = 0; const w = l => l.forEach(x => { if (x.type !== 'folder') c++; if (x.children) w(x.children); }); w(items); return c; };
-  function cosNewProject(n) {
-    cosChange(() => { const p = { id: uid(), name: 'New project', archived: false, created: Date.now(), items: [] }; cosProjects(n).unshift(p); cosUi.proj = p.id; cosUi.nameNow = p.id; }, null);
-    setTimeout(() => { const f = document.querySelector('.cos-ptop input'); if (f) { f.focus(); f.select(); } }, 30);
+  function staffNodeOf(folder) {
+    if (!folder || !folder.staffId) return null;
+    for (const t of Object.values(cos.teams || {})) { const n = (t.nodes || []).find(x => x.id === folder.staffId); if (n) return n; }
+    return null;
   }
-  function cosCloneNav(node) {
-    const c = JSON.parse(JSON.stringify(node));
-    const re = x => { x.id = uid(); delete x.path; delete x.ino; if (x.children) x.children.forEach(re); };
-    re(c);
-    return c;
+  // The Claude Project a new chat in this folder starts in (the staff member's), if any.
+  function staffProjectFor(folderId) {
+    const c = folderId && teamCtxOf(folderId);
+    const n = c && staffNodeOf(c.staff);
+    return n && n.claudeProject && /^https?:\/\/[^/]+\/project\//.test(n.claudeProject.url || '') ? n.claudeProject : null;
   }
-  // Adding things: from a Claude or monday.com list, from your folders, or a web address.
-  function cosDropInto(e, project, folderId) {
-    let added = [];
-    const libData = e.dataTransfer.getData(LIB_TYPE);
-    const navIds = (e.dataTransfer.getData(NAV_TYPE) || '').split(',').filter(Boolean);
-    if (libData) { try { added = JSON.parse(libData).filter(x => x && x.url).map(x => Object.assign(Link(hasWords(x.name) ? x.name : guessName(x.url), x.url), { autoName: true })); } catch (err) { /* ignore */ } }
-    else if (navIds.length) added = navIds.map(nodeOf).filter(Boolean).map(cosCloneNav);
-    else { const url = extractUrl(e.dataTransfer); if (url) added = [Link(guessName(url), url)]; }
-    if (!added.length) return toast('Drag chats, artifacts, boards or folders here');
-    let target = folderId ? cosItemLocate(project.items, folderId) : null;
-    if (target && target.node.type === 'action') {             // dropped onto an action: link it
-      const a = target.node, l = cosAsAction(added[0]).link;
-      return l && cosChange(() => { a.link = l; if (a.status === 'todo') a.status = 'doing'; }, `Linked \u201c${l.name}\u201d to \u201c${a.title}\u201d`);
+  function teamFolderFor(p) {
+    let f = (p.children || []).find(x => x.type === 'folder' && x.team);
+    if (!f) { f = Object.assign(Folder('Team'), { team: true }); p.children.unshift(f); }
+    return f;
+  }
+  // The staff member's folder (made the first time it is needed).
+  function staffFolder(n, p = activeProfile()) {
+    const have = n.folderId && nodeOf(n.folderId);
+    if (have && have.type === 'folder') return have;
+    if (!p) return null;
+    const team = teamFolderFor(p);
+    let f = team.children.find(x => x.type === 'folder' && x.staffId === n.id);
+    if (!f) { f = Object.assign(Folder(n.name || 'Staff member'), { staffId: n.id }); team.children.push(f); }
+    n.folderId = f.id;
+    save(); saveCos();
+    return f;
+  }
+  const workItems = f => { const out = []; const w = l => (l || []).forEach(x => { if (x.type === 'folder') w(x.children); else out.push(x); }); if (f) w(f.children); return out; };
+  function toggleDone(id) {
+    const n = nodeOf(id);
+    if (!n || n.type === 'folder') return;
+    snap();
+    n.done = !n.done;
+    if (n.done) n.doneAt = Date.now(); else delete n.doneAt;
+    commit();
+  }
+
+  // One-time move: projects and actions from earlier versions become folders and links in the staff
+  // member's folder; functions become skills. (A copy of the old data is kept, just in case.)
+  function cosMigrateToFolders() {
+    if (!cos || !cos.teams) return;
+    let needs = false;
+    for (const t of Object.values(cos.teams)) for (const n of t.nodes || []) if (n.projects || n.actions || n.functions) needs = true;
+    if (!needs) return;
+    try { ls.set('claudeNavigator.cos.v1.before-folders', JSON.stringify(cos)); } catch (e) { /* no room: carry on */ }
+    let moved = 0, skipped = 0;
+    const conv = it => {
+      if (it.type === 'folder') return Object.assign(Folder(it.name || 'Folder'), { children: (it.children || []).map(conv).filter(Boolean) });
+      const l = it.type === 'action' ? it.link : it.type === 'link' ? { name: it.name, url: it.url, as: it.as } : it.link;
+      if (!l || !/^https?:\/\//.test(l.url || '')) { skipped++; return null; }
+      moved++;
+      return Object.assign(Link(it.title || l.name || 'Untitled', l.url), l.as ? { as: l.as } : {}, it.status === 'done' ? { done: true } : {});
+    };
+    for (const p of profiles()) {
+      const t = cos.teams[p.id];
+      if (!t) continue;
+      for (const n of t.nodes || []) {
+        if ((n.projects || []).length || (n.actions || []).length) {
+          const f = staffFolder(n, p);
+          for (const a of n.actions || []) { const l = conv(a); if (l) f.children.push(l); }
+          let arch = null;
+          for (const pj of n.projects || []) {
+            const folder = Object.assign(Folder(pj.name || 'Project'), { children: (pj.items || []).map(conv).filter(Boolean) });
+            if (pj.archived) (arch || (arch = Folder('Archived'))).children.push(folder); else f.children.push(folder);
+          }
+          if (arch) f.children.push(arch);
+        }
+        if (n.functions) n.skills = (n.skills || []).concat(n.functions.map(f => ({ id: f.id || uid(), name: f.name || 'Skill', link: f.link || null, prompt: f.prompt || '', created: f.created || Date.now(), lastRun: f.lastRun || null })));
+        delete n.projects; delete n.actions; delete n.functions;
+      }
     }
-    added = added.map(cosAsAction);
-    const have = new Set();
-    const w = l => l.forEach(x => { if (x.link && x.link.url) have.add(normUrl(x.link.url)); if (x.children) w(x.children); });
-    w(project.items);
-    const fresh = added.filter(a => !(a.link && a.link.url) || !have.has(normUrl(a.link.url)));
-    if (!fresh.length) return toast('Already in this project');
-    cosChange(() => {
-      const list = target && target.node.type === 'folder' ? (target.node.children || (target.node.children = [])) : project.items;
-      list.push(...fresh);
-      if (target) target.node.open = true;
-    }, `Added ${fresh.length} action${fresh.length === 1 ? '' : 's'} to “${project.name}”${target ? ` › ${target.node.name}` : ''}, each linked to what you dragged in`);
+    save(); saveCos();
+    if (moved) setTimeout(() => toast(`Chief of Staff now keeps each person’s work in Navigator folders (Team › name). Moved ${moved} item${moved === 1 ? '' : 's'}${skipped ? `; ${skipped} without a link to anything were left out` : ''}.`), 1500);
   }
-  function cosProjAction(project, folderId) {
-    const t = folderId ? cosItemLocate(project.items, folderId) : null;
-    const list = () => t && t.node.type === 'folder' ? (t.node.children || (t.node.children = [])) : project.items;
-    if (t) t.node.open = true;
-    cosActionForm(null, { list, where: `\u201c${project.name}\u201d`, ctx: 'project' });
+
+  // ----- Ask: a chat in the staff member's Claude Project, with where they are up to ready to paste -----
+  function cosBrief(n, t) {
+    const lines = [];
+    const one = m => {
+      const f = m.folderId && nodeOf(m.folderId);
+      const open = [], done = [];
+      const w = (list, trail) => (list || []).forEach(x => x.type === 'folder' ? w(x.children, [...trail, x.name]) : (x.done ? done : open).push((trail.length ? trail.join(' › ') + ' › ' : '') + x.name + (x.url ? ` (${x.url})` : '')));
+      if (f) w(f.children, []);
+      lines.push(`## ${m.name}${m.role ? `: ${m.role}` : ''}`);
+      lines.push(open.length ? 'Open work:' : 'No open work.');
+      open.slice(0, 50).forEach(s => lines.push('- ' + s));
+      if (done.length) lines.push(`Done: ${done.length} item${done.length === 1 ? '' : 's'}`);
+      if ((m.skills || []).length) lines.push('Skills: ' + m.skills.map(s => s.name).join(', '));
+      for (const r of m.routines || []) lines.push(`Routine: ${r.name}, ${routineWhen(r)}${r.paused ? ' (paused)' : ''}`);
+      lines.push('');
+    };
+    if (n.chief) t.nodes.filter(x => x.kind === 'staff').forEach(one); else one(n);
+    const who = n.chief ? `the ${(activeProfile() || {}).name || ''} team`.replace('  ', ' ') : n.name;
+    return `Here is where ${who} is up to (from Claude Navigator, ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}):\n\n${lines.join('\n')}\nMy question: `;
   }
-  function cosNewFolder(project, parentId) {
-    const t = parentId ? cosItemLocate(project.items, parentId) : null;
-    const f = { id: uid(), type: 'folder', name: 'New folder', children: [], open: true };
-    cosChange(() => { (t ? (t.node.children || (t.node.children = [])) : project.items).push(f); if (t) t.node.open = true; cosUi.itemSel = f.id; }, null);
+  function cosAsk(n) {
+    const t = cosTeam();
+    navigator.clipboard.writeText(cosBrief(n, t)).catch(() => {});
+    const url = n.claudeProject && n.claudeProject.url || HOME;
+    if (cosUi.tab === 'work' && cosUi.page) go({ kind: 'page', url });
+    else { cosUi.adding = true; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url }); }
+    toast(`A new chat is open${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''}. Where ${n.chief ? 'the team is' : `${n.name} is`} up to is copied: paste it, then ask your question.`);
   }
-  function cosOpenItem(it, project) {
-    if (it.type === 'action') return it.link ? cosOpenLink(it.link) : cosActionForm(it, { list: () => [], ctx: 'project' });
-    if (it.type === 'file') return fsState.enabled && it.path ? window.navigatorApp.fsOpen(it.path) : toast('That file is not on this Mac');
-    if (it.url) openNewWindow(it.url);
+
+  // ----- Each staff member's Claude Project (their role and instructions live there, in Claude) -----
+  function cosSetUpProject(n) {
+    navigator.clipboard.writeText(`${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+    cosCreate('project', { what: `${n.name}`, onLink: link => { const m = cosNode(cosTeam(), n.id); if (m) m.claudeProject = link; } });
   }
-  function cosItemMenu(x, y, project, id) {
-    const loc = cosItemLocate(project.items, id);
-    if (!loc) return;
-    const it = loc.node;
-    if (it.type === 'action') {
-      const lk = it.link;
-      return showMenu(x, y, [
-        lk && { label: `Open \u201c${lk.name}\u201d`, run: () => cosOpenLink(lk) },
-        lk && lk.url && { label: 'Open in a New Window', run: () => openNewWindow(lk.url) },
-        { label: 'Edit…', run: () => cosActionForm(it, { list: () => [], ctx: 'project' }) },
-        { label: it.status === 'done' ? 'Mark Not Done' : 'Mark Done', run: () => cosChange(() => { it.status = it.status === 'done' ? 'todo' : 'done'; it.doneAt = it.status === 'done' ? Date.now() : null; }, null) },
-        '-',
-        { label: lk ? 'Start Something Else for This\u2026' : 'Start It\u2026', run: () => cosNewMenu(x, y, { name: it.title, notes: it.notes, what: `\u201c${it.title}\u201d`, onLink: link => { it.link = link; if (it.status === 'todo') it.status = 'doing'; } }) },
-        { label: lk ? 'Link a Different Chat\u2026' : 'Link a Chat\u2026', run: () => cosPickChat(x, y, link => cosChange(() => { it.link = link; }, null)) },
-        lk && { label: 'Unlink', run: () => cosChange(() => { it.link = null; }, null) },
-        '-',
-        { label: 'Delete Action', run: () => cosChange(() => { loc.list.splice(loc.index, 1); }, `Deleted \u201c${it.title}\u201d`) },
-      ]);
-    }
+  function cosProjectMenu(x, y, n) {
+    const projects = (lib.projects || []).slice(0, 25);
     showMenu(x, y, [
-      it.type !== 'folder' && { label: 'Open', run: () => cosOpenItem(it) },
-      it.type === 'link' && { label: 'Open in Navigator', run: () => { setApp('navigator'); go({ kind: 'page', url: it.url }); } },
-      it.type === 'link' && { label: 'Copy Link', run: () => navigator.clipboard.writeText(it.url).then(() => toast('Link copied')) },
-      it.type === 'folder' && { label: 'New Action Inside', run: () => cosNewAction(() => { it.open = true; return it.children || (it.children = []); }, { ctx: 'project', where: `\u201c${it.name}\u201d` }) },
-      it.type === 'folder' && { label: 'New Folder Inside', run: () => cosNewFolder(project, it.id) },
-      '-',
-      { label: 'Rename…', run: () => openDialog({ title: 'Rename', name: it.name, nameOnly: true, noPicker: true, okLabel: 'Rename', onSave: ({ name }) => { if (name) cosChange(() => { it.name = name; it.autoName = false; }, null); } }) },
-      { label: 'Remove from Project', run: () => cosChange(() => { loc.list.splice(loc.index, 1); }, `Removed “${it.name}” from the project`) },
-    ]);
+      n.claudeProject && { label: 'Open', run: () => cosOpenLink(n.claudeProject) },
+      n.claudeProject && { label: 'Open in New Window', run: () => openNewWindow(n.claudeProject.url) },
+      n.claudeProject && '-',
+      { label: n.claudeProject ? 'Make a New Claude Project…' : 'Set Up a Claude Project…', run: () => cosSetUpProject(n) },
+      projects.length && { label: 'Use an Existing Project', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, projects.map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; }, `${n.name} now uses “${pr.name}”`) }))) },
+      n.claudeProject && '-',
+      n.claudeProject && { label: 'Unlink the Project', run: () => cosChange(() => { delete n.claudeProject; }, `Unlinked ${n.name}’s Claude Project`) },
+    ].filter(x => x !== false && x !== 0 && x !== null && x !== undefined));
   }
-  // The Claude, monday.com or folder list shown beside a project: Navigator's own list, borrowed while adding.
+
+  function renderStaffPage(t, n, body) {
+    const page = document.createElement('div');
+    page.className = 'cos-page';
+    const who = document.createElement('div');
+    who.className = 'cos-who';
+    who.innerHTML = '<span class="av"></span><div><b></b><span class="who-role"></span></div><div class="who-btns"></div>';
+    who.querySelector('.av').style.background = n.color;
+    who.querySelector('.av').textContent = cosInitials(n);
+    who.querySelector('b').textContent = n.name;
+    who.querySelector('.who-role').textContent = n.role || '';
+    const bx = who.querySelector('.who-btns');
+    const mk = (html, title, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); bx.appendChild(b); return b; };
+    if (n.external === 'clara') {
+      mk('Ask Clara to Schedule…', 'Opens a new Outlook email with Clara copied in', () => askClara(), true);
+      mk(`${small('clara', KIND_COLOUR.clara)}<span class="t">Open Clara</span>`, clara.url, openClara);
+    } else {
+      mk('Ask', n.chief ? 'A new chat with where the whole team is up to, ready to paste' : `A new chat${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''}, with where ${n.name} is up to ready to paste`, () => cosAsk(n), true);
+      const pb = mk(`${colourIcon('project')}<span class="t">${n.claudeProject ? 'Claude Project' : 'Set Up Claude Project'}</span>`, n.claudeProject ? `${n.claudeProject.name}: new chats for ${n.name} start here. Click to open it; the arrow for more.` : `Give ${n.name} a Claude Project: their role and instructions live there, and their new chats start in it`,
+        e => n.claudeProject ? cosOpenLink(n.claudeProject) : cosSetUpProject(n));
+      const more = mk(UI.chev, 'More', e => { const b = e.currentTarget.getBoundingClientRect(); cosProjectMenu(b.left, b.bottom + 4, n); });
+      more.classList.add('more');
+      pb.classList.toggle('on', !!n.claudeProject);
+    }
+    if (n.external) {                                           // Clara works by email: nothing to keep here
+      page.appendChild(who);
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.innerHTML = '<b>Clara works by email</b><span></span>';
+      e.querySelector('span').textContent = `Copy ${clara.email} into an email and Clara finds a time with everyone. Ask Clara to Schedule opens a new Outlook email with Clara copied in; Open Clara shows the dashboard.`;
+      page.appendChild(e);
+      body.appendChild(page);
+      return;
+    }
+    const tabs = document.createElement('div');
+    tabs.className = 'cos-tabs';
+    const f = staffFolder(n);
+    for (const [k, label] of COS_TABS) {
+      const b = document.createElement('button');
+      b.className = cosUi.tab === k ? 'on' : '';
+      b.textContent = label;
+      const cnt = k === 'work' ? workItems(f).filter(x => !x.done).length : k === 'skills' ? cosSkills(n).length : cosRoutines(n).filter(r => !r.paused).length;
+      if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
+      b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; renderCos(); });
+      tabs.appendChild(b);
+    }
+    page.append(who, tabs);
+    body.appendChild(page);
+    if (cosUi.tab === 'work') {
+      // Navigator's own folder view of this person's folder sits below (see .cos-work in the CSS).
+      const inThis = id => { for (let x = id && nodeOf(id); x; x = nodeOf(parentIdOf(x.id))) if (x.id === f.id) return true; return false; };
+      // Stay where you are only if it is inside this person's folder, or a page opened from it.
+      const here = state.loc.kind === 'folder' ? inThis(state.loc.id) : state.loc.kind === 'page' ? !!(state.lastFolderId && inThis(state.lastFolderId)) : false;
+      if (!here) go({ kind: 'folder', id: f.id });
+      return;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'cos-proj';
+    (cosUi.tab === 'skills' ? renderSkills : renderRoutines)(n, wrap);
+    if (cosUi.adding) cosSourcePane();          // the bar above the pane on the right (tabs, Link This Page)
+    page.appendChild(wrap);
+  }
+
+  // ----- Skills: what this person does on request -----
+  const cosSkills = n => n.skills || (n.skills = []);
+  function cosNewSkill(n) {
+    const id = n.id;
+    cosCreate('chat', { url: n.claudeProject && n.claudeProject.url, what: 'a new skill', onLink: link => {
+      const m = cosNode(cosTeam(), id);
+      if (m) cosSkills(m).unshift({ id: uid(), name: link.auto ? 'New skill' : link.name, autoName: !!link.auto, link, created: Date.now(), lastRun: null });
+    } });
+  }
+  function runSkill(s) {
+    if (!s.link) return toast('Link a chat or project to this skill first: drag one onto it.');
+    if (s.prompt) navigator.clipboard.writeText(s.prompt).catch(() => {});
+    s.lastRun = Date.now();
+    saveCos();
+    cosOpenLink(s.link);
+    if (s.prompt) toast('Opened. Its instructions are copied: paste them to start.');
+  }
+  function renderSkills(n, host) {
+    const box = document.createElement('div');
+    box.className = 'cos-tabbody';
+    const top = document.createElement('div');
+    top.className = 'cos-ptop';
+    top.innerHTML = '<span class="cos-tabnote">What this person does on request. Each skill is a Claude chat or project you go back to.</span>';
+    const nb = document.createElement('button');
+    nb.className = 'tb';
+    nb.innerHTML = `<span class="ic">${UI.compose}</span><span class="t">New Skill</span>`;
+    nb.title = `Starts a new Claude chat${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''} and keeps it here as a skill (${K.mod}N)`;
+    nb.addEventListener('click', () => cosNewSkill(n));
+    const add = document.createElement('button');
+    add.className = 'tb' + (cosUi.adding && cosUi.srcFrom !== 'claude' ? ' on' : '');
+    add.innerHTML = `<span class="ic">${UI.split}</span><span class="t">${cosUi.adding ? 'Done' : 'Link Existing'}</span>`;
+    add.title = 'Show your chats and projects beside the skills: drag one in to make it a skill, or onto a skill to link it';
+    add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) { if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); } renderCos(); });
+    top.append(nb, add);
+    box.appendChild(top);
+    const grid = document.createElement('div');
+    grid.className = 'cos-cards';
+    for (const s of cosSkills(n)) {
+      const c = document.createElement('div');
+      c.className = 'fcard';
+      c.dataset.sid = s.id;
+      const k = s.link ? (s.link.as && G[s.link.as] ? s.link.as : kindOf({ type: 'link', url: s.link.url })) : 'link';
+      c.innerHTML = `<div class="rhead"><span class="rclock">${colourIcon(k)}</span><b></b></div><p></p><div class="row2"><button class="btn-primary run">Run</button><span class="last"></span></div>`;
+      c.querySelector('b').textContent = s.name;
+      c.querySelector('p').textContent = s.link ? `${KIND_NAME[k] || 'Link'}${s.prompt ? ' · with instructions to paste' : ''}` : 'Not linked yet: drag a chat or project onto it.';
+      c.querySelector('.last').textContent = s.lastRun ? `Last run ${ago(s.lastRun)}` : '';
+      c.querySelector('.run').addEventListener('click', () => { runSkill(s); renderCos(); });
+      c.addEventListener('dblclick', e => { if (!e.target.closest('button')) runSkill(s); });
+      grid.appendChild(c);
+    }
+    if (!cosSkills(n).length) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.style.marginTop = '20px';
+      e.innerHTML = `<b>No skills yet</b><span>Skills are what this person does well on request, like board papers or a budget variance report. Click New Skill to start one in Claude, or Link Existing and drag in a chat or project you already use.</span>`;
+      grid.appendChild(e);
+    }
+    grid.addEventListener('contextmenu', e => {
+      e.preventDefault();
+      const c = e.target.closest('.fcard');
+      if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Skill', key: K.mod + 'N', run: () => cosNewSkill(n) }, { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
+      const s = cosSkills(n).find(x => x.id === c.dataset.sid);
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Open', key: K.open, run: () => runSkill(s) },
+        s.link && { label: 'Open in New Window', run: () => openNewWindow(s.link.url) },
+        '-',
+        { label: 'Rename', key: K.rename, run: () => openDialog({ title: 'Rename', name: s.name, nameOnly: true, noPicker: true, okLabel: 'Rename', onSave: ({ name }) => { if (name) cosChange(() => { s.name = name; s.autoName = false; }, null); } }) },
+        s.link && { label: 'Copy Link', run: () => navigator.clipboard.writeText(s.link.url).then(() => toast('Link copied')) },
+        '-',
+        { label: 'Remove from Skills', run: () => cosChange(() => { n.skills = cosSkills(n).filter(x => x !== s); }, `Removed “${s.name}” from Skills. It is still in Claude.`) },
+      ]);
+    });
+    grid.addEventListener('dragover', e => { if (!cosAccepts(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); const c = e.target.closest('.fcard'); if (c) c.classList.add('drop'); });
+    grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
+    grid.addEventListener('drop', e => {
+      e.preventDefault();
+      const links = cosDroppedLinks(e).filter(l => l.url);
+      if (!links.length) return;
+      const c = e.target.closest('.fcard');
+      const s = c && cosSkills(n).find(x => x.id === c.dataset.sid);
+      if (s) return cosChange(() => { s.link = links[0]; }, `Linked “${links[0].name}” to “${s.name}”`);
+      cosChange(() => { for (const l of links) cosSkills(n).unshift({ id: uid(), name: l.name, link: l, created: Date.now(), lastRun: null }); }, `Added ${links.length} skill${links.length === 1 ? '' : 's'}`);
+    });
+    box.appendChild(grid);
+    host.appendChild(box);
+  }
+
+  // The pane on the right (Link Existing, or Claude while something is being made): Navigator's own list or the Claude pane.
   function cosShowSource() {
     const k = cosUi.srcFrom;
     if (k === 'claude') { if (state.loc.kind !== 'page') go({ kind: 'page', url: HOME }); return; }
@@ -6070,7 +6317,7 @@
     host.append(head, sub);
     cosPaintSrcSub(sub);
     if (cosCols.src) $('main').style.setProperty('--cos-src-w', cosCols.src + 'px');
-    $('main').style.setProperty('--cos-left-min', ((cosUi.tab === 'projects' && cosUi.page ? (cosCols.plist || 230) : 0) + 300) + 'px');
+    $('main').style.setProperty('--cos-left-min', '300px');
     return document.createDocumentFragment();     // nothing to place inside Chief of Staff itself
   }
   // The divider between Chief of Staff and the pane on the right (Chief of Staff keeps at least 300px).
@@ -6081,8 +6328,7 @@
       e.preventDefault();
       const x0 = e.clientX, w0 = $('content').getBoundingClientRect().width;
       document.body.classList.add('col-dragging');
-      const pl = document.querySelector('#cosMain .cos-plist');
-      const leftMin = (pl ? pl.getBoundingClientRect().width : 0) + 300;   // the project list plus a usable middle
+      const leftMin = 300;                                     // Chief of Staff keeps a usable width
       const move = ev => {
         const w = Math.max(280, Math.min(main.clientWidth - leftMin - 7, Math.round(w0 - (ev.clientX - x0))));
         main.style.setProperty('--cos-src-w', w + 'px');
@@ -6129,235 +6375,7 @@
     }
     sub.hidden = !sub.children.length;
   }
-  function renderStaffPage(t, n, body) {
-    const page = document.createElement('div');
-    page.className = 'cos-page';
-    const who = document.createElement('div');
-    who.className = 'cos-who';
-    who.innerHTML = '<span class="av"></span><div><b></b><span class="who-role"></span></div>';
-    who.querySelector('.av').style.background = n.color;
-    who.querySelector('.av').textContent = cosInitials(n);
-    who.querySelector('b').textContent = n.name;
-    who.querySelector('.who-role').textContent = n.role || '';
-    if (n.external === 'clara') {
-      const bx = document.createElement('div');
-      bx.className = 'who-btns';
-      const mk = (label, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'btn'; b.textContent = label; b.addEventListener('click', run); bx.appendChild(b); };
-      mk('Ask Clara to Schedule…', () => askClara(n), true);
-      mk('Open Clara', openClara);
-      who.appendChild(bx);
-    }
-    const tabs = document.createElement('div');
-    tabs.className = 'cos-tabs';
-    for (const [k, label] of COS_TABS) {
-      const b = document.createElement('button');
-      b.className = cosUi.tab === k ? 'on' : '';
-      b.textContent = label;
-      const cnt = k === 'projects' ? cosProjects(n).filter(p => !p.archived).length : k === 'actions' ? cosActions(n).filter(a => a.status !== 'done').length : k === 'functions' ? cosFunctions(n).length : (n.routines || []).filter(r => !r.paused).length;
-      if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
-      b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; renderCos(); });
-      tabs.appendChild(b);
-    }
-    page.append(who, tabs);
-    if (cosUi.tab === 'actions' || cosUi.tab === 'functions' || cosUi.tab === 'routines') {
-      const wrap2 = document.createElement('div');
-      wrap2.className = 'cos-proj';
-      ({ actions: renderActions, functions: renderFunctions, routines: renderRoutines })[cosUi.tab](n, wrap2);
-      if (cosUi.adding) wrap2.appendChild(cosSourcePane());
-      page.appendChild(wrap2);
-      body.appendChild(page);
-      return;
-    }
-    if (cosUi.tab !== 'projects') {
-      const e = document.createElement('div');
-      e.className = 'cos-empty';
-      const what = { actions: 'One-off jobs with a status and due date, each linked to the chat where it is done', functions: 'What they do well on request (board papers, account audits), each linked to a Claude chat or skill, with a Run button', routines: 'Their scheduled work, linked to Claude schedules, shown as cards and on a week timeline' }[cosUi.tab];
-      e.innerHTML = '<b>Coming next</b><span></span>';
-      e.querySelector('span').textContent = what + '.';
-      page.appendChild(e);
-      body.appendChild(page);
-      return;
-    }
-    const wrap = document.createElement('div');
-    wrap.className = 'cos-proj';
-    const pl = document.createElement('div');
-    pl.className = 'cos-plist';
-    const nb = document.createElement('button');
-    nb.className = 'btn';
-    nb.textContent = 'New Project';
-    nb.addEventListener('click', () => cosNewProject(n));
-    pl.appendChild(nb);
-    const projs = cosProjects(n);
-    const active = projs.filter(p => !p.archived), archived = projs.filter(p => p.archived);
-    if (!cosUi.proj || !cosProject(n, cosUi.proj)) cosUi.proj = (active[0] || {}).id || null;
-    const pitem = p => {
-      const r = document.createElement('div');
-      r.className = 'pi' + (cosUi.proj === p.id ? ' on' : '');
-      r.dataset.pid = p.id;
-      r.innerHTML = `${small('folder', KIND_COLOUR.folder)}<span></span><span class="c">${cosCount(p.items) || ''}</span>`;
-      r.children[1].textContent = p.name;
-      r.title = `${p.name}: drop items here to add them`;
-      pl.appendChild(r);
-    };
-    const h1 = document.createElement('div'); h1.className = 'ph'; h1.textContent = 'Projects'; pl.appendChild(h1);
-    active.forEach(pitem);
-    if (!active.length) { const e = document.createElement('div'); e.className = 'ph'; e.style.fontWeight = '400'; e.textContent = 'No projects yet.'; pl.appendChild(e); }
-    if (archived.length) {
-      const h2 = document.createElement('div'); h2.className = 'ph'; h2.style.cursor = 'pointer';
-      h2.textContent = `${cosUi.showArchived ? '▾' : '▸'} Archived (${archived.length})`;
-      h2.addEventListener('click', () => { cosUi.showArchived = !cosUi.showArchived; renderCos(); });
-      pl.appendChild(h2);
-      if (cosUi.showArchived) archived.forEach(pitem);
-    }
-    pl.addEventListener('click', e => { const r = e.target.closest('.pi'); if (r) { cosUi.proj = r.dataset.pid; cosUi.itemSel = null; renderCos(); } });
-    pl.addEventListener('contextmenu', e => {
-      const r = e.target.closest('.pi'); if (!r) return; e.preventDefault();
-      const p = cosProject(n, r.dataset.pid);
-      showMenu(e.clientX, e.clientY, [
-        { label: p.archived ? 'Unarchive' : 'Archive', run: () => cosChange(() => { p.archived = !p.archived; }, `${p.archived ? 'Archived' : 'Unarchived'} “${p.name}”`) },
-        { label: 'Delete Project…', run: () => { if (confirm(`Delete the project “${p.name}”? Its links are removed from here (nothing changes in Claude, monday.com or your folders).`)) cosChange(() => { n.projects = cosProjects(n).filter(x => x !== p); }, `Deleted “${p.name}”`); } },
-      ]);
-    });
-    pl.addEventListener('dragover', e => { const r = e.target.closest('.pi'); pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!r) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; r.classList.add('drop'); });
-    pl.addEventListener('dragleave', e => { if (!pl.contains(e.relatedTarget)) pl.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
-    pl.addEventListener('drop', e => { const r = e.target.closest('.pi'); if (!r) return; e.preventDefault(); e.stopPropagation(); cosDropInto(e, cosProject(n, r.dataset.pid), null); });
-    wrap.append(pl, cosColResize(pl, 'plist', 'right', 150, 0.45));
-    const pb = document.createElement('div');
-    pb.className = 'cos-pbody';
-    const p = cosProject(n, cosUi.proj);
-    if (!p) {
-      const e = document.createElement('div');
-      e.className = 'cos-empty';
-      e.innerHTML = '<b>No project selected</b><span>Projects collect what this staff member is working on: chats, artifacts, monday.com boards and folders. Click New Project to start one.</span>';
-      pb.appendChild(e);
-    } else {
-      const top = document.createElement('div');
-      top.className = 'cos-ptop';
-      const name = document.createElement('input');
-      name.value = p.name;
-      name.title = 'Project name';
-      name.addEventListener('change', () => { const v = name.value.trim(); if (v && v !== p.name) cosChange(() => { p.name = v; }, null); });
-      name.addEventListener('keydown', e => { if (e.key === 'Enter') name.blur(); });
-      name.placeholder = 'Project name';
-      if (cosUi.nameNow === p.id) { cosUi.nameNow = null; setTimeout(() => { name.focus(); name.select(); }, 30); }
-      const bt = (label, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.title = title; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
-      const selFolder = () => { const s2 = cosUi.itemSel && cosItemLocate(p.items, cosUi.itemSel); return s2 && s2.node.type === 'folder' ? s2.node.id : null; };
-      top.append(name,
-        cosNewActionButtons(() => { const f = selFolder(); const t = f && cosItemLocate(p.items, f); if (t) t.node.open = true; return t ? (t.node.children || (t.node.children = [])) : p.items; }, { ctx: 'project', where: `\u201c${p.name}\u201d` }),
-        bt('New Folder', 'A folder inside this project', () => cosNewFolder(p, selFolder())),
-        bt(cosUi.adding ? 'Done' : 'Link Existing', 'Show your Claude chats and artifacts, monday.com boards or folders beside this project, and drag them in as actions', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding && cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; if (cosUi.adding) cosShowSource(); renderCos(); }, cosUi.adding),
-        bt(p.archived ? 'Unarchive' : 'Archive', p.archived ? 'Bring it back to the project list' : 'Keep it, but hide it under Archived', () => cosChange(() => { p.archived = !p.archived; }, `${p.archived ? 'Archived' : 'Unarchived'} “${p.name}”`)));
-      const list = document.createElement('div');
-      list.className = 'cos-items';
-      const row = (it, d) => {
-        const r = document.createElement('div');
-        r.className = 'it' + (cosUi.itemSel === it.id ? ' sel' : '');
-        r.dataset.iid = it.id;
-        r.draggable = true;
-        r.style.setProperty('--d', d);
-        const isF = it.type === 'folder';
-        const lk = it.link;
-        const k = isF ? 'folder' : !lk ? 'link' : lk.file ? kindOf({ type: 'file', name: lk.name, ext: (lk.name.match(/\.[^.]+$/) || [''])[0] }) : (lk.as && G[lk.as] ? lk.as : kindOf({ type: 'link', url: lk.url }));
-        const cnt = isF ? cosCount(it.children || []) : 0;
-        r.innerHTML = `<span class="tw${it.open ? ' open' : ''}">${isF ? UI.chev : ''}</span><span class="icon">${isF ? small('folder', KIND_COLOUR.folder) : colourIcon(k)}</span><span class="label"></span><span class="kind"></span>`;
-        r.querySelector('.label').textContent = isF ? it.name : it.title;
-        if (!isF) {
-          const today = todayStr(), late = it.due && it.status !== 'done' && it.due < today;
-          r.classList.add('pa');
-          if (it.status === 'done') r.classList.add('done');
-          r.querySelector('.tw').innerHTML = `<input type="checkbox" title="Done"${it.status === 'done' ? ' checked' : ''}>`;
-          r.querySelector('.kind').textContent = [it.status === 'doing' ? 'Doing' : '', it.due ? (late ? `Overdue \u00b7 ${fmtDue(it.due)}` : fmtDue(it.due)) : '', lk ? KIND_NAME[k] || '' : 'Not started'].filter(Boolean).join(' \u00b7 ');
-          if (late) r.querySelector('.kind').classList.add('late');
-        } else r.querySelector('.kind').textContent = `${cnt} item${cnt === 1 ? '' : 's'}`;
-        r.title = isF ? `${it.name}: drop items here` : `${it.title}${it.notes ? '\n' + it.notes : ''}\n${lk ? `Double-click to open \u201c${lk.name}\u201d` : 'Double-click to edit; right-click to start it'}`;
-        list.appendChild(r);
-        if (isF && it.open) for (const c of it.children || []) row(c, d + 1);
-      };
-      for (const it of p.items) row(it, 0);
-      if (!p.items.length) {
-        const e = document.createElement('div');
-        e.className = 'cos-empty';
-        e.style.marginTop = '40px';
-        e.innerHTML = '<b>No actions yet</b><span>Everything in a project is an action. Click New Action to start one in Claude (the arrow beside it starts a doc, slides, file or board instead), or Link Existing to drag in what you already have.</span>';
-        list.appendChild(e);
-      }
-      list.addEventListener('click', e => {
-        const r = e.target.closest('.it');
-        if (!r) { cosUi.itemSel = null; return renderCos(); }
-        const loc = cosItemLocate(p.items, r.dataset.iid);
-        if (e.target.closest('.tw input')) return;
-        if (e.target.closest('.tw') && loc.node.type === 'folder') { loc.node.open = !loc.node.open; saveCos(); }
-        cosUi.itemSel = r.dataset.iid;
-        renderCos();
-      });
-      list.addEventListener('change', e => {
-        const r = e.target.closest('.it'); if (!r || !e.target.matches('.tw input')) return;
-        const a = cosItemLocate(p.items, r.dataset.iid).node;
-        cosChange(() => { a.status = e.target.checked ? 'done' : 'todo'; a.doneAt = e.target.checked ? Date.now() : null; }, null);
-      });
-      list.addEventListener('dblclick', e => {
-        const r = e.target.closest('.it'); if (!r || e.target.closest('.tw input')) return;
-        const loc = cosItemLocate(p.items, r.dataset.iid);
-        if (loc.node.type === 'folder') { loc.node.open = !loc.node.open; saveCos(); renderCos(); } else cosOpenItem(loc.node);
-      });
-      list.addEventListener('contextmenu', e => {
-        e.preventDefault();
-        const r = e.target.closest('.it');
-        if (!r) return cosNewHereMenu(e.clientX, e.clientY, () => p.items, { ctx: 'project', where: `\u201c${p.name}\u201d` }, [{ label: 'New Folder', run: () => cosNewFolder(p, null) }]);
-        cosUi.itemSel = r.dataset.iid;
-        cosItemMenu(e.clientX, e.clientY, p, r.dataset.iid);
-      });
-      list.addEventListener('dragstart', e => { const r = e.target.closest('.it'); if (!r) return; e.dataTransfer.setData('application/x-navigator-cos-item', r.dataset.iid); e.dataTransfer.effectAllowed = 'move'; e.stopPropagation(); });
-      const clearDrops = () => { list.classList.remove('drop-here'); list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); };
-      list.addEventListener('dragover', e => {
-        const types = [...e.dataTransfer.types];
-        if (!types.some(x => x === LIB_TYPE || x === NAV_TYPE || x === 'text/uri-list' || x === 'application/x-navigator-cos-item')) return;
-        e.preventDefault();
-        e.stopPropagation();
-        clearDrops();
-        const r = e.target.closest('.it');
-        const loc = r && cosItemLocate(p.items, r.dataset.iid);
-        if (loc && (loc.node.type === 'folder' || (loc.node.type === 'action' && !types.includes('application/x-navigator-cos-item')))) r.classList.add('drop'); else list.classList.add('drop-here');
-        e.dataTransfer.dropEffect = types.includes('application/x-navigator-cos-item') ? 'move' : 'copy';
-      });
-      list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) clearDrops(); });
-      list.addEventListener('drop', e => {
-        e.preventDefault();
-        e.stopPropagation();
-        clearDrops();
-        const r = e.target.closest('.it');
-        const tloc = r && cosItemLocate(p.items, r.dataset.iid);
-        const folderId = tloc && tloc.node.type === 'folder' ? tloc.node.id : null;
-        const moving = e.dataTransfer.getData('application/x-navigator-cos-item');
-        if (moving) {
-          if (moving === folderId) return;
-          const src = cosItemLocate(p.items, moving);
-          if (!src || (folderId && cosItemLocate(src.node.children || [], folderId))) return;
-          return cosChange(() => {
-            src.list.splice(src.index, 1);
-            const dest = folderId ? cosItemLocate(p.items, folderId).node : null;
-            (dest ? (dest.children || (dest.children = [])) : p.items).push(src.node);
-            if (dest) dest.open = true;
-          }, null);
-        }
-        cosDropInto(e, p, tloc && tloc.node.type === 'action' ? tloc.node.id : folderId);   // onto an action: link it
-      });
-      pb.append(top, list);
-    }
-    wrap.appendChild(pb);
-    if (cosUi.adding && p) wrap.appendChild(cosSourcePane());
-    page.appendChild(wrap);
-    body.appendChild(page);
-  }
-
-  // ---------- Chief of Staff: Actions and Functions ----------
-  // Action:   { id, title, notes, status: 'todo' | 'doing' | 'done', due: 'YYYY-MM-DD' | '', link: { name, url } | null, created, doneAt }
-  // Function: { id, name, about, prompt, link: { name, url } | null, created, lastRun }
-  const cosActions = n => n.actions || (n.actions = []);
-  const cosFunctions = n => n.functions || (n.functions = []);
-  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
-  const fmtDue = s => { if (!s) return ''; const d = new Date(s + 'T12:00:00'); return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); };
-  // The first thing dragged in (a chat, artifact, board or link), as { name, url }.
+  // ---------- Chief of Staff: linking what you drag in ----------
   function cosDroppedLink(e) {
     try { const x = JSON.parse(e.dataTransfer.getData(LIB_TYPE) || '[]')[0]; if (x && x.url) return { name: hasWords(x.name) ? x.name : guessName(x.url), url: x.url }; } catch (err) { /* ignore */ }
     const id = (e.dataTransfer.getData(NAV_TYPE) || '').split(',')[0];
@@ -6374,48 +6392,6 @@
     return url ? [{ name: guessName(url), url }] : [];
   }
   const cosAccepts = e => [...e.dataTransfer.types].some(x => x === LIB_TYPE || x === NAV_TYPE || x === 'text/uri-list');
-  // A small form for adding and editing (fields: name, label, type: text | textarea | date | select, options, value, placeholder).
-  function cosForm(title, fields, okLabel, onSave) {
-    let dlg = $('cosDlg');
-    if (!dlg) {
-      dlg = document.createElement('dialog');
-      dlg.id = 'cosDlg';
-      dlg.innerHTML = '<form method="dialog" class="cos-form"><h2></h2><div class="ff"></div><div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn-primary" value="ok"></button></div></form>';
-      document.body.appendChild(dlg);
-    }
-    dlg.querySelector('h2').textContent = title;
-    dlg.querySelector('.btn-primary').textContent = okLabel;
-    const ff = dlg.querySelector('.ff');
-    ff.replaceChildren();
-    for (const f of fields) {
-      const l = document.createElement('label');
-      l.textContent = f.label;
-      const el = document.createElement(f.type === 'textarea' ? 'textarea' : f.type === 'select' ? 'select' : 'input');
-      el.name = f.name;
-      if (f.type === 'date') el.type = 'date';
-      if (f.type === 'select') for (const [v, t] of f.options) { const o = document.createElement('option'); o.value = v; o.textContent = t; el.appendChild(o); }
-      if (f.placeholder) el.placeholder = f.placeholder;
-      el.value = f.value || '';
-      l.appendChild(el);
-      ff.appendChild(l);
-    }
-    dlg.onclose = () => {
-      if (dlg.returnValue !== 'ok') return;
-      const out = {};
-      for (const f of fields) out[f.name] = ff.querySelector(`[name="${f.name}"]`).value.trim();
-      onSave(out);
-    };
-    dlg.returnValue = '';
-    dlg.showModal();
-    const first = ff.querySelector('input, textarea');
-    if (first) { first.focus(); first.select(); }
-  }
-  // Pick one of your recent Claude chats to link.
-  function cosPickChat(x, y, onPick) {
-    const chats = (lib.chats || []).slice().sort((a, b) => String(b.updated || '').localeCompare(String(a.updated || ''))).slice(0, 20);
-    if (!chats.length) return toast('No Claude chats loaded yet. Open All Chats in Navigator to load them, or drag a chat on.');
-    showMenu(x, y, chats.map(c => ({ label: c.name || 'Untitled chat', icon: 'chat', run: () => onPick({ name: c.name || 'Untitled chat', url: c.url }) })));
-  }
   function cosLinkChip(link, onRemove) {
     const c = document.createElement('span');
     c.className = 'cos-chip';
@@ -6433,193 +6409,6 @@
       c.appendChild(x);
     }
     return c;
-  }
-
-  // ----- Actions -----
-  const ACTION_STATUS = [['todo', 'To do'], ['doing', 'Doing'], ['done', 'Done']];
-  function renderActions(n, host) {
-    const box = document.createElement('div');
-    box.className = 'cos-tabbody';
-    const top = document.createElement('div');
-    top.className = 'cos-ptop';
-    const add = document.createElement('button');
-    add.className = 'tb' + (cosUi.adding ? ' on' : '');
-    add.innerHTML = `<span class="t">${cosUi.adding ? 'Done' : 'Link Existing'}</span>`;
-    add.title = 'Show your chats, artifacts, boards and folders beside the actions: drag one onto an action to link it, or into the list to make it a new action';
-    add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) { if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); } renderCos(); });
-    const note = document.createElement('span');
-    note.className = 'cos-tabnote';
-    note.textContent = 'One-off jobs. Each starts in Claude and takes its name from there.';
-    top.append(note, cosNewActionButtons(() => cosActions(n), { ctx: 'staff' }), add);
-    box.appendChild(top);
-    const list = document.createElement('div');
-    list.className = 'cos-items cos-actions';
-    const today = todayStr();
-    const acts = cosActions(n);
-    for (const [st, label] of ACTION_STATUS) {
-      const group = acts.filter(a => a.status === st).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'));
-      if (st === 'done' && !group.length) continue;
-      const h = document.createElement('div');
-      h.className = 'cos-grouph';
-      const showDone = st !== 'done' || cosUi.showDone;
-      h.textContent = `${st === 'done' ? (showDone ? '▾ ' : '▸ ') : ''}${label} (${group.length})`;
-      if (st === 'done') { h.style.cursor = 'pointer'; h.addEventListener('click', () => { cosUi.showDone = !cosUi.showDone; renderCos(); }); }
-      list.appendChild(h);
-      if (!showDone) continue;
-      for (const a of group) {
-        const r = document.createElement('div');
-        r.className = 'act' + (a.status === 'done' ? ' done' : '');
-        r.dataset.aid = a.id;
-        const late = a.due && a.status !== 'done' && a.due < today;
-        r.innerHTML = `<input type="checkbox" title="Done"${a.status === 'done' ? ' checked' : ''}><span class="at"></span><span class="meta"></span><select title="Status">${ACTION_STATUS.map(([v, t]) => `<option value="${v}"${v === a.status ? ' selected' : ''}>${t}</option>`).join('')}</select>`;
-        r.querySelector('.at').textContent = a.title;
-        r.title = (a.notes ? a.notes + '\n' : '') + 'Double-click to edit; drag a chat onto it to link it; right-click for more.';
-        const meta = r.querySelector('.meta');
-        if (a.due) { const d = document.createElement('span'); d.className = 'due' + (late ? ' late' : a.due === today ? ' today' : ''); d.textContent = late ? `Overdue · ${fmtDue(a.due)}` : a.due === today ? 'Today' : fmtDue(a.due); meta.appendChild(d); }
-        if (a.link) meta.appendChild(cosLinkChip(a.link, () => cosChange(() => { a.link = null; }, null)));
-        r.querySelector('input').addEventListener('change', e => cosChange(() => { a.status = e.target.checked ? 'done' : 'todo'; a.doneAt = e.target.checked ? Date.now() : null; }, null));
-        r.querySelector('select').addEventListener('change', e => cosChange(() => { a.status = e.target.value; a.doneAt = a.status === 'done' ? Date.now() : null; }, null));
-        list.appendChild(r);
-      }
-    }
-    if (!acts.length) {
-      const e = document.createElement('div');
-      e.className = 'cos-empty';
-      e.style.marginTop = '30px';
-      e.innerHTML = '<b>No actions yet</b><span>Click New Action to start one in Claude (the arrow beside it starts a doc, slides, file or board instead). It is named after what you make. Or click Link Existing and drag in chats you already have.</span>';
-      list.appendChild(e);
-    }
-    list.addEventListener('dblclick', e => { const r = e.target.closest('.act'); if (!r || e.target.closest('input, select, .cos-chip')) return; const a = cosActions(n).find(x => x.id === r.dataset.aid); if (a.link) cosOpenLink(a.link); else editAction(n, a); });
-    list.addEventListener('contextmenu', e => {
-      const r = e.target.closest('.act');
-      e.preventDefault();
-      if (!r) return cosNewHereMenu(e.clientX, e.clientY, () => cosActions(n), { ctx: 'staff' });
-      const a = cosActions(n).find(x => x.id === r.dataset.aid);
-      showMenu(e.clientX, e.clientY, [
-        { label: 'Edit…', run: () => editAction(n, a) },
-        a.link && { label: `Open \u201c${a.link.name}\u201d`, run: () => cosOpenLink(a.link) },
-        { label: 'Start Something New for This\u2026', run: () => cosNewMenu(e.clientX, e.clientY, { name: a.title, notes: a.notes, what: `\u201c${a.title}\u201d`, onLink: link => { a.link = link; if (a.status === 'todo') a.status = 'doing'; } }) },
-        { label: a.link ? 'Link a Different Chat…' : 'Link a Chat…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { a.link = link; }, null)) },
-        '-',
-        { label: 'Delete Action', run: () => cosChange(() => { n.actions = cosActions(n).filter(x => x !== a); }, `Deleted “${a.title}”`) },
-      ]);
-    });
-    list.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const r = e.target.closest('.act'); list.classList.remove('drop-here'); list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; if (r) r.classList.add('drop'); else list.classList.add('drop-here'); });
-    list.addEventListener('dragleave', e => { if (!list.contains(e.relatedTarget)) { list.classList.remove('drop-here'); list.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); } });
-    list.addEventListener('drop', e => {
-      list.classList.remove('drop-here');
-      const r = e.target.closest('.act');
-      e.preventDefault(); e.stopPropagation();
-      if (!r) {
-        const links = cosDroppedLinks(e);
-        if (!links.length) return;
-        return cosChange(() => { for (const l of links.reverse()) cosActions(n).unshift({ id: uid(), title: l.name, notes: '', status: 'todo', due: '', link: l, created: Date.now(), doneAt: null }); }, `Added ${links.length} action${links.length === 1 ? '' : 's'}, each linked to what you dragged in`);
-      }
-      const link = cosDroppedLink(e);
-      const a = cosActions(n).find(x => x.id === r.dataset.aid);
-      if (link && a) cosChange(() => { a.link = link; }, `Linked “${link.name}” to “${a.title}”`);
-    });
-    box.appendChild(list);
-    host.appendChild(box);
-  }
-
-  // ----- Functions -----
-  function editFunction(n, f) {
-    const isNew = !f;
-    cosForm(isNew ? 'New Function' : 'Edit Function', [
-      { name: 'name', label: 'Function', value: f ? f.name : '', placeholder: 'e.g. Board paper' },
-      { name: 'about', label: 'What it does', type: 'textarea', value: f ? f.about : '', placeholder: 'e.g. Writes a board paper from the brief, in our template and tone' },
-      { name: 'prompt', label: 'Instructions for Claude (copied when you run it)', type: 'textarea', value: f ? f.prompt : '', placeholder: 'e.g. Using the board paper template in this project, draft a paper on: ' },
-    ], isNew ? 'Add Function' : 'Save', v => {
-      if (!v.name) return;
-      cosChange(() => {
-        if (isNew) cosFunctions(n).push({ id: uid(), name: v.name, about: v.about, prompt: v.prompt, link: null, created: Date.now(), lastRun: null });
-        else Object.assign(f, v);
-      }, null);
-    });
-  }
-  // Run: opens the linked chat, project or artifact (or a new chat) in its own window, with the instructions copied.
-  function runFunction(f) {
-    const url = f.link ? (/claude\.ai\/project\//.test(f.link.url) ? f.link.url : f.link.url) : 'https://claude.ai/new';
-    if (f.prompt) navigator.clipboard.writeText(f.prompt);
-    openNewWindow(url);
-    f.lastRun = Date.now();
-    saveCos();
-    renderCos();
-    toast(f.prompt ? `Opened ${f.link ? `“${f.link.name}”` : 'a new chat'}. The instructions are copied: paste them in and add the details.` : `Opened ${f.link ? `“${f.link.name}”` : 'a new chat'}.`);
-  }
-  function renderFunctions(n, host) {
-    const box = document.createElement('div');
-    box.className = 'cos-tabbody';
-    const top = document.createElement('div');
-    top.className = 'cos-ptop';
-    top.innerHTML = '<span class="cos-tabnote">What this staff member does well, on request. Each function is a Claude chat (or project or skill) you go back to.</span>';
-    const nb = document.createElement('button');
-    nb.className = 'tb';
-    nb.innerHTML = '<span class="t">New Function</span>';
-    nb.title = 'Starts a new Claude chat on the right and keeps it here as a function (it takes the chat\u2019s name)';
-    nb.addEventListener('click', () => cosNewFunction(n));
-    const add = document.createElement('button');
-    add.className = 'tb' + (cosUi.adding && cosUi.srcFrom !== 'claude' ? ' on' : '');
-    add.innerHTML = `<span class="t">${cosUi.adding ? 'Done' : 'Link Existing'}</span>`;
-    add.title = 'Show your chats, projects and artifacts beside the functions: drag one in to make it a function, or onto a function to link it';
-    add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) { if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); } renderCos(); });
-    top.append(nb, add);
-    box.appendChild(top);
-    const grid = document.createElement('div');
-    grid.className = 'cos-cards';
-    for (const f of cosFunctions(n)) {
-      const c = document.createElement('div');
-      c.className = 'fcard';
-      c.dataset.fid = f.id;
-      c.innerHTML = '<b></b><p></p><div class="links"></div><div class="row2"><button class="btn-primary run">Run</button><button class="btn edit">Edit</button><span class="last"></span></div>';
-      c.querySelector('b').textContent = f.name;
-      c.querySelector('p').textContent = f.about || 'No description yet.';
-      if (f.link) c.querySelector('.links').appendChild(cosLinkChip(f.link, () => cosChange(() => { f.link = null; }, null)));
-      else { const h = document.createElement('span'); h.className = 'cos-tabnote'; h.textContent = 'Drag a chat, project or artifact here to link it'; c.querySelector('.links').appendChild(h); }
-      if (f.lastRun) c.querySelector('.last').textContent = `Last run ${ago(f.lastRun)}`;
-      c.querySelector('.run').title = f.prompt ? 'Open it in its own window, with the instructions copied' : 'Open it in its own window';
-      c.querySelector('.run').addEventListener('click', () => runFunction(f));
-      c.querySelector('.edit').addEventListener('click', () => editFunction(n, f));
-      grid.appendChild(c);
-    }
-    if (!cosFunctions(n).length) {
-      const e = document.createElement('div');
-      e.className = 'cos-empty';
-      e.style.marginTop = '30px';
-      e.innerHTML = '<b>No functions yet</b><span>Functions are what this staff member does well on request, like writing board papers or auditing the chart of accounts. Click New Function to add one.</span>';
-      grid.appendChild(e);
-    }
-    grid.addEventListener('contextmenu', e => {
-      const c = e.target.closest('.fcard');
-      e.preventDefault();
-      if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Function', icon: 'chat', run: () => cosNewFunction(n) }, '-', { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
-      const f = cosFunctions(n).find(x => x.id === c.dataset.fid);
-      showMenu(e.clientX, e.clientY, [
-        { label: 'Run', run: () => runFunction(f) },
-        { label: 'Edit…', run: () => editFunction(n, f) },
-        { label: f.link ? 'Link a Different Chat…' : 'Link a Chat…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { f.link = link; }, null)) },
-        f.prompt && { label: 'Copy Instructions', run: () => navigator.clipboard.writeText(f.prompt).then(() => toast('Instructions copied')) },
-        '-',
-        { label: 'Delete Function', run: () => cosChange(() => { n.functions = cosFunctions(n).filter(x => x !== f); }, `Deleted “${f.name}”`) },
-      ]);
-    });
-    grid.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const c = e.target.closest('.fcard'); grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!c) { e.preventDefault(); return; } e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; c.classList.add('drop'); });
-    grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
-    grid.addEventListener('drop', e => {
-      const c = e.target.closest('.fcard');
-      e.preventDefault(); e.stopPropagation();
-      if (!c) {
-        const links = cosDroppedLinks(e).filter(l => l.url);
-        if (links.length) cosChange(() => { for (const l of links) cosFunctions(n).unshift({ id: uid(), name: l.name, about: '', prompt: '', link: l, created: Date.now(), lastRun: null }); }, `Added ${links.length} function${links.length === 1 ? '' : 's'}`);
-        return;
-      }
-      const link = cosDroppedLink(e);
-      const f = cosFunctions(n).find(x => x.id === c.dataset.fid);
-      if (link && f) cosChange(() => { f.link = link; }, `Linked “${link.name}” to “${f.name}”`);
-    });
-    box.appendChild(grid);
-    host.appendChild(box);
   }
 
   // ---------- Chief of Staff: Routines (scheduled work, linked to Claude's scheduled tasks) ----------
@@ -6672,57 +6461,6 @@
     const day = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days < 7 ? DAY_NAMES[d.getDay()] : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
     return `${day} ${fmtTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)}`;
   };
-  function editRoutine(n, r) {
-    const isNew = !r;
-    let dlg = $('cosRoutineDlg');
-    if (!dlg) {
-      dlg = document.createElement('dialog');
-      dlg.id = 'cosRoutineDlg';
-      dlg.innerHTML = `<form method="dialog" class="cos-form"><h2></h2><div class="ff">
-        <label>Routine<input name="name" placeholder="e.g. Weekly finance check"></label>
-        <label>What it does<textarea name="what" placeholder="e.g. Reconciles last week's Xero transactions and flags anything unusual"></textarea></label>
-        <label>How often<select name="freq"><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Weekly on…</option><option value="monthly">Monthly on day…</option><option value="custom">Something else (describe it)</option></select></label>
-        <div class="days" data-for="weekly">${[1, 2, 3, 4, 5, 6, 0].map(d => `<label class="day"><input type="checkbox" value="${d}">${DAY_NAMES[d].slice(0, 3)}</label>`).join('')}</div>
-        <label data-for="monthly">Day of the month<input name="dom" type="number" min="1" max="31" value="1"></label>
-        <label data-for="custom">Describe when<input name="custom" placeholder="e.g. First business day of each quarter"></label>
-        <label data-for="time">Time<input name="time" type="time" value="09:00"></label>
-      </div><div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn-primary" value="ok"></button></div></form>`;
-      document.body.appendChild(dlg);
-      dlg.querySelector('[name="freq"]').addEventListener('change', () => syncFreq());
-    }
-    const q = name => dlg.querySelector(`[name="${name}"]`);
-    function syncFreq() {
-      const f = q('freq').value;
-      dlg.querySelectorAll('[data-for]').forEach(el => { el.hidden = el.dataset.for === 'time' ? f === 'custom' : el.dataset.for !== f; });
-    }
-    dlg.querySelector('h2').textContent = isNew ? 'New Routine' : 'Edit Routine';
-    dlg.querySelector('.btn-primary').textContent = isNew ? 'Add Routine' : 'Save';
-    q('name').value = r ? r.name : '';
-    q('what').value = r ? r.what || '' : '';
-    q('freq').value = r ? r.freq : 'weekly';
-    q('dom').value = r ? r.dom || 1 : 1;
-    q('custom').value = r ? r.custom || '' : '';
-    q('time').value = r ? r.time || '09:00' : '09:00';
-    const days = r && r.days && r.days.length ? r.days : [1];
-    dlg.querySelectorAll('.days input').forEach(i => { i.checked = days.includes(+i.value); });
-    syncFreq();
-    dlg.onclose = () => {
-      if (dlg.returnValue !== 'ok' || !q('name').value.trim()) return;
-      const v = {
-        name: q('name').value.trim(), what: q('what').value.trim(), freq: q('freq').value, time: q('time').value || '09:00',
-        dom: Math.min(31, Math.max(1, +q('dom').value || 1)), custom: q('custom').value.trim(),
-        days: [...dlg.querySelectorAll('.days input:checked')].map(i => +i.value),
-      };
-      if (v.freq === 'weekly' && !v.days.length) v.days = [1];
-      cosChange(() => {
-        if (isNew) cosRoutines(n).push(Object.assign({ id: uid(), link: null, output: null, paused: false, created: Date.now() }, v));
-        else { Object.assign(r, v); r.autoName = false; }
-      }, null);
-    };
-    dlg.returnValue = '';
-    dlg.showModal();
-    q('name').focus();
-  }
   // Pick one of the Claude scheduled tasks the app has read (Navigator, Claude, Other, Scheduled).
   function cosPickSchedule(x, y, onPick) {
     const list = (lib.scheduled || []).slice(0, 30);
@@ -6746,7 +6484,7 @@
     nb.title = 'Opens Claude\u2019s scheduled tasks on the right: make the task there, and it is linked here with its name and schedule read from Claude';
     nb.addEventListener('click', () => cosNewRoutine(n));
     top.append(nb);
-    setTimeout(() => cosRefreshRoutines(n), 500);
+    if (cosUi.routinesShownFor !== n.id) { cosUi.routinesShownFor = n.id; setTimeout(() => cosRefreshRoutines(n), 500); }
     box.appendChild(top);
     box.appendChild(cosWeekStrip(cosRoutines(n).map(r => ({ r, n }))));
     const grid = document.createElement('div');
@@ -6759,14 +6497,23 @@
       c.dataset.rid = r.id;
       c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="row2"><button class="btn edit" title="Read the name, instructions and schedule from Claude again">Read Again</button><button class="btn pause"></button><span class="last"></span></div>`;
       c.querySelector('b').textContent = r.name;
-      c.querySelector('.rstate').textContent = r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
-      c.querySelector('.rstate').className = 'rstate ' + (r.paused ? 'off' : r.link ? 'on' : 'warn');
+      c.querySelector('.rstate').textContent = r.missing ? 'Not found in Claude' : r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
+      c.querySelector('.rstate').className = 'rstate ' + (r.missing ? 'warn' : r.paused ? 'off' : r.link ? 'on' : 'warn');
       c.querySelector('.when').textContent = routineWhen(r);
       c.querySelector('p').textContent = r.what || 'No description yet.';
       const links = c.querySelector('.links');
       if (r.link) links.appendChild(cosLinkChip(r.link, () => cosChange(() => { r.link = null; }, null)));
       else { const h = document.createElement('button'); h.className = 'tb linkbtn'; h.innerHTML = '<span class="t">Link Claude Task…</span>'; h.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosPickSchedule(b.left, b.bottom + 4, link => cosChange(() => { r.link = link; }, `Linked “${link.name}”`)); }); links.appendChild(h); }
       if (r.output) { const o = cosLinkChip(r.output, () => cosChange(() => { r.output = null; }, null)); o.title = `Results: ${r.output.name}`; links.appendChild(o); }
+      if (r.missing) {
+        const rm = document.createElement('button'); rm.className = 'btn'; rm.textContent = 'Remove';
+        rm.title = 'It was deleted in Claude: remove it here too';
+        rm.addEventListener('click', () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Removed \u201c${r.name}\u201d from Routines`));
+        const keep = document.createElement('button'); keep.className = 'btn'; keep.textContent = 'Keep';
+        keep.title = 'It is still there (Claude was not reachable): keep it';
+        keep.addEventListener('click', () => { delete r.missing; saveCos(); cosRender(); });
+        links.append(rm, keep);
+      }
       c.querySelector('.last').textContent = next ? `Next: ${fmtNext(next)}` : r.paused ? '' : r.freq === 'custom' ? '' : '';
       c.querySelector('.pause').textContent = r.paused ? 'Resume' : 'Pause';
       c.querySelector('.pause').title = r.paused ? 'Show it as running again' : 'Mark it as paused here (pause the task in Claude too)';
@@ -6788,15 +6535,16 @@
       if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Routine', icon: 'schedule', run: () => cosNewRoutine(n) }]);
       const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
       showMenu(e.clientX, e.clientY, [
-        r.link && { label: 'Read from Claude Again', run: () => cosReadRoutine(n, r) },
-        { label: 'Correct the Schedule by Hand…', run: () => editRoutine(n, r) },
-        { label: r.link ? 'Link a Different Claude Task…' : 'Link Claude Task…', run: () => cosPickSchedule(e.clientX, e.clientY, link => cosChange(() => { r.link = link; }, null)) },
-        r.link && { label: 'Open the Claude Task', run: () => openNewWindow(r.link.url) },
-        { label: r.output ? 'Change Where Results Go…' : 'Where Results Go…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { r.output = link; }, null)) },
-        r.output && { label: 'Open the Results', run: () => openNewWindow(r.output.url) },
-        { label: r.paused ? 'Resume' : 'Pause', run: () => cosChange(() => { r.paused = !r.paused; }, null) },
+        r.link && { label: 'Open', key: K.open, run: () => cosOpenLink(r.link) },
+        r.link && { label: 'Open in New Window', run: () => openNewWindow(r.link.url) },
+        r.output && { label: 'Open the Results', run: () => cosOpenLink(r.output) },
         '-',
-        { label: 'Delete Routine', run: () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted “${r.name}”. Its task in Claude is not changed.`) },
+        r.link && { label: 'Read Again from Claude', run: () => cosReadRoutine(n, r) },
+        { label: r.link ? 'Link a Different Claude Task…' : 'Link Claude Task…', run: () => cosPickSchedule(e.clientX, e.clientY, link => cosChange(() => { r.link = link; delete r.missing; }, null)) },
+        { label: r.paused ? 'Resume' : 'Pause', run: () => cosChange(() => { r.paused = !r.paused; }, null) },
+        r.link && { label: 'Copy Link', run: () => navigator.clipboard.writeText(r.link.url).then(() => toast('Link copied')) },
+        '-',
+        { label: 'Remove from Routines', run: () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Removed \u201c${r.name}\u201d from Routines. Its task in Claude is not changed.`) },
       ]);
     });
     // Drag a scheduled task (or the chat where results land) onto a routine card.
@@ -6877,41 +6625,37 @@
   }
 
   // ---------- Chief of Staff: search across the team ----------
-  // Searches staff, departments, projects (and everything in them), actions, functions and routines,
+  // Searches staff, departments, each person's work (their folder), skills and routines,
   // with the same rules as Navigator's search (AND, "exact phrase", OR, -leave out).
   function cosSearchHits(t, q) {
     const m = searchMatcher(q), hits = [];
     for (const n of t.nodes) {
       if (m(n.name, n.role, n.about)) hits.push({ n, kind: n.kind === 'dept' ? 'Department' : n.chief ? 'Chief of Staff' : 'Staff', label: n.name, sub: n.role || '' });
-      for (const pj of n.projects || []) {
-        if (m(pj.name)) hits.push({ n, tab: 'projects', proj: pj.id, kind: pj.archived ? 'Archived project' : 'Project', label: pj.name, sub: n.name });
-        const w = (items, trail, folders) => (items || []).forEach(it => {
-          if (it.type === 'folder') { if (m(it.name)) hits.push({ n, tab: 'projects', proj: pj.id, item: it.id, open: folders, kind: 'Folder', label: it.name, sub: [n.name, pj.name, ...trail].join(' › ') }); w(it.children, [...trail, it.name], [...folders, it]); }
-          else if (m(it.title || it.name, it.notes, it.link && it.link.name, it.link && it.link.url)) hits.push({ n, tab: 'projects', proj: pj.id, item: it.id, open: folders, kind: it.status === 'done' ? 'Action (done)' : 'Action', label: it.title || it.name, sub: [n.name, pj.name, ...trail].join(' › ') });
-        });
-        w(pj.items, [], []);
-      }
-      for (const a of n.actions || []) if (m(a.title, a.notes)) hits.push({ n, tab: 'actions', kind: a.status === 'done' ? 'Action (done)' : 'Action', label: a.title, sub: n.name });
-      for (const f of n.functions || []) if (m(f.name, f.about, f.prompt)) hits.push({ n, tab: 'functions', kind: 'Function', label: f.name, sub: n.name });
-      for (const r of n.routines || []) if (m(r.name, r.what, routineWhen(r))) hits.push({ n, tab: 'routines', kind: 'Routine', label: r.name, sub: `${n.name} · ${routineWhen(r)}` });
+      const f = n.folderId && nodeOf(n.folderId);
+      const w = (list, trail) => (list || []).forEach(x => {
+        if (x.type === 'folder') { if (m(x.name)) hits.push({ n, tab: 'work', item: x.id, kind: 'Folder', label: x.name, sub: [n.name, ...trail].join(' \u203a ') }); w(x.children, [...trail, x.name]); }
+        else if (m(x.name, x.url)) hits.push({ n, tab: 'work', item: x.id, kind: x.done ? 'Done' : KIND_NAME[kindOf(x)] || 'Item', label: x.name, sub: [n.name, ...trail].join(' \u203a ') });
+      });
+      if (f) w(f.children, []);
+      for (const s2 of n.skills || []) if (m(s2.name, s2.link && s2.link.url)) hits.push({ n, tab: 'skills', kind: 'Skill', label: s2.name, sub: n.name });
+      for (const r of n.routines || []) if (m(r.name, r.what, routineWhen(r))) hits.push({ n, tab: 'routines', kind: 'Routine', label: r.name, sub: `${n.name} \u00b7 ${routineWhen(r)}` });
     }
     return hits;
   }
   function cosGoHit(h) {
     cosUi.sel = h.n.id;
     cosUi.search = '';
-    for (const f of h.open || []) f.open = true;
-    if (h.tab) { cosUi.page = h.n.id; cosUi.tab = h.tab; cosUi.proj = h.proj || null; cosUi.itemSel = h.item || null; cosUi.adding = false; }
-    else if (h.n.kind === 'staff') { cosUi.page = h.n.id; cosUi.proj = null; cosUi.itemSel = null; }
-    else cosUi.page = null;
+    cosUi.adding = false;
+    if (h.tab || h.n.kind === 'staff') { cosUi.page = h.n.id; cosUi.tab = h.tab || 'work'; } else cosUi.page = null;
     renderCos();
+    if (h.item) revealInFolder(h.item);
   }
   function cosSearchBox(t) {
     const wrap = document.createElement('div');
     wrap.className = 'cos-search';
     wrap.innerHTML = `<input id="cosSearch" type="search" placeholder="Search the team" spellcheck="false" autocomplete="off"><div class="cos-results" hidden></div>`;
     const inp = wrap.querySelector('input'), res = wrap.querySelector('.cos-results');
-    inp.title = 'Search staff, projects, actions, functions and routines (⌘F)\nWords must all match; "exact phrase"; OR; -word leaves it out';
+    inp.title = 'Search staff, their work, skills and routines (⌘F)\nWords must all match; "exact phrase"; OR; -word leaves it out';
     inp.value = cosUi.search || '';
     let hits = [], at = 0;
     const paint = () => {
@@ -6972,85 +6716,38 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (r && !r.cancelled) toast(`Could not export the org chart: ${r.status || 'unknown problem'}`);
   }
 
-  // ---------- Chief of Staff: mirror to Documents ----------
-  // One way: the app writes every team's projects as folders (links as .webloc, files as aliases) plus an
-  // About note per staff member. It never touches anything it did not make itself.
-  const cosMirror = { enabled: false, root: '', timer: null };
-  function cosMirrorTree() {
-    const md = s => String(s || '').replace(/\n+/g, ' ').trim();
-    const items = list => (list || []).map(it => it.type === 'folder' ? { type: 'dir', name: it.name, children: items(it.children) }
-      : it.type === 'action' ? (!it.link ? null : it.link.file ? (it.link.path ? { type: 'file', name: it.title, src: it.link.path } : null) : it.link.url ? { type: 'link', name: it.title, url: it.link.url } : null)
-      : it.type === 'file' ? (it.path ? { type: 'file', name: it.name, src: it.path } : null)
-      : it.url ? { type: 'link', name: it.name, url: it.url } : null).filter(Boolean);
-    const out = [];
-    for (const p of profiles()) {
-      const t = cos.teams[p.id];
-      if (!t || !t.nodes.length) continue;
-      const staff = [];
-      for (const n of t.nodes.filter(x => x.kind === 'staff')) {
-        const up = cosNode(t, n.parent);
-        let dept = ''; for (let q = up; q; q = cosNode(t, q.parent)) if (q.kind === 'dept') { dept = q.name; break; }
-        const lines = [`# ${n.name}`, '', n.role ? `**${md(n.role)}**` : '', n.about ? '\n' + n.about.trim() : '', '',
-          !up ? 'Leads the team' : up.kind === 'dept' ? `Department: ${dept}` : `Reports to: ${up.name}${dept ? ` · Department: ${dept}` : ''}`, ''];
-        const acts = n.actions || [], fns = n.functions || [], rts = n.routines || [];
-        if (acts.length) { lines.push('## Actions', ''); for (const a of acts) lines.push(`- [${a.status === 'done' ? 'x' : ' '}] ${md(a.title)}${a.status === 'doing' ? ' (doing)' : ''}${a.due ? ` (due ${a.due})` : ''}${a.link ? ` [chat](${a.link.url})` : ''}`); lines.push(''); }
-        if (fns.length) { lines.push('## Functions', ''); for (const f of fns) lines.push(`- **${md(f.name)}**${f.about ? `: ${md(f.about)}` : ''}${f.link ? ` [open](${f.link.url})` : ''}`); lines.push(''); }
-        if (rts.length) { lines.push('## Routines', ''); for (const r of rts) lines.push(`- **${md(r.name)}**: ${routineWhen(r)}${r.paused ? ' (paused)' : ''}${r.what ? `. ${md(r.what)}` : ''}${r.link ? ` [Claude task](${r.link.url})` : ''}`); lines.push(''); }
-        const live = (n.projects || []).filter(pj => !pj.archived), arch = (n.projects || []).filter(pj => pj.archived);
-        const kids = [{ type: 'text', name: `About ${n.name}`, text: lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') + '\n' }];
-        for (const pj of live) kids.push({ type: 'dir', name: pj.name, children: items(pj.items) });
-        if (arch.length) kids.push({ type: 'dir', name: 'Archived projects', children: arch.map(pj => ({ type: 'dir', name: pj.name, children: items(pj.items) })) });
-        staff.push({ type: 'dir', name: n.name, children: kids });
-      }
-      out.push({ type: 'dir', name: p.name, children: staff });
-    }
-    return out;
-  }
-  function cosMirrorSoon() {
-    if (!cosMirror.enabled || !window.navigatorApp || !window.navigatorApp.cosMirrorApply) return;
-    clearTimeout(cosMirror.timer);
-    cosMirror.timer = setTimeout(() => window.navigatorApp.cosMirrorApply(cosMirrorTree()).catch(() => {}), 1500);
-  }
-  async function cosMirrorToggle() {
-    const api = window.navigatorApp;
-    if (!api || !api.cosMirrorEnable) return toast('This needs the Claude Navigator app');
-    if (cosMirror.enabled) {
-      Object.assign(cosMirror, await api.cosMirrorEnable(false));
-      return toast('Stopped mirroring. The folders already in Documents are left as they are.');
-    }
-    if (!confirm(`Mirror Chief of Staff to your Documents folder?\n\nEvery team's staff and projects become real folders in “${cosMirror.root}”: links as web links, your files as aliases, and an About note for each staff member. It updates itself as you work.\n\nIt only changes what it made itself. Anything you add there is left alone.`)) return;
-    Object.assign(cosMirror, await api.cosMirrorEnable(true));
-    const r = await api.cosMirrorApply(cosMirrorTree());
-    if (r && r.ok) toast(`Mirrored to Documents: ${r.dirs} folders and ${r.files} files${r.skipped.length ? ` (${r.skipped.length} skipped because the name is taken by your own file)` : ''}`, { label: 'Show in Finder', run: () => api.cosMirrorReveal() });
-    else toast(`Could not mirror: ${(r && r.status) || 'unknown problem'}`);
-  }
-  if (window.navigatorApp && window.navigatorApp.cosMirrorStatus) window.navigatorApp.cosMirrorStatus().then(s => { Object.assign(cosMirror, s); cosMirrorSoon(); }).catch(() => {});
-
   // ---------- Chief of Staff: the … menu and keyboard shortcuts ----------
   function cosMoreMenu(x, y) {
     const t = cosTeam();
     showMenu(x, y, [
-      { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add Clara (External Assistant)', disabled: !t, run: () => claraNode() ? askClara(claraNode()) : cosAddClara() },
+      { label: 'Ask the Team', disabled: !t, run: () => { const c = t && t.nodes.find(x => x.chief); if (c) cosAsk(c); } },
+      { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add Clara (External Assistant)', disabled: !t, run: () => claraNode() ? askClara() : cosAddClara() },
       '-',
       { label: 'Export Org Chart as PDF…', disabled: !t, run: () => cosExport('pdf') },
       { label: 'Export Org Chart as Image…', disabled: !t, run: () => cosExport('png') },
       '-',
-      { label: cosMirror.enabled ? 'Stop Mirroring to Documents' : 'Mirror to Documents…', run: cosMirrorToggle },
-      cosMirror.enabled && { label: 'Show the Mirror in Finder', run: () => window.navigatorApp.cosMirrorReveal() },
       '-',
       { label: 'Keyboard Shortcuts', run: cosShortcutsHelp },
     ].filter(Boolean));
   }
+  function cosNewHere(shift) {
+    const t = cosTeam();
+    const n = t && cosUi.page && cosNode(t, cosUi.page);
+    if (!n) return cosAdd(shift ? 'dept' : 'staff', cosUi.sel);
+    if (cosUi.tab === 'skills') return cosNewSkill(n);
+    if (cosUi.tab === 'routines') return cosNewRoutine(n);
+  }
   const COS_KEYS = [
-    ['⌘F or /', 'Search the team'],
-    ['← →', 'Previous or next person at the same level'],
-    ['↑ ↓', 'Up to who they report to, or down to the first person below'],
-    ['Return', 'Open the selected person’s page'],
+    ['\u2318F or /', 'Search the team'],
+    ['\u2190 \u2192 \u2191 \u2193', 'Move around the org chart'],
+    ['Return', 'Open the selected person\u2019s page'],
     ['Esc', 'Back to the team'],
-    ['A', 'Add a staff member under the selected one'],
-    ['D', 'Add a department under the selected one'],
+    ['\u2318N', 'Team: add a staff member. Skills or Routines: new skill or routine'],
+    ['\u2318\u21e7N', 'Team: add a department'],
     ['Delete', 'Remove the selected person or department'],
-    ['1 to 4', 'On a staff page: Projects, Actions, Functions, Routines'],
+    ['\u2318Z', 'Undo'],
+    ['1 to 3', 'On a staff page: Work, Skills, Routines'],
+    ['Work tab', 'All of Navigator\u2019s shortcuts (\u2318N new chat, F2 rename, \u2318\u232b delete, and so on)'],
   ];
   function cosShortcutsHelp() {
     let dlg = $('cosKeysDlg');
@@ -7076,8 +6773,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!t) return;
     const page = cosUi.page && cosNode(t, cosUi.page);
     if (page) {
+      if (cosUi.tab === 'work') return;                       // Navigator's folder view: its own keys
       if (e.key === 'Escape') { e.preventDefault(); cosUi.page = null; cosUi.adding = false; renderCos(); }
-      else if (/^[1-4]$/.test(e.key)) { e.preventDefault(); cosUi.tab = COS_TABS[+e.key - 1][0]; cosUi.adding = false; renderCos(); }
+      else if (/^[1-3]$/.test(e.key)) { e.preventDefault(); cosUi.tab = COS_TABS[+e.key - 1][0]; cosUi.adding = false; renderCos(); }
       return;
     }
     const n = cosUi.sel && cosNode(t, cosUi.sel);
@@ -7089,9 +6787,7 @@ body { width: max-content !important; min-width: 0 !important; }
         : sibs[i + (e.key === 'ArrowLeft' ? -1 : 1)];
       if (go) { cosSelect(go.id); const b = document.querySelector(`#cosMain [data-cid="${go.id}"]`); if (b) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
     } else if (e.key === 'Enter' && n && n.kind === 'staff') { e.preventDefault(); openStaff(n.id); }
-    else if ((e.key === 'Delete' || e.key === 'Backspace') && n && !n.chief) { e.preventDefault(); cosRemove(n.id); }
-    else if (e.key.toLowerCase() === 'a') { e.preventDefault(); cosAdd('staff', cosUi.sel); }
-    else if (e.key.toLowerCase() === 'd') { e.preventDefault(); cosAdd('dept', cosUi.sel); }
+    else if (e.key === 'Delete' && n && !n.chief) { e.preventDefault(); cosRemove(n.id); }
     else if (e.key === 'Escape' && cosUi.sel) { cosSelect(null); }
   });
 
@@ -7154,17 +6850,9 @@ body { width: max-content !important; min-width: 0 !important; }
   }
 
   // ---------- Chief of Staff: make something new and link it ----------
-  // Actions, project actions, functions and routines start by making the real thing: a Claude chat, doc,
-  // slides, design, dashboard, project or artifact, a Word/Excel/PowerPoint/text file, or a monday.com board.
-  // Claude opens on the right (Navigator's pane, borrowed), and the new item is linked as soon as Claude
-  // gives it its own address. "Link This Page" links whatever the pane shows, if the automatic link misses.
-  const COS_START = [
-    ['chat', 'A new Claude chat'], ['artifactChat', 'A new artifact (in a chat)'], ['doc', 'A new Doc'], ['slides', 'New Slides'],
-    ['design', 'A new Design'], ['dashboard', 'A new Dashboard'], ['project', 'A new Claude project'],
-    ['word', 'A new Word document'], ['excel', 'A new Excel spreadsheet'], ['powerpoint', 'A new PowerPoint presentation'], ['text', 'A new text file'],
-    ['monday', 'A new monday.com board'], ['none', 'Nothing yet (link something later)'],
-  ];
-  const cosStartOptions = () => COS_START.filter(([k]) => k === 'none' || k === 'chat' || (isApp && (k !== 'monday' || mondayData.connected) && (NEW_KINDS[k] || NEW_FILES[k] || k === 'monday')));
+  // Skills, routines and Claude Projects start by making the real thing in Claude. Claude opens on the right
+  // (Navigator's own pane), and the new item is linked as soon as Claude gives it its own address. "Link This
+  // Page" links whatever the pane shows, if the automatic link misses. (Work is made with Navigator's own New.)
   function cosOpenLink(link) {
     if (!link) return;
     if (link.file) return fsState.enabled && link.path ? window.navigatorApp.fsOpen(link.path) : toast('That file is not on this Mac');
@@ -7182,49 +6870,32 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!m || !/^https?:\/\//.test(url) || state.loc.kind !== 'page') return toast('Open the new item on the right first, then click Link This Page');
     m.done(url, state.pageTitle);
   }
-  async function cosNewFile(kind, name, onLink, what) {
-    if (!fsState.enabled) {
-      if (confirm('New files are saved in your folders on this Mac. Turn on Keep Folders on This Mac (in Documents › Claude Navigator) now?')) enableFolderSync().then(() => cosNewFile(kind, name, onLink, what));
-      return;
-    }
-    if (fsState.timerPending || fsState.applying) { clearTimeout(fsState.timer); fsState.timerPending = false; await runApply(); }
-    const p = activeProfile();
-    const res = await window.navigatorApp.fsNewFile(kind, p ? p.path || '' : '', (name || 'Untitled').replace(/[\/\\:*?"<>|]/g, '-').slice(0, 80));
-    if (!res || res.error && !res.rel) return toast(`Could not create the file: ${res ? res.error : 'unknown error'}`);
-    await pullFromDisk();
-    const file = res.rel.split('/').pop();
-    cosChange(() => onLink({ name: file, path: res.rel, file: true }), `Created ${file}${p ? ` in ${p.name}` : ''} and linked it to ${what}`);
-  }
-  function cosCreate(kind, { name = '', notes = '', onLink, what = 'it' } = {}) {
-    if (!kind || kind === 'none') return;
-    if (NEW_FILES[kind]) return cosNewFile(kind, name, onLink, what);
-    if (kind === 'monday') return openNewBoard({ fileInto: b => cosChange(() => onLink({ name: b.name, url: b.url }), `Linked the new board “${b.name}” to ${what}`) });
+  function cosCreate(kind, { url = '', onLink, what = 'it' } = {}) {
     const k = NEW_KINDS[kind];
     if (!k) return;
-    if (!isApp) { openNewWindow(k.url); return; }
-    const done = (url, title) => {
+    const start = url || k.url;
+    if (!isApp) { openNewWindow(start); return; }
+    const done = (u, title) => {
       state.autoFile = null; state.cosWatch = null; cosUi.making = null;
       const t = realTitle(title);
-      const link = { name: t || name || k.title, url, auto: !t };
+      const link = { name: t || k.title, url: u, auto: !t };
       if (kind !== 'chat' && kind !== 'project') link.as = kind === 'artifactChat' ? 'artifact' : kind;
-      cosChange(() => onLink(link), `Linked “${link.name}” to ${what}`);
+      cosChange(() => onLink(link), `Linked \u201c${link.name}\u201d to ${what}`);
     };
     cosUi.adding = true; cosUi.srcFrom = 'claude';
-    cosUi.making = { label: k.title, what, done };
     renderCos();
-    go({ kind: 'page', url: k.url });
+    go({ kind: 'page', url: start });                        // (go clears what was being made before)
     cosUi.making = { label: k.title, what, done };
-    if (k.click) {
-      state.pendingClick = { path: k.path, click: k.click, section: !!k.section, fallback: k.tile ? `Choose ${k.tile} under “Make something new”. It is linked to ${what} once Claude creates it.` : `Click Create Project. It is linked to ${what}.` };
+    cosPaintSrcSub();
+    if (k.click && !url) {
+      state.pendingClick = { path: k.path, click: k.click, section: !!k.section, fallback: k.tile ? `Choose ${k.tile} under \u201cMake something new\u201d. It is linked to ${what} once Claude creates it.` : `Click Create Project. It is linked to ${what}.` };
       let current = '';
       try { current = view.getURL(); } catch (e) { /* not ready */ }
       runPendingClick(current);
     }
-    state.autoFile = { kind, lastPath: null, since: Date.now(), onMade: done };
-    const brief = [name, notes].filter(Boolean).join('\n\n');
-    if (brief && (kind === 'chat' || kind === 'artifactChat')) navigator.clipboard.writeText(brief).catch(() => {});
-    toast(kind === 'chat' || kind === 'artifactChat' ? `Claude is open on the right${brief ? ' and the details are copied: paste them as your first message' : ''}. It is linked to ${what} as soon as you send it.`
-      : kind === 'project' ? `Name the project and click Create Project. It is linked to ${what}.` : `Opening ${k.tile}. It is linked to ${what} once Claude creates it.`);
+    state.autoFile = { kind, lastPath: null, since: Date.now(), onMade: done, from: url ? pathOf(url) : null };
+    toast(kind === 'project' ? `Name the project (its name is copied) and click Create Project. It is linked to ${what}.`
+      : `Claude is open on the right${url ? ', in the Claude Project' : ''}. It is linked to ${what} as soon as you send your first message.`);
   }
   // Claude's own name for a new chat arrives a little after it is created: keep linked names up to date.
   function cosNoteTitle(url, title) {
@@ -7233,75 +6904,23 @@ body { width: max-content !important; min-width: 0 !important; }
     const key = normUrl(url);
     let changed = false;
     const fix = (link, owner, field) => { if (link && link.auto && link.url && normUrl(link.url) === key) { link.name = t; link.auto = false; if (owner && owner.autoName) { owner[field] = t; owner.autoName = false; } changed = true; } };
-    const walkItems = list => (list || []).forEach(it => { if (it.type === 'folder') walkItems(it.children); else fix(it.link, it, 'title'); });
     for (const tm of Object.values(cos.teams)) for (const n of tm.nodes || []) {
-      for (const a of n.actions || []) fix(a.link, a, 'title');
-      for (const f of n.functions || []) fix(f.link, f, 'name');
+      fix(n.claudeProject, null);
+      for (const s2 of n.skills || []) fix(s2.link, s2, 'name');
       for (const r of n.routines || []) fix(r.link, r, 'name');
-      for (const p of n.projects || []) walkItems(p.items);
     }
-    if (changed) { saveCos(); if (currentApp === 'cos') renderCos(); }
+    if (changed) { saveCos(); if (currentApp === 'cos') cosRender(); }
   }
-  // A menu of everything that can be made, for an existing action ("Start Something New for This").
-  function cosNewMenu(x, y, opts) {
-    showMenu(x, y, cosStartOptions().filter(([k]) => k !== 'none').map(([k, label]) => ({ label: label.replace(/^A new |^New /, 'New '), icon: NEW_KINDS[k] ? NEW_KINDS[k].icon : k === 'monday' ? 'monday' : k, run: () => cosCreate(k, opts) })));
-  }
-
-  // Project items are actions: { id, type: 'action', title, notes, status, due, link, created, doneAt } (and folders).
-  // Older projects held plain links and files: they become actions linked to the same thing.
-  function cosAsAction(it) {
-    if (!it || it.type === 'action') return it;
-    if (it.type === 'folder') return Object.assign(it, { children: (it.children || []).map(cosAsAction) });
-    const link = it.type === 'file' ? { name: it.name, path: it.path, file: true } : { name: it.name, url: it.url, as: it.as };
-    return { id: it.id || uid(), type: 'action', title: it.name, notes: '', status: 'todo', due: '', link, created: Date.now(), doneAt: null };
-  }
-  (() => {
-    let changed = false;
-    for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || []) for (const p of n.projects || []) {
-      const before = JSON.stringify(p.items || []);
-      p.items = (p.items || []).map(cosAsAction);
-      if (JSON.stringify(p.items) !== before) changed = true;
-    }
-    if (changed) saveCos();
-  })();
-  // Every action in a project, at any depth.
-  const cosProjActions = items => { const out = []; const w = l => (l || []).forEach(x => x.type === 'folder' ? w(x.children) : x.type === 'action' && out.push(x)); w(items); return out; };
-
-  // The action form, for a staff member's own actions or a project's. A new action then makes its chat (or doc, file...).
-  function cosActionForm(a, { list, where, ctx }) {
-    const isNew = !a;
-    cosForm(isNew ? `New Action${where ? ` in ${where}` : ''}` : 'Edit Action', [
-      { name: 'title', label: 'What needs doing', value: a ? a.title : '', placeholder: 'e.g. Draft the Q3 finance report for the board' },
-      { name: 'notes', label: 'Notes (optional)', type: 'textarea', value: a ? a.notes : '' },
-      ...(isNew ? [{ name: 'start', label: 'Start it with', type: 'select', options: cosStartOptions(), value: 'chat' }] : []),
-      { name: 'status', label: 'Status', type: 'select', options: ACTION_STATUS, value: a ? a.status : 'todo' },
-      { name: 'due', label: 'Due (optional)', type: 'date', value: a ? a.due : '' },
-    ], isNew ? 'Add and Start' : 'Save', v => {
-      if (!v.title) return;
-      if (!isNew) return cosChange(() => Object.assign(a, { title: v.title, notes: v.notes, due: v.due, doneAt: v.status === 'done' && a.status !== 'done' ? Date.now() : a.doneAt, status: v.status }), null);
-      const act = { id: uid(), title: v.title, notes: v.notes, status: v.start !== 'none' && v.status === 'todo' ? 'doing' : v.status, due: v.due, link: null, created: Date.now(), doneAt: v.status === 'done' ? Date.now() : null };
-      if (ctx === 'project') act.type = 'action';
-      cosChange(() => { list().unshift(act); cosUi.itemSel = act.id; }, v.start === 'none' ? `Added “${v.title}”` : null);
-      if (v.start !== 'none') cosCreate(v.start, { name: v.title, notes: v.notes, what: `“${v.title}”`, onLink: link => { act.link = link; } });
-    });
-  }
-  function editAction(n, a) { cosActionForm(a, { list: () => cosActions(n), ctx: 'staff' }); }
-
-  // ----- New function: a new Claude chat, kept in Functions (no form; rename or describe it later) -----
-  function cosNewFunction(n) {
-    const f = { id: uid(), name: 'New function', autoName: true, about: '', prompt: '', link: null, created: Date.now(), lastRun: null };
-    cosChange(() => cosFunctions(n).unshift(f), null);
-    cosCreate('chat', { what: 'the new function', onLink: link => { f.link = link; if (!link.auto) { f.name = link.name; f.autoName = false; } } });
-  }
-
   // ----- New routine: make the scheduled task in Claude, then say here when it runs -----
   function cosNewRoutine(n) {
     if (!isApp) return openNewWindow(claudeSchedulePage());
     const page = claudeSchedulePage();
     let base = '/code/routines';
     try { base = new URL(page).pathname.replace(/\/+$/, ''); } catch (e) { /* default */ }
+    const nid = n.id;
     const done = (url, title) => {
       state.cosWatch = null; cosUi.making = null;
+      n = cosNode(cosTeam(), nid) || n;                       // (in case of an Undo meanwhile)
       const r = { id: uid(), name: realTitle(title) || 'New routine', autoName: !realTitle(title), what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link: { name: realTitle(title) || 'Scheduled task', url, auto: !realTitle(title) }, output: null, paused: false, created: Date.now() };
       cosChange(() => cosRoutines(n).push(r), null);
       toast('Linked the scheduled task. Reading its schedule from Claude\u2026');
@@ -7312,15 +6931,19 @@ body { width: max-content !important; min-width: 0 !important; }
     go({ kind: 'page', url: page });
     cosUi.making = { label: 'New scheduled task', what: 'a new routine', done };
     const re = new RegExp('^' + base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(?!(new|create|edit)(/|$))[A-Za-z0-9_-]{6,}');
+    // Only a task made now: not one already in Claude's Scheduled list, and not one already linked.
+    const known = new Set((lib.scheduled || []).map(x => normUrl(x.url)));
+    for (const tm of Object.values(cos.teams || {})) for (const m of tm.nodes || []) for (const r of m.routines || []) if (r.link) known.add(normUrl(r.link.url));
     // Wait a moment for Claude's title for the task (so the routine gets its name), but not for ever.
-    let seen = null;
-    state.cosWatch = (url, title) => {
+    let seen = null, timer = null;
+    const watch = (url, title) => {
       const p = pathOf(url);
-      if (!p || !re.test(p)) return false;
-      if (realTitle(title)) { done(url, title); return true; }
-      if (!seen) { seen = url; setTimeout(() => { if (state.cosWatch && seen && cosUi.making) done(seen, state.pageTitle); }, 4000); }
+      if (!p || !re.test(p) || known.has(normUrl(url))) return false;
+      if (realTitle(title)) { clearTimeout(timer); done(url, title); return true; }
+      if (!seen) { seen = url; timer = setTimeout(() => { if (state.cosWatch === watch && normUrl(state.pageUrl || '') === normUrl(seen)) done(seen, state.pageTitle); }, 4000); }
       return true;
     };
+    state.cosWatch = watch;
     renderCos();
     toast('Make the scheduled task in Claude on the right. Once you save it, it is linked here and its schedule is read from Claude.');
   }
@@ -7374,16 +6997,22 @@ body { width: max-content !important; min-width: 0 !important; }
   async function cosReadRoutine(n, r, { quiet = false } = {}) {
     if (!r.link || !r.link.url || routineReading.has(r.id) || !window.navigatorApp || !window.navigatorApp.claudePageDetails) return;
     routineReading.add(r.id);
+    r.readAt = Date.now();          // even if it fails, so it is not read again straight away
     if (!quiet) toast(`Reading “${r.name}” from Claude…`);
     try {
       const d = await window.navigatorApp.claudePageDetails(r.link.url);
       if (!d || !d.ok) { if (!quiet) toast(`Could not read it from Claude: ${(d && d.status) || 'no answer'}`); return; }
       if (d.gone) {
-        if (!cosRoutines(n).includes(r)) return;
-        return cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `\u201c${r.name}\u201d was deleted in Claude, so it is removed here too`);
+        if (!r.missing) { r.missing = true; saveCos(); if (currentApp === 'cos') cosRender(); }
+        if (!quiet) toast(`\u201c${r.name}\u201d was not found in Claude. Remove it here, or Keep it, on its card.`);
+        return;
       }
       const got = routineFromPage(d);
-      cosChange(() => { Object.assign(r, got, { readAt: Date.now() }); if (got.name) { r.autoName = false; r.link.name = got.name; r.link.auto = false; } }, null);
+      Object.assign(r, got);
+      delete r.missing;
+      if (got.name) { r.autoName = false; r.link.name = got.name; r.link.auto = false; }
+      saveCos();
+      if (currentApp === 'cos') cosRender();
       if (!quiet) toast(got.freq ? `Read “${r.name}” from Claude: ${routineWhen(r)}` : `Read “${r.name}” from Claude, but not when it runs. Check its schedule in Claude, then choose Read from Claude Again.`);
     } finally { routineReading.delete(r.id); }
   }
@@ -7397,45 +7026,6 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || [])
       for (const r of (n.routines || []).slice()) if (r.link && /claude\.ai/.test(r.link.url || '') && !have.has(normUrl(r.link.url))) cosReadRoutine(n, r, { quiet: true });
   }
-  // A new action: straight into Claude (a chat, or what you pick from the arrow), named after what Claude makes.
-  function cosNewAction(list, { kind = 'chat', ctx = 'staff', where = '' } = {}) {
-    cosCreate(kind, { what: where ? `a new action in ${where}` : 'a new action', onLink: link => {
-      const act = { id: uid(), title: link.auto ? 'New action' : link.name, autoName: !!link.auto, notes: '', status: 'doing', due: '', link, created: Date.now(), doneAt: null };
-      if (ctx === 'project') act.type = 'action';
-      list().unshift(act);
-      cosUi.itemSel = act.id;
-    } });
-  }
-  // Right-click on empty space in a list: start something new there, or link something you already have.
-  function cosNewHereMenu(x, y, list, opts, extra = []) {
-    showMenu(x, y, [
-      { label: 'New Action', icon: 'chat', run: () => cosNewAction(list, opts) },
-      ...cosStartOptions().filter(([k]) => k !== 'none' && k !== 'chat').map(([k, label]) => ({ label: `New Action as ${label.replace(/^A new |^New /, '')}`, icon: NEW_KINDS[k] ? NEW_KINDS[k].icon : k === 'monday' ? 'monday' : k, run: () => cosNewAction(list, Object.assign({}, opts, { kind: k })) })),
-      '-',
-      ...extra,
-      { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } },
-    ]);
-  }
-  function cosNewActionButtons(list, opts) {
-    const wrap = document.createElement('span');
-    wrap.className = 'split-btn';
-    const a = document.createElement('button');
-    a.className = 'tb';
-    a.innerHTML = '<span class="t">New Action</span>';
-    a.title = 'Starts a new Claude chat beside the team; it becomes an action named after the chat';
-    a.addEventListener('click', () => cosNewAction(list, opts));
-    const m = document.createElement('button');
-    m.className = 'tb more';
-    m.innerHTML = UI.chev;
-    m.title = 'Start the action as something else: a doc, slides, design, dashboard, project, Office file or monday.com board';
-    m.addEventListener('click', e => {
-      const b = e.currentTarget.getBoundingClientRect();
-      showMenu(b.left, b.bottom + 4, cosStartOptions().filter(([k]) => k !== 'none').map(([k, label]) => ({ label: label.replace(/^A new |^New /, 'New '), icon: NEW_KINDS[k] ? NEW_KINDS[k].icon : k === 'monday' ? 'monday' : k, run: () => cosNewAction(list, Object.assign({}, opts, { kind: k })) })));
-    });
-    wrap.append(a, m);
-    return wrap;
-  }
-
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
   //   cape town            both words, in any order
@@ -7883,6 +7473,11 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!mod || e.altKey) return;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const k = e.key.toLowerCase();
+    if (currentApp === 'cos' && !document.body.classList.contains('cos-work')) {
+      if (k === 'z' && !typing) { e.preventDefault(); return cosUndo(); }
+      if (k === 'n') { e.preventDefault(); return cosNewHere(e.shiftKey); }
+      if (['1', '2', 's', '[', ']', 'arrowup'].includes(k)) return;      // Navigator's own, not shown here
+    }
     if (k === 'f') openFind();
     else if (k === 'g' && pageShowing()) findStep(!e.shiftKey);
     else if (k === 'r' && pageShowing()) viewDo(v => v.reload());
@@ -7987,6 +7582,7 @@ body { width: max-content !important; min-width: 0 !important; }
     applyCosLook();
   }
   function setProfile(id, { quiet = false } = {}) {
+    try { cosEndMaking(); cosUi.adding = false; cosUi.page = null; } catch (e) { /* starting up */ }
     state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
     ls.set('claudeNavigator.activeProfile', state.profileId || '');
     applyProfileTheme();
@@ -8430,6 +8026,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     walk(state.tree, n => { if (n.type === 'link' && (n.autoName !== false || /monday\.com/.test(n.url || '')) && /^\(\d+\+?\)\s+\S/.test(n.name || '')) { n.name = cleanTitle(n.name); fixed++; } });
     if (fixed) save();
   })();
+  try { cosMigrateToFolders(); } catch (e) { console.error('Chief of Staff move to folders', e); }
   try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();
   renderSide();

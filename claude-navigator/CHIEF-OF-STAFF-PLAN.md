@@ -79,3 +79,12 @@ Each phase is tried in Live Preview before it goes into a release.
 - Phase 5 (design-system look): **done**. Colours (named where the page names them) and fonts read from the design system's Claude page; chosen in Edit Profile's Look section; applied to Chief of Staff only; font files saved locally. Tested against a mock page; first real check is a live design system.
 - Profile look now also applies to Navigator (both apps share it).
 - Phase 6 (polish): **done**. Team-wide search; keyboard shortcuts; org chart export as PDF or image; one-way mirror to Documents › Claude Navigator Chief of Staff (only touches what it made, removals go to the Trash).
+
+## 10. Simpler model (after the review)
+
+- Each staff member's **Work** is a Navigator folder (Team › name › project folders), shown with Navigator's own list, toolbar, menus, split view and keys; items are actions with a Done tick. This replaced the separate Projects and Actions tabs and the Documents mirror (the folders are already kept on disk).
+- Each staff member can have a **Claude Project**; their new chats (Work, Skills, Ask) start in it.
+- **Skills** replaced Functions (no forms). **Routines** are read-only from Claude; a task missing in Claude is flagged and you decide.
+- **Ask** opens a chat with a brief of where the person (or the whole team) is up to.
+- Fixes from the review: stricter "deleted in Claude" check that asks before removing; ⌘Z/⌘N act on Chief of Staff; half-made items never link after switching app or profile; background updates no longer wipe typing; routines never link an existing task or the same task twice.
+

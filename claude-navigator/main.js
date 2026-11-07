@@ -690,7 +690,7 @@ ipcMain.handle('design-look', async (_e, url) => {
   }
 });
 
-// ---------- Chief of Staff: org chart export and the Documents mirror ----------
+// ---------- Chief of Staff: org chart export ----------
 let lastExport = null;
 ipcMain.handle('cos-export', async (_e, req) => {
   const ext = req && req.format === 'png' ? 'png' : 'pdf';
@@ -734,35 +734,6 @@ ipcMain.handle('cos-export', async (_e, req) => {
 });
 ipcMain.handle('cos-show-export', () => { if (lastExport) shell.showItemInFolder(lastExport); });
 
-const mirrorSettingsFile = () => path.join(app.getPath('userData'), 'cos-mirror.json');
-const mirrorSettings = () => { try { return JSON.parse(fs.readFileSync(mirrorSettingsFile(), 'utf8')); } catch (e) { return { enabled: false }; } };
-const mirrorDefaultRoot = () => path.join(path.dirname(defaultRoot()), 'Claude Navigator Chief of Staff');
-const mirrorRoot = () => mirrorSettings().root || mirrorDefaultRoot();
-ipcMain.handle('cos-mirror-status', () => ({ enabled: !!mirrorSettings().enabled, root: mirrorRoot() }));
-ipcMain.handle('cos-mirror-enable', (_e, on) => {
-  const s = mirrorSettings();
-  s.enabled = !!on;
-  fs.writeFileSync(mirrorSettingsFile(), JSON.stringify(s, null, 2));
-  return { enabled: s.enabled, root: mirrorRoot() };
-});
-ipcMain.handle('cos-mirror-reveal', () => { const r = mirrorRoot(); if (fs.existsSync(r)) shell.openPath(r); });
-let mirrorRun = Promise.resolve();
-ipcMain.handle('cos-mirror-apply', (_e, tree) => {
-  if (!mirrorSettings().enabled || !Array.isArray(tree)) return { ok: false, status: 'off' };
-  // Files are given as paths inside your synced folders; turn them into real paths (and drop any that are not there).
-  const fix = list => (list || []).map(x => {
-    if (!x || typeof x !== 'object') return null;
-    if (x.type === 'file') { let src = null; try { src = folderSync && x.src ? folderSync.abs(x.src) : null; } catch (e) { src = null; } return src ? { type: 'file', name: String(x.name || ''), src } : null; }
-    if (x.type === 'dir') return { type: 'dir', name: String(x.name || ''), children: fix(x.children) };
-    if (x.type === 'link') return /^https?:\/\//i.test(x.url || '') ? { type: 'link', name: String(x.name || ''), url: x.url } : null;
-    if (x.type === 'text') return { type: 'text', name: String(x.name || ''), text: String(x.text || '').slice(0, 200000) };
-    return null;
-  }).filter(Boolean);
-  const run = mirrorRun.then(() => new (require('./cosmirror').CosMirror)(mirrorRoot()).apply(fix(tree))).catch(e => ({ ok: false, status: String(e && e.message || e) }));
-  mirrorRun = run;
-  return run;
-});
-
 // Reads what a Claude page says (for example a scheduled task: its name, schedule and instructions),
 // so details are taken from Claude rather than typed into the app. Claude pages only.
 const PAGE_DETAILS = `(() => {
@@ -770,8 +741,12 @@ const PAGE_DETAILS = `(() => {
   const fields = [...document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], input:not([type])')].filter(vis)
     .map(e => (e.value !== undefined && e.tagName !== 'DIV' ? e.value : e.innerText) || '').map(s => s.trim()).filter(s => s.length > 0);
   const selects = [...document.querySelectorAll('select')].filter(vis).map(e => (e.options[e.selectedIndex] || {}).text || '').filter(Boolean);
-  const heading = ((document.querySelector('h1') || {}).innerText || '').trim();
-  return { title: document.title, heading, text: (document.body.innerText || '').slice(0, 20000), fields: fields.slice(0, 40), selects: selects.slice(0, 20) };
+  const heading = ((document.querySelector('main h1, [role="main"] h1, h1') || {}).innerText || '').trim();
+  const mainEl = document.querySelector('main, [role="main"]') || document.body;
+  const copy = mainEl.cloneNode(true);
+  copy.querySelectorAll('nav, aside, [data-testid*="sidebar" i], [aria-label*="sidebar" i]').forEach(x => x.remove());
+  const mainText = (copy.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 1500);
+  return { title: document.title, heading, mainText, text: (document.body.innerText || '').slice(0, 20000), fields: fields.slice(0, 40), selects: selects.slice(0, 20) };
 })()`;
 ipcMain.handle('claude-page-details', async (_e, url) => {
   if (typeof url !== 'string' || !isClaudeHost(url)) return { ok: false, status: 'not a Claude page' };
@@ -782,12 +757,16 @@ ipcMain.handle('claude-page-details', async (_e, url) => {
     if (!cleared) return { ok: false, status: 'Claude’s security check did not finish; try again' };
     await sleep(2500);
     const d = await withTimeout(win.webContents.executeJavaScript(PAGE_DETAILS, true), 20000, 'Reading the page');
-    // Deleted in Claude: Claude says so, or sends you somewhere else (such as the list of tasks).
+    // Deleted in Claude: the page itself says so (its heading, or the start of its own content, never Claude's
+    // sidebar), or Claude sends you back to the list of tasks this one belonged to. Anything else (sign-in,
+    // upgrade pages, a slow page) is not treated as deleted, and the app asks before removing anything.
     const asked = new URL(url).pathname.replace(/\/+$/, '');
     let now = '';
     try { now = new URL(win.webContents.getURL()).pathname.replace(/\/+$/, ''); } catch (e) { /* ignore */ }
-    const notFound = /\b(page not found|not found|doesn.t exist|does not exist|no longer exists|was deleted|has been deleted|404)\b/i.test(((d.heading || '') + '\n' + (d.text || '').slice(0, 600)));
-    return Object.assign({ ok: true, gone: notFound || (now && now !== asked && !now.startsWith(asked + '/')) }, d);
+    const listPath = asked.replace(/\/[^\/]+$/, '');
+    const notFound = /^(page )?not found\b|^404\b/i.test(d.heading || '')
+      || /^(?:\S+\s){0,6}?(page not found|this (task|routine|page|scheduled task) (doesn.t|does not|no longer) exist|has been deleted)/i.test(d.mainText || '');
+    return Object.assign({ ok: true, gone: notFound || (!!now && now === listPath && listPath.length > 1) }, d);
   } catch (e) {
     return { ok: false, status: String(e && e.message || e) };
   } finally {
@@ -930,7 +909,7 @@ function setUpLivePreview() {
   pull();
   setInterval(pull, 20000);
   let timer = null, restart = false;
-  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'monday.js', 'look.js', 'cosmirror.js', 'package.json'];
+  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'monday.js', 'look.js', 'package.json'];
   fs.watch(__dirname, (_ev, name) => {
     if (!name || !files.includes(String(name))) return;
     if (!['index.html'].includes(String(name))) restart = true;

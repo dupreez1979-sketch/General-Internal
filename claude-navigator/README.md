@@ -110,50 +110,23 @@ Clara does not let other apps read its meetings, so the app cannot list what Cla
 
 Click the **nine dots** at the top of the sidebar to switch between **Navigator** and **Chief of Staff**. Each remembers where you were.
 
-Chief of Staff is your AI team, one team per profile (switch profile to see another team):
+Chief of Staff is your AI team, one team per profile. The point is to use Claude through a team structure: each person has a role, a Claude Project that holds their instructions, their work, what they do on request, and what they do on a schedule. The details live in Claude; the only things you type here are names.
 
-- The **Chief of Staff** sits at the top. **Add Staff** and **Add Department** (toolbar, the right-hand panel, or right-click a box) build the team below.
-- **Org chart** view draws the team as boxes and lines; **List** view shows name, role, department and who they report to. Zoom with **−**, **Fit** and **+**.
-- Click anyone to edit their name, role, what they do (written for you and for Claude), colour and who they report to. Drag a box onto another to move them under it.
-- In a department, right-click a staff member and choose **Lead** to make them its leader.
-- Changes can be undone from the message that appears. The team is included in the automatic daily backups.
+**The team.** The Chief of Staff sits at the top of the org chart. **⊕ Staff** and **⊕ Department** (or ⌘N and ⌘⇧N, or right-click) build the team below. Drag a box onto another to change who they report to. Switch between the org chart, a list and the **week** of routines with the buttons at the top right. The side panel edits the selected person's name, role and colour.
 
-**A staff member's page**: double-click anyone (or click **Open Page** in the side panel) to open their page, with tabs for **Projects**, Actions, Functions and Routines.
+**A person's page** (double-click them) has **Ask**, their **Claude Project**, and three tabs:
 
-**No forms: the work and its details live in Claude.** **New Action**, **New Function** and **New Routine** open Claude on the right, beside the team, and link what you make the moment Claude creates it. Names, schedules and instructions are taken from Claude. The only thing you type here is a project's name. If a link does not happen by itself, click **Link This Page** above Claude. **Link Existing** instead shows your chats, artifacts, monday.com boards or folders on the right, so you can drag in what you already have. In **My Folders** there, **Back** takes you up a folder.
+- **Ask** opens a new chat (in their Claude Project, if they have one) with where they are up to copied, ready to paste: their open work, skills and routines. Then ask your question. **Ask the Team** (in the … menu) does the same for everyone.
+- **Claude Project**: **Set Up Claude Project** makes a Claude Project for them (their name is copied, ready to paste). Put their role, instructions and reference files there, in Claude. From then on their new chats start in it, so Claude works as them. The arrow beside it uses an existing project instead, or unlinks it.
+- **Work** is their own Navigator folder (Team › their name), shown with Navigator's own toolbar, list, menus, split view and shortcuts. Projects are folders; everything in them is an action: the chats, docs, slides, files and boards made there with **New Chat** (✎) or **New** (⊕). Tick an action (or right-click, **Mark Done**) when it is done. The same folders are in Navigator under Team, and kept on your Mac with your other folders.
+- **Skills** are what they do on request, like board papers. **New Skill** starts a chat (in their Claude Project) and keeps it here, named after the chat. **Link Existing** shows your Claude lists beside them: drag a chat or project in to make it a skill. **Run** opens it.
+- **Routines** are Claude's scheduled tasks. **New Routine** opens Claude's scheduled tasks on the right; make the task there and it is linked here, with its name, instructions and schedule read from Claude. **Read Again** picks up changes. If a task can no longer be found in Claude, its card says so and asks whether to **Remove** it or **Keep** it. The **week** view shows everyone's routines.
 
-**Adjustable columns**: drag the dividers between the project list, the project and the pane on the right (and, on the team page, the side panel). Double-click a divider to put it back. Widths are remembered, and the middle always keeps enough room. Right-click empty space in Projects, Actions, Functions or Routines to start something new there. Claude's own sidebar is closed in the pane, since the app gives you the navigation.
+**Find and share.** Search the team at the top right (⌘F): people, their work, skills and routines. The **…** menu has **Ask the Team**, Clara, **Export Org Chart as PDF or Image**, and the keyboard shortcuts. ⌘Z undoes changes to the team.
 
-**Projects** are folders of work. **New Project** puts you straight into its name. Everything in a project is an **action** (in folders if you like):
+**Look.** Each profile can take the colours and fonts of its Claude design system (Edit Profile › Look), in both apps.
 
-- **New Action** starts a new Claude chat; the arrow beside it starts a Claude artifact, Doc, Slides, Design, Dashboard or project, a Word, Excel, PowerPoint or text file, or a monday.com board instead. The action is named after what Claude makes.
-- **Link Existing** and drag items in: each becomes an action linked to it. Drop onto an action to link it to that action instead.
-- Tick an action to mark it done. Double-click to open what it is linked to (Claude and monday.com open beside the team; files open in their own app). Right-click for **Start Something Else for This…**, **Link a Chat…** and Delete.
-- Projects can be archived (kept, hidden) or deleted. Projects from earlier versions keep everything: their links became actions.
-
-**Actions** (the tab) are one-off jobs that are not part of a project. **New Action** (and its arrow) works the same way, and dragging something into the list makes it an action.
-
-**Functions** (what a staff member does well on request, like board papers): **New Function** starts a new Claude chat and keeps it here, named after the chat. Drag in a chat or project you already have to make it a function. **Run** opens it.
-
-**Routines** are what a staff member does on a schedule (a weekly finance check, a monthly board report):
-
-- **New Routine** opens Claude's scheduled tasks on the right. Make the task there; as soon as you save it, it is linked here and its name, instructions and schedule are read from Claude's page.
-- **Read Again** (on the card) picks up changes you make in Claude. A routine whose task is deleted in Claude is removed here too (with Undo). Routines are also read again by themselves when their tab is shown (at most every 10 minutes) and when Navigator refreshes its Claude lists.
-- Drag a chat onto a card to say where its results go. If Claude's page cannot be read, right-click, **Correct the Schedule by Hand…**.
-- Each card shows the plain-English schedule, whether it is linked, and the next run. A week strip above the cards shows what runs on each day.
-- **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.
-- Pausing a routine here only marks it as paused. Pause the task in Claude too.
-
-**Look**: each profile takes the colours and fonts of its design system, in **Navigator and Chief of Staff** alike. In **Edit Profile**, choose a design system and the app reads its page in Claude (about 10 seconds). The **Look** section then shows what it found: pick the main and second colour and the heading and text fonts, or untick "Use this look in Navigator and Chief of Staff". Font files the design system uses are saved on your Mac so they show even if not installed. A profile that already had a design system gets its look read the first time you use it. The profile's dot keeps its own colour so profiles stay easy to tell apart.
-
-**Search**: the search box at the top right of Chief of Staff (⌘F or /) finds staff, departments, projects and everything in them, actions, functions and routines, with the same rules as Navigator's search. Choose a result to go straight to it.
-
-**The … menu** (top right):
-
-- **Export Org Chart as PDF… / as Image…** saves the chart, with the team name and date, sized to fit.
-- **Mirror to Documents…** keeps a copy of every team in Documents › Claude Navigator Chief of Staff: a folder per profile and staff member, their projects as folders (links as web links, your files as aliases), and an About note listing their role, actions, functions and routines. It updates itself as you work. It only changes what it made itself; anything you add there is left alone, and removed items go to the Trash.
-- **Keyboard Shortcuts**: arrows move around the chart, Return opens a page, Esc goes back, A and D add staff or a department, Delete removes, and 1 to 4 switch tabs on a staff page.
-
+Chief of Staff from earlier versions moved over by itself: projects became folders in each person's Work, actions became items in them (done ones ticked), functions became skills.
 
 ## Systems: Claude and monday.com
 
