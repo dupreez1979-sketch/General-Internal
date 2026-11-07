@@ -1,0 +1,110 @@
+# Builds Claude Navigator on a Mac, signs it with your Developer ID, has Apple notarise it,
+# and publishes it to the public releases repository, where the app looks for updates.
+#
+# Runs when the version in claude-navigator/package.json changes (a new version is published once; a version
+# that is already published is skipped), when a tag like "claude-navigator-v0.2.0" is pushed, or by hand.
+# Secrets it needs (Settings > Secrets and variables > Actions) are listed in claude-navigator/RELEASING.md.
+
+name: Release Claude Navigator (Mac)
+
+on:
+  push:
+    tags: ['claude-navigator-v*']
+    branches: ['**']
+    paths: ['claude-navigator/package.json', '.github/workflows/claude-navigator-release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: macos-latest      # GitHub's current Mac (Apple silicon)
+    # One release at a time: a second push waits, then skips if the version is already published.
+    concurrency:
+      group: claude-navigator-release
+      cancel-in-progress: false
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: claude-navigator
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: claude-navigator/package-lock.json
+
+      - name: Check the tag matches the version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          want="claude-navigator-v$(node -p "require('./package.json').version")"
+          if [ "${GITHUB_REF_NAME}" != "$want" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json ($want). Update the version, commit, and tag again."
+            exit 1
+          fi
+
+      - name: Skip if this version is already published
+        id: published
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          v="v$(node -p "require('./package.json').version")"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/dupreez1979-sketch/claude-navigator-releases/releases/tags/$v")
+          if [ "$code" = "200" ]; then echo "Version $v is already published; nothing to do."; echo "skip=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Check the secrets are set
+        if: steps.published.outputs.skip != 'true'
+        env:
+          CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          CSC_PASS: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PW: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          missing=""
+          [ -n "$CSC_PASS" ] || missing="$missing MAC_CERT_PASSWORD"
+          [ -n "$APPLE_PW" ] || missing="$missing APPLE_APP_SPECIFIC_PASSWORD"
+          [ -n "$CSC_LINK" ] || missing="$missing MAC_CERT_P12_BASE64"
+          [ -n "$APPLE_ID" ] || missing="$missing APPLE_ID"
+          [ -n "$GH_TOKEN" ] || missing="$missing RELEASES_TOKEN"
+          if [ -n "$missing" ]; then echo "Missing secrets:$missing (see claude-navigator/RELEASING.md)"; exit 1; fi
+
+      - run: npm ci
+        if: steps.published.outputs.skip != 'true'
+
+      # Load the signing certificate into a temporary keychain on GitHub's Mac (deleted when the job ends).
+      - name: Load the signing certificate
+        if: steps.published.outputs.skip != 'true'
+        env:
+          P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PASS="$(openssl rand -hex 24)"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PASS" "$KC"
+          security set-keychain-settings -lut 7200 "$KC"
+          security unlock-keychain -p "$KC_PASS" "$KC"
+          if ! security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$P12_PASSWORD" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security; then
+            echo "Could not open the certificate. Check MAC_CERT_PASSWORD matches the password used when exporting Certificates.p12."
+            exit 1
+          fi
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PASS" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/cert.p12"
+          echo "Signing identities found:"
+          security find-identity -v -p codesigning "$KC"
+
+      - name: Build, sign, notarise and publish
+        if: steps.published.outputs.skip != 'true'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'true'
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: 484VNWY9P3          # your Apple Developer Team ID (not a secret)
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: npx electron-builder --mac --arm64 --publish always   # Apple-silicon Macs (M1 and later)
