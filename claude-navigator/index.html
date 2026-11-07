@@ -571,8 +571,10 @@
     position: fixed; z-index: 50; min-width: 220px; background: var(--menu); border-radius: 8px;
     -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
     box-shadow: var(--shadow); padding: 5px; display: none;
+    width: max-content; max-width: calc(100vw - 16px);   /* never squeezed by the window's edge */
   }
   #menu.show { display: block; }
+  #menu button .lb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #menu button {
     display: flex; width: 100%; align-items: center; background: none; border: 0; border-radius: 4px;
     height: 22px; padding: 0 10px 0 8px; text-align: left; font-size: 13px; outline: none;
@@ -3212,6 +3214,7 @@
     }
     if (loc.kind !== 'page') state.listLoc = loc;               // the list Claude opens beside
     ls.set(LOC_STORE, JSON.stringify({ loc, lastFolderId: state.lastFolderId, listLoc: state.listLoc }));
+    if (loc.kind === 'page') { try { cosNoteStaffChat(); } catch (e) { /* starting up */ } }
     renderMain();
     renderToolbar();
     syncSideSel();
@@ -3548,6 +3551,7 @@
       }
       renderToolbar();
       syncSideSel();
+      try { cosNoteStaffChat(); } catch (e) { /* starting up */ }
     };
     view.addEventListener('dom-ready', () => { viewReady = true; update(); setTimeout(collapseClaudeSidebar, 600); });
     view.addEventListener('did-navigate-in-page', e => { if (e.isMainFrame !== false) setTimeout(collapseClaudeSidebar, 400); });
@@ -3638,7 +3642,7 @@
       lib.signedIn = r.signedIn !== false;
       if (lib.signedIn) {
         if (r.pagePaths) lib.pagePaths = Object.assign({}, lib.pagePaths, r.pagePaths);
-        if (Array.isArray(r.skills) && r.skills.length) setTimeout(() => { try { cosOfferNewSkills(r.skills); } catch (e) { /* Chief of Staff not ready */ } }, 0);
+        if (Array.isArray(r.skills) && r.skills.length) setTimeout(() => { try { cosSkillsFromChats(r.skills); cosOfferNewSkills(r.skills); } catch (e) { /* Chief of Staff not ready */ } }, 0);
         if (Array.isArray(r.scheduled) && r.scheduled.length) setTimeout(() => { try { cosCheckRoutinesAgainst(r.scheduled); } catch (e) { /* Chief of Staff not ready */ } }, 0);
         for (const k of Object.keys(LIB_KINDS)) {
           if (!Array.isArray(r[k]) || !r[k].length) continue;
@@ -6843,7 +6847,8 @@
       n.dashboard && '-',
       { label: n.dashboard ? 'Make a New Dashboard with Claude\u2026' : 'Make a Dashboard with Claude\u2026', run: () => cosNewDashboard(n) },
       mine.length ? { label: 'Use an Existing Dashboard', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled dashboard', icon: 'dashboard', run: () => cosUseDashboard(n, a) }))) }
-        : { label: 'No dashboards read from Claude yet', disabled: true, run: () => {} },
+        : { label: 'No dashboards found in Claude yet', disabled: true, run: () => {} },
+      !mine.length && { label: 'Refresh from Claude', run: () => { refreshLibrary(true); toast('Reading your dashboards from Claude\u2026'); } },
       curArt && { label: 'Use the Claude Page Showing Now', run: () => cosUseDashboard(n, { name: cleanTitle(state.pageTitle) || 'Dashboard', url: cur }) },
       n.dashboard && '-',
       n.dashboard && { label: 'Remove Dashboard\u2026', run: () => {
@@ -7050,6 +7055,40 @@
       ? `Make the skill with Claude. When it is saved, come back to ${n.name}\u2019s Skills and it is offered to you to add.`
       : `Finish in Claude. Once the skill is saved, it is added to ${n.name}\u2019s Skills.`);
   }
+  // A skill made in a staff member's chat (you ask Claude, in their work, to turn it into a skill) lands in
+  // their Skills. Claude does not say which chat a skill came from, so the app goes by timing: a skill that
+  // is new since the last read, made while one of their chats was the last Claude page you used, is theirs.
+  const SKILLS_SEEN = 'claudeNavigator.skillsSeen';
+  const STAFF_CHAT = 'claudeNavigator.lastStaffChat';
+  function cosNoteStaffChat() {
+    if (state.loc.kind !== 'page') return;
+    const c = pageContext();
+    const ctx = c.folderId && teamCtxOf(c.folderId);
+    const n = ctx && ctx.staff && staffNodeOf(ctx.staff);
+    if (!n) return;
+    ls.set(STAFF_CHAT, JSON.stringify({ staffId: n.id, at: Date.now() }));
+  }
+  function cosSkillsFromChats(list) {
+    let seen = null;
+    try { seen = JSON.parse(ls.get(SKILLS_SEEN) || 'null'); } catch (e) { seen = null; }
+    const urls = list.filter(x => x.url).map(x => normUrl(x.url));
+    ls.set(SKILLS_SEEN, JSON.stringify([...new Set([...(seen || []), ...urls])]));
+    if (!Array.isArray(seen)) return;                        // the first read: nothing to compare with yet
+    const fresh = list.filter(x => x.url && !seen.includes(normUrl(x.url)));
+    if (!fresh.length || cosUi.skillWatch) return;             // (a skill started from the Skills tab asks instead)
+    let last = null;
+    try { last = JSON.parse(ls.get(STAFF_CHAT) || 'null'); } catch (e) { last = null; }
+    if (!last || Date.now() - last.at > 6 * 3600e3) return;
+    let n = null;
+    for (const t of Object.values(cos.teams || {})) { n = (t.nodes || []).find(x => x.id === last.staffId); if (n) break; }
+    if (!n || !skillsFolder(n)) return;
+    const have = new Set(workItems(skillsFolder(n)).map(x => normUrl(x.url || '')));
+    const add = fresh.filter(x => !have.has(normUrl(x.url)));
+    if (!add.length) return;
+    addSkillLinks(n, add);
+    toast(add.length === 1 ? `\u201c${add[0].name}\u201d was made in ${n.name}\u2019s chat, so it is now in their skills` : `${add.length} new skills were made in ${n.name}\u2019s chats, so they are now in their skills`, true);
+    if (currentApp === 'cos') cosRender();
+  }
   function cosOfferNewSkills(list) {
     const w = cosUi.skillWatch;
     if (!w) return;
@@ -7064,7 +7103,15 @@
   // Coming back to the Skills tab after making a skill: read Claude's list again (at most every 30 seconds).
   function cosCheckForNewSkills() {
     const w = cosUi.skillWatch;
-    if (!w || Date.now() - w.since < 10e3 || Date.now() - w.checked < 30e3) return;
+    if (!w) {                                    // used one of this person's chats lately: look for a skill made there
+      let last = null;
+      try { last = JSON.parse(ls.get(STAFF_CHAT) || 'null'); } catch (e) { last = null; }
+      if (!last || last.staffId !== cosUi.page || Date.now() - last.at > 6 * 3600e3) return;
+      if (Date.now() - (cosUi.skillsReadAt || 0) < 30e3) return;
+      cosUi.skillsReadAt = Date.now();
+      return refreshLibrary(true);
+    }
+    if (Date.now() - w.since < 10e3 || Date.now() - w.checked < 30e3) return;
     w.checked = Date.now();
     refreshLibrary(true);
   }
