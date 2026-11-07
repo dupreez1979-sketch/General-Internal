@@ -204,6 +204,9 @@
   body.cos-mode.cos-work #splitLeft:not([hidden]) { display: flex !important; }
   body.cos-mode.cos-work .cos-detail, body.cos-mode.cos-work .col-detail { display: none; }
   .lrow .dchk { margin: 0 6px 0 0; flex: none; }
+  .filed-tag { flex: none; font-size: 10px; font-weight: 600; color: #328276; background: color-mix(in srgb, #328276 12%, transparent); border-radius: 8px; padding: 1px 7px; margin-left: 6px; white-space: nowrap; }
+  .filed-tag.by { color: var(--muted); background: var(--field); font-weight: 500; }
+  .lrow.selected .filed-tag { color: inherit; background: rgba(255,255,255,.2); }
   .lrow.done .label, .tile.done .label { text-decoration: line-through; color: var(--muted); }
   .lrow.selected.done .label { color: inherit; opacity: .75; }
   .cos-who .who-btns .tb.on { color: var(--text); }
@@ -2784,6 +2787,22 @@
       address: n.type === 'link' ? (n.url || '').replace(/^https?:\/\//, '') : '',
     });
     r.title = n.type === 'link' ? `${n.name}\n${n.url}` : n.name;
+    if (teamItem && n.type === 'link') {  // Chief of Staff: where it is filed in the company folders
+      const homes = companyHomes(n.url, profileOf(n.id));
+      if (homes.length) {
+        const tag = document.createElement('span');
+        tag.className = 'filed-tag';
+        tag.textContent = `Filed in ${homes.map(h => h.name).join(', ')}`;
+        tag.title = 'Also in the company folders';
+        (r.querySelector('.nm .label') || r.querySelector('.label')).after(tag);
+      }
+    } else if (n.filedBy && view === 'folder') {
+      const tag = document.createElement('span');
+      tag.className = 'filed-tag by';
+      tag.textContent = `from ${n.filedBy}`;
+      tag.title = `Filed by ${n.filedBy}${n.filedAt ? ` on ${new Date(n.filedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}` : ''}`;
+      (r.querySelector('.nm .label') || r.querySelector('.label')).after(tag);
+    }
     if (teamItem) {                       // Chief of Staff: the Done tick, before the icon
       const box = document.createElement('input');
       box.type = 'checkbox'; box.className = 'dchk'; box.title = n.done ? 'Done: click to mark it not done' : 'Mark done';
@@ -3853,6 +3872,13 @@
     else { state.sideSel = f.id; applySideSel(); startRename(f.id, treeEl); }
   }
   function menuForMany(ids, scope) {
+    const desk = ids.length && ids.every(id => deskItem(id));
+    const base = menuForManyBase(ids, scope);
+    if (!desk) return base;
+    const d = deskItem(ids[0]), usual = usualPlace(d.staff);
+    return [usual && { label: `File ${ids.length} in ${usual.name}`, run: () => fileIntoCompany(ids, usual.id) }, { label: 'File in Company Folders\u2026', run: () => fileToPicker(ids) }, '-', ...base].filter(Boolean);
+  }
+  function menuForManyBase(ids, scope) {
     const links = ids.map(nodeOf).filter(n => n && n.type === 'link');
     const n = ids.length;
     return [
@@ -4275,7 +4301,7 @@
     const items = menuForBase(n, scope);
     if (!n || n.type === 'folder' || !teamCtxOf(n.id)) return items;
     const i = items.indexOf('-');
-    items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) });
+    items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) }, ...filingMenuItems(n.id));
     return items;
   }
   function menuForBase(n, scope) {
@@ -5008,6 +5034,9 @@
     }
     const srcIds = (e.dataTransfer.getData(NAV_TYPE) || '').split(',').filter(Boolean);
     dragIds = [];
+    // Chief of Staff: dragging work from a staff member's folder into a company folder files it.
+    const dropFolder = t.zone === 'into' || !t.id ? t.id : parentIdOf(t.id);
+    if (srcIds.length && isCompanyFolder(dropFolder) && srcIds.every(id => deskItem(id))) { multi.side.clear(); fileIntoCompany(srcIds, dropFolder); return; }
     if (srcIds.length > 1) {
       if (t.id && srcIds.includes(t.id)) return;
       if (moveNodes(srcIds, t)) {
@@ -5759,6 +5788,7 @@
       ${n.kind === 'staff' ? '<label>Role<input name="role" placeholder="e.g. Finance officer: budgets, reconciliations"></label>' : ''}
       <label>${n.kind === 'dept' ? 'What this department does' : 'What they do and how (for you and for Claude)'}<textarea name="about"></textarea></label>
       ${n.chief ? '' : `<label>${n.kind === 'dept' ? 'Sits under' : 'Reports to'}<select name="parent"></select></label>`}
+      ${n.kind === 'staff' && !n.external ? '<label>Usually files in<select name="fileTo" title="Where File puts their finished work in the company folders"></select></label>' : ''}
       <label>Colour<div class="cos-swatches"></div></label>
       ${n.kind === 'staff' ? '<button class="btn-primary" data-a="open">Open Page</button>' : ''}
       <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
@@ -5768,6 +5798,13 @@
     f('name').value = n.name || '';
     if (f('role')) f('role').value = n.role || '';
     f('about').value = n.about || '';
+    if (f('fileTo')) {
+      const sel = f('fileTo');
+      const none = document.createElement('option'); none.value = ''; none.textContent = 'Not set (asked when filing)'; sel.appendChild(none);
+      for (const [id, label] of companyFolderChoices(activeProfile())) { const o = document.createElement('option'); o.value = id; o.textContent = label; sel.appendChild(o); }
+      sel.value = usualPlace(n) ? n.fileTo : '';
+      sel.addEventListener('change', () => { if (sel.value) n.fileTo = sel.value; else delete n.fileTo; saveCos(); });
+    }
     if (f('parent')) {
       for (const o of parentOpts) { const e = document.createElement('option'); e.value = o.id; e.textContent = (o.kind === 'dept' ? 'Department: ' : '') + o.name; f('parent').appendChild(e); }
       f('parent').value = n.parent;
@@ -6044,6 +6081,7 @@
     n.done = !n.done;
     if (n.done) n.doneAt = Date.now(); else delete n.doneAt;
     commit();
+    if (n.done) offerFiling(id);
   }
 
   // One-time move: projects and actions from earlier versions become folders and links in the staff
@@ -6082,6 +6120,87 @@
     }
     save(); saveCos();
     if (moved) setTimeout(() => toast(`Chief of Staff now keeps each person’s work in Navigator folders (Team › name). Moved ${moved} item${moved === 1 ? '' : 's'}${skipped ? `; ${skipped} without a link to anything were left out` : ''}.`), 1500);
+  }
+
+  // ----- Filing: from a staff member's desk (their Work folder) into the company folders -----
+  // Like an office: staff work at their desk; filing puts it in the company files. A Claude or monday.com
+  // item is then in both places (it is the same item in Claude, so nothing goes out of date). A file on
+  // your Mac (Word, Excel...) exists once, so filing moves it into the company folder.
+  // Company folders are everything in the profile outside Team.
+  function companyHomes(url, profile) {
+    const out = [], key = normUrl(url || '');
+    const w = (list, parent) => (list || []).forEach(x => {
+      if (x.type === 'folder') { if (!x.team) w(x.children, x); }
+      else if (x.type === 'link' && normUrl(x.url || '') === key && parent) out.push(parent);
+    });
+    if (profile && key) w(profile.children, null);
+    return out;
+  }
+  const isCompanyFolder = id => { const f = id && nodeOf(id); return !!(f && f.type === 'folder' && !f.profile && !f.team && !teamCtxOf(id) && profileOf(id)); };
+  const deskItem = id => { const n = nodeOf(id), c = n && n.type !== 'folder' && teamCtxOf(id); return c && c.staff ? { n, staff: staffNodeOf(c.staff) } : null; };
+  function usualPlace(staff) { const f = staff && staff.fileTo && nodeOf(staff.fileTo); return f && isCompanyFolder(f.id) ? f : null; }
+  // File items (from desks) into a company folder. Returns how many were filed.
+  function fileIntoCompany(ids, folderId) {
+    if (!isCompanyFolder(folderId)) { toast('Choose one of the company folders (outside Team).'); return 0; }
+    const f = nodeOf(folderId);
+    const items = ids.map(deskItem).filter(Boolean);
+    if (!items.length) return 0;
+    snap();
+    let filed = 0, moved = 0, already = 0, newUsual = null;
+    for (const { n, staff } of items) {
+      if (n.type === 'file') { const l = locate(n.id); l.list.splice(l.index, 1); insertInto(folderId, n); moved++; }
+      else if (n.type === 'link') {
+        if (companyHomes(n.url, profileOf(n.id)).some(x => x.id === folderId)) { already++; continue; }
+        insertInto(folderId, Object.assign(Link(n.name, n.url), n.as ? { as: n.as } : {}, n.autoName ? { autoName: true } : {}, staff ? { filedBy: staff.name, filedById: staff.id, filedAt: Date.now() } : {}));
+        filed++;
+      }
+      if (staff && !usualPlace(staff)) { staff.fileTo = folderId; newUsual = staff; }
+    }
+    if (newUsual) saveCos();
+    commit();
+    const parts = [];
+    if (filed) parts.push(`Filed ${filed === 1 ? `“${items.find(x => x.n.type === 'link').n.name}”` : `${filed} items`} in ${f.name}. ${filed === 1 ? 'It stays' : 'They stay'} in the work folder too.`);
+    if (moved) parts.push(`Moved ${moved} file${moved === 1 ? '' : 's'} to ${f.name}.`);
+    if (already) parts.push(`${already} already filed there.`);
+    if (newUsual) parts.push(`${f.name} is now ${newUsual.name}’s usual filing place.`);
+    toast(parts.join(' ') || 'Nothing to file', !!(filed || moved));
+    return filed + moved;
+  }
+  function fileToPicker(ids) {
+    const first = deskItem(ids[0]);
+    if (!first) return;
+    const p = profileOf(ids[0]);
+    const usual = usualPlace(first.staff);
+    openDialog({
+      title: ids.length === 1 ? `File “${first.n.name}” in:` : `File ${ids.length} items in:`, folderId: usual ? usual.id : p ? p.id : null, folderOnly: true,
+      onSave: ({ folderId }) => fileIntoCompany(ids, folderId),
+    });
+  }
+  // The filing items for a desk item's menu (and the offer when something is marked done).
+  function filingMenuItems(id) {
+    const d = deskItem(id);
+    if (!d) return [];
+    const usual = usualPlace(d.staff);
+    return [
+      usual && { label: `File in ${usual.name}`, run: () => fileIntoCompany([id], usual.id) },
+      { label: usual ? 'File in Another Folder…' : 'File in Company Folders…', run: () => fileToPicker([id]) },
+    ].filter(Boolean);
+  }
+  function offerFiling(id) {
+    const d = deskItem(id);
+    if (!d || !d.n.done) return;
+    if (d.n.type === 'link' && companyHomes(d.n.url, profileOf(id)).length) return;      // already filed
+    const usual = usualPlace(d.staff);
+    toast(`Done. File “${d.n.name}” in the company folders?`, usual
+      ? { label: `File in ${usual.name}`, run: () => fileIntoCompany([id], usual.id) }
+      : { label: 'File…', run: () => fileToPicker([id]) });
+  }
+  // Company folders as choices (for "Usually files in"), with their paths.
+  function companyFolderChoices(p) {
+    const out = [];
+    const w = (list, trail) => (list || []).forEach(x => { if (x.type === 'folder' && !x.team) { const path = [...trail, x.name]; out.push([x.id, path.join(' › ')]); w(x.children, path); } });
+    if (p) w(p.children, []);
+    return out;
   }
 
   // ----- Ask: a chat in the staff member's Claude Project, with where they are up to ready to paste -----
