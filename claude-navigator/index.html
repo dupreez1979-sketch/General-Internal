@@ -245,6 +245,12 @@
   body.cos-mode:not(.cos-adding) #content, body.cos-mode:not(.cos-adding) #pathbar { display: none !important; }
   .cos-page { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
   .cos-who { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; }
+  .cos-setup { display: flex; align-items: center; gap: 12px; margin: 12px 18px 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, #B36E24 10%, var(--win)); border: 1px solid color-mix(in srgb, #B36E24 30%, transparent); }
+  .cos-setup .tx { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12.5px; }
+  .cos-setup .tx span { color: var(--muted); }
+  .cos-setup .bt { display: flex; gap: 6px; flex: none; }
+  .needs-btn .needs-dot { width: 8px; height: 8px; border-radius: 50%; background: #E3A452; display: inline-block; margin-right: 6px; }
+  .ocbox .needs { position: absolute; top: 8px; left: 8px; width: 9px; height: 9px; border-radius: 50%; background: #E3A452; box-shadow: 0 0 0 2px var(--win); }
   .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
   .cos-who b { font-size: 17px; display: block; }
   .cos-who .who-btns .tb .t { margin-left: 4px; }
@@ -6084,6 +6090,7 @@
     b.querySelector('.rl').textContent = n.kind === 'dept' ? (lead ? `Led by ${lead.name}` : 'Department') : (n.role || '');
     if (n.chief) b.insertAdjacentHTML('afterbegin', '<span class="tag">Chief of Staff</span>');
     else if (n.clara) b.insertAdjacentHTML('afterbegin', '<span class="tag ext">Clara</span>');
+    if (n.kind === 'staff' && !n.claudeProject) { b.insertAdjacentHTML('beforeend', '<span class="needs" title="No Claude Project yet: open their page to set it up"></span>'); }
     else if (n.lead) b.insertAdjacentHTML('afterbegin', '<span class="tag">Lead</span>');
     b.title = `${n.name}${n.role ? `\n${n.role}` : ''}\nClick to edit; drag onto someone to move; right-click for more.`;
     return b;
@@ -6310,6 +6317,12 @@
       seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team">${small('schedule', 'currentColor')}</button>`;
       seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { cosUi.view = b.dataset.v; ls.set('claudeNavigator.cosView', cosUi.view); renderCos(); } });
       const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
+      const noProject = t.nodes.filter(x => x.kind === 'staff' && !x.claudeProject);
+      if (noProject.length) {
+        const np = btn('', `Every staff member works in their own Claude Project. Click to set up the next one: ${noProject.map(x => x.name).join(', ')}`, () => openStaff(noProject[0].id), `<span class="needs-dot"></span><span class="t">${noProject.length} need${noProject.length === 1 ? 's' : ''} a Claude Project</span>`);
+        np.classList.add('needs-btn');
+        head.append(np);
+      }
       head.append(
         btn('', `Add a staff member under the one selected (${K.mod}N)`, () => cosAdd('staff', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Staff</span>`),
         btn('', `Add a department under the one selected (${K.mod}${K.shift}N)`, () => cosAdd('dept', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Department</span>`),
@@ -6759,7 +6772,8 @@
     };
     if (n.chief) t.nodes.filter(x => x.kind === 'staff').forEach(one); else one(n);
     const who = n.chief ? `the ${(activeProfile() || {}).name || ''} team`.replace('  ', ' ') : n.name;
-    return `Here is where ${who} is up to (from Claude Navigator, ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}):\n\n${lines.join('\n')}\nMy question: `;
+    const files = folderAccessLines(n);
+    return `Here is where ${who} is up to (from Claude Navigator, ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}):\n\n${lines.join('\n')}\n${files.length ? files[0] + '\n\n' : ''}My question: `;
   }
   function cosAsk(n) {
     const t = cosTeam();
@@ -6771,14 +6785,53 @@
   }
 
   // ----- Each staff member's Claude Project (their role and instructions live there, in Claude) -----
+  // Where the company's folders are on this Mac (with Keep Folders on This Mac on). A chat that knows this
+  // can ask to use the folder itself (Claude shows "Claude wants to use a folder on your computer").
+  function companyFolderPath(p = activeProfile()) {
+    if (!p || !fsState.enabled || !fsState.root) return '';
+    return fsState.root.replace(/\/+$/, '') + '/' + (p.path || p.name);
+  }
+  function staffFolderPath(n, p = activeProfile()) {
+    const f = n.folderId && nodeOf(n.folderId);
+    if (!p || !fsState.enabled || !fsState.root || !f || !f.path) return '';
+    return fsState.root.replace(/\/+$/, '') + '/' + f.path;
+  }
+  function folderAccessLines(n) {
+    const p = activeProfile(), co = companyFolderPath(p);
+    if (!co) return [];
+    const mine = staffFolderPath(n, p);
+    return [`Company files: the ${p.name} folders are on my Mac at ${co}${mine ? ` (your own folder is ${mine})` : ''}. When a task needs files, ask to use that folder at the start, then read, save and move files there.`];
+  }
+  // The instructions for a staff member's Claude Project: their role, and where the company files are.
+  function cosProjectInstructions(n) {
+    const p = activeProfile();
+    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...folderAccessLines(n)].filter(Boolean).join('\n\n');
+  }
+  function cosCopyInstructions(n) {
+    navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {});
+    toast(`${n.name}\u2019s project instructions are copied. Paste them into the project\u2019s Instructions in Claude.`);
+  }
+  // Project names say whose they are, so they make sense in Claude's own list: "NCTI · Staff · Board Secretary".
+  function cosProjectName(n) {
+    const p = activeProfile();
+    return [p && p.name, n.chief ? 'Chief of Staff' : 'Staff', n.chief ? '' : n.name].filter(Boolean).join(' \u00b7 ');
+  }
   function cosSetUpProject(n) {
-    navigator.clipboard.writeText(`${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
-    cosCreate('project', { what: `${n.name}`, onLink: link => { const m = cosNode(cosTeam(), n.id); if (m) m.claudeProject = link; } });
+    navigator.clipboard.writeText(cosProjectName(n)).catch(() => {});
+    cosCreate('project', { what: `${n.name}`, onLink: link => {
+      const m = cosNode(cosTeam(), n.id);
+      if (!m) return;
+      m.claudeProject = link;
+      // Next: the instructions (their role and where the company files are), ready to paste.
+      setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => {}); toast(`Project made. ${m.name}\u2019s instructions (their role and where the company files are) are copied: paste them into the project\u2019s Instructions.`); }, 600);
+    } });
   }
   function cosProjectMenu(x, y, n) {
     const projects = (lib.projects || []).slice(0, 25);
     showMenu(x, y, [
       n.claudeProject && { label: 'Open', run: () => cosOpenLink(n.claudeProject) },
+      n.claudeProject && { label: 'Copy Project Instructions', run: () => cosCopyInstructions(n) },
+      n.claudeProject && n.claudeProject.name !== cosProjectName(n) && { label: `Copy the Standard Name (${cosProjectName(n)})`, run: () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => {}); toast(`Copied \u201c${cosProjectName(n)}\u201d. Paste it as the project\u2019s name in Claude.`); } },
       n.claudeProject && { label: 'Open in New Window', run: () => openNewWindow(n.claudeProject.url) },
       n.claudeProject && '-',
       { label: n.claudeProject ? 'Make a New Claude Project…' : 'Set Up a Claude Project…', run: () => cosSetUpProject(n) },
@@ -6864,6 +6917,18 @@
       if (!n.dashboard) mk(`${colourIcon('dashboard')}<span class="t">Add Dashboard</span>`, `Give ${n.name} a dashboard: make one with Claude, or use one you already have. It gets its own tab here.`,
         e => { const b = e.currentTarget.getBoundingClientRect(); cosDashMenu(b.left, b.bottom + 4, n); });
     }
+    let setup = null;
+    if (!n.claudeProject) {
+      // Every staff member works in their own Claude Project: until it is set up, say so here.
+      setup = document.createElement('div');
+      setup.className = 'cos-setup';
+      setup.innerHTML = `<span class="ic">${colourIcon('project')}</span><div class="tx"><b>Finish setting up ${''}</b><span></span></div><div class="bt"></div>`;
+      setup.querySelector('b').textContent = `Finish setting up ${n.name}`;
+      setup.querySelector('.tx span').textContent = `${n.name} needs a Claude Project: their role goes in its instructions, along with where the company files are, and their chats start there.`;
+      const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Set Up Claude Project'; b1.addEventListener('click', () => cosSetUpProject(n));
+      const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Use an Existing Project'; b2.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); cosProjectMenu(r.left, r.bottom + 4, n); });
+      setup.querySelector('.bt').append(b1, b2);
+    }
     const tabs = document.createElement('div');
     tabs.className = 'cos-tabs';
     const f = staffFolder(n);
@@ -6912,7 +6977,7 @@
       btn(UI.more, 'More', e => { const r = e.currentTarget.getBoundingClientRect(); cosClaraMenu(r.left, r.bottom + 4, n); });
       tabs.appendChild(tb);
     }
-    page.append(who, tabs);
+    page.append(...[who, setup, tabs].filter(Boolean));
     body.appendChild(page);
     if (cosUi.tab === 'clara' && n.clara) {
       // Clara's dashboard fills the page below the tabs, the same way a staff dashboard does.
