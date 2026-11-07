@@ -2145,7 +2145,7 @@
       else if (activeFilterCount()) frag.appendChild(emptyMsg('Nothing matches these filters', 'Change or reset the filters.'));
       else if (state.libFilter === 'unfiled' && all.length) frag.appendChild(emptyMsg('All filed', 'Every item here is in one of your folders.'));
       else if (lib.error) frag.appendChild(emptyMsg('Could not read your list from Claude', `Click Refresh to try again. Details: ${lib.error}`));
-      else frag.appendChild(emptyMsg('Nothing here yet', 'Click Refresh at the top right to load it from Claude.'));
+      else frag.appendChild(emptyMsg('Nothing here yet', currentApp === 'cos' ? 'Click Refresh (\u21bb) above to load it from Claude.' : 'Click Refresh at the top right to load it from Claude.'));
     } else {
       if (state.libSelectMode) frag.appendChild(libActionBar(kind));     // only in Select mode, so the list never jumps
       if (libView === 'icons') {
@@ -6473,7 +6473,21 @@
     q.value = state.query || '';
     q.addEventListener('input', () => { searchEl.value = q.value; searchEl.dispatchEvent(new Event('input')); });
     q.hidden = cosUi.srcFrom === 'claude';
-    head.appendChild(q);
+    const rf = document.createElement('button');
+    rf.className = 'tb';
+    rf.innerHTML = `<span class="ic">${UI.reload}</span>`;
+    const isMonday = cosUi.srcFrom === 'monday';
+    rf.title = cosUi.srcFrom === 'claude' ? 'Reload this Claude page' : cosUi.srcFrom === 'folders' ? 'Read your folders again' : isMonday ? 'Refresh from monday.com' : 'Refresh from Claude';
+    rf.addEventListener('click', () => {
+      if (cosUi.srcFrom === 'claude') return viewDo(v => v.reload());
+      if (cosUi.srcFrom === 'folders') return renderMain();
+      if (isMonday) return mondayRefresh(true);
+      refreshLibrary(true);
+      toast('Loading your chats and artifacts from Claude\u2026');
+    });
+    head.append(q, rf);
+    // An empty Claude list the first time: load it without being asked.
+    if ((cosUi.srcFrom === 'chats' || cosUi.srcFrom === 'artifacts') && !(lib[cosUi.srcFrom] || []).length && !cosUi.autoLoaded) { cosUi.autoLoaded = true; refreshLibrary(false); }
     const sub = document.createElement('div');
     sub.className = 'cos-src-sub';
     host.append(head, sub);
