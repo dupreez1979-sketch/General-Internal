@@ -118,7 +118,16 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 
 **Functions** (what a staff member does well on request, like board papers or a chart-of-accounts audit): **New Function…** with what it does and the instructions to give Claude. Link the chat, project or artifact it uses (drag it on, or right-click, **Link a Chat…**). **Run** opens it in its own window with the instructions copied, ready to paste.
 
-Coming next: routines (see CHIEF-OF-STAFF-PLAN.md).
+**Routines** are what a staff member does on a schedule (a weekly finance check, a monthly board report):
+
+- **New Routine…** sets the name, what it does and when it runs: every day, every weekday, chosen days of the week, a day of the month, or a description for anything else, plus a time.
+- **Link Claude Task…** connects it to one of your Claude scheduled tasks (from Navigator's Scheduled list). You can also drag a scheduled task onto the card. Drag a chat onto it to say where its results go.
+- **New Schedule in Claude** opens Claude's Scheduled page so you can make the task, then link it.
+- Each card shows the plain-English schedule, whether it is linked, and the next run. A week strip above the cards shows what runs on each day.
+- **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.
+- Pausing a routine here only marks it as paused. Pause the task in Claude too.
+
+Coming next: the profile's design system look (see CHIEF-OF-STAFF-PLAN.md).
 
 ## Systems: Claude and monday.com
 

@@ -242,6 +242,33 @@
   .cos-form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
   .cos-form input, .cos-form textarea, .cos-form select { font: inherit; font-size: 13px; color: var(--text); background: var(--field); border: 0; border-radius: 7px; padding: 7px 9px; }
   .cos-form textarea { min-height: 80px; resize: vertical; }
+  .cos-form [hidden] { display: none !important; }
+  .cos-form .days { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cos-form .day { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; font-size: 12.5px; color: var(--text); background: var(--field); border-radius: 7px; padding: 4px 8px; }
+  .rcard .rhead { display: flex; align-items: center; gap: 8px; }
+  .rcard .rclock { display: inline-grid; place-items: center; }
+  .rcard .rstate { margin-left: auto; font-size: 10.5px; font-weight: 700; border-radius: 8px; padding: 1px 8px; }
+  .rcard .rstate.on { color: #fff; background: #328276; }
+  .rcard .rstate.warn { color: #fff; background: #B36E24; }
+  .rcard .rstate.off { color: var(--muted); background: var(--field); }
+  .rcard .when { font-size: 13px; font-weight: 600; color: var(--accent); }
+  .rcard.paused { opacity: .6; }
+  .rcard .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cos-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; padding: 12px 14px 0; }
+  .cos-week .wday { background: var(--field); border-radius: 9px; padding: 6px; min-height: 64px; display: flex; flex-direction: column; gap: 4px; }
+  .cos-week .wday.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cos-week .wday.past { opacity: .55; }
+  .cos-week .wh { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .cos-week .wrun { background: var(--win); border-radius: 6px; border-left: 3px solid var(--accent); padding: 3px 6px; font-size: 11px; display: grid; cursor: default; }
+  .cos-week .wrun .t { color: var(--muted); font-size: 10.5px; }
+  .cos-week .wrun .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-week .wnone { color: var(--muted); font-size: 11px; }
+  .cos-week.big { flex: 1; padding: 14px 18px; }
+  .cos-week.big .wday { min-height: 320px; }
+  .cos-week.big .wrun { font-size: 12px; padding: 6px 8px; cursor: pointer; }
+  .cos-teamweek { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .cos-teamweek .cos-tabnote { flex: none; }
+  .cos-week.big { align-content: start; }
   #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
   #cosSide[hidden], #cosMain[hidden] { display: none; }
   #cosMain { flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -5384,7 +5411,7 @@
   const COS_STORE = 'claudeNavigator.cos.v1';
   var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
   const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
-  const cosUi = { view: ls.get('claudeNavigator.cosView') === 'list' ? 'list' : 'chart', sel: null, zoom: 1, dragId: null };
+  const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null };
   function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
@@ -5523,7 +5550,7 @@
       <label>Colour<div class="cos-swatches"></div></label>
       ${n.kind === 'staff' ? '<button class="btn-primary" data-a="open">Open Page</button>' : ''}
       <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
-      ${n.kind === 'staff' ? '<div class="soon">Projects, actions, functions and routines for this staff member come in the next steps.</div>' : ''}`;
+      ${n.kind === 'staff' ? `<div class="soon">${(() => { const c = [[cosProjects(n).filter(p => !p.archived).length, 'project'], [cosActions(n).filter(a => a.status !== 'done').length, 'open action'], [cosFunctions(n).length, 'function'], [(n.routines || []).filter(r => !r.paused).length, 'routine']].filter(x => x[0]).map(([k, w]) => `${k} ${w}${k === 1 ? '' : 's'}`); return c.length ? c.join(', ').replace(/, ([^,]*)$/, ' and $1') + '. Open Page to see them.' : 'No projects, actions, functions or routines yet. Open Page to add them.'; })()}</div>` : ''}`;
     d.querySelector('h2').textContent = n.chief ? 'Chief of Staff' : n.kind === 'dept' ? 'Department' : 'Staff member';
     const f = name => d.querySelector(`[name="${name}"]`);
     f('name').value = n.name || '';
@@ -5607,7 +5634,7 @@
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
-    document.body.classList.toggle('cos-adding', !!(staff && cosUi.tab !== 'routines' && cosUi.adding));
+    document.body.classList.toggle('cos-adding', !!(staff && cosUi.adding));
     if (staff) {
       const back = document.createElement('button');
       back.className = 'tb';
@@ -5620,13 +5647,13 @@
     if (t && !staff) {
       const seg = document.createElement('div');
       seg.className = 'seg';
-      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button>`;
+      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team"><span class="t">Week</span></button>`;
       seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { cosUi.view = b.dataset.v; ls.set('claudeNavigator.cosView', cosUi.view); renderCos(); } });
       const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
       head.append(
         btn('Add Staff', 'Add a staff member under the one selected (or under the Chief of Staff)', () => cosAdd('staff', cosUi.sel)),
         btn('Add Department', 'Add a department under the one selected', () => cosAdd('dept', cosUi.sel)),
-        ...(cosUi.view === 'chart' ? [
+        ...(cosUi.view === 'week' ? [] : cosUi.view === 'chart' ? [
           btn('', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); }, '<span class="t">−</span>'),
           btn('', 'Fit to window', () => cosFit(), '<span class="t">Fit</span>'),
           btn('', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); }, '<span class="t">+</span>'),
@@ -5647,7 +5674,8 @@
       renderStaffPage(t, staff, body);
     } else {
       if (cosUi.sel && !cosNode(t, cosUi.sel)) cosUi.sel = null;
-      if (cosUi.view === 'list') body.appendChild(cosListEl(t));
+      if (cosUi.view === 'week') body.appendChild(cosTeamWeek(t));
+      else if (cosUi.view === 'list') body.appendChild(cosListEl(t));
       else { const cv = document.createElement('div'); cv.className = 'cos-canvas'; cv.appendChild(cosChartEl(t)); body.appendChild(cv); }
       const det = renderCosDetail(t);
       if (det) body.appendChild(det);
@@ -5842,16 +5870,16 @@
       const b = document.createElement('button');
       b.className = cosUi.tab === k ? 'on' : '';
       b.textContent = label;
-      const cnt = k === 'projects' ? cosProjects(n).filter(p => !p.archived).length : k === 'actions' ? cosActions(n).filter(a => a.status !== 'done').length : k === 'functions' ? cosFunctions(n).length : 0;
+      const cnt = k === 'projects' ? cosProjects(n).filter(p => !p.archived).length : k === 'actions' ? cosActions(n).filter(a => a.status !== 'done').length : k === 'functions' ? cosFunctions(n).length : (n.routines || []).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; renderCos(); });
       tabs.appendChild(b);
     }
     page.append(who, tabs);
-    if (cosUi.tab === 'actions' || cosUi.tab === 'functions') {
+    if (cosUi.tab === 'actions' || cosUi.tab === 'functions' || cosUi.tab === 'routines') {
       const wrap2 = document.createElement('div');
       wrap2.className = 'cos-proj';
-      (cosUi.tab === 'actions' ? renderActions : renderFunctions)(n, wrap2);
+      ({ actions: renderActions, functions: renderFunctions, routines: renderRoutines })[cosUi.tab](n, wrap2);
       if (cosUi.adding) wrap2.appendChild(cosSourcePane());
       page.appendChild(wrap2);
       body.appendChild(page);
@@ -6295,6 +6323,250 @@
     });
     box.appendChild(grid);
     host.appendChild(box);
+  }
+
+  // ---------- Chief of Staff: Routines (scheduled work, linked to Claude's scheduled tasks) ----------
+  // Routine: { id, name, what, freq: 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'custom', days: [0-6 (Sun=0)],
+  //            dom: 1-31, time: 'HH:MM', custom: text, link: { name, url } (the Claude scheduled task) | null,
+  //            output: { name, url } (where results land) | null, paused, created }
+  const cosRoutines = n => n.routines || (n.routines = []);
+  const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const fmtTime = t => { if (!t) return ''; const [h, m] = t.split(':').map(Number); const d = new Date(2000, 0, 1, h, m); return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).replace(' ', ' '); };
+  const ordinal = n => n + (n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th');
+  function routineWhen(r) {
+    const at = r.time ? ` at ${fmtTime(r.time)}` : '';
+    if (r.freq === 'daily') return `Every day${at}`;
+    if (r.freq === 'weekdays') return `Every weekday${at}`;
+    if (r.freq === 'weekly') {
+      const ds = (r.days && r.days.length ? r.days : [1]).slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+      return `Every ${ds.length === 7 ? 'day' : ds.map(d => DAY_NAMES[d]).join(', ').replace(/, ([^,]*)$/, ' and $1')}${at}`;
+    }
+    if (r.freq === 'monthly') return `Monthly on the ${ordinal(r.dom || 1)}${at}`;
+    return r.custom || 'Schedule not set';
+  }
+  // The next time it runs (null for a custom schedule, or when paused).
+  function routineNext(r, from = new Date()) {
+    if (r.paused || r.freq === 'custom') return null;
+    const [h, m] = (r.time || '09:00').split(':').map(Number);
+    for (let i = 0; i < 62; i++) {
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i, h, m);
+      if (d <= from) continue;
+      const wd = d.getDay();
+      if (r.freq === 'daily') return d;
+      if (r.freq === 'weekdays' && wd >= 1 && wd <= 5) return d;
+      if (r.freq === 'weekly' && (r.days && r.days.length ? r.days : [1]).includes(wd)) return d;
+      if (r.freq === 'monthly' && d.getDate() === Math.min(r.dom || 1, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate())) return d;
+    }
+    return null;
+  }
+  const fmtNext = d => {
+    if (!d) return '';
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - today) / 864e5);
+    const day = days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days < 7 ? DAY_NAMES[d.getDay()] : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+    return `${day} ${fmtTime(`${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)}`;
+  };
+  function editRoutine(n, r) {
+    const isNew = !r;
+    let dlg = $('cosRoutineDlg');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'cosRoutineDlg';
+      dlg.innerHTML = `<form method="dialog" class="cos-form"><h2></h2><div class="ff">
+        <label>Routine<input name="name" placeholder="e.g. Weekly finance check"></label>
+        <label>What it does<textarea name="what" placeholder="e.g. Reconciles last week's Xero transactions and flags anything unusual"></textarea></label>
+        <label>How often<select name="freq"><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Weekly on…</option><option value="monthly">Monthly on day…</option><option value="custom">Something else (describe it)</option></select></label>
+        <div class="days" data-for="weekly">${[1, 2, 3, 4, 5, 6, 0].map(d => `<label class="day"><input type="checkbox" value="${d}">${DAY_NAMES[d].slice(0, 3)}</label>`).join('')}</div>
+        <label data-for="monthly">Day of the month<input name="dom" type="number" min="1" max="31" value="1"></label>
+        <label data-for="custom">Describe when<input name="custom" placeholder="e.g. First business day of each quarter"></label>
+        <label data-for="time">Time<input name="time" type="time" value="09:00"></label>
+      </div><div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn-primary" value="ok"></button></div></form>`;
+      document.body.appendChild(dlg);
+      dlg.querySelector('[name="freq"]').addEventListener('change', () => syncFreq());
+    }
+    const q = name => dlg.querySelector(`[name="${name}"]`);
+    function syncFreq() {
+      const f = q('freq').value;
+      dlg.querySelectorAll('[data-for]').forEach(el => { el.hidden = el.dataset.for === 'time' ? f === 'custom' : el.dataset.for !== f; });
+    }
+    dlg.querySelector('h2').textContent = isNew ? 'New Routine' : 'Edit Routine';
+    dlg.querySelector('.btn-primary').textContent = isNew ? 'Add Routine' : 'Save';
+    q('name').value = r ? r.name : '';
+    q('what').value = r ? r.what || '' : '';
+    q('freq').value = r ? r.freq : 'weekly';
+    q('dom').value = r ? r.dom || 1 : 1;
+    q('custom').value = r ? r.custom || '' : '';
+    q('time').value = r ? r.time || '09:00' : '09:00';
+    const days = r && r.days && r.days.length ? r.days : [1];
+    dlg.querySelectorAll('.days input').forEach(i => { i.checked = days.includes(+i.value); });
+    syncFreq();
+    dlg.onclose = () => {
+      if (dlg.returnValue !== 'ok' || !q('name').value.trim()) return;
+      const v = {
+        name: q('name').value.trim(), what: q('what').value.trim(), freq: q('freq').value, time: q('time').value || '09:00',
+        dom: Math.min(31, Math.max(1, +q('dom').value || 1)), custom: q('custom').value.trim(),
+        days: [...dlg.querySelectorAll('.days input:checked')].map(i => +i.value),
+      };
+      if (v.freq === 'weekly' && !v.days.length) v.days = [1];
+      cosChange(() => {
+        if (isNew) cosRoutines(n).push(Object.assign({ id: uid(), link: null, output: null, paused: false, created: Date.now() }, v));
+        else Object.assign(r, v);
+      }, null);
+    };
+    dlg.returnValue = '';
+    dlg.showModal();
+    q('name').focus();
+  }
+  // Pick one of the Claude scheduled tasks the app has read (Navigator, Claude, Other, Scheduled).
+  function cosPickSchedule(x, y, onPick) {
+    const list = (lib.scheduled || []).slice(0, 30);
+    showMenu(x, y, [
+      ...(list.length ? list.map(t => ({ label: t.name || 'Untitled task', icon: 'schedule', run: () => onPick({ name: t.name || 'Scheduled task', url: t.url }) }))
+        : [{ label: 'No Claude scheduled tasks loaded yet', disabled: true, run: () => {} }]),
+      '-',
+      { label: 'Create a New Schedule in Claude…', run: () => { openNewWindow('https://claude.ai/scheduled'); toast('Claude’s Scheduled page is open. Make the task there, then come back and link it (refresh Navigator’s Scheduled list if it is not shown yet).'); } },
+      { label: 'Refresh the List from Claude', run: () => { refreshLibrary(true); toast('Checking Claude for scheduled tasks…'); } },
+    ]);
+  }
+  function renderRoutines(n, host) {
+    const box = document.createElement('div');
+    box.className = 'cos-tabbody';
+    const top = document.createElement('div');
+    top.className = 'cos-ptop';
+    top.innerHTML = '<span class="cos-tabnote">Scheduled work this staff member does, linked to the Claude scheduled task that runs it.</span>';
+    const nb = document.createElement('button');
+    nb.className = 'tb';
+    nb.innerHTML = '<span class="t">New Routine…</span>';
+    nb.addEventListener('click', () => editRoutine(n, null));
+    const cl = document.createElement('button');
+    cl.className = 'tb';
+    cl.innerHTML = '<span class="t">New Schedule in Claude</span>';
+    cl.title = 'Open Claude’s Scheduled page to make the task that runs a routine';
+    cl.addEventListener('click', () => { openNewWindow('https://claude.ai/scheduled'); toast('Make the task in Claude, then come back and click Link Claude Task on the routine.'); });
+    top.append(nb, cl);
+    box.appendChild(top);
+    box.appendChild(cosWeekStrip(cosRoutines(n).map(r => ({ r, n }))));
+    const grid = document.createElement('div');
+    grid.className = 'cos-cards';
+    const rs = cosRoutines(n).slice().sort((a, b) => ((routineNext(a) || 9e15) - (routineNext(b) || 9e15)));
+    for (const r of rs) {
+      const next = routineNext(r);
+      const c = document.createElement('div');
+      c.className = 'fcard rcard' + (r.paused ? ' paused' : '');
+      c.dataset.rid = r.id;
+      c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="row2"><button class="btn edit">Edit</button><button class="btn pause"></button><span class="last"></span></div>`;
+      c.querySelector('b').textContent = r.name;
+      c.querySelector('.rstate').textContent = r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
+      c.querySelector('.rstate').className = 'rstate ' + (r.paused ? 'off' : r.link ? 'on' : 'warn');
+      c.querySelector('.when').textContent = routineWhen(r);
+      c.querySelector('p').textContent = r.what || 'No description yet.';
+      const links = c.querySelector('.links');
+      if (r.link) links.appendChild(cosLinkChip(r.link, () => cosChange(() => { r.link = null; }, null)));
+      else { const h = document.createElement('button'); h.className = 'tb linkbtn'; h.innerHTML = '<span class="t">Link Claude Task…</span>'; h.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosPickSchedule(b.left, b.bottom + 4, link => cosChange(() => { r.link = link; }, `Linked “${link.name}”`)); }); links.appendChild(h); }
+      if (r.output) { const o = cosLinkChip(r.output, () => cosChange(() => { r.output = null; }, null)); o.title = `Results: ${r.output.name}`; links.appendChild(o); }
+      c.querySelector('.last').textContent = next ? `Next: ${fmtNext(next)}` : r.paused ? '' : r.freq === 'custom' ? '' : '';
+      c.querySelector('.pause').textContent = r.paused ? 'Resume' : 'Pause';
+      c.querySelector('.pause').title = r.paused ? 'Show it as running again' : 'Mark it as paused here (pause the task in Claude too)';
+      c.querySelector('.pause').addEventListener('click', () => cosChange(() => { r.paused = !r.paused; }, r.paused ? null : `Paused “${r.name}” here. Pause its task in Claude too.`));
+      c.querySelector('.edit').addEventListener('click', () => editRoutine(n, r));
+      grid.appendChild(c);
+    }
+    if (!rs.length) {
+      const e = document.createElement('div');
+      e.className = 'cos-empty';
+      e.style.marginTop = '20px';
+      e.innerHTML = '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine, then link the Claude scheduled task that runs it.</span>';
+      grid.appendChild(e);
+    }
+    grid.addEventListener('contextmenu', e => {
+      const c = e.target.closest('.rcard'); if (!c) return; e.preventDefault();
+      const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
+      showMenu(e.clientX, e.clientY, [
+        { label: 'Edit…', run: () => editRoutine(n, r) },
+        { label: r.link ? 'Link a Different Claude Task…' : 'Link Claude Task…', run: () => cosPickSchedule(e.clientX, e.clientY, link => cosChange(() => { r.link = link; }, null)) },
+        r.link && { label: 'Open the Claude Task', run: () => openNewWindow(r.link.url) },
+        { label: r.output ? 'Change Where Results Go…' : 'Where Results Go…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { r.output = link; }, null)) },
+        r.output && { label: 'Open the Results', run: () => openNewWindow(r.output.url) },
+        { label: r.paused ? 'Resume' : 'Pause', run: () => cosChange(() => { r.paused = !r.paused; }, null) },
+        '-',
+        { label: 'Delete Routine', run: () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted “${r.name}”. Its task in Claude is not changed.`) },
+      ]);
+    });
+    // Drag a scheduled task (or the chat where results land) onto a routine card.
+    grid.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const c = e.target.closest('.rcard'); grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!c) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; c.classList.add('drop'); });
+    grid.addEventListener('dragleave', e => { if (!grid.contains(e.relatedTarget)) grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); });
+    grid.addEventListener('drop', e => {
+      const c = e.target.closest('.rcard'); if (!c) return;
+      e.preventDefault(); e.stopPropagation();
+      const link = cosDroppedLink(e);
+      const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
+      if (!link || !r) return;
+      const isTask = /\/scheduled|\/schedule|\/task/.test(link.url) || (lib.scheduled || []).some(t => normUrl(t.url) === normUrl(link.url));
+      cosChange(() => { if (isTask) r.link = link; else r.output = link; }, isTask ? `Linked the Claude task “${link.name}”` : `Results of “${r.name}” go to “${link.name}”`);
+    });
+    box.appendChild(grid);
+    host.appendChild(box);
+  }
+  // A week at a glance: what runs on each day (Monday first), coloured by staff member.
+  function cosWeekStrip(entries) {
+    const strip = document.createElement('div');
+    strip.className = 'cos-week';
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const offset = (start.getDay() + 6) % 7;                 // back to Monday
+    start.setDate(start.getDate() - offset);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const col = document.createElement('div');
+      col.className = 'wday' + (i === offset ? ' today' : i < offset ? ' past' : '');
+      col.innerHTML = `<div class="wh">${DAY_NAMES[d.getDay()].slice(0, 3)} ${d.getDate()}</div>`;
+      const runs = [];
+      for (const { r, n } of entries) {
+        if (r.paused || r.freq === 'custom') continue;
+        const at = routineNext(r, new Date(d.getTime() - 1));
+        if (at && at.toDateString() === d.toDateString()) runs.push({ r, n, at });
+      }
+      runs.sort((a, b) => a.at - b.at);
+      for (const { r, n, at } of runs) {
+        const e = document.createElement('div');
+        e.className = 'wrun';
+        e.style.borderLeftColor = n.color;
+        e.innerHTML = '<span class="t"></span><span class="nm"></span>';
+        e.querySelector('.t').textContent = fmtTime(`${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
+        e.querySelector('.nm').textContent = r.name;
+        e.title = `${r.name}\n${n.name} · ${routineWhen(r)}${r.link ? '' : '\nNot linked to a Claude task yet'}`;
+        e.dataset.staff = n.id;
+        col.appendChild(e);
+      }
+      if (!runs.length) { const e = document.createElement('div'); e.className = 'wnone'; e.textContent = '–'; col.appendChild(e); }
+      strip.appendChild(col);
+    }
+    return strip;
+  }
+  // The whole team's week (the team page's Week view).
+  function cosTeamWeek(t) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cos-teamweek';
+    const entries = [];
+    for (const n of t.nodes) for (const r of n.routines || []) entries.push({ r, n });
+    const h = document.createElement('div');
+    h.className = 'cos-tabnote';
+    h.style.padding = '14px 18px 0';
+    const live = entries.filter(e => !e.r.paused).length;
+    h.textContent = entries.length ? `This week across the team: ${live} routine${live === 1 ? '' : 's'} running${entries.length > live ? `, ${entries.length - live} paused` : ''}. Click one to open that staff member.` : 'No routines yet. Open a staff member and add routines under their Routines tab.';
+    wrap.appendChild(h);
+    const strip = cosWeekStrip(entries);
+    strip.classList.add('big');
+    strip.addEventListener('click', e => { const x = e.target.closest('.wrun'); if (x) { cosUi.tab = 'routines'; openStaff(x.dataset.staff); } });
+    wrap.appendChild(strip);
+    const custom = entries.filter(e => e.r.freq === 'custom' && !e.r.paused);
+    if (custom.length) {
+      const c = document.createElement('div');
+      c.className = 'cos-tabnote';
+      c.style.padding = '0 18px';
+      c.textContent = 'Also: ' + custom.map(e => `${e.r.name} (${e.n.name}, ${routineWhen(e.r)})`).join('; ');
+      wrap.appendChild(c);
+    }
+    return wrap;
   }
 
   // ---------- Search ----------
