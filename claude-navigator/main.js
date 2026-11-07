@@ -763,6 +763,32 @@ ipcMain.handle('cos-mirror-apply', (_e, tree) => {
   return run;
 });
 
+// Reads what a Claude page says (for example a scheduled task: its name, schedule and instructions),
+// so details are taken from Claude rather than typed into the app. Claude pages only.
+const PAGE_DETAILS = `(() => {
+  const vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const fields = [...document.querySelectorAll('textarea, [contenteditable="true"], input[type="text"], input:not([type])')].filter(vis)
+    .map(e => (e.value !== undefined && e.tagName !== 'DIV' ? e.value : e.innerText) || '').map(s => s.trim()).filter(s => s.length > 0);
+  const selects = [...document.querySelectorAll('select')].filter(vis).map(e => (e.options[e.selectedIndex] || {}).text || '').filter(Boolean);
+  const heading = ((document.querySelector('h1') || {}).innerText || '').trim();
+  return { title: document.title, heading, text: (document.body.innerText || '').slice(0, 20000), fields: fields.slice(0, 40), selects: selects.slice(0, 20) };
+})()`;
+ipcMain.handle('claude-page-details', async (_e, url) => {
+  if (typeof url !== 'string' || !isClaudeHost(url)) return { ok: false, status: 'not a Claude page' };
+  const win = new BrowserWindow({ show: false, width: 1400, height: 1000, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  try {
+    const cleared = await openHidden(win, url);
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
+    if (!cleared) return { ok: false, status: 'Claude’s security check did not finish; try again' };
+    await sleep(2500);
+    return Object.assign({ ok: true }, await withTimeout(win.webContents.executeJavaScript(PAGE_DETAILS, true), 20000, 'Reading the page'));
+  } catch (e) {
+    return { ok: false, status: String(e && e.message || e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
+
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 

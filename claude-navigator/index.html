@@ -5870,7 +5870,7 @@
   }
   const cosCount = items => { let c = 0; const w = l => l.forEach(x => { if (x.type !== 'folder') c++; if (x.children) w(x.children); }); w(items); return c; };
   function cosNewProject(n) {
-    cosChange(() => { const p = { id: uid(), name: 'New project', archived: false, created: Date.now(), items: [] }; cosProjects(n).unshift(p); cosUi.proj = p.id; }, null);
+    cosChange(() => { const p = { id: uid(), name: 'New project', archived: false, created: Date.now(), items: [] }; cosProjects(n).unshift(p); cosUi.proj = p.id; cosUi.nameNow = p.id; }, null);
     setTimeout(() => { const f = document.querySelector('.cos-ptop input'); if (f) { f.focus(); f.select(); } }, 30);
   }
   function cosCloneNav(node) {
@@ -5944,7 +5944,7 @@
       it.type !== 'folder' && { label: 'Open', run: () => cosOpenItem(it) },
       it.type === 'link' && { label: 'Open in Navigator', run: () => { setApp('navigator'); go({ kind: 'page', url: it.url }); } },
       it.type === 'link' && { label: 'Copy Link', run: () => navigator.clipboard.writeText(it.url).then(() => toast('Link copied')) },
-      it.type === 'folder' && { label: 'New Action Inside…', run: () => cosProjAction(project, it.id) },
+      it.type === 'folder' && { label: 'New Action Inside', run: () => cosNewAction(() => { it.open = true; return it.children || (it.children = []); }, { ctx: 'project', where: `\u201c${it.name}\u201d` }) },
       it.type === 'folder' && { label: 'New Folder Inside', run: () => cosNewFolder(project, it.id) },
       '-',
       { label: 'Rename…', run: () => openDialog({ title: 'Rename', name: it.name, nameOnly: true, noPicker: true, okLabel: 'Rename', onSave: ({ name }) => { if (name) cosChange(() => { it.name = name; it.autoName = false; }, null); } }) },
@@ -6135,10 +6135,12 @@
       name.title = 'Project name';
       name.addEventListener('change', () => { const v = name.value.trim(); if (v && v !== p.name) cosChange(() => { p.name = v; }, null); });
       name.addEventListener('keydown', e => { if (e.key === 'Enter') name.blur(); });
+      name.placeholder = 'Project name';
+      if (cosUi.nameNow === p.id) { cosUi.nameNow = null; setTimeout(() => { name.focus(); name.select(); }, 30); }
       const bt = (label, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.title = title; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
       const selFolder = () => { const s2 = cosUi.itemSel && cosItemLocate(p.items, cosUi.itemSel); return s2 && s2.node.type === 'folder' ? s2.node.id : null; };
       top.append(name,
-        bt('New Action…', 'Describe an action, then start it: a new Claude chat, doc, slides, file or board, linked to it', () => cosProjAction(p, selFolder())),
+        cosNewActionButtons(() => { const f = selFolder(); const t = f && cosItemLocate(p.items, f); if (t) t.node.open = true; return t ? (t.node.children || (t.node.children = [])) : p.items; }, { ctx: 'project', where: `\u201c${p.name}\u201d` }),
         bt('New Folder', 'A folder inside this project', () => cosNewFolder(p, selFolder())),
         bt(cosUi.adding ? 'Done' : 'Link Existing', 'Show your Claude chats and artifacts, monday.com boards or folders beside this project, and drag them in as actions', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding && cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; if (cosUi.adding) cosShowSource(); renderCos(); }, cosUi.adding),
         bt(p.archived ? 'Unarchive' : 'Archive', p.archived ? 'Bring it back to the project list' : 'Keep it, but hide it under Archived', () => cosChange(() => { p.archived = !p.archived; }, `${p.archived ? 'Archived' : 'Unarchived'} “${p.name}”`)));
@@ -6173,7 +6175,7 @@
         const e = document.createElement('div');
         e.className = 'cos-empty';
         e.style.marginTop = '40px';
-        e.innerHTML = '<b>No actions yet</b><span>Everything in a project is an action. Click New Action to describe one and start its Claude chat (or doc, slides, file or board), or Link Existing to drag in chats, artifacts, boards or files you already have.</span>';
+        e.innerHTML = '<b>No actions yet</b><span>Everything in a project is an action. Click New Action to start one in Claude (the arrow beside it starts a doc, slides, file or board instead), or Link Existing to drag in what you already have.</span>';
         list.appendChild(e);
       }
       list.addEventListener('click', e => {
@@ -6198,7 +6200,7 @@
       list.addEventListener('contextmenu', e => {
         e.preventDefault();
         const r = e.target.closest('.it');
-        if (!r) return showMenu(e.clientX, e.clientY, [{ label: 'New Action…', run: () => cosProjAction(p, null) }, { label: 'New Folder', run: () => cosNewFolder(p, null) }, { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
+        if (!r) return showMenu(e.clientX, e.clientY, [{ label: 'New Action', run: () => cosNewAction(() => p.items, { ctx: 'project', where: `\u201c${p.name}\u201d` }) }, { label: 'New Folder', run: () => cosNewFolder(p, null) }, { label: 'Link Existing…', run: () => { cosUi.adding = true; if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); renderCos(); } }]);
         cosUi.itemSel = r.dataset.iid;
         cosItemMenu(e.clientX, e.clientY, p, r.dataset.iid);
       });
@@ -6337,26 +6339,15 @@
     box.className = 'cos-tabbody';
     const top = document.createElement('div');
     top.className = 'cos-ptop';
-    const quick = document.createElement('input');
-    quick.placeholder = 'Add an action and press Return';
-    quick.title = 'A one-off job for this staff member';
-    quick.addEventListener('keydown', e => {
-      if (e.key !== 'Enter' || !quick.value.trim()) return;
-      const title = quick.value.trim();
-      cosChange(() => { cosActions(n).unshift({ id: uid(), title, notes: '', status: 'todo', due: '', link: null, created: Date.now(), doneAt: null }); }, null);
-      setTimeout(() => { const q = document.querySelector('.cos-tabbody .cos-ptop input'); if (q) q.focus(); }, 20);
-    });
-    const more = document.createElement('button');
-    more.className = 'tb';
-    more.innerHTML = '<span class="t">New Action…</span>';
-    more.title = 'Describe the action, then start it: a new Claude chat, doc, slides, file or board, linked to the action';
-    more.addEventListener('click', () => editAction(n, null));
     const add = document.createElement('button');
     add.className = 'tb' + (cosUi.adding ? ' on' : '');
     add.innerHTML = `<span class="t">${cosUi.adding ? 'Done' : 'Link Existing'}</span>`;
     add.title = 'Show your chats, artifacts, boards and folders beside the actions: drag one onto an action to link it, or into the list to make it a new action';
     add.addEventListener('click', () => { cosUi.adding = !cosUi.adding; if (cosUi.adding) { if (cosUi.srcFrom === 'claude') cosUi.srcFrom = 'chats'; cosShowSource(); } renderCos(); });
-    top.append(quick, more, add);
+    const note = document.createElement('span');
+    note.className = 'cos-tabnote';
+    note.textContent = 'One-off jobs. Each starts in Claude and takes its name from there.';
+    top.append(note, cosNewActionButtons(() => cosActions(n), { ctx: 'staff' }), add);
     box.appendChild(top);
     const list = document.createElement('div');
     list.className = 'cos-items cos-actions';
@@ -6392,7 +6383,7 @@
       const e = document.createElement('div');
       e.className = 'cos-empty';
       e.style.marginTop = '30px';
-      e.innerHTML = '<b>No actions yet</b><span>Actions are one-off jobs for this staff member. Click New Action to describe one and start its Claude chat (or doc, slides, file or board), or type a quick one above and press Return.</span>';
+      e.innerHTML = '<b>No actions yet</b><span>Click New Action to start one in Claude (the arrow beside it starts a doc, slides, file or board instead). It is named after what you make. Or click Link Existing and drag in chats you already have.</span>';
       list.appendChild(e);
     }
     list.addEventListener('dblclick', e => { const r = e.target.closest('.act'); if (!r || e.target.closest('input, select, .cos-chip')) return; const a = cosActions(n).find(x => x.id === r.dataset.aid); if (a.link) cosOpenLink(a.link); else editAction(n, a); });
@@ -6645,14 +6636,10 @@
     const nb = document.createElement('button');
     nb.className = 'tb';
     nb.innerHTML = '<span class="t">New Routine</span>';
-    nb.title = 'Opens Claude\u2019s scheduled tasks on the right: make the task there, and it is linked here; then say when it runs';
+    nb.title = 'Opens Claude\u2019s scheduled tasks on the right: make the task there, and it is linked here with its name and schedule read from Claude';
     nb.addEventListener('click', () => cosNewRoutine(n));
-    const cl = document.createElement('button');
-    cl.className = 'tb';
-    cl.innerHTML = '<span class="t">Describe Only…</span>';
-    cl.title = 'Add a routine here without making it in Claude yet (link the Claude task later)';
-    cl.addEventListener('click', () => editRoutine(n, null));
-    top.append(nb, cl);
+    top.append(nb);
+    setTimeout(() => cosRefreshRoutines(n), 500);
     box.appendChild(top);
     box.appendChild(cosWeekStrip(cosRoutines(n).map(r => ({ r, n }))));
     const grid = document.createElement('div');
@@ -6663,7 +6650,7 @@
       const c = document.createElement('div');
       c.className = 'fcard rcard' + (r.paused ? ' paused' : '');
       c.dataset.rid = r.id;
-      c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="row2"><button class="btn edit">Edit</button><button class="btn pause"></button><span class="last"></span></div>`;
+      c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="row2"><button class="btn edit" title="Read the name, instructions and schedule from Claude again">Read Again</button><button class="btn pause"></button><span class="last"></span></div>`;
       c.querySelector('b').textContent = r.name;
       c.querySelector('.rstate').textContent = r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
       c.querySelector('.rstate').className = 'rstate ' + (r.paused ? 'off' : r.link ? 'on' : 'warn');
@@ -6677,21 +6664,23 @@
       c.querySelector('.pause').textContent = r.paused ? 'Resume' : 'Pause';
       c.querySelector('.pause').title = r.paused ? 'Show it as running again' : 'Mark it as paused here (pause the task in Claude too)';
       c.querySelector('.pause').addEventListener('click', () => cosChange(() => { r.paused = !r.paused; }, r.paused ? null : `Paused “${r.name}” here. Pause its task in Claude too.`));
-      c.querySelector('.edit').addEventListener('click', () => editRoutine(n, r));
+      c.querySelector('.edit').addEventListener('click', () => r.link ? cosReadRoutine(n, r) : toast('Link its Claude task first: drag it onto the card, or right-click, Link Claude Task.'));
+      c.querySelector('.edit').hidden = !r.link;
       grid.appendChild(c);
     }
     if (!rs.length) {
       const e = document.createElement('div');
       e.className = 'cos-empty';
       e.style.marginTop = '20px';
-      e.innerHTML = '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine, then link the Claude scheduled task that runs it.</span>';
+      e.innerHTML = '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine and make the scheduled task in Claude: its name and schedule are read from there.</span>';
       grid.appendChild(e);
     }
     grid.addEventListener('contextmenu', e => {
       const c = e.target.closest('.rcard'); if (!c) return; e.preventDefault();
       const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
       showMenu(e.clientX, e.clientY, [
-        { label: 'Edit…', run: () => editRoutine(n, r) },
+        r.link && { label: 'Read from Claude Again', run: () => cosReadRoutine(n, r) },
+        { label: 'Correct the Schedule by Hand…', run: () => editRoutine(n, r) },
         { label: r.link ? 'Link a Different Claude Task…' : 'Link Claude Task…', run: () => cosPickSchedule(e.clientX, e.clientY, link => cosChange(() => { r.link = link; }, null)) },
         r.link && { label: 'Open the Claude Task', run: () => openNewWindow(r.link.url) },
         { label: r.output ? 'Change Where Results Go…' : 'Where Results Go…', run: () => cosPickChat(e.clientX, e.clientY, link => cosChange(() => { r.output = link; }, null)) },
@@ -6965,7 +6954,7 @@ body { width: max-content !important; min-width: 0 !important; }
     dlg.showModal();
   }
   document.addEventListener('keydown', e => {
-    if (currentApp !== 'cos' || document.querySelector('dialog[open]')) return;
+    if (currentApp !== 'cos' || document.querySelector('dialog[open]') || $('menu').classList.contains('show')) return;   // a dialog or menu has its own keys
     const mod = e.metaKey || e.ctrlKey;
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
     if ((mod && !e.altKey && e.key.toLowerCase() === 'f') || (!mod && !typing && e.key === '/')) {
@@ -7036,26 +7025,11 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // Starts an email to the people you want to meet, with Clara copied in. The email opens in your Mac's
   // Outlook desktop app (or the default mail app if Outlook is missing), ready to check and send.
-  function askClara(staffNode) {
-    claraDialog('claraAskDlg', 'Ask Clara to Schedule', [
-      { name: 'to', label: 'Meet with (email addresses)', ph: 'e.g. jane@example.org, sam@example.org' },
-      { name: 'subject', label: 'What the meeting is about', ph: 'e.g. Q3 budget review' },
-      { name: 'details', label: 'Anything Clara should know', area: true, ph: 'e.g. 45 minutes on Zoom, any time next week; mornings are best' },
-    ], 'Write the Email', v => {
-      const to = v.to.split(/[,;\s]+/).filter(Boolean);
-      if (!to.length) return 'Add at least one email address.';
-      const bad = to.find(x => !EMAIL_RE.test(x));
-      if (bad) return `“${bad}” does not look like an email address.`;
-      if (!v.subject) return 'Say what the meeting is about.';
-      const body = `Hi,\n\nI'd like to set up a time to meet about ${v.subject}.${v.details ? `\n\n${v.details}` : ''}\n\nI've copied in Clara (${clara.email}), who will find a time that works for everyone.\n\nThanks`;
-      const url = `mailto:${to.map(encodeURIComponent).join(',')}?cc=${encodeURIComponent(clara.email)}&subject=${encodeURIComponent(v.subject)}&body=${encodeURIComponent(body)}`;
-      if (window.navigatorApp && window.navigatorApp.openMail) window.navigatorApp.openMail(url); else location.href = url;
-      const n = staffNode || claraNode();
-      if (n) {
-        cosChange(() => cosActions(n).push({ id: uid(), title: `Schedule: ${v.subject}`, notes: `With ${to.join(', ')}${v.details ? `. ${v.details}` : ''}`, status: 'doing', due: '', link: null, created: Date.now() }),
-          'Your email is open with Clara copied in. The request is in Clara’s Actions: tick it off once it is booked.');
-      } else toast('Your email is open with Clara copied in. Check it and send it.');
-    });
+  // Opens a new email in Outlook with Clara copied in. You write the email in Outlook; nothing to fill in here.
+  function askClara() {
+    const url = `mailto:?cc=${encodeURIComponent(clara.email)}`;
+    if (window.navigatorApp && window.navigatorApp.openMail) window.navigatorApp.openMail(url); else location.href = url;
+    toast('A new email is open with Clara copied in. Add who you are meeting and what about, then send it.');
   }
   const claraNode = () => { const t = cosTeam(); return t ? t.nodes.find(n => n.external === 'clara') : null; };
   function cosAddClara() {
@@ -7150,9 +7124,9 @@ body { width: max-content !important; min-width: 0 !important; }
     const key = normUrl(url);
     let changed = false;
     const fix = (link, owner, field) => { if (link && link.auto && link.url && normUrl(link.url) === key) { link.name = t; link.auto = false; if (owner && owner.autoName) { owner[field] = t; owner.autoName = false; } changed = true; } };
-    const walkItems = list => (list || []).forEach(it => { if (it.type === 'folder') walkItems(it.children); else fix(it.link, null); });
+    const walkItems = list => (list || []).forEach(it => { if (it.type === 'folder') walkItems(it.children); else fix(it.link, it, 'title'); });
     for (const tm of Object.values(cos.teams)) for (const n of tm.nodes || []) {
-      for (const a of n.actions || []) fix(a.link, null);
+      for (const a of n.actions || []) fix(a.link, a, 'title');
       for (const f of n.functions || []) fix(f.link, f, 'name');
       for (const r of n.routines || []) fix(r.link, r, 'name');
       for (const p of n.projects || []) walkItems(p.items);
@@ -7221,8 +7195,8 @@ body { width: max-content !important; min-width: 0 !important; }
       state.cosWatch = null; cosUi.making = null;
       const r = { id: uid(), name: realTitle(title) || 'New routine', autoName: !realTitle(title), what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link: { name: realTitle(title) || 'Scheduled task', url, auto: !realTitle(title) }, output: null, paused: false, created: Date.now() };
       cosChange(() => cosRoutines(n).push(r), null);
-      toast('Linked the scheduled task. Now say when it runs, so it shows on the week view.');
-      setTimeout(() => editRoutine(n, r), 300);
+      toast('Linked the scheduled task. Reading its schedule from Claude\u2026');
+      setTimeout(() => cosReadRoutine(n, r), 300);
     };
     cosUi.adding = true; cosUi.srcFrom = 'claude';
     renderCos();
@@ -7239,7 +7213,98 @@ body { width: max-content !important; min-width: 0 !important; }
       return true;
     };
     renderCos();
-    toast('Make the scheduled task in Claude on the right. It is linked here once you save it; then you say when it runs.');
+    toast('Make the scheduled task in Claude on the right. Once you save it, it is linked here and its schedule is read from Claude.');
+  }
+
+  // ----- Details come from Claude, not from forms -----
+  // A routine's name, instructions and schedule are read from its Claude scheduled task page.
+  const DAY_RE = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  function routineFromPage(d) {
+    const out = {};
+    const name = realTitle(d.title) || (d.heading || '').trim();
+    if (name && !/^(scheduled|routines?|new)/i.test(name)) out.name = name.slice(0, 120);
+    const what = (d.fields || []).filter(f => !/^\s*[\d*\/,\- ]+$/.test(f)).sort((a, b) => b.length - a.length)[0];
+    if (what && what.length > 15) out.what = what.replace(/\s+/g, ' ').trim().slice(0, 500);
+    const text = [...(d.selects || []), ...(d.fields || []), d.text || ''].join('\n');
+    const hm = (h, m) => `${String(h).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
+    // A cron line, as Claude shows for routines (minute hour day-of-month month day-of-week).
+    const cron = /(?:^|\s)([0-5]?\d)\s+([01]?\d|2[0-3])\s+(\*|[\d,]+)\s+\*\s+(\*|[0-7](?:[-,][0-7])*)(?=\s|$)/m.exec(text);
+    if (cron) {
+      out.time = hm(cron[2], cron[1]);
+      const dom = cron[3], dow = cron[4];
+      if (dom !== '*') Object.assign(out, { freq: 'monthly', dom: +dom.split(',')[0] });
+      else if (dow === '*') out.freq = 'daily';
+      else if (dow === '1-5') out.freq = 'weekdays';
+      else {
+        const days = new Set();
+        for (const part of dow.split(',')) { const [a, b] = part.split('-').map(Number); for (let x = a; x <= (isNaN(b) ? a : b); x++) days.add(x % 7); }
+        Object.assign(out, { freq: 'weekly', days: [...days] });
+      }
+      return out;
+    }
+    // Plain English ("Every weekday at 9:00 AM", "Weekly on Monday and Thursday at 8:30", "Monthly on the 3rd").
+    // The schedule line: mentions how often, ideally with a time or a day; never the task's own name.
+    const score = l => (/\b\d{1,2}(:\d{2})?\s*(am|pm)\b|\b([01]?\d|2[0-3]):[0-5]\d\b/i.test(l) ? 2 : 0) + (/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*\b/i.test(l) ? 2 : 0) + (/\bevery\b/i.test(l) ? 1 : 0);
+    const line = text.split('\n').map(l => l.trim())
+      .filter(l => l.length < 140 && l !== out.name && l !== (d.heading || '').trim() && /\b(every|each|daily|weekly|monthly|weekdays?|hourly|fortnightly)\b/i.test(l))
+      .sort((a, b) => score(b) - score(a))[0];
+    if (!line) return out;
+    const t12 = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i.exec(line), t24 = /\b([01]?\d|2[0-3]):([0-5]\d)\b/.exec(line);
+    if (t12) out.time = hm((+t12[1] % 12) + (/pm/i.test(t12[3]) ? 12 : 0), t12[2]);
+    else if (t24) out.time = hm(t24[1], t24[2]);
+    const days = [...line.toLowerCase().matchAll(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*/g)].map(m => DAY_RE[m[1]]);
+    if (/hourly|every \d+ (hours?|minutes?)|fortnight|every (other|second)/i.test(line)) Object.assign(out, { freq: 'custom', custom: line });
+    else if (/weekdays?|monday\s*(to|through|-|–)\s*friday|mon\s*(-|–)\s*fri/i.test(line)) out.freq = 'weekdays';
+    else if (/daily|every day/i.test(line)) out.freq = 'daily';
+    else if (/monthly|every month|of (each|every|the) month|\b\d{1,2}(st|nd|rd|th)\b/i.test(line)) { const dm = /\b(\d{1,2})(st|nd|rd|th)\b/i.exec(line); Object.assign(out, { freq: 'monthly', dom: dm ? +dm[1] : 1 }); }
+    else if (days.length) Object.assign(out, { freq: 'weekly', days: [...new Set(days)] });
+    else Object.assign(out, { freq: 'custom', custom: line });
+    return out;
+  }
+  const routineReading = new Set();
+  async function cosReadRoutine(n, r, { quiet = false } = {}) {
+    if (!r.link || !r.link.url || routineReading.has(r.id) || !window.navigatorApp || !window.navigatorApp.claudePageDetails) return;
+    routineReading.add(r.id);
+    if (!quiet) toast(`Reading “${r.name}” from Claude…`);
+    try {
+      const d = await window.navigatorApp.claudePageDetails(r.link.url);
+      if (!d || !d.ok) { if (!quiet) toast(`Could not read it from Claude: ${(d && d.status) || 'no answer'}`); return; }
+      const got = routineFromPage(d);
+      cosChange(() => { Object.assign(r, got, { readAt: Date.now() }); if (got.name) { r.autoName = false; r.link.name = got.name; r.link.auto = false; } }, null);
+      if (!quiet) toast(got.freq ? `Read “${r.name}” from Claude: ${routineWhen(r)}` : `Read “${r.name}” from Claude, but not when it runs. Check its schedule in Claude, then choose Read from Claude Again.`);
+    } finally { routineReading.delete(r.id); }
+  }
+  // Routines read more than 12 hours ago are read again, quietly, when their tab is shown.
+  function cosRefreshRoutines(n) {
+    for (const r of cosRoutines(n)) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 12 * 3600e3) cosReadRoutine(n, r, { quiet: true });
+  }
+  // A new action: straight into Claude (a chat, or what you pick from the arrow), named after what Claude makes.
+  function cosNewAction(list, { kind = 'chat', ctx = 'staff', where = '' } = {}) {
+    cosCreate(kind, { what: where ? `a new action in ${where}` : 'a new action', onLink: link => {
+      const act = { id: uid(), title: link.auto ? 'New action' : link.name, autoName: !!link.auto, notes: '', status: 'doing', due: '', link, created: Date.now(), doneAt: null };
+      if (ctx === 'project') act.type = 'action';
+      list().unshift(act);
+      cosUi.itemSel = act.id;
+    } });
+  }
+  function cosNewActionButtons(list, opts) {
+    const wrap = document.createElement('span');
+    wrap.className = 'split-btn';
+    const a = document.createElement('button');
+    a.className = 'tb';
+    a.innerHTML = '<span class="t">New Action</span>';
+    a.title = 'Starts a new Claude chat beside the team; it becomes an action named after the chat';
+    a.addEventListener('click', () => cosNewAction(list, opts));
+    const m = document.createElement('button');
+    m.className = 'tb more';
+    m.innerHTML = UI.chev;
+    m.title = 'Start the action as something else: a doc, slides, design, dashboard, project, Office file or monday.com board';
+    m.addEventListener('click', e => {
+      const b = e.currentTarget.getBoundingClientRect();
+      showMenu(b.left, b.bottom + 4, cosStartOptions().filter(([k]) => k !== 'none').map(([k, label]) => ({ label: label.replace(/^A new |^New /, 'New '), icon: NEW_KINDS[k] ? NEW_KINDS[k].icon : k === 'monday' ? 'monday' : k, run: () => cosNewAction(list, Object.assign({}, opts, { kind: k })) })));
+    });
+    wrap.append(a, m);
+    return wrap;
   }
 
   // ---------- Search ----------
