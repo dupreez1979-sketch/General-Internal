@@ -516,16 +516,17 @@ async function fetchLibrary(opts = {}) {
       result.artifacts = await win.webContents.executeJavaScript(scrollHarvest(LIB_PATTERNS.artifacts), true);
     }
     // Code, Design and Scheduled: find each page from Claude's own navigation, then read what it lists.
-    for (const [kind, label, fallback] of [['code', '^code$', '/code'], ['design', '^design$', '/design'], ['scheduled', '^(scheduled|schedules?|routines?)$', '/code/routines']]) {
+    for (const [kind, label, fallback] of [['code', '^code$', '/code'], ['design', '^design$', '/design'], ['scheduled', '^(scheduled|schedules?|routines?)$', '/code/routines'], ['skills', '^(skills|customi[sz]e)$', '/customize/skills']]) {
       if (win.isDestroyed()) break;
       const found = await win.webContents.executeJavaScript(discoverPage(label), true).catch(() => null);
-      const prefix = found || fallback;
+      // Skills live under Customize (Customize \u203a Skills); Claude's sidebar may point at Customize itself.
+      const prefix = kind === 'skills' && found && !/skills$/.test(found) ? found + '/skills' : (found || fallback);
       if (found) (result.pagePaths || (result.pagePaths = {}))[kind] = found;   // where Claude's own sidebar points
       await openHidden(win, 'https://claude.ai' + prefix);
       if (win.isDestroyed()) break;
       const pattern = kind === 'code'
         ? LIB_PATTERNS.code
-        : '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '/(?!(new|create|edit)$)[A-Za-z0-9_-]{6,}';
+        : '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + (kind === 'skills' ? '/(?!(new|create|edit|upload)$)[A-Za-z0-9_.:%-]{3,}' : '/(?!(new|create|edit)$)[A-Za-z0-9_-]{6,}');
       result[kind] = await win.webContents.executeJavaScript(scrollHarvest(pattern), true).catch(() => []);
       result.notes.push(`${kind}: read ${result[kind].length} from ${prefix}`);
     }
