@@ -3162,7 +3162,7 @@
     const giveUp = () => { if (state.pendingClick === pc) { state.pendingClick = null; toast(pc.fallback); } };
     // A page that is replaced mid-try never answers, so stop waiting after 10 seconds.
     const timeout = new Promise(res => setTimeout(() => res('timeout'), 10000));
-    Promise.race([view.executeJavaScript(clickScript(pc.click, pc.section)), timeout]).then(res => {
+    Promise.race([viewExec(clickScript(pc.click, pc.section)), timeout]).then(res => {
       if (run !== pc.run) return;                           // a newer try has taken over
       pc.running = false;
       if (res === 'clicked') { if (state.pendingClick === pc) state.pendingClick = null; return; }
@@ -3288,6 +3288,10 @@
 
   // ---------- Claude pane (desktop app only) ----------
   let view = null, viewReady = false;
+  // The Claude pane throws (rather than failing quietly) if it is asked to do anything in the moment
+  // before its page has started. These wrappers turn that into a quiet no-op.
+  const viewExec = code => { try { return view ? view.executeJavaScript(code) : Promise.reject(new Error('no pane')); } catch (e) { return Promise.reject(e); } };
+  const viewDo = f => { try { if (view) f(view); } catch (e) { /* pane not started yet */ } };
   if (isApp) {
     view = document.createElement('webview');
     view.setAttribute('partition', 'persist:claude');
@@ -3343,11 +3347,11 @@
   })()`;
   function collapseClaudeSidebar() {
     if (!isApp || !hideClaudeSidebar() || !/^https:\/\/claude\.ai\//.test(state.pageUrl || '')) return;
-    view.executeJavaScript(COLLAPSE_SCRIPT).catch(() => {});
+    viewExec(COLLAPSE_SCRIPT).catch(() => {});
   }
   function showClaudeSidebar() {
     if (!isApp) return;
-    view.executeJavaScript(`(() => {
+    viewExec(`(() => {
       const label = b => (b.getAttribute('aria-label') || b.getAttribute('title') || '') + ' ' + (b.getAttribute('data-testid') || '');
       const btn = [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)) && /open|expand|show|toggle/i.test(label(b)))
         || [...document.querySelectorAll('button')].find(b => /sidebar/i.test(label(b)));
@@ -3450,6 +3454,7 @@
     harvestTimer = setTimeout(async () => {
       try {
         if (!/^https:\/\/claude\.ai\//.test(state.pageUrl)) return;
+        if (!viewReady) return;
         const id = view.getWebContentsId();
         mergeLib('chats', await window.navigatorApp.harvestPane(id, 'chats'));
         if (/^\/artifacts?(\/|$)/.test(new URL(state.pageUrl).pathname)) mergeLib('artifacts', await window.navigatorApp.harvestPane(id, 'artifacts'));
@@ -3484,21 +3489,21 @@
     findText = '';
     $('findCount').textContent = '';
     try { view.stopFindInPage('clearSelection'); } catch (e) { /* ignore */ }
-    if (pageShowing()) view.focus();
+    if (pageShowing()) viewDo(v => v.focus());
   }
   function findStep(forward = true) {
     if (!pageShowing()) return;
     if (findbar.hidden || !findInput.value) return openFind();
     const t = findInput.value;
-    view.findInPage(t, { forward, findNext: t === findText });
+    viewDo(v => v.findInPage(t, { forward, findNext: t === findText }));
     findText = t;
   }
   if (isApp) {
     findInput.addEventListener('input', () => {
       const t = findInput.value;
       findText = '';
-      if (!t) { view.stopFindInPage('clearSelection'); $('findCount').textContent = ''; return; }
-      view.findInPage(t);
+      if (!t) { viewDo(v => v.stopFindInPage('clearSelection')); $('findCount').textContent = ''; return; }
+      viewDo(v => v.findInPage(t));
       findText = t;
     });
     findInput.addEventListener('keydown', e => {
@@ -4970,7 +4975,7 @@
   $('bFwd').addEventListener('click', forward);
   $('vIcons').addEventListener('click', () => setView('icons'));
   $('vList').addEventListener('click', () => setView('list'));
-  $('bReload').addEventListener('click', () => view && view.reload());
+  $('bReload').addEventListener('click', () => viewDo(v => v.reload()));
   // Save menu: Save As (a copy anywhere), move, show or remove the saved one.
   function showSaveMenu(x, y) {
     const c = pageContext();
@@ -7042,7 +7047,7 @@
     const k = e.key.toLowerCase();
     if (k === 'f') openFind();
     else if (k === 'g' && pageShowing()) findStep(!e.shiftKey);
-    else if (k === 'r' && pageShowing()) view.reload();
+    else if (k === 'r' && pageShowing()) viewDo(v => v.reload());
     else if (k === 'p' && pageShowing()) view.print();
     else if (k === 'n' && e.shiftKey) newFolder();
     else if (k === 'n') newChat();
@@ -7067,8 +7072,8 @@
       find: openFind,
       'find-next': () => findStep(true),
       'find-prev': () => findStep(false),
-      print: () => { if (pageShowing()) view.print(); else window.print(); },
-      reload: () => { if (pageShowing()) view.reload(); },
+      print: () => { if (pageShowing()) viewDo(v => v.print()); else window.print(); },
+      reload: () => { if (pageShowing()) viewDo(v => v.reload()); },
       back, forward, up,
       'toggle-claude-sidebar': () => setHideClaudeSidebar(!hideClaudeSidebar()),
       'claude-settings': () => openAccountLink(ACCOUNT_LINKS[0]),
