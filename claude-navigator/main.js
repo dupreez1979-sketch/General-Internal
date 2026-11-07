@@ -188,6 +188,8 @@ app.on('web-contents-created', (_event, contents) => {
   // (Preventing the key here also stops the menu bar firing it a second time.)
   contents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return;
+    // Show or hide the sidebar: Ctrl+Cmd+S on a Mac, Ctrl+Alt+S elsewhere.
+    if (input.code === 'KeyS' && (isMac ? (input.control && input.meta && !input.alt) : (input.control && input.alt))) { event.preventDefault(); send('shortcut', 'toggle-side'); return; }
     // Cmd+Option+0..9: switch profile, even while typing in Claude.
     if (input.alt) {
       const m = /^Digit([0-9])$/.exec(input.code || '');
@@ -305,6 +307,12 @@ function buildMenu() {
         { label: 'Reload Page', accelerator: 'Cmd+R', click: act('reload') },
         { label: 'Claude Settings', accelerator: 'Cmd+Shift+,', click: act('claude-settings') },
         { label: 'Hide or Show Claude\u2019s Own Sidebar', click: act('toggle-claude-sidebar') },
+        { type: 'separator' },
+        { label: 'Show or Hide Sidebar', accelerator: 'Ctrl+Cmd+S', click: act('toggle-side') },
+        { label: 'Show or Hide Claude', click: act('toggle-claude') },
+        { label: 'Show or Hide Second List', click: act('toggle-split') },
+        { label: 'Show or Hide Details (Chief of Staff)', click: act('toggle-detail') },
+        { label: 'Put Panels Back as They Were', click: act('reset-frames') },
         { type: 'separator' },
         { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
         { type: 'separator' },
