@@ -332,6 +332,10 @@
   .ocbox { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; width: 176px; padding: 12px 10px 11px; border-radius: 14px; background: var(--win); border: 1.5px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: default; user-select: none; position: relative; }
   .ocbox:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
   .ocbox.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .ocbox.drop-before, .ocbox.drop-after { position: relative; }
+  .ocbox.drop-before::before, .ocbox.drop-after::before { content: ''; position: absolute; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--accent); }
+  .ocbox.drop-before::before { left: -11px; }
+  .ocbox.drop-after::before { right: -11px; }
   .ocbox.drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--win)); }
   .ocbox.chief { border-width: 2px; border-color: color-mix(in srgb, var(--accent) 70%, var(--line)); }
   .ocbox.dept { background: color-mix(in srgb, var(--accent) 7%, var(--win)); border-style: dashed; }
@@ -5638,7 +5642,7 @@
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
     if (!cos.teams[p.id]) {
-      cos.teams[p.id] = { nodes: [{ id: uid(), kind: 'staff', chief: true, name: 'Chief of Staff', role: 'Leads the team and keeps everything moving', about: '', color: p.color || COS_COLOURS[0], parent: null }] };
+      cos.teams[p.id] = { ordered: true, nodes: [{ id: uid(), kind: 'staff', chief: true, name: 'Chief of Staff', role: 'Leads the team and keeps everything moving', about: '', color: p.color || COS_COLOURS[0], parent: null }] };
       saveCos();
     }
     return cos.teams[p.id];
@@ -5699,6 +5703,26 @@
     if (!n || !p || n.chief || id === newParent || cosUnder(t, id, newParent) || n.parent === newParent) return;
     cosChange(() => { n.parent = newParent; n.lead = false; }, `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}`);
   }
+  // Put a box beside another one (same manager, just before or after it). The chart keeps its grid;
+  // only the order along the row, or who it sits under, changes.
+  function cosPlace(id, targetId, after) {
+    const t = cosTeam();
+    const n = cosNode(t, id), m = cosNode(t, targetId);
+    if (!n || !m || n.chief || m.chief || id === targetId || cosUnder(t, id, targetId)) return;
+    const moved = n.parent !== m.parent, p = cosNode(t, m.parent);
+    cosChange(() => {
+      if (moved) { n.parent = m.parent; n.lead = false; }
+      t.nodes.splice(t.nodes.indexOf(n), 1);
+      t.nodes.splice(t.nodes.indexOf(m) + (after ? 1 : 0), 0, n);
+    }, moved && p ? `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}` : null);
+  }
+  function cosShift(id, dir) {                        // one place left (-1) or right (+1) along its row
+    const t = cosTeam();
+    const n = cosNode(t, id);
+    if (!n || n.chief) return;
+    const sibs = cosKids(t, n.parent), i = sibs.indexOf(n), o = sibs[i + dir];
+    if (o) cosPlace(id, o.id, dir > 0);
+  }
   function cosMenu(x, y, id) {
     const t = cosTeam();
     const n = cosNode(t, id);
@@ -5714,7 +5738,12 @@
         const was = n.lead;
         cosKids(t, parent.id).forEach(k => { k.lead = false; });
         n.lead = !was;
+        const first = cosKids(t, parent.id)[0];        // a new lead moves to the front of the row
+        if (n.lead && first !== n) { t.nodes.splice(t.nodes.indexOf(n), 1); t.nodes.splice(t.nodes.indexOf(first), 0, n); }
       }, null) },
+      !n.chief && '-',
+      !n.chief && { label: 'Move Left', key: '⌥←', disabled: cosKids(t, n.parent)[0] === n, run: () => cosShift(n.id, -1) },
+      !n.chief && { label: 'Move Right', key: '⌥→', disabled: cosKids(t, n.parent).slice(-1)[0] === n, run: () => cosShift(n.id, 1) },
       !n.chief && '-',
       !n.chief && { label: 'Remove…', run: () => cosRemove(n.id) },
     ]);
@@ -5743,9 +5772,7 @@
   function cosTree(t, n) {
     const li = document.createElement('li');
     li.appendChild(cosBox(t, n));
-    const kids = cosKids(t, n.id);
-    // Leaders first in a department, then departments, then everyone else, by name.
-    kids.sort((a, b) => (b.lead ? 1 : 0) - (a.lead ? 1 : 0) || (a.kind === b.kind ? 0 : a.kind === 'dept' ? 1 : -1) || (a.name || '').localeCompare(b.name || ''));
+    const kids = cosKids(t, n.id);                     // in the order you set (drag beside, or Move Left/Right)
     if (kids.length) { const ul = document.createElement('ul'); for (const k of kids) ul.appendChild(cosTree(t, k)); li.appendChild(ul); }
     return li;
   }
@@ -5767,7 +5794,7 @@
       r.lastChild.textContent = n.name;
       r.title = n.role || n.name;
       side.appendChild(r);
-      for (const k of cosKids(t, n.id).sort((a, b) => (a.name || '').localeCompare(b.name || ''))) walkN(k, d + 1);
+      for (const k of cosKids(t, n.id)) walkN(k, d + 1);            // same order as the chart
     };
     for (const r of t.nodes.filter(n => !n.parent)) walkN(r, 0);
   }
@@ -5910,7 +5937,7 @@
       cells[2].textContent = n.kind === 'dept' ? '' : deptOf(n);
       cells[3].textContent = (cosNode(t, n.parent) || {}).name || '';
       l.appendChild(r);
-      for (const k of cosKids(t, n.id).sort((a, b) => (a.name || '').localeCompare(b.name || ''))) walkN(k, d + 1);
+      for (const k of cosKids(t, n.id)) walkN(k, d + 1);            // same order as the chart
     };
     for (const r of t.nodes.filter(n => !n.parent)) walkN(r, 0);
     return l;
@@ -6049,21 +6076,35 @@
     e.dataTransfer.setData('application/x-navigator-cos', b.dataset.cid);
     e.dataTransfer.effectAllowed = 'move';
   });
+  // Drop on the middle of a box: it goes below. Drop on its left or right edge: it goes beside it.
+  const cosDropZone = (e, b) => {
+    const t = cosTeam(), n = cosNode(t, b.dataset.cid);
+    if (n && !n.chief) {
+      const r = b.getBoundingClientRect(), f = (e.clientX - r.left) / r.width;
+      if (f < 0.28) return 'before';
+      if (f > 0.72) return 'after';
+    }
+    return 'into';
+  };
+  const cosClearDrop = () => document.querySelectorAll('.ocbox.drop, .ocbox.drop-before, .ocbox.drop-after').forEach(x => x.classList.remove('drop', 'drop-before', 'drop-after'));
   $('cosMain').addEventListener('dragover', e => {
     const b = e.target.closest('.ocbox');
-    document.querySelectorAll('.ocbox.drop').forEach(x => x.classList.remove('drop'));
+    cosClearDrop();
     if (!b || !cosUi.dragId || ![...e.dataTransfer.types].includes('application/x-navigator-cos')) return;
     const t = cosTeam();
     if (b.dataset.cid === cosUi.dragId || cosUnder(t, cosUi.dragId, b.dataset.cid)) return;
     e.preventDefault();
-    b.classList.add('drop');
+    const z = cosDropZone(e, b);
+    b.classList.add(z === 'into' ? 'drop' : 'drop-' + z);
   });
   $('cosMain').addEventListener('drop', e => {
     const b = e.target.closest('.ocbox');
-    document.querySelectorAll('.ocbox.drop').forEach(x => x.classList.remove('drop'));
+    cosClearDrop();
     if (!b || !cosUi.dragId) return;
     e.preventDefault();
-    cosMove(cosUi.dragId, b.dataset.cid);
+    const z = cosDropZone(e, b);
+    if (z === 'into') cosMove(cosUi.dragId, b.dataset.cid);
+    else cosPlace(cosUi.dragId, b.dataset.cid, z === 'after');
     cosUi.dragId = null;
   });
   document.addEventListener('dragend', () => { cosUi.dragId = null; });
@@ -6169,6 +6210,21 @@
       const about = (n.about || '').trim();
       if (about) { const r = (n.role || '').trim(); n.role = r && !r.includes(about) ? `${r.replace(/[.\s]+$/, '')}. ${about}` : (r || about); changed = true; }
       if ('about' in n) { delete n.about; changed = true; }
+    }
+    if (changed) saveCos();
+  }
+  // Boxes used to be sorted automatically (leaders, then people, then departments, by name). Now the
+  // order is yours to set, so start from the order you were already seeing.
+  function cosKeepOrder() {
+    let changed = false;
+    for (const t of Object.values((cos && cos.teams) || {})) {
+      if (t.ordered || !Array.isArray(t.nodes)) continue;
+      const old = (a, b) => (b.lead ? 1 : 0) - (a.lead ? 1 : 0) || (a.kind === b.kind ? 0 : a.kind === 'dept' ? 1 : -1) || (a.name || '').localeCompare(b.name || '');
+      const out = [], seen = new Set();
+      const walk = id => { for (const k of t.nodes.filter(x => x.parent === id).sort(old)) { if (seen.has(k.id)) continue; seen.add(k.id); out.push(k); walk(k.id); } };
+      walk(null);
+      for (const n of t.nodes) if (!seen.has(n.id)) out.push(n);   // anything unattached keeps its place at the end
+      t.nodes = out; t.ordered = true; changed = true;
     }
     if (changed) saveCos();
   }
@@ -7090,6 +7146,9 @@ body { width: max-content !important; min-width: 0 !important; }
       const s = $('cosSearch');
       if (s) { e.preventDefault(); e.stopImmediatePropagation(); s.focus(); s.select(); }
       return;
+    }
+    if (!mod && !typing && e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !cosUi.page && cosUi.sel) {
+      e.preventDefault(); cosShift(cosUi.sel, e.key === 'ArrowLeft' ? -1 : 1); return;   // move the selected box along its row
     }
     if (mod || e.altKey || typing) return;
     const t = cosTeam();
@@ -8351,6 +8410,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   try { cosMigrateToFolders(); } catch (e) { console.error('Chief of Staff move to folders', e); }
   try { cosMigrateSkills(); } catch (e) { console.error('Chief of Staff skills to folders', e); }
   try { cosMergeRoleAndAbout(); } catch (e) { console.error('Chief of Staff role', e); }
+  try { cosKeepOrder(); } catch (e) { console.error('Chief of Staff order', e); }
   try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();
   renderSide();
