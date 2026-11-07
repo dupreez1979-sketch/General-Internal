@@ -280,6 +280,10 @@
   body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head { flex-wrap: wrap; }
   body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head::before { content: "Company folders"; padding: 2px 4px 6px; }
   body.cos-mode.cos-work .cos-detail, body.cos-mode.cos-work .col-detail { display: none; }
+  body.cos-mode.cos-dash #cosMain { flex: none; order: -1; }
+  body.cos-mode.cos-dash #cosMain .cos-body { flex: none; }
+  body.cos-mode.cos-dash #content { display: flex !important; }
+  body.cos-mode.cos-dash #pathbar, body.cos-mode.cos-dash .cos-detail, body.cos-mode.cos-dash .col-detail { display: none !important; }
   .lrow .dchk { margin: 0 6px 0 0; flex: none; }
   .filed-tag { flex: none; font-size: 10px; font-weight: 600; color: #328276; background: color-mix(in srgb, #328276 12%, transparent); border-radius: 8px; padding: 1px 7px; margin-left: 6px; white-space: nowrap; }
   .filed-tag.by { color: var(--muted); background: var(--field); font-weight: 500; }
@@ -5937,7 +5941,7 @@
   }
   function setApp(a) {
     cosEndMaking();
-    if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work'); cosReturnSource(); }
+    if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash'); cosReturnSource(); }
     currentApp = a === 'cos' ? 'cos' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
@@ -6298,7 +6302,10 @@
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
-    if (!COS_TABS.some(([k]) => k === cosUi.tab)) cosUi.tab = cosUi.tab === 'functions' ? 'skills' : cosUi.tab === 'routines' ? 'routines' : 'work';
+    if (!staffTabs(staff).some(([k]) => k === cosUi.tab)) cosUi.tab = cosUi.tab === 'functions' ? 'skills' : cosUi.tab === 'routines' ? 'routines' : 'work';
+    const dash = !!(staff && cosUi.tab === 'dashboard' && staff.dashboard);
+    document.body.classList.toggle('cos-dash', dash);
+    if (dash) cosUi.adding = false;
     const work = !!(staff && (cosUi.tab === 'work' || cosUi.tab === 'skills') && staff.external !== 'clara');
     const foot = $('splitLeft').querySelector('.sl-foot');
     if (!foot.dataset.nav) foot.dataset.nav = foot.textContent;
@@ -6462,7 +6469,18 @@
   // Skills: what they do on request (each a Claude chat or project you go back to). Routines: Claude's
   // scheduled tasks. Each staff member can have a Claude Project, so their chats start with their role.
   const COS_TABS = [['work', 'Work'], ['skills', 'Skills'], ['routines', 'Routines']];
-  function openStaff(id) { cosUi.page = id; cosUi.sel = id; cosUi.toFolder = true; renderCos(); }
+  // A fourth tab, Dashboard, appears once the staff member has one (first, if it is set to open first).
+  function staffTabs(n) {
+    if (!n || !n.dashboard) return COS_TABS;
+    return n.dashFirst ? [['dashboard', 'Dashboard'], ...COS_TABS] : [...COS_TABS, ['dashboard', 'Dashboard']];
+  }
+  function openStaff(id) {
+    const n = cosNode(cosTeam(), id);
+    cosUi.page = id; cosUi.sel = id; cosUi.toFolder = true;
+    if (n && n.dashboard && n.dashFirst) cosUi.tab = 'dashboard';
+    else if (cosUi.tab === 'dashboard' && !(n && n.dashboard)) cosUi.tab = 'work';
+    renderCos();
+  }
 
   // Where a Navigator item sits in the team: { team, staff } folders, or null outside the Team folder.
   function teamCtxOf(id) {
@@ -6784,6 +6802,57 @@
     ].filter(x => x !== false && x !== 0 && x !== null && x !== undefined));
   }
 
+  // ----- A staff member's dashboard (a Claude Dashboard, made and changed in Claude) -----
+  // Claude often keeps a new dashboard inside the chat that made it; once the app learns the dashboard's
+  // own address (from Claude's list of artifacts), that is what the tab shows.
+  function cosDashUrl(d) {
+    if (!d) return HOME;
+    if (d.artifactUrl) return d.artifactUrl;
+    const rel = /\/chat\//.test(d.url || '') ? (lib.related || {})[normUrl(d.url)] || [] : [];
+    const arts = new Map((lib.artifacts || []).map(x => [normUrl(x.url), x]));
+    const best = rel.find(u => arts.has(u) && libKind(arts.get(u), 'artifacts') === 'dashboard') || rel[0];
+    return best ? (/^https?:/.test(best) ? best : 'https://claude.ai' + best) : d.url;
+  }
+  const cosDashShowing = n => !!(n.dashboard && !(cosUi.dashEditing === n.id && state.loc.kind === 'page'));
+  function cosDashEdit(n) {
+    const d = n.dashboard;
+    const chat = d.chatUrl || (/\/chat\//.test(d.url) ? d.url : '');
+    if (chat && normUrl(chat) !== normUrl(cosDashUrl(d))) { cosUi.dashKeep = true; go({ kind: 'page', url: chat }); cosUi.dashEditing = n.id; renderCos(); toast('This is the chat that made the dashboard. Ask Claude for changes here, then click Back to Dashboard.'); }
+    else toast('Ask Claude for changes right here, in the chat beside the dashboard.');
+  }
+  function cosNewDashboard(n) {
+    const nid = n.id;
+    navigator.clipboard.writeText(`A dashboard for ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+    cosCreate('dashboard', { what: `${n.name}\u2019s dashboard`, onLink: link => {
+      const m = cosNode(cosTeam(), nid);
+      if (!m) return;
+      m.dashboard = { name: link.name, url: link.url, chatUrl: /\/chat\//.test(link.url) ? link.url : '', auto: link.auto };
+      cosUi.page = nid; cosUi.tab = 'dashboard'; cosUi.adding = false; cosUi.dashKeep = true;   // stay on what Claude is showing
+    } });
+  }
+  function cosUseDashboard(n, x) {
+    cosChange(() => { n.dashboard = { name: x.name || 'Dashboard', url: x.url, chatUrl: '' }; cosUi.tab = 'dashboard'; }, `${n.name} now has \u201c${x.name || 'Dashboard'}\u201d as their dashboard`);
+  }
+  function cosDashMenu(x, y, n) {
+    const mine = (lib.artifacts || []).filter(a => libKind(a, 'artifacts') === 'dashboard').slice(0, 25);
+    let cur = state.loc.kind === 'page' ? state.pageUrl : '';
+    const curArt = cur && itemKindOf(pathOf(cur)) === 'artifact' && !(n.dashboard && normUrl(cur) === normUrl(cosDashUrl(n.dashboard)));
+    showMenu(x, y, [
+      n.dashboard && { label: 'Open in Your Browser', run: () => window.open(cosDashUrl(n.dashboard), '_blank') },
+      n.dashboard && { label: 'Edit in Claude', run: () => { cosUi.tab = 'dashboard'; renderCos(); setTimeout(() => cosDashEdit(n), 50); } },
+      n.dashboard && '-',
+      { label: n.dashboard ? 'Make a New Dashboard with Claude\u2026' : 'Make a Dashboard with Claude\u2026', run: () => cosNewDashboard(n) },
+      mine.length ? { label: 'Use an Existing Dashboard', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled dashboard', icon: 'dashboard', run: () => cosUseDashboard(n, a) }))) }
+        : { label: 'No dashboards read from Claude yet', disabled: true, run: () => {} },
+      curArt && { label: 'Use the Claude Page Showing Now', run: () => cosUseDashboard(n, { name: cleanTitle(state.pageTitle) || 'Dashboard', url: cur }) },
+      n.dashboard && '-',
+      n.dashboard && { label: 'Remove Dashboard\u2026', run: () => {
+        if (!confirm(`Remove the dashboard from ${n.name}? It stays in Claude; only the tab here goes. You can delete it in Claude if you no longer need it.`)) return;
+        cosChange(() => { delete n.dashboard; delete n.dashFirst; if (cosUi.tab === 'dashboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s dashboard`);
+      } },
+    ].filter(Boolean));
+  }
+
   function renderStaffPage(t, n, body) {
     const page = document.createElement('div');
     page.className = 'cos-page';
@@ -6806,6 +6875,8 @@
       const more = mk(UI.chev, 'More', e => { const b = e.currentTarget.getBoundingClientRect(); cosProjectMenu(b.left, b.bottom + 4, n); });
       more.classList.add('more');
       pb.classList.toggle('on', !!n.claudeProject);
+      if (!n.dashboard) mk(`${colourIcon('dashboard')}<span class="t">Add Dashboard</span>`, `Give ${n.name} a dashboard: make one with Claude, or use one you already have. It gets its own tab here.`,
+        e => { const b = e.currentTarget.getBoundingClientRect(); cosDashMenu(b.left, b.bottom + 4, n); });
     }
     if (n.external) {                                           // Clara works by email: nothing to keep here
       page.appendChild(who);
@@ -6820,12 +6891,13 @@
     const tabs = document.createElement('div');
     tabs.className = 'cos-tabs';
     const f = staffFolder(n);
-    for (const [k, label] of COS_TABS) {
+    for (const [k, label] of staffTabs(n)) {
       const b = document.createElement('button');
       b.className = cosUi.tab === k ? 'on' : '';
       b.textContent = label;
+      if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -6841,8 +6913,28 @@
       tb.appendChild(b);
       tabs.appendChild(tb);
     }
+    if (cosUi.tab === 'dashboard' && n.dashboard) {
+      const tb = document.createElement('div');
+      tb.className = 'tab-tools';
+      const btn = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
+      const showing = cosDashShowing(n);
+      if (showing) btn(`<span class="ic">${UI.compose}</span><span class="t">Edit in Claude</span>`, 'Open the chat that made this dashboard, and ask Claude for changes there', () => cosDashEdit(n));
+      else btn(`<span class="ic">${UI.back}</span><span class="t">Back to Dashboard</span>`, 'Show the dashboard again', () => { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); renderCos(); });
+      btn(`<span class="ic">${UI.reload}</span>`, 'Reload the dashboard', () => viewDo(v => v.reload()));
+      btn(`${n.dashFirst ? `<span class="ic">${UI.check}</span>` : ''}<span class="t">Open First</span>`, n.dashFirst ? `${n.name}\u2019s page opens on the dashboard. Click to open on Work instead.` : `Open ${n.name}\u2019s page on the dashboard (it becomes the first tab)`,
+        () => cosChange(() => { n.dashFirst = !n.dashFirst; }, null), !!n.dashFirst);
+      btn(UI.more, 'More: open in your browser, use another dashboard, remove', e => { const r = e.currentTarget.getBoundingClientRect(); cosDashMenu(r.left, r.bottom + 4, n); });
+      tabs.appendChild(tb);
+    }
     page.append(who, tabs);
     body.appendChild(page);
+    if (cosUi.tab === 'dashboard' && n.dashboard) {
+      // The dashboard fills the page below the tabs (.cos-dash in the CSS), shown in Claude's pane.
+      const entering = cosUi.toFolder || cosUi.dashFor !== n.id || state.loc.kind !== 'page';
+      if (entering && !cosUi.dashKeep) { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); }
+      cosUi.dashFor = n.id; cosUi.dashKeep = false; cosUi.toFolder = false;
+      return;
+    }
     if (cosUi.tab === 'work' || cosUi.tab === 'skills') {
       // Navigator's own folder view of this person's folder (or their Skills folder) sits below (.cos-work in the CSS).
       const root = cosUi.tab === 'skills' ? skillsFolder(n) : f;
@@ -7507,7 +7599,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (page) {
       if (cosUi.tab === 'work') return;                       // Navigator's folder view: its own keys
       if (e.key === 'Escape') { e.preventDefault(); cosUi.page = null; cosUi.adding = false; renderCos(); }
-      else if (/^[1-3]$/.test(e.key)) { e.preventDefault(); cosUi.tab = COS_TABS[+e.key - 1][0]; cosUi.adding = false; renderCos(); }
+      else if (/^[1-4]$/.test(e.key) && staffTabs(page)[+e.key - 1]) { e.preventDefault(); cosUi.tab = staffTabs(page)[+e.key - 1][0]; cosUi.adding = false; cosUi.toFolder = true; renderCos(); }
       return;
     }
     const n = cosUi.sel && cosNode(t, cosUi.sel);
@@ -7627,7 +7719,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     state.autoFile = { kind, lastPath: null, since: Date.now(), onMade: done, from: url ? pathOf(url) : null };
     toast(kind === 'project' ? `Name the project (its name is copied) and click Create Project. It is linked to ${what}.`
-      : `Claude is open on the ${fr('claude').at}${url ? ', in the Claude Project' : ''}. It is linked to ${what} as soon as you send your first message.`);
+      : `Claude is open ${document.body.classList.contains('cos-adding') ? `on the ${fr('claude').at}` : 'below'}${url ? ', in the Claude Project' : ''}. It is linked to ${what} as soon as you send your first message.`);
   }
   // Claude's own name for a new chat arrives a little after it is created: keep linked names up to date.
   function cosNoteTitle(url, title) {
