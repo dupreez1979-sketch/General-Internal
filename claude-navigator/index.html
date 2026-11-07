@@ -5676,7 +5676,7 @@
     const t = cosTeam();
     if (!t) return;
     const parent = cosNode(t, parentId) || t.nodes.find(n => n.chief);
-    const n = { id: uid(), kind, name: kind === 'dept' ? 'New department' : 'New staff member', role: kind === 'dept' ? '' : 'What they do', about: '',
+    const n = { id: uid(), kind, name: kind === 'dept' ? 'New department' : 'New staff member', role: '', about: '',
       color: cosColours()[(t.nodes.length + 1) % cosColours().length], parent: parent.id };
     cosChange(() => { t.nodes.push(n); cosUi.sel = n.id; }, null);
     setTimeout(() => { const f = document.querySelector('.cos-detail input[name="name"]'); if (f) { f.focus(); f.select(); } }, 30);
@@ -5824,8 +5824,7 @@
     const parentOpts = t.nodes.filter(x => x.id !== n.id && !cosUnder(t, n.id, x.id));
     d.innerHTML = `<h2></h2>
       <label>Name<input name="name"></label>
-      ${n.kind === 'staff' ? '<label>Role<input name="role" placeholder="e.g. Finance officer: budgets, reconciliations"></label>' : ''}
-      <label>${n.kind === 'dept' ? 'What this department does' : 'What they do and how (for you and for Claude)'}<textarea name="about"></textarea></label>
+      ${n.kind === 'staff' ? '<label>Role (what they do, for you and for Claude)<textarea name="role" rows="3" placeholder="e.g. Board papers, agendas and minutes; keeps the registers up to date"></textarea></label>' : '<label>What this department does<textarea name="about"></textarea></label>'}
       ${n.chief ? '' : `<label>${n.kind === 'dept' ? 'Sits under' : 'Reports to'}<select name="parent"></select></label>`}
       ${n.kind === 'staff' && !n.external ? '<label>Usually files in<select name="fileTo" title="Where File puts their finished work in the company folders"></select></label>' : ''}
       <label>Colour<div class="cos-swatches"></div></label>
@@ -5836,7 +5835,7 @@
     const f = name => d.querySelector(`[name="${name}"]`);
     f('name').value = n.name || '';
     if (f('role')) f('role').value = n.role || '';
-    f('about').value = n.about || '';
+    if (f('about')) f('about').value = n.about || '';
     if (f('fileTo')) {
       const sel = f('fileTo');
       const none = document.createElement('option'); none.value = ''; none.textContent = 'Not set (asked when filing)'; sel.appendChild(none);
@@ -6162,6 +6161,17 @@
 
   // One-time move: projects and actions from earlier versions become folders and links in the staff
   // member's folder; functions become skills. (A copy of the old data is kept, just in case.)
+  function cosMergeRoleAndAbout() {
+    let changed = false;
+    for (const t of Object.values((cos && cos.teams) || {})) for (const n of t.nodes || []) {
+      if (n.kind !== 'staff') continue;
+      if (n.role === 'What they do') { n.role = ''; changed = true; }
+      const about = (n.about || '').trim();
+      if (about) { const r = (n.role || '').trim(); n.role = r && !r.includes(about) ? `${r.replace(/[.\s]+$/, '')}. ${about}` : (r || about); changed = true; }
+      if ('about' in n) { delete n.about; changed = true; }
+    }
+    if (changed) saveCos();
+  }
   function cosMigrateSkills() {
     let moved = 0;
     for (const p of profiles()) { const t = cos.teams && cos.teams[p.id]; if (!t) continue;
@@ -8340,6 +8350,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   })();
   try { cosMigrateToFolders(); } catch (e) { console.error('Chief of Staff move to folders', e); }
   try { cosMigrateSkills(); } catch (e) { console.error('Chief of Staff skills to folders', e); }
+  try { cosMergeRoleAndAbout(); } catch (e) { console.error('Chief of Staff role', e); }
   try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();
   renderSide();
