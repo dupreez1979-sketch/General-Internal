@@ -155,14 +155,29 @@
   #paneRs { flex: none; width: 1px; background: var(--line); position: relative; }
   #paneRs::after { content: ""; position: absolute; inset: 0 -4px; cursor: col-resize; z-index: 4; }
   #paneRs[hidden], body.cos-mode #paneRs { display: none; }
+  #splitRs { flex: none; width: 0; position: relative; }
+  #splitRs::after { content: ""; position: absolute; inset: 0 -4px; cursor: col-resize; z-index: 4; }
+  #splitRs[hidden], body.cos-mode:not(.cos-work) #splitRs { display: none; }
+  #content > .edge-tab { position: absolute; }
+  .edge-tab.mid::before { top: 42%; }
+  .edge-tab.low::before { top: 58%; }
   body:not(.cos-mode) #splitLeft { order: 1; }
-  body:not(.cos-mode) #browse { order: 2; min-width: 240px; }
-  body:not(.cos-mode) #paneRs { order: 4; }
-  body:not(.cos-mode) #pane { order: 5; }
-  body:not(.cos-mode).split-right #splitLeft { order: 3; border-right: 0; border-left: 1px solid var(--line); }
+  body:not(.cos-mode) #splitRs { order: 2; }
+  body:not(.cos-mode) #browse { order: 3; min-width: 240px; flex: 1 1 240px; }
+  body:not(.cos-mode) #paneRs { order: 6; }
+  body:not(.cos-mode) #pane { order: 7; }
+  body:not(.cos-mode).split-right #splitRs { order: 4; }
+  body:not(.cos-mode).split-right #splitLeft { order: 5; border-right: 0; border-left: 1px solid var(--line); }
+  body.cos-mode.cos-work #splitRs { order: 2; }
+  body.cos-mode.cos-work:not(.split-right) #splitRs { order: 0; }
+  #bar #splitBtn { display: none !important; }        /* split view opens from the Split tab at the list's edge */
+  .cos-detail { grid-template-columns: minmax(0, 1fr); }
+  .cos-detail > *, .cos-detail label > * { min-width: 0; max-width: 100%; }
+  .cos-detail select { width: 100%; text-overflow: ellipsis; }
   body:not(.cos-mode).claude-left #pane { order: -2; }
   body:not(.cos-mode).claude-left #paneRs { order: -1; }
-  body.claude-beside:not(.cos-mode) #pane { flex: 0 0 var(--claude-w, 58%); min-width: 360px; max-width: calc(100% - 260px); }
+  body.claude-beside:not(.cos-mode) #pane { flex: 0 1 var(--claude-w, 58%); min-width: 320px; max-width: calc(100% - 260px); overflow: hidden; }
+  #content { overflow: hidden; }
   /* The sidebar: on the left or right; unpinned it tucks away and slides out from the edge; hidden it waits at the edge. */
   body.side-right:not(.side-off) { grid-template-columns: minmax(0, 1fr) 1px var(--side-w); }
   body.side-right #main { grid-column: 1; grid-row: 1; }
@@ -197,7 +212,7 @@
   body.cos-mode.cos-adding.claude-left #cosSrcHead, body.cos-mode.cos-adding.claude-left #content, body.cos-mode.cos-adding.claude-left #pathbar { grid-column: 1; border-left: 0; border-right: 1px solid var(--line); }
   body.cos-mode.cos-work:not(.split-right) #splitLeft:not([hidden]) { order: 0 !important; border-left: 0 !important; border-right: 1px solid var(--line) !important; }
   #browse { flex: 1; overflow: auto; outline: none; padding: 14px 18px 30px; }
-  #splitLeft { flex: 0 0 38%; max-width: 520px; min-width: 240px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--tint, var(--accent)) 4%, var(--win)); }
+  #splitLeft { flex: 0 1 var(--split-w, 38%); max-width: calc(100% - 280px); min-width: 220px; display: flex; flex-direction: column; border-right: 1px solid var(--line); background: color-mix(in srgb, var(--tint, var(--accent)) 4%, var(--win)); }
   #splitLeft[hidden] { display: none; }
   .sl-head { display: flex; align-items: center; gap: 6px; padding: 10px 12px 8px; border-bottom: 1px solid var(--line); min-height: 40px; }
   #slPath { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; min-width: 0; }
@@ -258,7 +273,7 @@
   body.cos-mode.cos-work #cosMain .cos-body { flex: none; }
   body.cos-mode.cos-work #bar { display: flex !important; }
   body.cos-mode.cos-work #content, body.cos-mode.cos-work #pathbar { display: flex !important; }
-  body.cos-mode.cos-work #splitLeft:not([hidden]) { display: flex !important; order: 2; border-right: 0; border-left: 1px solid var(--line); }
+  body.cos-mode.cos-work #splitLeft:not([hidden]) { display: flex !important; order: 3; border-right: 0; border-left: 1px solid var(--line); }
   body.cos-mode.cos-work #browse { order: 1; }
   body.cos-mode.cos-work #splitLeft:not([hidden]) ~ #browse::before, body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head::before { display: block; flex: none; width: 100%; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--accent); }
   body.cos-mode.cos-work #splitLeft:not([hidden]) ~ #browse::before { content: attr(data-caption); box-sizing: border-box; padding: 10px 14px 6px; position: sticky; top: 0; z-index: 3; background: var(--win); border-bottom: 1px solid var(--line); margin-bottom: 6px; }
@@ -755,7 +770,10 @@
       <div id="slList"></div>
       <div class="sl-foot">Drag items from the right onto a folder here, or into the empty space to file them in this folder.</div>
     </div>
+    <div id="splitRs" hidden title="Drag to resize. Double-click to reset."></div>
     <div id="browse" tabindex="0" aria-label="Folder contents"></div>
+    <div id="edgeSplit" class="edge-tab at-left mid" data-label="Split"></div>
+    <div id="edgeClaude" class="edge-tab at-right low" data-label="Claude" title="Open Claude beside this list"></div>
     <div id="paneRs" hidden title="Drag to resize Claude. Double-click to reset."></div>
     <div id="pane" hidden></div>
   </div>
@@ -1561,7 +1579,7 @@
         if (n.type === 'link' && isArchived(n.url)) continue;     // archived: see Filter, Archived
         const open = !!(n.children && n.children.length && isOpen(n));
         frag.appendChild(sideRow(n, depth, open, parent));
-        if (open) addChildren(n.children, depth + 1, n);
+        if (open) addChildren(archiveFirst(n.children), depth + 1, n);
       }
     };
     if (isApp) {
@@ -1956,16 +1974,17 @@
     const showPage = isApp && state.loc.kind === 'page' && !state.query;
     try { if (showPage || state.loc.kind !== 'library') updateSubAll(); } catch (e) { /* during start-up */ }
     // Navigator shows Claude beside the list you came from (unless Claude is widened to fill the window).
-    // Pinned, Claude stays beside the list while you browse; unpinned, it tucks away when you leave the page.
+    // Once open, Claude stays beside the list while you browse, until you close it.
     const nav = currentApp !== 'cos', cl = fr('claude');
     const beside = showPage && nav && !cl.wide;
-    const pinned = isApp && nav && !showPage && !state.query && cl.pinned && !state.claudeShut && !!state.pageUrl;
+    const pinned = isApp && nav && !showPage && !state.query && !state.claudeShut && !!state.pageUrl;   // open until you close it
     pane.hidden = !(showPage || pinned);
     browseEl.hidden = showPage && !beside;
     $('pathbar').hidden = showPage;
     $('paneRs').hidden = !(beside || pinned);
     document.body.classList.toggle('claude-beside', beside || pinned);
     paintClaudeHead();
+    try { paintEdges(); } catch (e) { /* starting up */ }
     if (showPage && !beside) return;
     if (showPage) {                                   // draw the list you came from, beside Claude
       const real = state.loc;
@@ -1987,6 +2006,8 @@
       where = true;
     } else {
       items = childrenOf(state.loc.id);
+      // In a staff member's Work tab their Skills folder is not shown (skills have their own tab).
+      try { if (currentApp === 'cos' && cosUi.page && cosUi.tab === 'work') items = items.filter(x => !x.skillsFolder); } catch (e) { /* starting up */ }
     }
     items = sortItems(items, where ? 'search' : 'folder', { updated: libUpdatedIndex() });
     const unfiltered = items.length;
@@ -2694,7 +2715,10 @@
       default: return '';
     }
   }
-  function sortItems(items, view, ctx) {
+  // A staff member's Archive folder always sits at the top; the rest sorts as usual.
+  const archiveFirst = list => list.some(x => x && x.archiveFolder) ? [...list.filter(x => x.archiveFolder), ...list.filter(x => !x.archiveFolder)] : list;
+  function sortItems(items, view, ctx) { return archiveFirst(sortItemsBy(items, view, ctx)); }
+  function sortItemsBy(items, view, ctx) {
     const sort = sortFor(view);
     if (!sort) return items;
     const dir = sort.dir === 'asc' ? 1 : -1;
@@ -4401,6 +4425,14 @@
   // In a staff member's folder (Chief of Staff), items can be ticked off as done.
   function menuFor(n, scope) {
     const items = menuForBase(n, scope);
+    // Right-click on the empty part of a Skills folder: the Claude Skills choices come first.
+    if (!n && scope === browseEl) {
+      try {
+        const here = hereFolder(), ctx = here && teamCtxOf(here);
+        const staff = ctx && ctx.staff && staffNodeOf(ctx.staff);
+        if (staff && inSkills(here)) return [...cosSkillsItems(staff), '-', ...items];
+      } catch (e) { /* not in a staff folder */ }
+    }
     if (!n || n.type === 'folder' || !teamCtxOf(n.id)) return items;
     if (inSkills(n.id)) { items.unshift({ label: kindOf(n) === 'skill' ? 'Run Skill' : 'Run', run: () => runSkillItem(n.id) }, '-'); return items; }
     const i = items.indexOf('-');
@@ -5551,15 +5583,16 @@
 
   // ---------- Frames: one standard for every side panel ----------
   // The sidebar, Claude, the second list and (in Chief of Staff) the details panel all work the same way:
-  // a small header with ⇄ (move to the other side), a pin (pinned stays open; unpinned tucks away when not
-  // in use) and × (hide). Hidden panels come back from the View menu or a tab at the window's edge.
+  // a small header with ⇄ (move to the other side) and × (close). A closed panel leaves a small tab at the
+  // edge where it was (Sidebar, Claude, Split, Details); click the tab to bring it back.
   // Settings are remembered separately for Navigator and Chief of Staff.
   const FRAMES_STORE = 'claudeNavigator.frames.v1';
   const FRAME_DEFAULTS = {
     navigator: { side: { at: 'left', pinned: true, hidden: false }, claude: { at: 'right', pinned: false, wide: false, w: 0 }, split: { at: 'left', pinned: false } },
     cos: { side: { at: 'left', pinned: true, hidden: false }, claude: { at: 'right', pinned: false }, split: { at: 'right', pinned: true }, detail: { at: 'right', pinned: true, hidden: false } },
   };
-  const FRAME_NAMES = { side: 'Sidebar', claude: 'Claude', split: 'Second list', detail: 'Details' };
+  const FRAME_NAMES = { side: 'Sidebar', claude: 'Claude', split: 'Split', detail: 'Details' };
+  const EDGE_LABEL = { side: 'Sidebar', claude: 'Claude', split: 'Split', detail: 'Details' };
   const FICON = {
     swap: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 5.5h10.5M10.5 3l2.5 2.5-2.5 2.5M13.5 10.5H3M5.5 8L3 10.5 5.5 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     pin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 2h5l-.6 4.2L12.5 9h-9l2.6-2.8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 9v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
@@ -5584,7 +5617,6 @@
   function frameAction(name, what) {
     const f = fr(name), other = f.at === 'left' ? 'right' : 'left';
     if (what === 'swap') return setFrame(name, { at: other });
-    if (what === 'pin') return setFrame(name, name === 'side' ? { pinned: !f.pinned, hidden: false } : { pinned: !f.pinned });
     if (what === 'wide') return setFrame('claude', { wide: !f.wide });
     // Hide
     if (name === 'side') { document.body.classList.remove('side-peek'); return setFrame('side', { hidden: true }); }
@@ -5612,10 +5644,7 @@
     const nm = FRAME_NAMES[name];
     if (wide) b('wide', f.wide ? FICON.narrow : FICON.wide, f.wide ? 'Show Claude beside the list again' : 'Widen Claude to fill the window', false);
     b('swap', FICON.swap, `Move the ${nm.toLowerCase()} to the ${f.at === 'left' ? 'right' : 'left'}`);
-    b('pin', f.pinned ? FICON.pinOn : FICON.pin, f.pinned
-      ? `Pinned: the ${nm.toLowerCase()} stays open. Click to unpin, so it tucks away when not in use`
-      : `Not pinned: the ${nm.toLowerCase()} tucks away when not in use. Click to pin it open`, f.pinned);
-    b('hide', FICON.hide, `Hide the ${nm.toLowerCase()} (bring it back from the View menu${name === 'side' || name === 'detail' ? ' or the tab at the edge of the window' : ''})`);
+    b('hide', FICON.hide, `Close the ${nm.toLowerCase()} (the ${EDGE_LABEL[name]} tab at the edge brings it back)`);
     return el;
   }
   // Claude: open (beside the list) and close.
@@ -5672,12 +5701,45 @@
     });
     rs.addEventListener('dblclick', () => setFrame('claude', { w: 0 }));
   })();
+  // Resize the split (the same in both apps): drag the line between the two lists.
+  (() => {
+    const rs = $('splitRs');
+    rs.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const sl = $('splitLeft').getBoundingClientRect(), box = $('content').getBoundingClientRect();
+      const leftSide = sl.left < browseEl.getBoundingClientRect().left;
+      document.body.classList.add('resizing');
+      const width = ev => Math.max(220, Math.min(box.width - 280, Math.round(leftSide ? ev.clientX - sl.left : sl.right - ev.clientX)));
+      const move = ev => document.documentElement.style.setProperty('--split-w', width(ev) + 'px');
+      const stop = ev => {
+        document.body.classList.remove('resizing');
+        removeEventListener('mousemove', move); removeEventListener('mouseup', stop);
+        setFrame('split', { w: width(ev) });
+      };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+    rs.addEventListener('dblclick', () => setFrame('split', { w: 0 }));
+  })();
   // The sidebar slides out when unpinned and you point at the window's edge.
   let peekTimer = null;
   const peekSide = on => { clearTimeout(peekTimer); document.body.classList.toggle('side-peek', !!on); };
-  $('edgeSide').addEventListener('mouseenter', () => { const f = fr('side'); if (!f.hidden && !f.pinned) peekTimer = setTimeout(() => peekSide(true), 120); });
-  $('edgeSide').addEventListener('mouseleave', () => { if (!document.body.classList.contains('side-peek')) clearTimeout(peekTimer); });
-  $('edgeSide').addEventListener('click', () => { const f = fr('side'); if (f.hidden) showFrame('side'); else peekSide(!document.body.classList.contains('side-peek')); });
+  $('edgeSide').addEventListener('click', () => showFrame('side'));
+  // The tabs for closed panels inside the window: Details (beside the chart), Split and Claude (beside the list).
+  function paintEdges() {
+    const cos = currentApp === 'cos';
+    const ed = $('edgeDetail'), dt = cos ? fr('detail') : null;
+    ed.className = `edge-tab at-${dt ? dt.at : 'right'} second` + (cos && dt.hidden && !cosUi.page && activeProfile() ? ' show' : '');
+    const sp = fr('split'), es = $('edgeSplit');
+    const listShowing = !browseEl.hidden;
+    const splitWanted = !splitOn && isApp !== undefined && listShowing && (cos ? document.body.classList.contains('cos-work') : true);
+    es.className = `edge-tab at-${sp.at} mid` + (splitWanted ? ' show' : '');
+    es.title = cos ? 'Show the company folders beside this list (split view)' : 'Show your folders beside this list (split view), so you can drag across';
+    const cl = fr('claude'), ec = $('edgeClaude');
+    ec.className = `edge-tab at-${cl.at} low` + (isApp && !cos && pane.hidden && !state.query ? ' show' : '');
+  }
+  $('edgeSplit').addEventListener('click', () => showFrame('split'));
+  $('edgeClaude').addEventListener('click', () => showFrame('claude'));
   $('side').addEventListener('mouseenter', () => clearTimeout(peekTimer));
   $('side').addEventListener('mouseleave', () => {
     if (!document.body.classList.contains('side-peek')) return;
@@ -5700,19 +5762,18 @@
   function applyFrames(rerender) {
     const b = document.body, sd = fr('side'), cl = fr('claude'), sp = fr('split');
     b.classList.toggle('side-right', sd.at === 'right');
-    b.classList.toggle('side-off', !!(sd.hidden || !sd.pinned));
-    if (sd.pinned && !sd.hidden) b.classList.remove('side-peek');
+    b.classList.toggle('side-off', !!sd.hidden);
+    if (!sd.hidden) b.classList.remove('side-peek');
     b.classList.toggle('claude-left', cl.at === 'left');
     b.classList.toggle('split-right', sp.at === 'right');
     const cos = currentApp === 'cos', dt = cos ? fr('detail') : null;
     b.classList.toggle('detail-left', !!(dt && dt.at === 'left'));
     if (cl.w) document.documentElement.style.setProperty('--claude-w', cl.w + 'px'); else document.documentElement.style.removeProperty('--claude-w');
     const es = $('edgeSide');
-    es.className = `edge-tab at-${sd.at}` + (sd.hidden || !sd.pinned ? ' show' : '');
-    es.title = sd.hidden ? 'Show the sidebar' : 'Point here (or click) to slide the sidebar out';
-    const ed = $('edgeDetail');
-    const detailWanted = cos && dt.hidden && !cosUi.page && !!activeProfile();
-    ed.className = `edge-tab at-${dt ? dt.at : 'right'} second` + (detailWanted ? ' show' : '');
+    es.className = `edge-tab at-${sd.at}` + (sd.hidden ? ' show' : '');
+    es.title = 'Show the sidebar';
+    if (sp.w) document.documentElement.style.setProperty('--split-w', sp.w + 'px'); else document.documentElement.style.removeProperty('--split-w');
+    paintEdges();
     // The sidebar's own controls sit at its foot (the window buttons are at its top).
     const foot = $('side').querySelector('.side-foot');
     if (foot) { const old = foot.querySelector('.fctl'); const c = frameCtl('side'); if (old) old.replaceWith(c); else foot.appendChild(c); }
@@ -5725,8 +5786,8 @@
     const sd = fr('side');
     const items = [
       { label: sd.hidden ? 'Show Sidebar' : 'Hide Sidebar', key: isMac ? '⌃⌘S' : 'Ctrl+Alt+S', run: () => sd.hidden ? showFrame('side') : frameAction('side', 'hide') },
-      !cos && { label: state.loc.kind === 'page' || (fr('claude').pinned && !state.claudeShut && state.pageUrl) ? 'Hide Claude' : 'Show Claude', run: () => (state.loc.kind === 'page' ? closeClaude() : openClaude()) },
-      { label: splitOn ? 'Hide Second List' : 'Show Second List', run: () => setSplit(!splitOn) },
+      !cos && { label: !pane.hidden ? 'Hide Claude' : 'Show Claude', run: () => (!pane.hidden ? closeClaude() : openClaude()) },
+      { label: splitOn ? 'Hide Split' : 'Show Split', run: () => setSplit(!splitOn) },
       cos && { label: fr('detail').hidden ? 'Show Details' : 'Hide Details', run: () => fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide') },
       '-',
       { label: 'Put Panels Back as They Were', run: () => {
@@ -5759,7 +5820,9 @@
   function renderSplit() {
     const panel = $('splitLeft');
     if (!panel) return;
-    const show = splitOn && isApp !== undefined && (state.loc.kind !== 'page' || (currentApp !== 'cos' && fr('split').pinned && !fr('claude').wide));
+    const show = splitOn && isApp !== undefined && (state.loc.kind !== 'page' || (currentApp !== 'cos' && !fr('claude').wide));
+    $('splitRs').hidden = !show;
+    try { paintEdges(); } catch (e) { /* starting up */ }
     const sh = panel.querySelector('.sl-head');
     if (sh && !sh.querySelector('.fctl')) sh.appendChild(frameCtl('split'));
     else if (sh) sh.replaceChild(frameCtl('split'), sh.querySelector('.fctl'));
@@ -5792,7 +5855,7 @@
     // Contents: folders first (double-click to open), then what is filed here.
     const list = $('slList');
     list.replaceChildren();
-    const kids = here ? here.children || [] : rootList();
+    const kids = archiveFirst(here ? here.children || [] : rootList());
     const folders = kids.filter(n => n.type === 'folder' && !(n.group && ap));
     const others = kids.filter(n => n.type !== 'folder');
     const row = (n, cls = '') => {
@@ -6119,7 +6182,6 @@
       return d;
     };
     const n = cosNode(t, cosUi.sel);
-    if (!n && !fd.pinned) return null;                  // unpinned: only there while someone is selected
     if (!n) {
       // Always there (so the chart never shifts under your mouse); a hint until someone is selected.
       const d = document.createElement('div');
@@ -6242,13 +6304,8 @@
     if (!foot.dataset.nav) foot.dataset.nav = foot.textContent;
     foot.textContent = work ? `Drag between the two sides: onto a company folder here to file it there, or onto the left to add it to ${staff.name}\u2019s ${cosUi.tab === 'skills' ? 'skills' : 'work'}.` : foot.dataset.nav;
     if (work) cosUi.adding = false;
-    let reopen = false;
-    if (staff && !work && cosUi.tab === 'routines' && !cosUi.adding && fr('claude').pinned && !cosUi.claudeShut) {
-      cosUi.adding = true; cosUi.srcFrom = cosUi.srcFrom || 'claude'; reopen = true;   // pinned: stays beside the routines
-    }
     document.body.classList.toggle('cos-work', work);
     document.body.classList.toggle('cos-adding', !!(staff && cosUi.adding));
-    if (reopen) setTimeout(() => { try { cosShowSource(); } catch (e) { /* page changed */ } }, 0);
     if (staff) {
       const back = document.createElement('button');
       back.className = 'tb';
@@ -6919,11 +6976,12 @@
     w.checked = Date.now();
     refreshLibrary(true);
   }
-  function cosSkillsMenu(x, y, n) {
+  function cosSkillsMenu(x, y, n) { showMenu(x, y, cosSkillsItems(n)); }
+  function cosSkillsItems(n) {
     const f = skillsFolder(n);
     const have = new Set(workItems(f).map(i => normUrl(i.url || '')));
     const list = (lib.skills || []).filter(s => !have.has(normUrl(s.url))).slice(0, 40);
-    showMenu(x, y, [
+    return [
       { label: 'Create with Claude…', run: () => cosNewClaudeSkill(n, 'create with claude') },
       { label: 'Create a Skill…', run: () => cosNewClaudeSkill(n, 'create a skill') },
       { label: 'Upload a Skill…', run: () => cosNewClaudeSkill(n, 'upload skill') },
@@ -6934,7 +6992,7 @@
         : [{ label: (lib.skills || []).length ? 'All your Claude Skills are here already' : 'No Claude Skills read yet', disabled: true, run: () => {} }]),
       '-',
       { label: 'Refresh from Claude', run: () => { refreshLibrary(true); toast('Reading your Claude Skills…'); } },
-    ]);
+    ];
   }
 
   // The pane on the right (Link Existing, or Claude while something is being made): Navigator's own list or the Claude pane.
@@ -8188,7 +8246,7 @@ body { width: max-content !important; min-width: 0 !important; }
       'view-icons': () => setView('icons'),
       'view-list': () => setView('list'),
       'toggle-side': () => (fr('side').hidden ? showFrame('side') : frameAction('side', 'hide')),
-      'toggle-claude': () => (currentApp === 'cos' ? null : state.loc.kind === 'page' ? closeClaude() : openClaude()),
+      'toggle-claude': () => (currentApp === 'cos' ? null : !pane.hidden ? closeClaude() : openClaude()),
       'toggle-split': () => setSplit(!splitOn),
       'toggle-detail': () => (currentApp !== 'cos' ? null : fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide')),
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
