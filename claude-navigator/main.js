@@ -1006,6 +1006,11 @@ ipcMain.handle('backup-reveal', () => { fs.mkdirSync(backupDir(), { recursive: t
 
 // ---------- Messages from the folder page ----------
 ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.openExternal(url); });
+// Starts an email in the Mac's mail app (used for Clara). Only mailto: links, and nothing that could attach files.
+ipcMain.handle('open-mail', (_e, url) => {
+  if (typeof url !== 'string' || !/^mailto:/i.test(url) || url.length > 8000 || /[?&](attach|attachment)=/i.test(url)) return false;
+  return shell.openExternal(url).then(() => true, () => false);
+});
 const inDownloads = f => {
   if (typeof f !== 'string') return false;
   const d = path.resolve(app.getPath('downloads')), p = path.resolve(f);

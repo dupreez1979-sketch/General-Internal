@@ -96,6 +96,16 @@ Once a page is saved, the Save button says **Saved**; click it (or the small arr
 
 When a chat, artifact or anything else is open and not yet in a folder, the top bar says **Not in a folder**. Click it, press ⌘S, or use **Save As…** (⇧⌘S, or right-click the Save button) to choose where it goes. Every "where" box in the app is a small folder browser, like the Mac Save dialog: open folders with their arrows (or double-click), pick one, or click **New Folder** to make one on the spot.
 
+## Clara (external executive assistant)
+
+Clara schedules meetings by email: copy Clara (clara@monkeybaa.com.au) into an email and Clara finds a time with everyone.
+
+- **Systems › Clara** in the sidebar: **Open Dashboard** shows Clara's dashboard (beta.claralabs.com) in the right-hand pane, and you stay signed in. **Ask Clara to Schedule…** asks who to meet and what about, then opens a new email in your Mac's mail app (Outlook, if that is your default) with Clara copied in, ready to check and send.
+- In **Chief of Staff**, choose **… › Add Clara (External Assistant)** to put Clara in the org chart, marked External. Clara's page has the same two buttons, and each request is kept as one of Clara's actions so you can tick it off once the meeting is booked.
+- Right-click Clara in the sidebar for **Clara Settings…** to change the email address or dashboard.
+
+Clara does not let other apps read its meetings, so the app cannot list what Clara has booked.
+
 ## Chief of Staff (second app)
 
 Click the **nine dots** at the top of the sidebar to switch between **Navigator** and **Chief of Staff**. Each remembers where you were.

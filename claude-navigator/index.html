@@ -178,6 +178,7 @@
   .cos-who { display: flex; align-items: center; gap: 12px; padding: 14px 18px 0; }
   .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
   .cos-who b { font-size: 17px; display: block; }
+  .cos-who .who-btns { margin-left: auto; display: flex; gap: 8px; }
   .cos-who span { font-size: 12.5px; color: var(--muted); }
   .cos-tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
   .cos-tabs button { background: none; border: 0; padding: 8px 12px; font: inherit; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
@@ -321,6 +322,7 @@
   .ocbox.dept .av { border-radius: 10px; }
   .ocbox .nm { font-weight: 650; font-size: 13px; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ocbox .rl { font-size: 11.5px; color: var(--muted); line-height: 1.25; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ocbox .tag.ext { background: #D9468C; }
   .ocbox .tag { position: absolute; top: -9px; right: 10px; font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); border-radius: 8px; padding: 1px 7px; }
   .ocbox .kids { font-size: 10.5px; color: var(--muted); }
   .cos-detail { width: 300px; flex: none; border-left: 1px solid var(--line); overflow: auto; padding: 16px; display: grid; align-content: start; gap: 12px; background: var(--win); }
@@ -812,6 +814,9 @@
     },
     del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
   };
+  // Clara, the external executive assistant: its email address and dashboard (see the Clara section).
+  const CLARA_STORE = 'claudeNavigator.clara.v1';
+  const clara = (() => { try { return Object.assign({ email: 'clara@monkeybaa.com.au', url: 'https://beta.claralabs.com/' }, JSON.parse(ls.get(CLARA_STORE) || '{}')); } catch (e) { return { email: 'clara@monkeybaa.com.au', url: 'https://beta.claralabs.com/' }; } })();
 
   // ---------- Icons ----------
   // Small glyphs share a 16px grid and draw with colour C, so they can be reused at large sizes.
@@ -834,6 +839,8 @@
     `<rect x="6.2" y="5.2" width="3" height="7.6" rx="1.5" fill="#FFCB00" transform="rotate(32 7.7 9)"/>` +
     `<circle cx="13" cy="11" r="1.8" fill="#00CA72"/></g>`;
   G.monday = () => MONDAY_MARK();
+  // Clara: a calendar with a spark, for the scheduling assistant.
+  G.clara = C => `<rect x="2" y="3" width="12" height="11" rx="2.2" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M2 6.4h12M5.2 1.8v2.6M10.8 1.8v2.6" stroke="${C}" stroke-width="1.3" stroke-linecap="round"/><path d="M8 7.8l.75 1.5 1.55.2-1.15 1.05.3 1.6L8 11.4l-1.45.75.3-1.6L5.7 9.5l1.55-.2z" fill="${C}"/>`;
   G.mondaydoc = C => G.file(C) + MONDAY_MARK(4.4, 5.6, 0.48);
   G.mondayfolder = C => G.folder(C);
   G.mondayws = C => `<rect x="1.8" y="2.2" width="12.4" height="11.6" rx="2.4" fill="none" stroke="${C}" stroke-width="1.3"/>` + MONDAY_MARK(3.4, 2.8, 0.58);
@@ -855,18 +862,18 @@
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
     doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
-    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF', mondayfolder: '#8A8AFF',
+    code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', clara: '#F06AA8', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF', mondayfolder: '#8A8AFF',
     word: '#6EA0F5', excel: '#4CC27C', powerpoint: '#F07A4E', pdf: '#F06A6A', image: '#B08CF0', video: '#E07BD0', audio: '#E7A24A', text: '#A0A7B0', archive: '#B0A090', file: '#A0A7B0',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
     doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
-    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF', mondayfolder: '#6161FF',
+    code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', clara: '#D9468C', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF', mondayfolder: '#6161FF',
     word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
-    code: 'Code', schedule: 'Schedule', designsystem: 'Design system', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace', mondayfolder: 'monday.com folder',
+    code: 'Code', schedule: 'Schedule', designsystem: 'Design system', clara: 'Clara page', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace', mondayfolder: 'monday.com folder',
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
@@ -1400,6 +1407,7 @@
     if (/claude\.ai\/project\//.test(u)) return 'project';
     if (/artifact/i.test(u)) return 'artifact';
     if (/canva\.com/.test(u)) return 'canva';
+    if (/(^|\.|\/\/)claralabs\.com\//.test(u)) return 'clara';
     if (/(^|\.|\/\/)monday\.com\/docs\//.test(u)) return 'mondaydoc';
     if (/(^|\.|\/\/)([a-z0-9-]+\.)?monday\.com\//.test(u)) return 'monday';
     if (/claude\.ai/.test(u)) return 'claude';
@@ -1541,6 +1549,18 @@
       }
       if (sysRow('monday', 'monday.com', small('monday'), mondayData.connected ? `Your monday.com workspaces and boards${mondayData.me && mondayData.me.account ? ` (${mondayData.me.account})` : ''}` : 'Connect your monday.com account')) {
         renderMondayRows(frag);
+      }
+      if (sysRow('clara', 'Clara', small('clara', KIND_COLOUR.clara), `Clara, your external executive assistant (${clara.email})`)) {
+        for (const [action, label, icon, tip] of [['clara-open', 'Open Dashboard', small('clara', KIND_COLOUR.clara), clara.url], ['clara-ask', 'Ask Clara to Schedule…', UI.compose, `Starts an email with ${clara.email} copied in`]]) {
+          const r = document.createElement('div');
+          r.className = 'row lib-action';
+          r.dataset.action = action;
+          r.style.setProperty('--depth', 1);
+          r.title = tip;
+          r.innerHTML = `<span class="twisty"></span><span class="icon">${icon}</span><span class="label"></span>`;
+          r.querySelector('.label').textContent = label;
+          frag.appendChild(r);
+        }
       }
     }
     const sectionHead = (n, extra = '') => {
@@ -4295,6 +4315,9 @@
     if (row.dataset.action === 'new-chat') return newChat();
     if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
     if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
+    if (row.dataset.action === 'sys-clara') return setSysOpen('clara', !sysOpen('clara'));
+    if (row.dataset.action === 'clara-open') return openClara();
+    if (row.dataset.action === 'clara-ask') return askClara(null);
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
     if (row.dataset.action === 'monday-all') return go({ kind: 'library', which: 'monday', mkey: 'all' });
     if (row.dataset.action === 'monday-new') return openNewBoard();
@@ -4366,6 +4389,15 @@
         ]);
       }
       return mondayMenu(e.clientX, e.clientY);
+    }
+    if (row && /^(sys-clara|clara-open|clara-ask)$/.test(row.dataset.action || '')) {
+      e.preventDefault();
+      return showMenu(e.clientX, e.clientY, [
+        { label: 'Open Clara’s Dashboard', run: openClara },
+        { label: 'Ask Clara to Schedule…', run: () => askClara(null) },
+        '-',
+        { label: 'Clara Settings…', run: claraSettings },
+      ]);
     }
     if (row && (row.dataset.lib || row.classList.contains('lib-head') || row.dataset.action === 'sys-claude')) {
       showMenu(e.clientX, e.clientY, [
@@ -5541,6 +5573,7 @@
     b.querySelector('.nm').textContent = n.name;
     b.querySelector('.rl').textContent = n.kind === 'dept' ? (lead ? `Led by ${lead.name}` : 'Department') : (n.role || '');
     if (n.chief) b.insertAdjacentHTML('afterbegin', '<span class="tag">Chief of Staff</span>');
+    else if (n.external) b.insertAdjacentHTML('afterbegin', '<span class="tag ext">External</span>');
     else if (n.lead) b.insertAdjacentHTML('afterbegin', '<span class="tag">Lead</span>');
     b.title = `${n.name}${n.role ? `\n${n.role}` : ''}\nClick to edit; drag onto someone to move; right-click for more.`;
     return b;
@@ -5918,6 +5951,14 @@
     who.querySelector('.av').textContent = cosInitials(n);
     who.querySelector('b').textContent = n.name;
     who.querySelector('.who-role').textContent = n.role || '';
+    if (n.external === 'clara') {
+      const bx = document.createElement('div');
+      bx.className = 'who-btns';
+      const mk = (label, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'btn'; b.textContent = label; b.addEventListener('click', run); bx.appendChild(b); };
+      mk('Ask Clara to Schedule…', () => askClara(n), true);
+      mk('Open Clara', openClara);
+      who.appendChild(bx);
+    }
     const tabs = document.createElement('div');
     tabs.className = 'cos-tabs';
     for (const [k, label] of COS_TABS) {
@@ -6776,6 +6817,8 @@ body { width: max-content !important; min-width: 0 !important; }
   function cosMoreMenu(x, y) {
     const t = cosTeam();
     showMenu(x, y, [
+      { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add Clara (External Assistant)', disabled: !t, run: () => claraNode() ? askClara(claraNode()) : cosAddClara() },
+      '-',
       { label: 'Export Org Chart as PDF…', disabled: !t, run: () => cosExport('pdf') },
       { label: 'Export Org Chart as Image…', disabled: !t, run: () => cosExport('png') },
       '-',
@@ -6838,6 +6881,79 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (e.key.toLowerCase() === 'd') { e.preventDefault(); cosAdd('dept', cosUi.sel); }
     else if (e.key === 'Escape' && cosUi.sel) { cosSelect(null); }
   });
+
+  // ---------- Clara (external AI executive assistant) ----------
+  // Clara schedules meetings by email: copy Clara into an email and Clara finds a time with everyone.
+  // There is no way for other apps to read Clara's work, so the app opens Clara's dashboard and starts
+  // the emails, and (in Chief of Staff) keeps each request as an action you tick off once it is booked.
+  const saveClara = () => ls.set(CLARA_STORE, JSON.stringify({ email: clara.email, url: clara.url }));
+  const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
+  function openClara() { go({ kind: 'page', url: clara.url }); }
+  function claraDialog(id, title, fields, okLabel, onOk) {
+    let dlg = $(id);
+    if (!dlg) { dlg = document.createElement('dialog'); dlg.id = id; document.body.appendChild(dlg); }
+    dlg.innerHTML = `<form method="dialog" class="cos-form"><h2></h2><div class="ff">${fields.map(f => `<label>${f.label}${f.area ? `<textarea name="${f.name}" placeholder="${f.ph || ''}"></textarea>` : `<input name="${f.name}" placeholder="${f.ph || ''}">`}</label>`).join('')}</div><p class="cos-tabnote" style="margin:0"></p><div class="dlg-actions"><button class="btn" value="cancel" formnovalidate>Cancel</button><button class="btn-primary" value="ok"></button></div></form>`;
+    dlg.querySelector('h2').textContent = title;
+    dlg.querySelector('.btn-primary').textContent = okLabel;
+    for (const f of fields) dlg.querySelector(`[name="${f.name}"]`).value = f.value || '';
+    const note = dlg.querySelector('p');
+    dlg.querySelector('form').addEventListener('submit', e => {
+      if (e.submitter && e.submitter.value !== 'ok') return;
+      const v = Object.fromEntries(fields.map(f => [f.name, dlg.querySelector(`[name="${f.name}"]`).value.trim()]));
+      const problem = onOk(v);
+      if (problem) { e.preventDefault(); note.textContent = problem; }
+    });
+    dlg.showModal();
+    dlg.querySelector('input, textarea').focus();
+  }
+  function claraSettings() {
+    claraDialog('claraSetDlg', 'Clara Settings', [
+      { name: 'email', label: 'Clara’s email address', value: clara.email, ph: 'clara@yourcompany.com' },
+      { name: 'url', label: 'Clara’s dashboard', value: clara.url, ph: 'https://beta.claralabs.com/' },
+    ], 'Save', v => {
+      if (!EMAIL_RE.test(v.email)) return 'That email address does not look right.';
+      let u; try { u = new URL(v.url); } catch (e) { return 'That dashboard address does not look right.'; }
+      if (u.protocol !== 'https:') return 'The dashboard address must start with https://';
+      clara.email = v.email; clara.url = u.href; saveClara();
+      toast('Saved Clara’s settings');
+      renderAll();
+    });
+  }
+  // Starts an email to the people you want to meet, with Clara copied in. The email opens in your Mac's
+  // mail app (Outlook, if that is your default), ready for you to check and send.
+  function askClara(staffNode) {
+    claraDialog('claraAskDlg', 'Ask Clara to Schedule', [
+      { name: 'to', label: 'Meet with (email addresses)', ph: 'e.g. jane@example.org, sam@example.org' },
+      { name: 'subject', label: 'What the meeting is about', ph: 'e.g. Q3 budget review' },
+      { name: 'details', label: 'Anything Clara should know', area: true, ph: 'e.g. 45 minutes on Zoom, any time next week; mornings are best' },
+    ], 'Write the Email', v => {
+      const to = v.to.split(/[,;\s]+/).filter(Boolean);
+      if (!to.length) return 'Add at least one email address.';
+      const bad = to.find(x => !EMAIL_RE.test(x));
+      if (bad) return `“${bad}” does not look like an email address.`;
+      if (!v.subject) return 'Say what the meeting is about.';
+      const body = `Hi,\n\nI'd like to set up a time to meet about ${v.subject}.${v.details ? `\n\n${v.details}` : ''}\n\nI've copied in Clara (${clara.email}), who will find a time that works for everyone.\n\nThanks`;
+      const url = `mailto:${to.map(encodeURIComponent).join(',')}?cc=${encodeURIComponent(clara.email)}&subject=${encodeURIComponent(v.subject)}&body=${encodeURIComponent(body)}`;
+      if (window.navigatorApp && window.navigatorApp.openMail) window.navigatorApp.openMail(url); else location.href = url;
+      const n = staffNode || claraNode();
+      if (n) {
+        cosChange(() => cosActions(n).push({ id: uid(), title: `Schedule: ${v.subject}`, notes: `With ${to.join(', ')}${v.details ? `. ${v.details}` : ''}`, status: 'doing', due: '', link: null, created: Date.now() }),
+          'Your email is open with Clara copied in. The request is in Clara’s Actions: tick it off once it is booked.');
+      } else toast('Your email is open with Clara copied in. Check it and send it.');
+    });
+  }
+  const claraNode = () => { const t = cosTeam(); return t ? t.nodes.find(n => n.external === 'clara') : null; };
+  function cosAddClara() {
+    const t = cosTeam();
+    if (!t) return;
+    const have = claraNode();
+    if (have) { cosSelect(have.id); return toast('Clara is already on this team'); }
+    const chief = t.nodes.find(n => n.chief) || t.nodes[0];
+    const n = { id: uid(), kind: 'staff', external: 'clara', name: 'Clara', role: 'Executive assistant (external): schedules meetings by email', about: `Clara is an AI executive assistant from Clara Labs. Copy ${clara.email} into an email and Clara finds a time that works for everyone.`, color: '#D9468C', parent: chief ? chief.id : null };
+    cosChange(() => t.nodes.push(n), 'Added Clara to the team');
+    cosUi.sel = n.id;
+    renderCos();
+  }
 
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
