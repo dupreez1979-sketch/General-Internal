@@ -689,6 +689,79 @@ ipcMain.handle('design-look', async (_e, url) => {
   }
 });
 
+// ---------- Chief of Staff: org chart export and the Documents mirror ----------
+let lastExport = null;
+ipcMain.handle('cos-export', async (_e, req) => {
+  const ext = req && req.format === 'png' ? 'png' : 'pdf';
+  const html = req && typeof req.html === 'string' ? req.html : '';
+  if (!html || html.length > 20e6) return { ok: false, status: 'nothing to export' };
+  const base = String(req.name || 'Org chart').replace(/[\/\\:*?"<>|]/g, '-').slice(0, 100);
+  const r = await dialog.showSaveDialog(mainWindow, { title: 'Export Org Chart', defaultPath: path.join(app.getPath('documents'), `${base}.${ext}`), filters: [{ name: ext === 'png' ? 'PNG image' : 'PDF', extensions: [ext] }] });
+  if (r.canceled || !r.filePath) return { ok: false, cancelled: true };
+  const tmp = path.join(app.getPath('userData'), 'org-chart-export.html');
+  fs.writeFileSync(tmp, html);
+  const win = new BrowserWindow({ show: false, width: 1600, height: 1000, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('will-navigate', e => e.preventDefault());
+  try {
+    win.setContentSize(320, 240);            // start small, so the page is only as big as the chart
+    await win.loadFile(tmp);
+    await win.webContents.executeJavaScript('document.fonts.ready.then(() => 0)', true);
+    await sleep(300);
+    const { w, h } = await win.webContents.executeJavaScript('({ w: Math.ceil(document.documentElement.scrollWidth), h: Math.ceil(document.documentElement.scrollHeight) })', true);
+    win.setContentSize(w, h);
+    await sleep(150);
+    if (ext === 'pdf') {
+      const buf = await win.webContents.printToPDF({ printBackground: true, preferCSSPageSize: false, margins: { marginType: 'none' }, pageSize: { width: Math.min(200, Math.max(w + 8, 400) / 96), height: Math.min(200, Math.max(h + 8, 300) / 96) } });
+      fs.writeFileSync(r.filePath, buf);
+    } else {
+      const scale = Math.max(1, Math.min(2, 12000 / Math.max(w, h)));
+      win.webContents.setZoomFactor(scale);
+      win.setContentSize(Math.ceil((w + 4) * scale), Math.ceil((h + 4) * scale));
+      await sleep(400);
+      const img = await win.webContents.capturePage();
+      fs.writeFileSync(r.filePath, img.toPNG());
+    }
+    lastExport = r.filePath;
+    return { ok: true, file: r.filePath };
+  } catch (e) {
+    return { ok: false, status: String(e && e.message || e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+    try { fs.unlinkSync(tmp); } catch (e) { /* ignore */ }
+  }
+});
+ipcMain.handle('cos-show-export', () => { if (lastExport) shell.showItemInFolder(lastExport); });
+
+const mirrorSettingsFile = () => path.join(app.getPath('userData'), 'cos-mirror.json');
+const mirrorSettings = () => { try { return JSON.parse(fs.readFileSync(mirrorSettingsFile(), 'utf8')); } catch (e) { return { enabled: false }; } };
+const mirrorDefaultRoot = () => path.join(path.dirname(defaultRoot()), 'Claude Navigator Chief of Staff');
+const mirrorRoot = () => mirrorSettings().root || mirrorDefaultRoot();
+ipcMain.handle('cos-mirror-status', () => ({ enabled: !!mirrorSettings().enabled, root: mirrorRoot() }));
+ipcMain.handle('cos-mirror-enable', (_e, on) => {
+  const s = mirrorSettings();
+  s.enabled = !!on;
+  fs.writeFileSync(mirrorSettingsFile(), JSON.stringify(s, null, 2));
+  return { enabled: s.enabled, root: mirrorRoot() };
+});
+ipcMain.handle('cos-mirror-reveal', () => { const r = mirrorRoot(); if (fs.existsSync(r)) shell.openPath(r); });
+let mirrorRun = Promise.resolve();
+ipcMain.handle('cos-mirror-apply', (_e, tree) => {
+  if (!mirrorSettings().enabled || !Array.isArray(tree)) return { ok: false, status: 'off' };
+  // Files are given as paths inside your synced folders; turn them into real paths (and drop any that are not there).
+  const fix = list => (list || []).map(x => {
+    if (!x || typeof x !== 'object') return null;
+    if (x.type === 'file') { let src = null; try { src = folderSync && x.src ? folderSync.abs(x.src) : null; } catch (e) { src = null; } return src ? { type: 'file', name: String(x.name || ''), src } : null; }
+    if (x.type === 'dir') return { type: 'dir', name: String(x.name || ''), children: fix(x.children) };
+    if (x.type === 'link') return /^https?:\/\//i.test(x.url || '') ? { type: 'link', name: String(x.name || ''), url: x.url } : null;
+    if (x.type === 'text') return { type: 'text', name: String(x.name || ''), text: String(x.text || '').slice(0, 200000) };
+    return null;
+  }).filter(Boolean);
+  const run = mirrorRun.then(() => new (require('./cosmirror').CosMirror)(mirrorRoot()).apply(fix(tree))).catch(e => ({ ok: false, status: String(e && e.message || e) }));
+  mirrorRun = run;
+  return run;
+});
+
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 
@@ -824,7 +897,7 @@ function setUpLivePreview() {
   pull();
   setInterval(pull, 20000);
   let timer = null, restart = false;
-  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'monday.js', 'package.json'];
+  const files = ['index.html', 'preload.js', 'main.js', 'fsync.js', 'monday.js', 'look.js', 'cosmirror.js', 'package.json'];
   fs.watch(__dirname, (_ev, name) => {
     if (!name || !files.includes(String(name))) return;
     if (!['index.html'].includes(String(name))) restart = true;

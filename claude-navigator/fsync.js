@@ -271,4 +271,4 @@ class FolderSync {
   }
 }
 
-module.exports = { FolderSync, safeName, LINK_EXT };
+module.exports = { FolderSync, safeName, LINK_EXT, linkFileContents };

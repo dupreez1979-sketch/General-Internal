@@ -77,3 +77,5 @@ Each phase is tried in Live Preview before it goes into a release.
 - Phase 3 (actions and functions): **done**. Actions with status, due dates (overdue highlighted) and a linked chat; functions with description, instructions for Claude, a linked chat/project/artifact and Run (opens it with the instructions copied).
 - Phase 4 (routines): **done**. Routine cards with a plain-English schedule, next run, linked Claude scheduled task and results chat; pause; a week strip on each staff page and a team-wide Week view; New Schedule in Claude opens Claude's Scheduled page.
 - Phase 5 (design-system look): **done**. Colours (named where the page names them) and fonts read from the design system's Claude page; chosen in Edit Profile's Look section; applied to Chief of Staff only; font files saved locally. Tested against a mock page; first real check is a live design system.
+- Profile look now also applies to Navigator (both apps share it).
+- Phase 6 (polish): **done**. Team-wide search; keyboard shortcuts; org chart export as PDF or image; one-way mirror to Documents › Claude Navigator Chief of Staff (only touches what it made, removals go to the Trash).

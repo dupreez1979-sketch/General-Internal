@@ -267,6 +267,23 @@
   .cos-week.big .wday { min-height: 320px; }
   .cos-week.big .wrun { font-size: 12px; padding: 6px 8px; cursor: pointer; }
   .cos-teamweek { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
+  .cos-search { position: relative; -webkit-app-region: no-drag; }
+  .cos-search input { width: 190px; font: inherit; font-size: 12.5px; color: var(--text); background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; outline: none; }
+  .cos-search input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); width: 240px; }
+  .cos-results { position: absolute; right: 0; top: calc(100% + 6px); width: 380px; max-height: 420px; overflow: auto; z-index: 50; background: var(--menu); backdrop-filter: blur(20px); border-radius: 10px; box-shadow: var(--shadow); padding: 5px; }
+  .cos-results .hit { display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: 6px; cursor: default; }
+  .cos-results .hit.on, .cos-results .hit:hover { background: var(--accent); color: var(--accent-text); }
+  .cos-results .hit.on .tx span, .cos-results .hit:hover .tx span, .cos-results .hit.on .k, .cos-results .hit:hover .k { color: inherit; opacity: .8; }
+  .cos-results .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .cos-results .tx { flex: 1; min-width: 0; display: grid; }
+  .cos-results .tx b, .cos-results .tx span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-results .tx b { font-weight: 600; font-size: 12.5px; }
+  .cos-results .tx span { font-size: 11px; color: var(--muted); }
+  .cos-results .k { font-size: 10.5px; color: var(--muted); flex: none; }
+  .cos-results .none { padding: 8px; font-size: 12px; color: var(--muted); }
+  .keys { border-collapse: collapse; font-size: 13px; }
+  .keys td { padding: 5px 10px 5px 0; vertical-align: top; }
+  .keys kbd { font: inherit; font-size: 12px; font-weight: 600; background: var(--field); border-radius: 5px; padding: 2px 7px; white-space: nowrap; }
   .cos-teamweek .cos-tabnote { flex: none; }
   .cos-week.big { align-content: start; }
   #cosSide { flex: 1; overflow: auto; padding: 0 10px 24px; }
@@ -5441,7 +5458,7 @@
   var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
   const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
   const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null };
-  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
+  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); if (typeof cosMirrorSoon === 'function') try { cosMirrorSoon(); } catch (e) { /* starting up */ } }
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
     if (!cos.teams[p.id]) {
@@ -5688,6 +5705,14 @@
           btn('', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); }, '<span class="t">+</span>'),
         ] : []),
         seg);
+    }
+    if (p) {
+      const more = document.createElement('button');
+      more.className = 'tb';
+      more.title = 'Export the org chart, mirror to Documents, keyboard shortcuts';
+      more.innerHTML = UI.more;
+      more.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosMoreMenu(b.right - 240, b.bottom + 4); });
+      head.append(cosSearchBox(t), more);
     }
     main.appendChild(head);
     renderCosSide(t, p);
@@ -6597,6 +6622,222 @@
     }
     return wrap;
   }
+
+  // ---------- Chief of Staff: search across the team ----------
+  // Searches staff, departments, projects (and everything in them), actions, functions and routines,
+  // with the same rules as Navigator's search (AND, "exact phrase", OR, -leave out).
+  function cosSearchHits(t, q) {
+    const m = searchMatcher(q), hits = [];
+    for (const n of t.nodes) {
+      if (m(n.name, n.role, n.about)) hits.push({ n, kind: n.kind === 'dept' ? 'Department' : n.chief ? 'Chief of Staff' : 'Staff', label: n.name, sub: n.role || '' });
+      for (const pj of n.projects || []) {
+        if (m(pj.name)) hits.push({ n, tab: 'projects', proj: pj.id, kind: pj.archived ? 'Archived project' : 'Project', label: pj.name, sub: n.name });
+        const w = (items, trail, folders) => (items || []).forEach(it => {
+          if (it.type === 'folder') { if (m(it.name)) hits.push({ n, tab: 'projects', proj: pj.id, item: it.id, open: folders, kind: 'Folder', label: it.name, sub: [n.name, pj.name, ...trail].join(' › ') }); w(it.children, [...trail, it.name], [...folders, it]); }
+          else if (m(it.name, it.url)) hits.push({ n, tab: 'projects', proj: pj.id, item: it.id, open: folders, kind: it.type === 'file' ? 'File' : KIND_NAME[kindOf(it)] || 'Link', label: it.name, sub: [n.name, pj.name, ...trail].join(' › ') });
+        });
+        w(pj.items, [], []);
+      }
+      for (const a of n.actions || []) if (m(a.title, a.notes)) hits.push({ n, tab: 'actions', kind: a.status === 'done' ? 'Action (done)' : 'Action', label: a.title, sub: n.name });
+      for (const f of n.functions || []) if (m(f.name, f.about, f.prompt)) hits.push({ n, tab: 'functions', kind: 'Function', label: f.name, sub: n.name });
+      for (const r of n.routines || []) if (m(r.name, r.what, routineWhen(r))) hits.push({ n, tab: 'routines', kind: 'Routine', label: r.name, sub: `${n.name} · ${routineWhen(r)}` });
+    }
+    return hits;
+  }
+  function cosGoHit(h) {
+    cosUi.sel = h.n.id;
+    cosUi.search = '';
+    for (const f of h.open || []) f.open = true;
+    if (h.tab) { cosUi.page = h.n.id; cosUi.tab = h.tab; cosUi.proj = h.proj || null; cosUi.itemSel = h.item || null; cosUi.adding = false; }
+    else if (h.n.kind === 'staff') { cosUi.page = h.n.id; cosUi.proj = null; cosUi.itemSel = null; }
+    else cosUi.page = null;
+    renderCos();
+  }
+  function cosSearchBox(t) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cos-search';
+    wrap.innerHTML = `<input id="cosSearch" type="search" placeholder="Search the team" spellcheck="false" autocomplete="off"><div class="cos-results" hidden></div>`;
+    const inp = wrap.querySelector('input'), res = wrap.querySelector('.cos-results');
+    inp.title = 'Search staff, projects, actions, functions and routines (⌘F)\nWords must all match; "exact phrase"; OR; -word leaves it out';
+    inp.value = cosUi.search || '';
+    let hits = [], at = 0;
+    const paint = () => {
+      const q = inp.value.trim();
+      cosUi.search = inp.value;
+      res.replaceChildren();
+      if (!q || !t) { res.hidden = true; return; }
+      hits = cosSearchHits(t, q);
+      at = Math.min(at, Math.max(0, hits.length - 1));
+      if (!hits.length) { const e = document.createElement('div'); e.className = 'none'; e.textContent = 'Nothing in this team matches.'; res.appendChild(e); }
+      hits.slice(0, 50).forEach((h, i) => {
+        const r = document.createElement('div');
+        r.className = 'hit' + (i === at ? ' on' : '');
+        r.innerHTML = '<span class="dot"></span><span class="tx"><b></b><span></span></span><span class="k"></span>';
+        r.querySelector('.dot').style.background = h.n.color || 'var(--accent)';
+        r.querySelector('b').textContent = h.label;
+        r.querySelector('.tx span').textContent = h.sub;
+        r.querySelector('.k').textContent = h.kind;
+        r.addEventListener('mousedown', e => { e.preventDefault(); cosGoHit(h); });
+        res.appendChild(r);
+      });
+      if (hits.length > 50) { const e = document.createElement('div'); e.className = 'none'; e.textContent = `And ${hits.length - 50} more. Add a word to narrow it down.`; res.appendChild(e); }
+      res.hidden = false;
+    };
+    inp.addEventListener('input', () => { at = 0; paint(); });
+    inp.addEventListener('focus', paint);
+    inp.addEventListener('blur', () => setTimeout(() => { res.hidden = true; }, 120));
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = Math.max(0, Math.min(Math.min(hits.length, 50) - 1, at + (e.key === 'ArrowDown' ? 1 : -1))); paint(); res.querySelector('.hit.on') && res.querySelector('.hit.on').scrollIntoView({ block: 'nearest' }); }
+      else if (e.key === 'Enter' && hits[at]) { e.preventDefault(); cosGoHit(hits[at]); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (inp.value) { inp.value = ''; paint(); } else inp.blur(); }
+    });
+    return wrap;
+  }
+
+  // ---------- Chief of Staff: export the org chart ----------
+  async function cosExport(format) {
+    const p = activeProfile(), t = cosTeam(p);
+    if (!t || !window.navigatorApp || !window.navigatorApp.cosExport) return toast('Exporting needs the Claude Navigator app');
+    const chart = cosChartEl(t);
+    chart.style.transform = 'none';
+    chart.querySelectorAll('.sel, .drop').forEach(x => x.classList.remove('sel', 'drop'));
+    const esc = x => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+    const staffCount = t.nodes.filter(n => n.kind === 'staff').length, depts = t.nodes.filter(n => n.kind === 'dept').length;
+    const html = `<!doctype html><html class="${esc(document.documentElement.className)}" style="${esc(document.documentElement.getAttribute('style') || '')}"><head><meta charset="utf-8"><style>${css.replace(/<\/style/gi, '')}
+:root { color-scheme: light; --win: #ffffff; --text: #1d1d1f; --muted: #86868b; --line: #dedede; --field: rgba(0,0,0,.05); }
+html, body { background: #fff !important; height: auto !important; width: auto !important; overflow: visible !important; }
+body { margin: 0 !important; padding: 28px 34px 34px !important; display: block !important; color: var(--text); }
+.exp-h { font-size: 22px; font-weight: 700; margin: 0 0 4px; } .exp-s { color: var(--muted); font-size: 12px; margin: 0 0 24px; }
+.cos-chart { transform: none !important; display: inline-block !important; position: static !important; margin: 0 !important; width: max-content !important; min-width: 0 !important; }
+body { width: max-content !important; min-width: 0 !important; }
+::-webkit-scrollbar { display: none; }
+</style></head><body><div class="exp-h">${esc((p ? p.name + ' · ' : '') + 'Chief of Staff')}</div><div class="exp-s">${staffCount} staff${depts ? `, ${depts} department${depts === 1 ? '' : 's'}` : ''} · ${new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>${chart.outerHTML}</body></html>`;
+    toast(format === 'png' ? 'Making the image…' : 'Making the PDF…');
+    const r = await window.navigatorApp.cosExport({ html, format, name: `${p ? p.name + ' ' : ''}org chart` });
+    if (r && r.ok) toast(`Saved the org chart as ${format === 'png' ? 'an image' : 'a PDF'}`, { label: 'Show in Finder', run: () => window.navigatorApp.cosShowExport() });
+    else if (r && !r.cancelled) toast(`Could not export the org chart: ${r.status || 'unknown problem'}`);
+  }
+
+  // ---------- Chief of Staff: mirror to Documents ----------
+  // One way: the app writes every team's projects as folders (links as .webloc, files as aliases) plus an
+  // About note per staff member. It never touches anything it did not make itself.
+  const cosMirror = { enabled: false, root: '', timer: null };
+  function cosMirrorTree() {
+    const md = s => String(s || '').replace(/\n+/g, ' ').trim();
+    const items = list => (list || []).map(it => it.type === 'folder' ? { type: 'dir', name: it.name, children: items(it.children) }
+      : it.type === 'file' ? (it.path ? { type: 'file', name: it.name, src: it.path } : null)
+      : it.url ? { type: 'link', name: it.name, url: it.url } : null).filter(Boolean);
+    const out = [];
+    for (const p of profiles()) {
+      const t = cos.teams[p.id];
+      if (!t || !t.nodes.length) continue;
+      const staff = [];
+      for (const n of t.nodes.filter(x => x.kind === 'staff')) {
+        const up = cosNode(t, n.parent);
+        let dept = ''; for (let q = up; q; q = cosNode(t, q.parent)) if (q.kind === 'dept') { dept = q.name; break; }
+        const lines = [`# ${n.name}`, '', n.role ? `**${md(n.role)}**` : '', n.about ? '\n' + n.about.trim() : '', '',
+          !up ? 'Leads the team' : up.kind === 'dept' ? `Department: ${dept}` : `Reports to: ${up.name}${dept ? ` · Department: ${dept}` : ''}`, ''];
+        const acts = n.actions || [], fns = n.functions || [], rts = n.routines || [];
+        if (acts.length) { lines.push('## Actions', ''); for (const a of acts) lines.push(`- [${a.status === 'done' ? 'x' : ' '}] ${md(a.title)}${a.status === 'doing' ? ' (doing)' : ''}${a.due ? ` (due ${a.due})` : ''}${a.link ? ` [chat](${a.link.url})` : ''}`); lines.push(''); }
+        if (fns.length) { lines.push('## Functions', ''); for (const f of fns) lines.push(`- **${md(f.name)}**${f.about ? `: ${md(f.about)}` : ''}${f.link ? ` [open](${f.link.url})` : ''}`); lines.push(''); }
+        if (rts.length) { lines.push('## Routines', ''); for (const r of rts) lines.push(`- **${md(r.name)}**: ${routineWhen(r)}${r.paused ? ' (paused)' : ''}${r.what ? `. ${md(r.what)}` : ''}${r.link ? ` [Claude task](${r.link.url})` : ''}`); lines.push(''); }
+        const live = (n.projects || []).filter(pj => !pj.archived), arch = (n.projects || []).filter(pj => pj.archived);
+        const kids = [{ type: 'text', name: `About ${n.name}`, text: lines.filter((l, i, a) => !(l === '' && a[i - 1] === '')).join('\n') + '\n' }];
+        for (const pj of live) kids.push({ type: 'dir', name: pj.name, children: items(pj.items) });
+        if (arch.length) kids.push({ type: 'dir', name: 'Archived projects', children: arch.map(pj => ({ type: 'dir', name: pj.name, children: items(pj.items) })) });
+        staff.push({ type: 'dir', name: n.name, children: kids });
+      }
+      out.push({ type: 'dir', name: p.name, children: staff });
+    }
+    return out;
+  }
+  function cosMirrorSoon() {
+    if (!cosMirror.enabled || !window.navigatorApp || !window.navigatorApp.cosMirrorApply) return;
+    clearTimeout(cosMirror.timer);
+    cosMirror.timer = setTimeout(() => window.navigatorApp.cosMirrorApply(cosMirrorTree()).catch(() => {}), 1500);
+  }
+  async function cosMirrorToggle() {
+    const api = window.navigatorApp;
+    if (!api || !api.cosMirrorEnable) return toast('This needs the Claude Navigator app');
+    if (cosMirror.enabled) {
+      Object.assign(cosMirror, await api.cosMirrorEnable(false));
+      return toast('Stopped mirroring. The folders already in Documents are left as they are.');
+    }
+    if (!confirm(`Mirror Chief of Staff to your Documents folder?\n\nEvery team's staff and projects become real folders in “${cosMirror.root}”: links as web links, your files as aliases, and an About note for each staff member. It updates itself as you work.\n\nIt only changes what it made itself. Anything you add there is left alone.`)) return;
+    Object.assign(cosMirror, await api.cosMirrorEnable(true));
+    const r = await api.cosMirrorApply(cosMirrorTree());
+    if (r && r.ok) toast(`Mirrored to Documents: ${r.dirs} folders and ${r.files} files${r.skipped.length ? ` (${r.skipped.length} skipped because the name is taken by your own file)` : ''}`, { label: 'Show in Finder', run: () => api.cosMirrorReveal() });
+    else toast(`Could not mirror: ${(r && r.status) || 'unknown problem'}`);
+  }
+  if (window.navigatorApp && window.navigatorApp.cosMirrorStatus) window.navigatorApp.cosMirrorStatus().then(s => { Object.assign(cosMirror, s); cosMirrorSoon(); }).catch(() => {});
+
+  // ---------- Chief of Staff: the … menu and keyboard shortcuts ----------
+  function cosMoreMenu(x, y) {
+    const t = cosTeam();
+    showMenu(x, y, [
+      { label: 'Export Org Chart as PDF…', disabled: !t, run: () => cosExport('pdf') },
+      { label: 'Export Org Chart as Image…', disabled: !t, run: () => cosExport('png') },
+      '-',
+      { label: cosMirror.enabled ? 'Stop Mirroring to Documents' : 'Mirror to Documents…', run: cosMirrorToggle },
+      cosMirror.enabled && { label: 'Show the Mirror in Finder', run: () => window.navigatorApp.cosMirrorReveal() },
+      '-',
+      { label: 'Keyboard Shortcuts', run: cosShortcutsHelp },
+    ].filter(Boolean));
+  }
+  const COS_KEYS = [
+    ['⌘F or /', 'Search the team'],
+    ['← →', 'Previous or next person at the same level'],
+    ['↑ ↓', 'Up to who they report to, or down to the first person below'],
+    ['Return', 'Open the selected person’s page'],
+    ['Esc', 'Back to the team'],
+    ['A', 'Add a staff member under the selected one'],
+    ['D', 'Add a department under the selected one'],
+    ['Delete', 'Remove the selected person or department'],
+    ['1 to 4', 'On a staff page: Projects, Actions, Functions, Routines'],
+  ];
+  function cosShortcutsHelp() {
+    let dlg = $('cosKeysDlg');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'cosKeysDlg';
+      dlg.innerHTML = `<form method="dialog" class="cos-form"><h2>Chief of Staff Shortcuts</h2><table class="keys">${COS_KEYS.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('')}</table><div class="dlg-actions"><button class="btn-primary" value="ok">Done</button></div></form>`;
+      document.body.appendChild(dlg);
+    }
+    dlg.showModal();
+  }
+  document.addEventListener('keydown', e => {
+    if (currentApp !== 'cos' || document.querySelector('dialog[open]')) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || document.activeElement.isContentEditable;
+    if ((mod && !e.altKey && e.key.toLowerCase() === 'f') || (!mod && !typing && e.key === '/')) {
+      const s = $('cosSearch');
+      if (s) { e.preventDefault(); e.stopImmediatePropagation(); s.focus(); s.select(); }
+      return;
+    }
+    if (mod || e.altKey || typing) return;
+    const t = cosTeam();
+    if (!t) return;
+    const page = cosUi.page && cosNode(t, cosUi.page);
+    if (page) {
+      if (e.key === 'Escape') { e.preventDefault(); cosUi.page = null; cosUi.adding = false; renderCos(); }
+      else if (/^[1-4]$/.test(e.key)) { e.preventDefault(); cosUi.tab = COS_TABS[+e.key - 1][0]; cosUi.adding = false; renderCos(); }
+      return;
+    }
+    const n = cosUi.sel && cosNode(t, cosUi.sel);
+    if (/^Arrow/.test(e.key)) {
+      e.preventDefault();
+      if (!n) return cosSelect((t.nodes.find(x => !x.parent) || {}).id);
+      const sibs = t.nodes.filter(x => x.parent === n.parent), i = sibs.indexOf(n);
+      const go = e.key === 'ArrowUp' ? cosNode(t, n.parent) : e.key === 'ArrowDown' ? cosKids(t, n.id)[0]
+        : sibs[i + (e.key === 'ArrowLeft' ? -1 : 1)];
+      if (go) { cosSelect(go.id); const b = document.querySelector(`#cosMain [data-cid="${go.id}"]`); if (b) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+    } else if (e.key === 'Enter' && n && n.kind === 'staff') { e.preventDefault(); openStaff(n.id); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && n && !n.chief) { e.preventDefault(); cosRemove(n.id); }
+    else if (e.key.toLowerCase() === 'a') { e.preventDefault(); cosAdd('staff', cosUi.sel); }
+    else if (e.key.toLowerCase() === 'd') { e.preventDefault(); cosAdd('dept', cosUi.sel); }
+    else if (e.key === 'Escape' && cosUi.sel) { cosSelect(null); }
+  });
 
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):

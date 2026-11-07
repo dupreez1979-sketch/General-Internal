@@ -26,6 +26,7 @@
       "fsync.js",
       "monday.js",
       "look.js",
+      "cosmirror.js",
       "templates/**"
     ],
     "win": {

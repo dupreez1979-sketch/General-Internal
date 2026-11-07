@@ -127,9 +127,16 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 - **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.
 - Pausing a routine here only marks it as paused. Pause the task in Claude too.
 
-**Look**: Chief of Staff takes the colours and fonts of the profile's design system. In **Edit Profile**, choose a design system and the app reads its page in Claude (about 10 seconds). The **Look** section then shows what it found: pick the main and second colour and the heading and text fonts, or untick "Use this look in Chief of Staff". Font files the design system uses are saved on your Mac so they show even if not installed. A profile that already had a design system gets its look read the first time you open Chief of Staff. Navigator keeps the profile's own colour.
+**Look**: each profile takes the colours and fonts of its design system, in **Navigator and Chief of Staff** alike. In **Edit Profile**, choose a design system and the app reads its page in Claude (about 10 seconds). The **Look** section then shows what it found: pick the main and second colour and the heading and text fonts, or untick "Use this look in Navigator and Chief of Staff". Font files the design system uses are saved on your Mac so they show even if not installed. A profile that already had a design system gets its look read the first time you use it. The profile's dot keeps its own colour so profiles stay easy to tell apart.
 
-Coming next: polish (see CHIEF-OF-STAFF-PLAN.md).
+**Search**: the search box at the top right of Chief of Staff (⌘F or /) finds staff, departments, projects and everything in them, actions, functions and routines, with the same rules as Navigator's search. Choose a result to go straight to it.
+
+**The … menu** (top right):
+
+- **Export Org Chart as PDF… / as Image…** saves the chart, with the team name and date, sized to fit.
+- **Mirror to Documents…** keeps a copy of every team in Documents › Claude Navigator Chief of Staff: a folder per profile and staff member, their projects as folders (links as web links, your files as aliases), and an About note listing their role, actions, functions and routines. It updates itself as you work. It only changes what it made itself; anything you add there is left alone, and removed items go to the Trash.
+- **Keyboard Shortcuts**: arrows move around the chart, Return opens a page, Esc goes back, A and D add staff or a department, Delete removes, and 1 to 4 switch tabs on a staff page.
+
 
 ## Systems: Claude and monday.com
 
