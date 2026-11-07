@@ -127,7 +127,9 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 - **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.
 - Pausing a routine here only marks it as paused. Pause the task in Claude too.
 
-Coming next: the profile's design system look (see CHIEF-OF-STAFF-PLAN.md).
+**Look**: Chief of Staff takes the colours and fonts of the profile's design system. In **Edit Profile**, choose a design system and the app reads its page in Claude (about 10 seconds). The **Look** section then shows what it found: pick the main and second colour and the heading and text fonts, or untick "Use this look in Chief of Staff". Font files the design system uses are saved on your Mac so they show even if not installed. A profile that already had a design system gets its look read the first time you open Chief of Staff. Navigator keeps the profile's own colour.
+
+Coming next: polish (see CHIEF-OF-STAFF-PLAN.md).
 
 ## Systems: Claude and monday.com
 

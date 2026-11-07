@@ -670,6 +670,25 @@ ipcMain.handle('claude-rename-chat', async (_e, item) => {
   }
 });
 
+// Reads the colours and fonts of a profile's Claude design system (for Chief of Staff's look).
+ipcMain.handle('design-look', async (_e, url) => {
+  if (typeof url !== 'string' || !/^https:\/\/claude\.ai\//.test(url)) return { ok: false, status: 'not a Claude page' };
+  const win = new BrowserWindow({ show: false, width: 1400, height: 1000, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  try {
+    const cleared = await openHidden(win, url);
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
+    if (!cleared) return { ok: false, status: 'Claude\u2019s security check did not finish; try again' };
+    await sleep(3500); // the design system draws itself after the page loads
+    const look = await withTimeout(require('./look').readLook(win.webContents, win.webContents.session, path.join(app.getPath('userData'), 'Design fonts')), 60000, 'Reading the design system');
+    if (!look.colours.length && !look.headFont) return { ok: false, status: 'no colours or fonts found on that page' };
+    return { ok: true, look };
+  } catch (e) {
+    return { ok: false, status: String(e && e.message || e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
+
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 

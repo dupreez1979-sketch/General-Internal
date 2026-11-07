@@ -13,6 +13,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   refreshLibrary: (opts) => ipcRenderer.invoke('library-refresh', opts),
   deleteChats: (items) => ipcRenderer.invoke('claude-delete-chats', items),
   renameChat: (item) => ipcRenderer.invoke('claude-rename-chat', item),
+  designLook: (url) => ipcRenderer.invoke('design-look', url),
   backupWrite: (text) => ipcRenderer.invoke('backup-write', text),
   backupList: () => ipcRenderer.invoke('backup-list'),
   backupRead: (name) => ipcRenderer.invoke('backup-read', name),

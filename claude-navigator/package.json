@@ -25,6 +25,7 @@
       "index.html",
       "fsync.js",
       "monday.js",
+      "look.js",
       "templates/**"
     ],
     "win": {

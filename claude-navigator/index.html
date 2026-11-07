@@ -560,6 +560,19 @@
   #profileDlg form { gap: 14px; }
   .ds-pick { display: grid; gap: 4px; }
   .ds-pick select { max-width: 320px; }
+  .look-pick { display: grid; gap: 8px; }
+  .look-top { display: flex; align-items: center; gap: 10px; }
+  .look-top .ds-note { flex: 1; }
+  .look-line { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px; font-size: 12.5px; }
+  .look-line > span { color: var(--muted); }
+  .look-line select { max-width: 240px; }
+  .look-line .swatches { gap: 6px; }
+  .look-line .sw { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); padding: 0; cursor: default; }
+  .look-line .sw.on { box-shadow: 0 0 0 2px var(--win), 0 0 0 4px var(--text); }
+  .look-line .none { font-size: 11.5px; padding: 2px 8px; }
+  .look-line .none.on { box-shadow: inset 0 0 0 1.5px var(--text); border-radius: 6px; }
+  .look-use { display: flex !important; align-items: center; gap: 6px; font-size: 12.5px; }
+  #lookRow[hidden], #lookBody[hidden] { display: none; }
   .ds-note { font-size: 11.5px; color: var(--muted); }
   .swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
@@ -709,6 +722,16 @@
       <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
     </div></div>
     <div class="prow"><span>Design system:</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
+    <div class="prow" id="lookRow" hidden><span>Look:</span><div class="look-pick">
+      <div class="look-top"><button type="button" class="btn" id="lookRead">Read Colours and Fonts</button><span class="ds-note" id="lookNote"></span></div>
+      <div id="lookBody" hidden>
+        <div class="look-line"><span>Main colour</span><div class="swatches" id="lookMain"></div></div>
+        <div class="look-line"><span>Second colour</span><div class="swatches" id="lookSecond"></div></div>
+        <div class="look-line"><span>Headings</span><select id="lookHead"></select></div>
+        <div class="look-line"><span>Text</span><select id="lookText"></select></div>
+        <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Chief of Staff</label>
+      </div>
+    </div></div>
     <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
     <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     <div class="dlg-actions">
@@ -5387,6 +5410,7 @@
     $('cosSide').hidden = currentApp !== 'cos';
     $('cosMain').hidden = currentApp !== 'cos';
     $('appPop').hidden = true;
+    applyCosLook();
     if (currentApp === 'cos') renderCos(); else renderAll();
   }
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
@@ -5437,7 +5461,7 @@
     if (!t) return;
     const parent = cosNode(t, parentId) || t.nodes.find(n => n.chief);
     const n = { id: uid(), kind, name: kind === 'dept' ? 'New department' : 'New staff member', role: kind === 'dept' ? '' : 'What they do', about: '',
-      color: COS_COLOURS[(t.nodes.length + 1) % COS_COLOURS.length], parent: parent.id };
+      color: cosColours()[(t.nodes.length + 1) % cosColours().length], parent: parent.id };
     cosChange(() => { t.nodes.push(n); cosUi.sel = n.id; }, null);
     setTimeout(() => { const f = document.querySelector('.cos-detail input[name="name"]'); if (f) { f.focus(); f.select(); } }, 30);
   }
@@ -5564,7 +5588,7 @@
     const commitField = (k, v) => { if ((n[k] || '') === v) return; n[k] = v; saveCos(); renderCosChartOnly(); };
     for (const k of ['name', 'role', 'about']) if (f(k)) f(k).addEventListener('input', () => commitField(k, f(k).value.trim() || (k === 'name' ? 'Untitled' : '')));
     const sw = d.querySelector('.cos-swatches');
-    for (const c of COS_COLOURS) {
+    for (const c of cosColours()) {
       const b = document.createElement('button');
       b.style.background = c;
       b.title = c;
@@ -7108,6 +7132,7 @@
     dot.className = 'pdot' + (p ? '' : ' all');
     dot.style.background = p ? p.color : '';
     document.title = (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
+    applyCosLook();
   }
   function setProfile(id, { quiet = false } = {}) {
     state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
@@ -7245,6 +7270,121 @@
     });
   }
 
+  // ---------- A profile's look ----------
+  // Chief of Staff takes the colours and fonts of the profile's Claude design system. The app reads them
+  // from the design system's page (in a hidden window, with your Claude sign-in) and you can adjust them
+  // in Edit Profile. Stored on the profile as look: { colours: [{hex, label}], accent, second, headFont,
+  // bodyFont, fonts: [{family, weight, style, file}], from, readAt, off }.
+  const lookOf = p => (p && p.look && !p.look.off && (p.look.accent || p.look.headFont || p.look.bodyFont)) ? p.look : null;
+  const lighten = (h, k) => '#' + hexToRgb(h).map(x => Math.round(x + (255 - x) * k).toString(16).padStart(2, '0')).join('');
+  const fileUrl = f => 'file://' + String(f).replace(/\\/g, '/').split('/').map((s, i) => i === 0 && /^[A-Za-z]:$/.test(s) ? '/' + s : encodeURIComponent(s)).join('/');
+  const cssName = s => JSON.stringify(String(s || '').replace(/[\n\r<>{};\\]/g, ''));
+  const SYS_STACK = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif';
+  const HEX = /^#[0-9a-f]{6}$/i;
+  // Staff colours: the design system's own colours first (dark enough for white initials), then the standard ones.
+  function cosColours() {
+    const lk = lookOf(activeProfile());
+    const pal = lk ? (lk.colours || []).map(c => c.hex).filter(h => HEX.test(h) && luminance(h) > 0.02 && luminance(h) < 0.42) : [];
+    return pal.length >= 3 ? [...new Set([...pal, ...COS_COLOURS])].slice(0, 16) : COS_COLOURS;
+  }
+  const lookTried = new Set();
+  function applyCosLook() {
+    let st = $('cosLook');
+    if (!st) { st = document.createElement('style'); st.id = 'cosLook'; document.head.appendChild(st); }
+    const p = activeProfile();
+    // A profile with a design system but no look yet: read it once, quietly, the first time Chief of Staff is shown.
+    if (p && p.designSystem && !p.look && currentApp === 'cos' && !lookTried.has(p.id) && window.navigatorApp && window.navigatorApp.designLook) {
+      lookTried.add(p.id);
+      window.navigatorApp.designLook(p.designSystem.url).then(r => {
+        if (!r || !r.ok || p.look) return;
+        p.look = Object.assign(r.look, { from: p.designSystem.url });
+        commit();
+        applyCosLook();
+        if (currentApp === 'cos') renderCos();
+        toast(`Chief of Staff now uses the colours and fonts of “${p.designSystem.name}”. Adjust them in Edit Profile.`);
+      }).catch(() => {});
+    }
+    const lk = lookOf(p);
+    if (!lk) { st.textContent = ''; return; }
+    const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    const fix = h => !HEX.test(h || '') ? '' : !dark && luminance(h) > 0.45 ? darken(h, 0.35) : dark && luminance(h) < 0.05 ? lighten(h, 0.45) : h;
+    const accent = fix(lk.accent), second = fix(lk.second);
+    const faces = (lk.fonts || []).map(f => `@font-face { font-family: ${cssName(f.family)}; src: url(${cssName(fileUrl(f.file))}); font-weight: ${/^[\d ]+$|^(normal|bold)$/.test(f.weight || '') ? f.weight : 'normal'}; font-style: ${/^(normal|italic|oblique)$/.test(f.style || '') ? f.style : 'normal'}; }`).join('\n');
+    const body = lk.bodyFont ? `${cssName(lk.bodyFont)}, ${SYS_STACK}` : '';
+    const head = lk.headFont ? `${cssName(lk.headFont)}, ${body || SYS_STACK}` : '';
+    st.textContent = `${faces}
+body.cos-mode { ${accent ? `--accent: ${accent}; --accent-text: ${luminance(accent) > 0.5 ? '#000000' : '#ffffff'}; --tint: ${accent};` : ''} ${second ? `--cos-second: ${second};` : ''} }
+${body ? `body.cos-mode #cosMain, body.cos-mode #cosSide, #cosDlg, #cosRoutineDlg { font-family: ${body}; }` : ''}
+${head ? `body.cos-mode :is(#cosMain, #cosSide) :is(h1, h2, h3, .cos-who b, .ocbox .nm, .fcard b, .cos-side-h, .cos-tabs button), #cosDlg h2, #cosRoutineDlg h2 { font-family: ${head}; letter-spacing: -0.01em; }` : ''}
+${second ? `body.cos-mode .ocbox.dept { background: color-mix(in srgb, var(--cos-second) 9%, var(--win)); border-color: color-mix(in srgb, var(--cos-second) 55%, var(--line)); }
+body.cos-mode .ocbox.dept .tag, body.cos-mode .rcard .when { color: var(--cos-second); }` : ''}`;
+  }
+
+  // The Look section of Edit Profile.
+  function paintLook() {
+    const ds = $('profileDS').value;
+    const lk = pf.look;
+    $('lookRow').hidden = !ds;
+    $('lookRead').disabled = !!pf.lookBusy;
+    $('lookRead').textContent = pf.lookBusy ? 'Reading…' : lk ? 'Read Again' : 'Read Colours and Fonts';
+    $('lookNote').textContent = pf.lookBusy ? 'Opening the design system in Claude. This takes about 10 seconds.'
+      : pf.lookError ? `Could not read it: ${pf.lookError}.`
+      : lk ? (lk.from && lk.from !== ds ? 'These were read from a different design system. Click Read Again.' : `${(lk.colours || []).length} colours${lk.headFont ? `, ${lk.headFont}` : ''}${lk.bodyFont && lk.bodyFont !== lk.headFont ? ` and ${lk.bodyFont}` : ''}. Click a colour to choose it.`)
+      : 'Chief of Staff can use this design system’s colours and fonts.';
+    $('lookBody').hidden = !lk;
+    if (!lk) return;
+    for (const [id, key] of [['lookMain', 'accent'], ['lookSecond', 'second']]) {
+      const box = $(id);
+      box.replaceChildren();
+      for (const c of lk.colours || []) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'sw' + ((lk[key] || '').toUpperCase() === c.hex.toUpperCase() ? ' on' : '');
+        b.style.background = c.hex;
+        b.title = (c.label ? c.label + ' ' : '') + c.hex;
+        b.addEventListener('click', () => { lk[key] = c.hex; paintLook(); });
+        box.appendChild(b);
+      }
+      if (key === 'second') {
+        const n = document.createElement('button');
+        n.type = 'button'; n.className = 'tb none' + (lk.second ? '' : ' on'); n.textContent = 'None';
+        n.addEventListener('click', () => { lk.second = ''; paintLook(); });
+        box.appendChild(n);
+      }
+    }
+    const fonts = [...new Set([lk.headFont, lk.bodyFont, ...(lk.fonts || []).map(f => f.family)].filter(Boolean))];
+    for (const [id, key] of [['lookHead', 'headFont'], ['lookText', 'bodyFont']]) {
+      const sel = $(id);
+      sel.replaceChildren();
+      for (const f of [...fonts, '']) { const o = document.createElement('option'); o.value = f; o.textContent = f || 'Standard'; if (f) o.style.fontFamily = cssName(f); sel.appendChild(o); }
+      sel.value = lk[key] || '';
+      sel.onchange = () => { lk[key] = sel.value; };
+    }
+    $('lookUse').checked = !lk.off;
+    $('lookUse').onchange = () => { lk.off = !$('lookUse').checked; };
+  }
+  function readLookNow() {
+    const url = $('profileDS').value;
+    if (!url || !window.navigatorApp || !window.navigatorApp.designLook) { pf.lookError = 'this needs the Claude Navigator app'; paintLook(); return; }
+    const req = pf.lookReq = {};
+    pf.lookBusy = true; pf.lookError = '';
+    paintLook();
+    pf.lookPending = window.navigatorApp.designLook(url).catch(e => ({ ok: false, status: String(e && e.message || e) })).then(r => {
+      const look = r && r.ok ? Object.assign(r.look, { from: url }) : null;
+      if (pf.lookReq === req && pdlg.open) {
+        pf.lookBusy = false;
+        if (look) pf.look = look; else pf.lookError = (r && r.status) || 'no answer';
+        paintLook();
+      }
+      return look;
+    }).catch(() => null);
+  }
+  $('lookRead').addEventListener('click', readLookNow);
+  $('profileDS').addEventListener('change', () => {
+    pf.lookError = '';
+    if ($('profileDS').value && (!pf.look || pf.look.from !== $('profileDS').value)) readLookNow(); else paintLook();
+  });
+
   function openProfileDialog(p) {
     pf.editing = p;
     pf.color = p ? p.color : PROFILE_COLOURS[profiles().length % PROFILE_COLOURS.length];
@@ -7255,6 +7395,9 @@
     $('profileDelete').hidden = !p;
     $('profileOk').textContent = p ? 'Save' : 'Create Profile';
     fillDesignSystems(p);
+    pf.look = p && p.look ? JSON.parse(JSON.stringify(p.look)) : null;
+    pf.lookBusy = false; pf.lookError = ''; pf.lookReq = null; pf.lookPending = null;
+    paintLook();
     paintProfilePreview();
     pdlg.returnValue = '';
     pdlg.showModal();
@@ -7266,15 +7409,25 @@
     if (!name) return;
     snap();
     const ds = designSystemChoice();
+    // A read still under way finishes after the dialog closes and is then saved to the profile.
+    const later = (target, req) => pf.lookBusy && pf.lookPending && pf.lookPending.then(look => {
+      if (!look || pf.lookReq !== req || !target.designSystem || target.designSystem.url !== look.from) return;
+      target.look = look; commit(); applyProfileTheme(); if (currentApp === 'cos') renderCos();
+    });
     if (pf.editing) {
       Object.assign(pf.editing, { name, color: pf.color, tint: pf.tint });
       if (ds) pf.editing.designSystem = ds; else delete pf.editing.designSystem;
+      if (ds && pf.look) pf.editing.look = pf.look; else delete pf.editing.look;
+      later(pf.editing, pf.lookReq);
       commit();
       applyProfileTheme();
+      if (currentApp === 'cos') renderCos();
     } else {
       const p = makeProfile(name, [], pf.color, $('profileGroups').checked);
       p.tint = pf.tint;
       if (ds) p.designSystem = ds;
+      if (ds && pf.look) p.look = pf.look;
+      later(p, pf.lookReq);
       state.tree.push(p);
       save();
       setProfile(p.id, { quiet: true });
