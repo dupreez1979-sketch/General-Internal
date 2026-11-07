@@ -1042,6 +1042,51 @@ ipcMain.handle('open-mail', (_e, url) => {
   }
   return shell.openExternal(url).then(() => true, () => false);
 });
+// Clara: a new Outlook email from a chosen account, with Clara copied in. Outlook is told which account to send
+// from (classic Outlook for Mac can be; if it cannot, or the account is not found, a plain new email opens and
+// the app says which From to pick).
+const CLARA_SCRIPT = `on run argv
+  set fromAddr to item 1 of argv
+  set ccAddr to item 2 of argv
+  tell application "Microsoft Outlook"
+    set acct to missing value
+    repeat with a in ((exchange accounts) & (imap accounts) & (pop accounts))
+      try
+        set addr to (email address of a) as text
+        if addr is fromAddr then set acct to (contents of a)
+      end try
+    end repeat
+    if acct is missing value then error "no such account"
+    set m to make new outgoing message with properties {account:acct}
+    try
+      make new cc recipient at m with properties {email address:{address:ccAddr}}
+    on error errText
+      delete m
+      error errText
+    end try
+    open m
+    activate
+  end tell
+  return "ok"
+end run`;
+ipcMain.handle('clara-mail', async (_e, opts) => {
+  const ok = s => typeof s === 'string' && s.length < 200 && /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/.test(s);
+  const from = opts && opts.from, cc = opts && opts.cc;
+  if (!ok(cc)) return false;
+  const mailto = `mailto:?cc=${encodeURIComponent(cc)}`;
+  const plain = () => new Promise(resolve => {
+    if (process.platform !== 'darwin') return shell.openExternal(mailto).then(() => resolve('mailto'), () => resolve(false));
+    require('child_process').execFile('/usr/bin/open', ['-b', 'com.microsoft.Outlook', mailto], err => {
+      if (!err) return resolve('mailto');
+      shell.openExternal(mailto).then(() => resolve('mailto'), () => resolve(false));
+    });
+  });
+  if (process.platform !== 'darwin' || !ok(from)) return plain();
+  const viaScript = await new Promise(resolve => {
+    require('child_process').execFile('/usr/bin/osascript', ['-e', CLARA_SCRIPT, from, cc], { timeout: 10000 }, (err, out) => resolve(!err && /ok/.test(String(out))));
+  });
+  return viaScript ? 'account' : plain();
+});
 const inDownloads = f => {
   if (typeof f !== 'string') return false;
   const d = path.resolve(app.getPath('downloads')), p = path.resolve(f);

@@ -1660,18 +1660,6 @@
       if (sysRow('monday', 'monday.com', small('monday'), mondayData.connected ? `Your monday.com workspaces and boards${mondayData.me && mondayData.me.account ? ` (${mondayData.me.account})` : ''}` : 'Connect your monday.com account')) {
         renderMondayRows(frag);
       }
-      if (sysRow('clara', 'Clara', small('clara', KIND_COLOUR.clara), `Clara, your external executive assistant (${clara.email})`)) {
-        for (const [action, label, icon, tip] of [['clara-open', 'Open Dashboard', small('clara', KIND_COLOUR.clara), clara.url], ['clara-ask', 'Ask Clara to Schedule…', UI.compose, `Starts an email with ${clara.email} copied in`]]) {
-          const r = document.createElement('div');
-          r.className = 'row lib-action';
-          r.dataset.action = action;
-          r.style.setProperty('--depth', 1);
-          r.title = tip;
-          r.innerHTML = `<span class="twisty"></span><span class="icon">${icon}</span><span class="label"></span>`;
-          r.querySelector('.label').textContent = label;
-          frag.appendChild(r);
-        }
-      }
     }
     const sectionHead = (n, extra = '') => {
       const r = document.createElement('div');
@@ -4553,9 +4541,6 @@
     if (row.dataset.action === 'new-chat') return newChat();
     if (row.dataset.action === 'sys-claude') return setSysOpen('claude', !sysOpen('claude'));
     if (row.dataset.action === 'sys-monday') return setSysOpen('monday', !sysOpen('monday'));
-    if (row.dataset.action === 'sys-clara') return setSysOpen('clara', !sysOpen('clara'));
-    if (row.dataset.action === 'clara-open') return openClara();
-    if (row.dataset.action === 'clara-ask') return askClara(null);
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
     if (row.dataset.action === 'monday-all') return go({ kind: 'library', which: 'monday', mkey: 'all' });
     if (row.dataset.action === 'monday-new') return openNewBoard();
@@ -4627,15 +4612,6 @@
         ]);
       }
       return mondayMenu(e.clientX, e.clientY);
-    }
-    if (row && /^(sys-clara|clara-open|clara-ask)$/.test(row.dataset.action || '')) {
-      e.preventDefault();
-      return showMenu(e.clientX, e.clientY, [
-        { label: 'Open Clara’s Dashboard', run: openClara },
-        { label: 'Ask Clara to Schedule…', run: () => askClara(null) },
-        '-',
-        { label: 'Clara Settings…', run: claraSettings },
-      ]);
     }
     if (row && (row.dataset.lib || row.classList.contains('lib-head') || row.dataset.action === 'sys-claude')) {
       showMenu(e.clientX, e.clientY, [
@@ -6082,6 +6058,8 @@
         const first = cosKids(t, parent.id)[0];        // a new lead moves to the front of the row
         if (n.lead && first !== n) { t.nodes.splice(t.nodes.indexOf(n), 1); t.nodes.splice(t.nodes.indexOf(first), 0, n); }
       }, null) },
+      n.kind === 'staff' && '-',
+      ...(n.kind === 'staff' ? cosClaraItems(n) : []),
       !n.chief && '-',
       !n.chief && { label: 'Move Left', key: '⌥←', disabled: cosKids(t, n.parent)[0] === n, run: () => cosShift(n.id, -1) },
       !n.chief && { label: 'Move Right', key: '⌥→', disabled: cosKids(t, n.parent).slice(-1)[0] === n, run: () => cosShift(n.id, 1) },
@@ -6105,7 +6083,7 @@
     b.querySelector('.nm').textContent = n.name;
     b.querySelector('.rl').textContent = n.kind === 'dept' ? (lead ? `Led by ${lead.name}` : 'Department') : (n.role || '');
     if (n.chief) b.insertAdjacentHTML('afterbegin', '<span class="tag">Chief of Staff</span>');
-    else if (n.external) b.insertAdjacentHTML('afterbegin', '<span class="tag ext">External</span>');
+    else if (n.clara) b.insertAdjacentHTML('afterbegin', '<span class="tag ext">Clara</span>');
     else if (n.lead) b.insertAdjacentHTML('afterbegin', '<span class="tag">Lead</span>');
     b.title = `${n.name}${n.role ? `\n${n.role}` : ''}\nClick to edit; drag onto someone to move; right-click for more.`;
     return b;
@@ -6307,10 +6285,10 @@
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
     if (!staffTabs(staff).some(([k]) => k === cosUi.tab)) cosUi.tab = cosUi.tab === 'functions' ? 'skills' : cosUi.tab === 'routines' ? 'routines' : 'work';
-    const dash = !!(staff && cosUi.tab === 'dashboard' && staff.dashboard);
+    const dash = !!(staff && ((cosUi.tab === 'dashboard' && staff.dashboard) || (cosUi.tab === 'clara' && staff.clara)));
     document.body.classList.toggle('cos-dash', dash);
     if (dash) cosUi.adding = false;
-    const work = !!(staff && (cosUi.tab === 'work' || cosUi.tab === 'skills') && staff.external !== 'clara');
+    const work = !!(staff && (cosUi.tab === 'work' || cosUi.tab === 'skills'));
     const foot = $('splitLeft').querySelector('.sl-foot');
     if (!foot.dataset.nav) foot.dataset.nav = foot.textContent;
     foot.textContent = work ? `Drag between the two sides: onto a company folder here to file it there, or onto the left to add it to ${staff.name}\u2019s ${cosUi.tab === 'skills' ? 'skills' : 'work'}.` : foot.dataset.nav;
@@ -6474,9 +6452,13 @@
   // scheduled tasks. Each staff member can have a Claude Project, so their chats start with their role.
   const COS_TABS = [['work', 'Work'], ['skills', 'Skills'], ['routines', 'Routines']];
   // A fourth tab, Dashboard, appears once the staff member has one (first, if it is set to open first).
+  // Scheduling appears when Clara is attached to them.
   function staffTabs(n) {
-    if (!n || !n.dashboard) return COS_TABS;
-    return n.dashFirst ? [['dashboard', 'Dashboard'], ...COS_TABS] : [...COS_TABS, ['dashboard', 'Dashboard']];
+    if (!n) return COS_TABS;
+    const tabs = [...COS_TABS];
+    if (n.clara) tabs.push(['clara', 'Scheduling']);
+    if (n.dashboard) { if (n.dashFirst) tabs.unshift(['dashboard', 'Dashboard']); else tabs.push(['dashboard', 'Dashboard']); }
+    return tabs;
   }
   function openStaff(id) {
     const n = cosNode(cosTeam(), id);
@@ -6803,6 +6785,8 @@
       projects.length && { label: 'Use an Existing Project', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, projects.map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; }, `${n.name} now uses “${pr.name}”`) }))) },
       n.claudeProject && '-',
       n.claudeProject && { label: 'Unlink the Project', run: () => cosChange(() => { delete n.claudeProject; }, `Unlinked ${n.name}’s Claude Project`) },
+      '-',
+      ...cosClaraItems(n),
     ].filter(x => x !== false && x !== 0 && x !== null && x !== undefined));
   }
 
@@ -6870,10 +6854,7 @@
     who.querySelector('.who-role').textContent = n.role || '';
     const bx = who.querySelector('.who-btns');
     const mk = (html, title, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); bx.appendChild(b); return b; };
-    if (n.external === 'clara') {
-      mk('Ask Clara to Schedule…', 'Opens a new Outlook email with Clara copied in', () => askClara(), true);
-      mk(`${small('clara', KIND_COLOUR.clara)}<span class="t">Open Clara</span>`, clara.url, openClara);
-    } else {
+    {
       mk('Ask', n.chief ? 'A new chat with where the whole team is up to, ready to paste' : `A new chat${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''}, with where ${n.name} is up to ready to paste`, () => cosAsk(n), true);
       const pb = mk(`${colourIcon('project')}<span class="t">${n.claudeProject ? 'Claude Project' : 'Set Up Claude Project'}</span>`, n.claudeProject ? `${n.claudeProject.name}: new chats for ${n.name} start here. Click to open it; the arrow for more.` : `Give ${n.name} a Claude Project: their role and instructions live there, and their new chats start in it`,
         e => n.claudeProject ? cosOpenLink(n.claudeProject) : cosSetUpProject(n));
@@ -6882,16 +6863,6 @@
       pb.classList.toggle('on', !!n.claudeProject);
       if (!n.dashboard) mk(`${colourIcon('dashboard')}<span class="t">Add Dashboard</span>`, `Give ${n.name} a dashboard: make one with Claude, or use one you already have. It gets its own tab here.`,
         e => { const b = e.currentTarget.getBoundingClientRect(); cosDashMenu(b.left, b.bottom + 4, n); });
-    }
-    if (n.external) {                                           // Clara works by email: nothing to keep here
-      page.appendChild(who);
-      const e = document.createElement('div');
-      e.className = 'cos-empty';
-      e.innerHTML = '<b>Clara works by email</b><span></span>';
-      e.querySelector('span').textContent = `Copy ${clara.email} into an email and Clara finds a time with everyone. Ask Clara to Schedule opens a new Outlook email with Clara copied in; Open Clara shows the dashboard.`;
-      page.appendChild(e);
-      body.appendChild(page);
-      return;
     }
     const tabs = document.createElement('div');
     tabs.className = 'cos-tabs';
@@ -6931,8 +6902,25 @@
       btn(UI.more, 'More: open in your browser, use another dashboard, remove', e => { const r = e.currentTarget.getBoundingClientRect(); cosDashMenu(r.left, r.bottom + 4, n); });
       tabs.appendChild(tb);
     }
+    if (cosUi.tab === 'clara' && n.clara) {
+      const tb = document.createElement('div');
+      tb.className = 'tab-tools';
+      const btn = (html, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
+      btn(`<span class="ic">${UI.compose}</span><span class="t">Ask Clara to Schedule\u2026</span>`, `A new Outlook email${n.clara.from ? ` from ${n.clara.from}` : ''} with Clara (${clara.email}) copied in`, () => askClara(n));
+      btn('<span class="t"></span>', 'The address emails to Clara are sent from. Click to change it.', () => claraFromDialog(n)).firstChild.textContent = `From: ${n.clara.from || 'not set'}`;
+      btn(`<span class="ic">${UI.reload}</span>`, 'Reload Clara\u2019s dashboard', () => viewDo(v => v.reload()));
+      btn(UI.more, 'More', e => { const r = e.currentTarget.getBoundingClientRect(); cosClaraMenu(r.left, r.bottom + 4, n); });
+      tabs.appendChild(tb);
+    }
     page.append(who, tabs);
     body.appendChild(page);
+    if (cosUi.tab === 'clara' && n.clara) {
+      // Clara's dashboard fills the page below the tabs, the same way a staff dashboard does.
+      const entering = cosUi.toFolder || cosUi.dashFor !== 'clara:' + n.id || state.loc.kind !== 'page';
+      if (entering) go({ kind: 'page', url: clara.url });
+      cosUi.dashFor = 'clara:' + n.id; cosUi.toFolder = false;
+      return;
+    }
     if (cosUi.tab === 'dashboard' && n.dashboard) {
       // The dashboard fills the page below the tabs (.cos-dash in the CSS), shown in Claude's pane.
       const entering = cosUi.toFolder || cosUi.dashFor !== n.id || state.loc.kind !== 'page';
@@ -7589,7 +7577,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const t = cosTeam();
     showMenu(x, y, [
       { label: 'Ask the Team', disabled: !t, run: () => { const c = t && t.nodes.find(x => x.chief); if (c) cosAsk(c); } },
-      { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add Clara (External Assistant)', disabled: !t, run: () => claraNode() ? askClara() : cosAddClara() },
+      { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add an Executive Assistant with Clara…', disabled: !t, run: () => claraNode() ? askClara(claraNode()) : cosAddClara() },
       '-',
       { label: 'Export Org Chart as PDF…', disabled: !t, run: () => cosExport('pdf') },
       { label: 'Export Org Chart as Image…', disabled: !t, run: () => cosExport('png') },
@@ -7662,10 +7650,11 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (e.key === 'Escape' && cosUi.sel) { cosSelect(null); }
   });
 
-  // ---------- Clara (external AI executive assistant) ----------
+  // ---------- Clara (an AI executive assistant from Clara Labs) ----------
   // Clara schedules meetings by email: copy Clara into an email and Clara finds a time with everyone.
-  // There is no way for other apps to read Clara's work, so the app opens Clara's dashboard and starts
-  // the emails, and (in Chief of Staff) keeps each request as an action you tick off once it is booked.
+  // Clara is attached to a staff member (say an Executive Assistant), who works like anyone else on the
+  // team and also gets a Scheduling tab: Clara's dashboard, and Ask Clara to Schedule, which starts an
+  // Outlook email from the address set for them (each company's own) with Clara copied in.
   const saveClara = () => ls.set(CLARA_STORE, JSON.stringify({ email: clara.email, url: clara.url }));
   const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
   function openClara() { go({ kind: 'page', url: clara.url }); }
@@ -7696,28 +7685,82 @@ body { width: max-content !important; min-width: 0 !important; }
       if (u.protocol !== 'https:') return 'The dashboard address must start with https://';
       clara.email = v.email; clara.url = u.href; saveClara();
       toast('Saved Clara’s settings');
-      renderAll();
+      if (currentApp === 'cos') renderCos(); else renderAll();
     });
   }
-  // Starts an email to the people you want to meet, with Clara copied in. The email opens in your Mac's
-  // Outlook desktop app (or the default mail app if Outlook is missing), ready to check and send.
-  // Opens a new email in Outlook with Clara copied in. You write the email in Outlook; nothing to fill in here.
-  function askClara() {
-    const url = `mailto:?cc=${encodeURIComponent(clara.email)}`;
-    if (window.navigatorApp && window.navigatorApp.openMail) window.navigatorApp.openMail(url); else location.href = url;
-    toast('A new email is open with Clara copied in. Add who you are meeting and what about, then send it.');
+  const claraFromKey = () => 'claudeNavigator.claraFrom.' + (state.profileId || 'all');
+  // The address the emails to Clara come from (each company's own). Asked when Clara is attached.
+  function claraFromDialog(n, then) {
+    const attaching = !n.clara;
+    claraDialog('claraFromDlg', attaching ? `Attach Clara to ${n.name}` : `Clara for ${n.name}`, [
+      { name: 'from', label: 'Emails to Clara are sent from', value: (n.clara && n.clara.from) || ls.get(claraFromKey()) || '', ph: 'e.g. you@yourcompany.com.au' },
+    ], attaching ? 'Attach Clara' : 'Save', v => {
+      if (!EMAIL_RE.test(v.from)) return 'That email address does not look right.';
+      ls.set(claraFromKey(), v.from);
+      cosChange(() => { n.clara = Object.assign({}, n.clara, { from: v.from }); },
+        attaching ? `Clara is attached to ${n.name}: a Scheduling tab is on their page` : `Emails to Clara for ${n.name} now come from ${v.from}`);
+      if (then) setTimeout(then, 50);
+    });
   }
-  const claraNode = () => { const t = cosTeam(); return t ? t.nodes.find(n => n.external === 'clara') : null; };
+  function cosClaraItems(n) {
+    if (!n.clara) return [{ label: 'Attach Clara (Scheduling)…', run: () => claraFromDialog(n) }];
+    return [
+      { label: 'Ask Clara to Schedule…', run: () => askClara(n) },
+      { label: 'Detach Clara…', run: () => cosDetachClara(n) },
+    ];
+  }
+  function cosClaraMenu(x, y, n) {
+    showMenu(x, y, [
+      { label: 'Open Clara’s Dashboard in Your Browser', run: () => window.open(clara.url, '_blank') },
+      { label: 'Change the Sending Address…', run: () => claraFromDialog(n) },
+      { label: 'Clara Settings…', run: claraSettings },
+      '-',
+      { label: 'Detach Clara…', run: () => cosDetachClara(n) },
+    ]);
+  }
+  function cosDetachClara(n) {
+    if (!confirm(`Detach Clara from ${n.name}? Their Scheduling tab goes; everything else stays.`)) return;
+    cosChange(() => { delete n.clara; if (cosUi.tab === 'clara') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Detached Clara from ${n.name}`);
+  }
+  // Opens a new email in Outlook, from the staff member's sending address, with Clara copied in.
+  // You write the email in Outlook; nothing to fill in here.
+  async function askClara(n) {
+    n = n || claraNode();
+    if (n && n.clara && !n.clara.from) return claraFromDialog(n, () => askClara(cosNode(cosTeam(), n.id) || n));
+    const from = n && n.clara ? n.clara.from : '';
+    let how = '';
+    if (window.navigatorApp && window.navigatorApp.claraMail) how = await window.navigatorApp.claraMail({ from, cc: clara.email });
+    else location.href = `mailto:?cc=${encodeURIComponent(clara.email)}`;
+    toast(how === 'account' ? `A new email from ${from} is open in Outlook with Clara copied in. Add who you are meeting and what about, then send it.`
+      : `A new email is open with Clara copied in.${from ? ` Check it is from ${from} (choose it in From).` : ''} Add who you are meeting and what about, then send it.`);
+  }
+  const claraNode = () => { const t = cosTeam(); return t ? t.nodes.find(n => n.clara) : null; };
+  // An Executive Assistant on the team, with Clara attached (asks for the sending address).
   function cosAddClara() {
     const t = cosTeam();
     if (!t) return;
     const have = claraNode();
-    if (have) { cosSelect(have.id); return toast('Clara is already on this team'); }
+    if (have) { cosSelect(have.id); return toast(`Clara is attached to ${have.name}`); }
     const chief = t.nodes.find(n => n.chief) || t.nodes[0];
-    const n = { id: uid(), kind: 'staff', external: 'clara', name: 'Clara', role: 'Executive assistant (external): schedules meetings by email', about: `Clara is an AI executive assistant from Clara Labs. Copy ${clara.email} into an email and Clara finds a time that works for everyone.`, color: '#D9468C', parent: chief ? chief.id : null };
-    cosChange(() => t.nodes.push(n), 'Added Clara to the team');
+    const n = { id: uid(), kind: 'staff', name: 'Executive Assistant', role: 'Executive assistant: arranges meetings with Clara', color: '#D9468C', parent: chief ? chief.id : null };
+    cosChange(() => t.nodes.push(n), 'Added an Executive Assistant to the team');
     cosUi.sel = n.id;
     renderCos();
+    claraFromDialog(n);
+  }
+  // Earlier versions had Clara as her own (external) box on the team: she becomes an Executive Assistant
+  // with Clara attached. The sending address is asked the first time you ask Clara to schedule.
+  function cosClaraToStaff() {
+    let changed = false;
+    for (const t of Object.values((cos && cos.teams) || {})) for (const n of t.nodes || []) {
+      if (n.external !== 'clara') continue;
+      delete n.external; delete n.about;
+      n.clara = n.clara || { from: '' };
+      if (n.name === 'Clara') n.name = 'Executive Assistant';
+      if (/^Executive assistant \(external\)/.test(n.role || '')) n.role = 'Executive assistant: arranges meetings with Clara';
+      changed = true;
+    }
+    if (changed) saveCos();
   }
 
   // ---------- Chief of Staff: make something new and link it ----------
@@ -8909,6 +8952,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   try { cosMigrateToFolders(); } catch (e) { console.error('Chief of Staff move to folders', e); }
   try { cosMigrateSkills(); } catch (e) { console.error('Chief of Staff skills to folders', e); }
   try { cosMergeRoleAndAbout(); } catch (e) { console.error('Chief of Staff role', e); }
+  try { cosClaraToStaff(); } catch (e) { console.error('Chief of Staff Clara', e); }
   try { cosKeepOrder(); } catch (e) { console.error('Chief of Staff order', e); }
   try { autoAttachSiblings(); } catch (e) { /* the lists load later */ }
   initFolderSync();

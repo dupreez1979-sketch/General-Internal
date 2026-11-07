@@ -52,7 +52,8 @@
       "category": "public.app-category.productivity",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Claude uses the microphone for voice mode and dictation.",
-        "NSCameraUsageDescription": "Claude uses the camera when you choose to share a photo or video."
+        "NSCameraUsageDescription": "Claude uses the camera when you choose to share a photo or video.",
+      "NSAppleEventsUsageDescription": "Claude Navigator starts emails to Clara in Outlook, from the address you chose."
       },
       "icon": "build/icon.png",
       "hardenedRuntime": true,

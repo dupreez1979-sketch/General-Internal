@@ -12,5 +12,8 @@
   <true/>
   <key>com.apple.security.device.camera</key>
   <true/>
+  <!-- Clara: tells Outlook which account a new email comes from. -->
+  <key>com.apple.security.automation.apple-events</key>
+  <true/>
 </dict>
 </plist>

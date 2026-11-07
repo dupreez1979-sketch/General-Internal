@@ -6,6 +6,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   isElectron: true,
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   openMail: (url) => ipcRenderer.invoke('open-mail', url),
+  claraMail: (opts) => ipcRenderer.invoke('clara-mail', opts),
   openWindow: (url) => ipcRenderer.invoke('open-window', url),
   showInFolder: (file) => ipcRenderer.invoke('show-in-folder', file),
   openFile: (file) => ipcRenderer.invoke('open-file', file),
