@@ -516,10 +516,11 @@ async function fetchLibrary(opts = {}) {
       result.artifacts = await win.webContents.executeJavaScript(scrollHarvest(LIB_PATTERNS.artifacts), true);
     }
     // Code, Design and Scheduled: find each page from Claude's own navigation, then read what it lists.
-    for (const [kind, label, fallback] of [['code', '^code$', '/code'], ['design', '^design$', '/design'], ['scheduled', '^(scheduled|schedules?)$', '/scheduled']]) {
+    for (const [kind, label, fallback] of [['code', '^code$', '/code'], ['design', '^design$', '/design'], ['scheduled', '^(scheduled|schedules?|routines?)$', '/code/routines']]) {
       if (win.isDestroyed()) break;
       const found = await win.webContents.executeJavaScript(discoverPage(label), true).catch(() => null);
       const prefix = found || fallback;
+      if (found) (result.pagePaths || (result.pagePaths = {}))[kind] = found;   // where Claude's own sidebar points
       await openHidden(win, 'https://claude.ai' + prefix);
       if (win.isDestroyed()) break;
       const pattern = kind === 'code'

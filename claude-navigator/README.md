@@ -120,19 +120,23 @@ Chief of Staff is your AI team, one team per profile (switch profile to see anot
 
 **A staff member's page**: double-click anyone (or click **Open Page** in the side panel) to open their page, with tabs for **Projects**, Actions, Functions and Routines.
 
-- **Projects** are what they are working on. **New Project** makes one; each has its own folders (**New Folder**). Right-click a project to **Archive** it (kept under Archived) or **Delete** it.
-- **Add Items** shows All Chats, Artifacts, monday.com or My Folders beside the project, without leaving Chief of Staff. Drag items onto the project, onto one of its folders, or onto another project in the list. Items are links: nothing moves or changes in Claude, monday.com or your folders.
-- Double-click an item to open it in its own window; right-click for **Open in Navigator**, **Rename** or **Remove from Project**. Drag items onto a project folder to move them inside it.
+**Everything starts by making the real thing.** **New Action…**, **New Function** and **New Routine** open Claude on the right, beside the team, and link what you make the moment Claude creates it. If the link does not happen by itself, click **Link This Page** above Claude. **Link Existing** instead shows your chats, artifacts, monday.com boards or folders on the right, so you can drag in what you already have. In **My Folders** there, **Back** takes you up a folder.
 
-**Actions** (one-off jobs): type one and press Return, or **New Action…** for notes, status and a due date. Tick to mark it done (Done is folded away); change status with its menu; overdue dates show in red. Link the chat where the work happens by dragging it onto the action (**Link Chats** shows your chats beside them) or right-click, **Link a Chat…**. **Start a Chat for This** opens a new chat with the action copied, ready to paste.
+**Projects** collect what a staff member is working on, and everything in a project is an **action** (in folders if you like):
 
-**Functions** (what a staff member does well on request, like board papers or a chart-of-accounts audit): **New Function…** with what it does and the instructions to give Claude. Link the chat, project or artifact it uses (drag it on, or right-click, **Link a Chat…**). **Run** opens it in its own window with the instructions copied, ready to paste.
+- **New Action…** asks what needs doing (notes, status, due date) and what to start it with: a new Claude chat, artifact, Doc, Slides, Design, Dashboard or Claude project, a new Word, Excel, PowerPoint or text file, a new monday.com board, or nothing yet. Then it makes that and links it. For a chat, the action's details are copied, ready to paste as your first message.
+- **Link Existing** and drag items in: each becomes an action linked to it. Drop onto an action to link it to that action instead.
+- Tick an action to mark it done. Double-click to open what it is linked to (Claude and monday.com open beside the team; files open in their own app). Right-click for **Start Something Else for This…**, **Link a Chat…**, Edit and Delete.
+- Projects can be archived (kept, hidden) or deleted. Projects from earlier versions keep everything: their links became actions.
+
+**Actions** (the tab) are simple one-off jobs that are not part of a project. They work the same way: **New Action…** starts them in Claude, a quick one can be typed and Return pressed, and dragging something into the list (**Link Existing**) makes it an action.
+
+**Functions** (what a staff member does well on request, like board papers): **New Function** starts a new Claude chat and keeps it here, named after the chat. Drag in a chat or project you already have to make it a function. Right-click to edit what it does and the instructions to give Claude; **Run** opens it with the instructions copied, ready to paste.
 
 **Routines** are what a staff member does on a schedule (a weekly finance check, a monthly board report):
 
-- **New Routine…** sets the name, what it does and when it runs: every day, every weekday, chosen days of the week, a day of the month, or a description for anything else, plus a time.
-- **Link Claude Task…** connects it to one of your Claude scheduled tasks (from Navigator's Scheduled list). You can also drag a scheduled task onto the card. Drag a chat onto it to say where its results go.
-- **New Schedule in Claude** opens Claude's Scheduled page so you can make the task, then link it.
+- **New Routine** opens Claude's scheduled tasks on the right. Make the task there; it is linked as soon as you save it, and then the app asks when it runs (every day, every weekday, chosen days, a day of the month, or a description), so it shows on the week view.
+- **Describe Only…** adds a routine without making it in Claude yet; link the Claude task later with **Link Claude Task…** or by dragging it on. Drag a chat onto a card to say where its results go.
 - Each card shows the plain-English schedule, whether it is linked, and the next run. A week strip above the cards shows what runs on each day.
 - **Week** (top right on the team page) shows the whole team's routines for this week. Click one to open that staff member.
 - Pausing a routine here only marks it as paused. Pause the task in Claude too.
