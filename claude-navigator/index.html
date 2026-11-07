@@ -5037,6 +5037,9 @@
     // Chief of Staff: dragging work from a staff member's folder into a company folder files it.
     const dropFolder = t.zone === 'into' || !t.id ? t.id : parentIdOf(t.id);
     if (srcIds.length && isCompanyFolder(dropFolder) && srcIds.every(id => deskItem(id))) { multi.side.clear(); fileIntoCompany(srcIds, dropFolder); return; }
+    // ...and company items dragged into a staff member's folder are added to their desk (they stay filed too).
+    const deskTo = dropFolder && teamCtxOf(dropFolder);
+    if (srcIds.length && deskTo && deskTo.staff && srcIds.every(id => { const x = nodeOf(id); return x && !x.profile && !teamCtxOf(id) && profileOf(id); })) { multi.side.clear(); bringToDesk(srcIds, dropFolder); return; }
     if (srcIds.length > 1) {
       if (t.id && srcIds.includes(t.id)) return;
       if (moveNodes(srcIds, t)) {
@@ -5499,6 +5502,7 @@
       const r = document.createElement('div');
       r.className = 'sl-row' + (n.type === 'folder' ? ' folder' : '') + cls;
       r.dataset.sid = n.id;
+      r.draggable = !n.profile;
       r.innerHTML = `<span class="icon">${n.type === 'folder' ? (n.profile ? `<span class="pdot" style="background:${n.color}"></span>` : small('folder', KIND_COLOUR.folder)) : colourIcon(kindOf(n))}</span><span class="label"></span>`;
       r.querySelector('.label').textContent = n.name;
       r.title = n.type === 'folder' ? `${n.name}: double-click to open; drop items here to file them inside` : n.name;
@@ -5546,6 +5550,17 @@
     $('slList').classList.remove('drop-here');
     $('slList').querySelectorAll('.drop-into').forEach(x => x.classList.remove('drop-into'));
   });
+  $('slList').addEventListener('dragstart', e => {
+    const r = e.target.closest && e.target.closest('.sl-row[data-sid]');
+    const n = r && nodeOf(r.dataset.sid);
+    if (!n || n.profile) { e.preventDefault(); return; }
+    dragIds = [n.id];
+    dragId = n.id;
+    e.dataTransfer.effectAllowed = 'copyMove';
+    e.dataTransfer.setData(NAV_TYPE, n.id);
+    if (n.type === 'link') { e.dataTransfer.setData('text/uri-list', n.url); e.dataTransfer.setData('text/plain', n.url); }
+  });
+  $('slList').addEventListener('dragend', e => onDragEnd(e));
   $('slList').addEventListener('drop', e => {
     $('slList').classList.remove('drop-here');
     $('slList').querySelectorAll('.drop-into').forEach(x => x.classList.remove('drop-into'));
@@ -6165,6 +6180,34 @@
     if (newUsual) parts.push(`${f.name} is now ${newUsual.name}’s usual filing place.`);
     toast(parts.join(' ') || 'Nothing to file', !!(filed || moved));
     return filed + moved;
+  }
+  // From the company folders to a staff member's desk: Claude and monday.com items are added there (and stay
+  // filed), a folder brings a copy of its links, and a file on your Mac moves (it exists once).
+  function bringToDesk(ids, folderId) {
+    const c = teamCtxOf(folderId);
+    if (!c || !c.staff) return 0;
+    const have = new Set(workItems(c.staff).filter(x => x.type === 'link').map(x => normUrl(x.url)));
+    let added = 0, moved = 0, already = 0, leftFiles = 0;
+    const copyOf = n => n.type === 'folder' ? Object.assign(Folder(n.name), { children: (n.children || []).map(copyOf).filter(Boolean) })
+      : n.type === 'link' ? Object.assign(Link(n.name, n.url), n.as ? { as: n.as } : {}, n.autoName ? { autoName: true } : {})
+      : (leftFiles++, null);
+    snap();
+    for (const id of outermost(ids)) {
+      const n = nodeOf(id);
+      if (!n) continue;
+      if (n.type === 'file') { const l = locate(id); l.list.splice(l.index, 1); insertInto(folderId, n); moved++; }
+      else if (n.type === 'link' && have.has(normUrl(n.url))) already++;
+      else { insertInto(folderId, copyOf(n)); added++; }
+    }
+    commit();
+    const who = (staffNodeOf(c.staff) || {}).name || c.staff.name;
+    const parts = [];
+    if (added) parts.push(`Added ${added === 1 ? `\u201c${nodeOf(outermost(ids).find(id => nodeOf(id) && nodeOf(id).type !== 'file')).name}\u201d` : `${added} items`} to ${who}\u2019s work. ${added === 1 ? 'It stays' : 'They stay'} in the company folders too.`);
+    if (moved) parts.push(`Moved ${moved} file${moved === 1 ? '' : 's'} to ${who}\u2019s work.`);
+    if (already) parts.push(`${already} already in ${who}\u2019s work.`);
+    if (leftFiles) parts.push(`${leftFiles} file${leftFiles === 1 ? '' : 's'} inside stayed in the company folder.`);
+    toast(parts.join(' ') || 'Nothing to add', !!(added || moved));
+    return added + moved;
   }
   function fileToPicker(ids) {
     const first = deskItem(ids[0]);
