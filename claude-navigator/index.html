@@ -9185,7 +9185,11 @@ body { width: max-content !important; min-width: 0 !important; }
       const section = d.section || [];
       const whenFor = name => (section.find(x => x.name.toLowerCase() === name.toLowerCase()) || {}).when || '';
       // Each task: a link from Recents if there is one; otherwise only its name and schedule (from Scheduled).
-      const tasks = (d.items || []).map(x => ({ name: x.name, url: x.url, when: whenFor(x.name) }));
+      const isTask = u => /^\/(chat|task|tasks|routine|routines|scheduled)\/[^/]+/.test(pathOf(u) || '');
+      // Earlier versions could mistake Claude's menu links (Design, Customize) for scheduled tasks: drop those quietly.
+      const bogus = rs.filter(r => r.fromProject && r.link && r.link.url && !isTask(r.link.url) && normUrl(r.link.url) !== normUrl(P.url));
+      if (bogus.length) { for (const b of bogus) rs.splice(rs.indexOf(b), 1); m.routines = rs; }
+      const tasks = (d.items || []).filter(x => isTask(x.url)).map(x => ({ name: x.name, url: x.url, when: whenFor(x.name) }));
       for (const x of section) if (!tasks.some(t => t.name.toLowerCase() === x.name.toLowerCase())) tasks.push({ name: x.name, url: '', when: x.when });
       const added = [], removed = [];
       for (const t of tasks) {
@@ -9205,7 +9209,7 @@ body { width: max-content !important; min-width: 0 !important; }
         cosChange(() => { m.routines = rs.filter(r => !removed.includes(r)).concat(added); },
           added.length ? `${added.length === 1 ? `\u201c${added[0].name}\u201d` : `${added.length} routines`} from ${m.name}\u2019s Claude Project ${added.length === 1 ? 'is' : 'are'} now in Routines` : `\u201c${removed[0].name}\u201d is no longer in ${m.name}\u2019s Claude Project, so it is removed here`);
         if (added.length && cosUi.routineWatch && cosUi.routineWatch.staffId === m.id) { cosUi.routineWatch = null; clearInterval(cosUi.routinePoll); cosRender(); }
-      } else saveCos();
+      } else { saveCos(); if (bogus.length) cosRender(); }
     } catch (e) { /* not reachable: try again next time */ } finally { cosUi.projectSyncing = false; }
   }
   function cosRefreshRoutines(n) {

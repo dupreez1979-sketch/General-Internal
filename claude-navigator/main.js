@@ -808,11 +808,15 @@ const PROJECT_SCHEDULED = `(() => {
   const clean = s => (s || '').replace(/\\s+/g, ' ').trim();
   const items = [], seen = new Set();
   for (const a of document.querySelectorAll('a[href]')) {
+    // Never Claude's own menus (its sidebar has a Scheduled item next to Design, Customize and so on).
+    if (a.closest('nav, [role="navigation"], [role="menu"]')) continue;
     const row = a.closest('li, [role="listitem"], [role="row"]') || a.parentElement || a;
+    if (row.querySelectorAll('a[href]').length > 1) continue;
     const txt = clean(row.innerText || a.innerText);
-    if (!/\\bScheduled\\b/.test(txt) || txt.length > 300) continue;
+    if (!/\\bScheduled\\b/.test(txt) || /^scheduled$/i.test(clean(a.innerText)) || txt.length > 300) continue;
     let u; try { u = new URL(a.href); } catch (e) { continue; }
-    if (u.origin !== location.origin || /^\\/project\\//.test(u.pathname) && u.pathname === location.pathname) continue;
+    // Only a chat or a scheduled task: never a page like Design, Customize, Projects or the project itself.
+    if (u.origin !== location.origin || !/^\\/(chat|task|tasks|routine|routines|scheduled)\\/[^/]+/.test(u.pathname)) continue;
     const name = clean((a.innerText || '').split('\\n').map(x => x.trim().replace(/^[^\\p{L}\\p{N}]+/u, '')).filter(x => x && !/^scheduled$/i.test(x) && !/\\bago$|^just now$/i.test(x))[0] || '');
     if (!name || seen.has(u.pathname)) continue;
     seen.add(u.pathname);
