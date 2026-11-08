@@ -98,6 +98,8 @@
   .tb:active:not(:disabled) { background: var(--sel); }
   .tb:disabled { opacity: .35; }
   .tb .t { font-size: 12px; white-space: nowrap; }
+  @keyframes nudge { 0%, 100% { background: transparent; } 50% { background: color-mix(in srgb, var(--accent) 22%, transparent); } }
+  .tb.nudge { animation: nudge 1.4s ease-in-out infinite; color: var(--accent) !important; font-weight: 600; }
   .seg { display: inline-flex; background: var(--field); border-radius: 7px; padding: 2px; gap: 2px; }
   .seg .tb { height: 24px; min-width: 30px; border-radius: 5px; }
   .seg .tb.on { background: var(--win); color: var(--text); box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.1); }
@@ -3283,6 +3285,7 @@
       $('bSave').hidden = c.status === 'pending' || isBlankClaudePage(state.pageUrl);
       $('bSaveMore').hidden = $('bSave').hidden;
       $('bSave').firstElementChild.innerHTML = saved ? UI.starFilled : UI.star;
+      if (saved) $('bSave').classList.remove('nudge');
       $('bSaveText').textContent = saved ? 'Saved' : f ? `Save to ${f.name}` : 'Save';
       $('bSave').title = (saved ? 'Saved. Click for Save a Copy As, Move, Show in Folder or Remove' : 'Save this page') +
         (f ? ` in \u201c${f.name}\u201d` : '') + ` (${K.mod}S)`;
@@ -3769,6 +3772,7 @@
       }
       renderToolbar();
       syncSideSel();
+      try { skillNudgeSoon(); } catch (e) { /* starting up */ }
       // Claude's Settings (Connectors and the like) can draw as a black box inside the app: offer its own window.
       try {
         const sp = pathOf(url);
@@ -4500,8 +4504,14 @@
     $('lblName').hidden = folderOnly;
     $('lblUrl').hidden = folderOnly || nameOnly;
     fUrl.required = !folderOnly && !nameOnly;
+    // Saving a page always needs a real name (never "claude.ai" or "Customize"): Save stays blocked until there is one.
+    fName.required = nameOnly;
+    fName.placeholder = nameOnly ? 'Type a name for it' : 'e.g. Board paper draft';
+    fName.oninput = nameOnly ? () => fName.setCustomValidity(fName.value.trim() && !realTitle(fName.value) ? 'Give it a real name' : '') : null;
+    fName.setCustomValidity('');
     $('linkOk').textContent = okLabel;
     fName.value = name;
+    if (fName.oninput) fName.oninput();
     fUrl.value = url;
     folderOptions(folderId, excludeId);
     dlgDone = onSave;
@@ -4624,18 +4634,43 @@
   }
 
   // Save As: choose a name and browse to the folder (also used whenever the page is not in a folder yet).
-  function saveAs() {
+  // On a skill or plugin's own page in Claude (Customize › …) that is switched on or was just made but is not saved
+  // here yet, Save pulses: it is easy to forget to save it to the staff member's Skills.
+  const SKILL_ON = `(() => [...document.querySelectorAll('[role="switch"], input[type="checkbox"]')].some(e => e.getAttribute('aria-checked') === 'true' || e.checked)
+    || /installed and ready to use|skill (was )?(created|saved|added)/i.test((document.body.innerText || '').slice(0, 20000)))()`;
+  function skillNudgeSoon() {
+    clearTimeout(skillNudgeSoon.t);
+    const b = $('bSave');
+    const p = pathOf(state.pageUrl || '');
+    const candidate = isApp && state.loc.kind === 'page' && /^\/customize\/[^/]+\/[^/]+/.test(p) && pageContext().status !== 'saved';
+    if (!candidate) { b.classList.remove('nudge'); return; }
+    viewExec(SKILL_ON).then(on => { b.classList.toggle('nudge', !!on && pageContext().status !== 'saved'); }).catch(() => {});
+    skillNudgeSoon.t = setTimeout(skillNudgeSoon, 2500);
+  }
+  // A name for the page showing: its title, else its heading (skill and plugin pages are only titled "claude.ai"),
+  // else Untitled chat and the like. Never a bare site name: '' means it must be typed.
+  async function currentPageName(url) {
+    const t = realTitle(state.pageTitle);
+    if (t) return t;
+    const h = await Promise.race([viewExec(PAGE_HEADING).catch(() => ''), new Promise(r => setTimeout(() => r(''), 1500))]);
+    if (realTitle(h)) return realTitle(h);
+    const g = guessName(url);
+    return /^Untitled (chat|project|artifact)$/.test(g) ? g : '';
+  }
+  async function saveAs(folderPick) {
     if (!isApp || state.loc.kind !== 'page') return toast('Open a Claude chat or page first, then Save As puts it in a folder.');
     if (state.autoFile) return toast('Send your first message. It is saved automatically after that.');
     if (isBlankClaudePage(state.pageUrl)) return toast('Nothing to save yet. Start the chat first.');
     const url = state.pageUrl;
     const c = pageContext();
+    const suggested = await currentPageName(url);
     openDialog({
-      title: 'Save As', name: realTitle(state.pageTitle) || guessName(url), url,
-      folderId: c.folderId || state.lastFolderId, nameOnly: true,
+      title: 'Save As', name: suggested, url,
+      folderId: typeof folderPick === 'string' ? folderPick : c.folderId || state.lastFolderId, nameOnly: true,
       onSave: ({ name, folderId }) => {
-        const typed = name && name !== realTitle(state.pageTitle);
-        addLink(folderId, name || realTitle(state.pageTitle) || guessName(url), url, { autoName: !typed });
+        if (!name) return;
+        const typed = name !== realTitle(state.pageTitle);
+        addLink(folderId, name, url, { autoName: !typed });
         state.lastFolderId = folderId;
         renderToolbar();
         syncSideSel();
@@ -4657,10 +4692,12 @@
       return toast(`Already saved${f ? ` in ${f.name}` : ''}. Use Save As (${K.mod}${K.shift}S) to save a copy somewhere else.`);
     }
     const url = state.pageUrl;
-    const name = realTitle(state.pageTitle) || guessName(url);
-    addLink(folderId, name, url, { autoName: true });
-    const f = nodeOf(folderId);
-    toast(`Saved “${name}” to ${f ? f.name : 'top level'}`, true);
+    currentPageName(url).then(name => {
+      if (!name) return saveAs(folderId);            // no usable name (for example "claude.ai"): ask for one
+      addLink(folderId, name, url, { autoName: true });
+      const f = nodeOf(folderId);
+      toast(`Saved “${name}” to ${f ? f.name : 'top level'}`, true);
+    });
   }
 
   // ---------- Context menus ----------
