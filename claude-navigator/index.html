@@ -3681,6 +3681,16 @@
       syncSideSel();
       try { cosNoteStaffChat(); } catch (e) { /* starting up */ }
       try { if (currentApp === 'cos') cosBotSoon(); } catch (e) { /* starting up */ }
+      // Sign-in pages that ask for a passkey (Face ID, Touch ID, Windows Hello) wait for ever inside the app:
+      // Electron cannot reach the Mac's passkeys. Say how to get past it, once per sign-in page.
+      try {
+        const host = new URL(url).hostname;
+        if (/(^|\.)(login\.microsoftonline\.com|login\.live\.com|login\.microsoft\.com|accounts\.google\.com)$/i.test(host) && state.passkeyHint !== host) {
+          state.passkeyHint = host;
+          toast('Signing in with Face ID, fingerprint or a passkey cannot work inside the app. Click the back arrow and choose Other ways to sign in (password or Authenticator app); you stay signed in after that. Or sign in in your browser.',
+            { label: 'Open in Browser', run: () => window.open(url, '_blank') });
+        }
+      } catch (e) { /* not a web address */ }
       try { if (currentApp === 'cos' && cosUi.setupFor && url !== cosUi.setupSeen) { cosUi.setupSeen = url; cosRender(); } } catch (e) { /* starting up */ }
     };
     view.addEventListener('dom-ready', () => { viewReady = true; update(); setTimeout(collapseClaudeSidebar, 600); });
