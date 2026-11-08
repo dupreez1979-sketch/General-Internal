@@ -7315,12 +7315,43 @@
     const best = rel.find(u => arts.has(u) && libKind(arts.get(u), 'artifacts') === 'dashboard') || rel[0];
     return best ? (/^https?:/.test(best) ? best : 'https://claude.ai' + best) : d.url;
   }
+  // Claude shows a dashboard beside the chat that made it; its expand button hides the chat. The Dashboard tab
+  // presses it, so only the dashboard shows. Edit in Claude brings the chat back (Claude's own Chat button).
+  const DASH_VIEW = mode => `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const lab = e => ((e.innerText || '') + ' ' + (e.getAttribute('aria-label') || '') + ' ' + (e.getAttribute('title') || '')).replace(/\\s+/g, ' ').trim();
+    const btns = () => [...document.querySelectorAll('button, [role="button"]')].filter(b => (b.offsetWidth || b.offsetHeight) && !b.closest('nav, aside, [role="navigation"]'));
+    const chatBtn = () => btns().find(b => /^chat$/i.test((b.innerText || '').trim()) || /^(show|open|back to) (the )?chat$/i.test(b.getAttribute('aria-label') || ''));
+    for (let i = 0; i < 40; i++) {
+      if (${JSON.stringify(mode)} === 'full') {
+        if (chatBtn()) return 'full';
+        const exp = btns().find(b => { const l = lab(b); return l.length < 40 && /\\b(expand|full ?screen|maximi[sz]e|enlarge)\\b/i.test(l) && !/sidebar|menu|chat/i.test(l); });
+        if (exp) { exp.click(); await sleep(700); continue; }
+      } else {
+        const c = chatBtn();
+        if (c) { c.click(); return 'chat'; }
+        if (i > 8) return 'none';
+      }
+      await sleep(500);
+    }
+    return 'not found';
+  })()`;
+  function cosDashView(n, mode = 'full') {
+    const want = pathOf(cosDashUrl(n.dashboard)).replace(/\/+$/, ''), t0 = Date.now();
+    const tick = () => {
+      if (Date.now() - t0 > 20000) return;
+      let u = ''; try { u = view ? view.getURL() : ''; } catch (e) { /* loading */ }
+      if (mode === 'full' && pathOf(u).replace(/\/+$/, '') !== want) return setTimeout(tick, 700);
+      Promise.race([viewExec(DASH_VIEW(mode)), new Promise(r => setTimeout(() => r('timeout'), 25000))]).catch(() => setTimeout(tick, 1000));
+    };
+    setTimeout(tick, 800);
+  }
   const cosDashShowing = n => !!(n.dashboard && !(cosUi.dashEditing === n.id && state.loc.kind === 'page'));
   function cosDashEdit(n) {
     const d = n.dashboard;
     const chat = d.chatUrl || (/\/chat\//.test(d.url) ? d.url : '');
     if (chat && normUrl(chat) !== normUrl(cosDashUrl(d))) { cosUi.dashKeep = true; go({ kind: 'page', url: chat }); cosUi.dashEditing = n.id; renderCos(); toast('This is the chat that made the dashboard. Ask Claude for changes here, then click Back to Dashboard.'); }
-    else toast('Ask Claude for changes right here, in the chat beside the dashboard.');
+    else { cosDashView(n, 'chat'); toast('Ask Claude for changes in the chat beside the dashboard. The Dashboard tab hides the chat again next time.'); }
   }
   function cosNewDashboard(n) {
     const nid = n.id;
@@ -7441,8 +7472,8 @@
       const btn = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
       const showing = cosDashShowing(n);
       if (showing) btn(`<span class="ic">${UI.compose}</span><span class="t">Edit in Claude</span>`, 'Open the chat that made this dashboard, and ask Claude for changes there', () => cosDashEdit(n));
-      else btn(`<span class="ic">${UI.back}</span><span class="t">Back to Dashboard</span>`, 'Show the dashboard again', () => { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); renderCos(); });
-      btn(`<span class="ic">${UI.reload}</span>`, 'Reload the dashboard', () => viewDo(v => v.reload()));
+      else btn(`<span class="ic">${UI.back}</span><span class="t">Back to Dashboard</span>`, 'Show the dashboard again', () => { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); renderCos(); cosDashView(n); });
+      btn(`<span class="ic">${UI.reload}</span>`, 'Reload the dashboard', () => { viewDo(v => v.reload()); if (showing) cosDashView(n); });
       btn(`${n.dashFirst ? `<span class="ic">${UI.check}</span>` : ''}<span class="t">Open First</span>`, n.dashFirst ? `${n.name}\u2019s page opens on the dashboard. Click to open on Work instead.` : `Open ${n.name}\u2019s page on the dashboard (it becomes the first tab)`,
         () => cosChange(() => { n.dashFirst = !n.dashFirst; }, null), !!n.dashFirst);
       btn(UI.more, 'More: open in your browser, use another dashboard, remove', e => { const r = e.currentTarget.getBoundingClientRect(); cosDashMenu(r.left, r.bottom + 4, n); });
@@ -7472,7 +7503,7 @@
     if (cosUi.tab === 'dashboard' && n.dashboard) {
       // The dashboard fills the page below the tabs (.cos-dash in the CSS), shown in Claude's pane.
       const entering = cosUi.toFolder || cosUi.dashFor !== n.id || state.loc.kind !== 'page';
-      if (entering && !cosUi.dashKeep) { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); }
+      if (entering && !cosUi.dashKeep) { cosUi.dashEditing = null; go({ kind: 'page', url: cosDashUrl(n.dashboard) }); cosDashView(n); }
       cosUi.dashFor = n.id; cosUi.dashKeep = false; cosUi.toFolder = false;
       return;
     }
