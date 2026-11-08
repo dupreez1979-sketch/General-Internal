@@ -249,6 +249,44 @@
   .cos-setup .tx { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12.5px; }
   .cos-setup .tx span { color: var(--muted); }
   .cos-setup .bt { display: flex; gap: 6px; flex: none; }
+  /* ---------- Chief of Staff helper (bottom right, in Chief of Staff only) ---------- */
+  #cosBot { position: fixed; right: 18px; bottom: 18px; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+  #cosBot[hidden] { display: none; }
+  #cosBot > * { pointer-events: auto; }
+  .bot-btn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-text, #fff); box-shadow: 0 6px 18px rgba(0,0,0,.18); position: relative; display: grid; place-items: center; cursor: pointer; }
+  .bot-btn .av, .bot-head .av { font-weight: 700; font-size: 13px; letter-spacing: .02em; }
+  .bot-btn .badge { position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; border-radius: 9px; background: #E3A452; color: #000; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; box-shadow: 0 0 0 2px var(--win); }
+  .bot-btn.quiet { opacity: .75; }
+  .bot-tips { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; max-width: 340px; }
+  .bot-tip { background: var(--win); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 9px 10px 9px 12px; font-size: 12.5px; display: grid; gap: 6px; max-width: 340px; animation: botIn .18s ease; }
+  .bot-tip .tx { line-height: 1.35; }
+  .bot-tip .row { display: flex; gap: 6px; align-items: center; }
+  .bot-tip .row .sp { flex: 1; }
+  .bot-tip button, .bot-item button { font: inherit; font-size: 12px; border: 0; border-radius: 7px; padding: 3px 9px; background: var(--field); color: var(--text); cursor: pointer; }
+  .bot-tip button.go, .bot-item button.go { background: var(--accent); color: var(--accent-text, #fff); }
+  .bot-tip button.x { background: none; color: var(--muted); padding: 2px 5px; }
+  @keyframes botIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .bot-panel { width: 400px; height: min(600px, calc(100vh - 110px)); background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.22); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }   /* kept laid out, so the chat never reloads */
+  #cosBot.open .bot-tips { display: none; }
+  .bot-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); }
+  .bot-head .av { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-text, #fff); display: grid; place-items: center; font-size: 11px; }
+  .bot-head b { font-size: 13px; }
+  .bot-head .sp { flex: 1; }
+  .bot-head .seg .tb.on { background: var(--sel); }
+  .bot-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .bot-quick button { font: inherit; font-size: 11.5px; border: 1px solid var(--line); background: var(--win); color: var(--text); border-radius: 12px; padding: 3px 9px; cursor: pointer; }
+  .bot-quick button:hover { border-color: var(--accent); }
+  .bot-view { flex: 1; min-height: 0; display: flex; position: relative; }
+  .bot-view webview { flex: 1; border: 0; }
+  .bot-wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; pointer-events: none; }
+  .bot-list { position: absolute; left: 0; right: 0; bottom: 0; top: 43px; background: var(--win); overflow: auto; padding: 10px; display: grid; align-content: start; gap: 8px; }
+  #cosBot[data-tab="chat"] .bot-list { display: none; }
+  .bot-item { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; display: grid; gap: 6px; font-size: 12.5px; }
+  .bot-item .k { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .bot-item .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bot-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 30px 10px; line-height: 1.5; }
   .needs-btn .needs-dot { width: 8px; height: 8px; border-radius: 50%; background: #E3A452; display: inline-block; margin-right: 6px; }
   .ocbox .needs { position: absolute; top: 8px; left: 8px; width: 9px; height: 9px; border-radius: 50%; background: #E3A452; box-shadow: 0 0 0 2px var(--win); }
   .cos-who .av { width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; }
@@ -800,6 +838,15 @@
 </div>
 
 <div id="menu" role="menu"></div>
+<div id="cosBot" hidden>
+  <div class="bot-tips"></div>
+  <div class="bot-panel">
+    <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><div class="seg"><button class="tb" data-t="tips">Suggestions</button><button class="tb" data-t="chat">Chat</button></div><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
+    <div class="bot-chat"><div class="bot-quick"></div><div class="bot-view"><div class="bot-wait">Opening a chat with your Chief of Staff\u2026</div></div></div>
+    <div class="bot-list"></div>
+  </div>
+  <button class="bot-btn" title="Chief of Staff: suggestions and a chat on the side"><span class="av">CS</span><span class="badge" hidden></span></button>
+</div>
 <div id="edgeSide" class="edge-tab at-left" data-label="Sidebar" title="Show the sidebar"></div>
 <div id="edgeDetail" class="edge-tab at-right second" data-label="Details" title="Show the details panel"></div>
 
@@ -3566,6 +3613,7 @@
       renderToolbar();
       syncSideSel();
       try { cosNoteStaffChat(); } catch (e) { /* starting up */ }
+      try { if (currentApp === 'cos') cosBotSoon(); } catch (e) { /* starting up */ }
     };
     view.addEventListener('dom-ready', () => { viewReady = true; update(); setTimeout(collapseClaudeSidebar, 600); });
     view.addEventListener('did-navigate-in-page', e => { if (e.isMainFrame !== false) setTimeout(collapseClaudeSidebar, 400); });
@@ -5957,6 +6005,7 @@
     applyCosLook();
     applyFrames(false);
     if (currentApp === 'cos') renderCos(); else renderAll();
+    try { cosBotSoon(); } catch (e) { /* starting up */ }
   }
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
   $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
@@ -6381,6 +6430,7 @@
       cosPlaceDetail(body, renderCosDetail(t));
     }
     main.appendChild(body);
+    try { cosBotSoon(); } catch (e) { /* starting up */ }
   }
   function cosFit() {
     const cv = document.querySelector('#cosMain .cos-canvas'), ch = cv && cv.querySelector('.cos-chart');
@@ -6825,7 +6875,12 @@
   // The instructions for a staff member's Claude Project: their role, and where the company files are.
   function cosProjectInstructions(n) {
     const p = activeProfile();
-    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...folderAccessLines(n)].filter(Boolean).join('\n\n');
+    const chiefLines = n.chief ? [
+      `You lead the ${p ? p.name + ' ' : ''}team: ${(cosTeam() || { nodes: [] }).nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') || 'no staff yet'}.`,
+      'Use my Granola meeting notes and transcripts (my NCTI and Monkey Baa meetings) for what is current and how I am thinking. Say which meeting something came from.',
+      'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, suggest where finished work belongs in the company folders, and say when two staff members are working on the same thing.',
+    ] : [];
+    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...chiefLines, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
     navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {});
@@ -7847,6 +7902,263 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     if (changed) saveCos();
   }
+
+  // ---------- Chief of Staff helper: suggestions and a chat on the side ----------
+  // A small button at the bottom right of Chief of Staff. It works out, from your folders and team:
+  // something like what you are on already exists; finished work not filed in the company folders yet
+  // (with where it probably belongs); two staff members working on the same thing; new Claude artifacts
+  // not filed anywhere. New ones pop up briefly beside the button (Quiet turns that off); all of them are
+  // in its panel. The panel also holds an ongoing chat with the Chief of Staff (a real Claude chat in their
+  // Claude Project, so it can use what your Claude account can, such as Granola meeting notes).
+  const BOT_STORE = 'claudeNavigator.cosBot';
+  const bot = Object.assign({ open: false, tab: 'tips', quiet: false, dismissed: [] }, (() => { try { return JSON.parse(ls.get(BOT_STORE) || '{}'); } catch (e) { return {}; } })());
+  const saveBot = () => ls.set(BOT_STORE, JSON.stringify({ open: bot.open, tab: bot.tab, quiet: bot.quiet, dismissed: bot.dismissed.slice(-300) }));
+  let botTimer = null, botShown = new Set(), botTipTimer = null, botView = null, botViewReady = false, botPending = null, botList = [];
+  function cosBotSoon() { clearTimeout(botTimer); botTimer = setTimeout(() => { try { cosBotRender(); } catch (e) { console.error('Chief of Staff helper', e); } }, 350); }
+  // Words that say what something is about (for "this looks like that").
+  const BOT_STOP = new Set('the and for with from this that into your our you are was were has have had not but all any can new draft copy untitled chat doc docs final version update notes about page claude more one two via its also only than then them they what when where which who will would should could just make made using use'.split(' '));
+  const botWords = t => new Set((cleanTitle(t) || '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !BOT_STOP.has(w) && !/^\d+$/.test(w)));
+  function botLike(a, b) {
+    const A = botWords(a), B = botWords(b);
+    if (!A.size || !B.size) return 0;
+    let n = 0; for (const w of A) if (B.has(w)) n++;
+    if (n < Math.min(2, A.size, B.size)) return 0;
+    return n / Math.min(A.size, B.size);
+  }
+  const botPath = id => { const ch = pathTo(id) || []; return ch.slice(1, -1).map(x => x.name).join(' \u203a ') || (ch[0] ? ch[0].name : ''); };
+  // Every saved item in this profile, with where it is.
+  function botItems(p) {
+    const out = [];
+    walk([p], n => { if (n.type === 'link' && n.name) out.push(n); });
+    return out;
+  }
+  // The thing you are on now: the Claude page showing (if it is saved, its name), or the selected item.
+  function botCurrent() {
+    if (state.loc.kind === 'page' && document.getElementById('pane') && !$('pane').hidden) {
+      const c = pageContext();
+      if (c.linkId && nodeOf(c.linkId)) return { name: nodeOf(c.linkId).name, id: c.linkId, url: nodeOf(c.linkId).url };
+      const t = cleanTitle(state.pageTitle);
+      if (t && !/^(claude|new chat)$/i.test(t)) return { name: t, id: null, url: state.pageUrl };
+    }
+    if (state.browseSel && nodeOf(state.browseSel) && nodeOf(state.browseSel).type === 'link') { const n = nodeOf(state.browseSel); return { name: n.name, id: n.id, url: n.url }; }
+    return null;
+  }
+  // Where a finished item probably belongs: the company folder whose name and contents share most words with it.
+  function botBestFolder(n, p) {
+    let best = null, score = 0;
+    const w = (list, trail) => (list || []).forEach(x => {
+      if (x.type !== 'folder' || x.team) return;
+      const path = [...trail, x.name];
+      const sample = (x.children || []).filter(c => c.type === 'link').slice(0, 30).map(c => c.name).join(' ');
+      const s = botLike(n.name, path.join(' ') + ' ' + sample) + (botWords(n.name).has((x.name || '').toLowerCase()) ? 0.5 : 0);
+      if (s > score) { score = s; best = x; }
+      w(x.children, path);
+    });
+    w(p.children, []);
+    return score >= 0.34 ? best : null;
+  }
+  function botSuggestions() {
+    const p = activeProfile(), t = cosTeam(p);
+    if (!p || !t) return [];
+    const out = [], items = botItems(p), cur = botCurrent();
+    const staffName = id => { const c = teamCtxOf(id); const s = c && c.staff && staffNodeOf(c.staff); return s ? s.name : null; };
+    // 1. Something like this already exists.
+    if (cur) {
+      const hits = items.filter(x => x.id !== cur.id && normUrl(x.url || '') !== normUrl(cur.url || '') && botLike(cur.name, x.name) >= 0.6).slice(0, 3);
+      const art = (lib.artifacts || []).filter(a => !items.some(x => normUrl(x.url || '') === normUrl(a.url)) && normUrl(a.url) !== normUrl(cur.url || '') && botLike(cur.name, a.name) >= 0.6).slice(0, 2);
+      if (hits.length || art.length) {
+        const where = x => { const s = staffName(x.id); return s ? `${s}\u2019s work` : botPath(x.id) || 'your folders'; };
+        out.push({ key: 'like:' + normUrl(cur.url || cur.name) + ':' + [...hits, ...art].map(x => x.url).join(','), kind: 'Already exists',
+          text: `Something like \u201c${cur.name}\u201d already exists: ${[...hits.map(x => `\u201c${x.name}\u201d (${where(x)})`), ...art.map(a => `\u201c${a.name}\u201d (in Claude, not filed)`)].join(', ')}.`,
+          actions: [
+            { label: 'Open', go: true, run: () => (hits[0] ? openNode(hits[0]) : go({ kind: 'page', url: art[0].url })) },
+            { label: 'Ask', run: () => botAsk(`I am working on \u201c${cur.name}\u201d${cur.url ? ` (${cur.url})` : ''}. Claude Navigator found these similar items:\n${[...hits.map(x => `- \u201c${x.name}\u201d in ${where(x)}${x.url ? ` (${x.url})` : ''}`), ...art.map(a => `- \u201c${a.name}\u201d in Claude, not filed (${a.url})`)].join('\n')}\nIs this the same work? Should I build on one of those instead, and who should own it?`) },
+          ] });
+      }
+    }
+    // 2. Finished work not in the company folders yet (with where it probably belongs).
+    for (const s of t.nodes.filter(x => x.kind === 'staff')) {
+      const f = s.folderId && nodeOf(s.folderId);
+      if (!f) continue;
+      const done = workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && !companyHomes(x.url, p).length).slice(0, 3);
+      for (const x of done) {
+        const usual = usualPlace(s), best = usual || botBestFolder(x, p);
+        out.push({ key: 'file:' + x.id, kind: 'File it', text: `\u201c${x.name}\u201d is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' \u203a ' : ''}${best.name}` : ''}.`,
+          actions: [
+            best && { label: `File in ${best.name}`, go: true, run: () => { fileIntoCompany([x.id], best.id); cosBotSoon(); } },
+            { label: best ? 'Elsewhere\u2026' : 'File\u2026', go: !best, run: () => fileToPicker([x.id]) },
+          ].filter(Boolean) });
+      }
+    }
+    // 3. Two staff members working on the same thing.
+    const open = [];
+    for (const s of t.nodes.filter(x => x.kind === 'staff')) {
+      const f = s.folderId && nodeOf(s.folderId);
+      if (f) workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).forEach(x => open.push({ x, s }));
+    }
+    for (let i = 0; i < open.length && out.length < 30; i++) for (let j = i + 1; j < open.length; j++) {
+      const a = open[i], b = open[j];
+      if (a.s.id === b.s.id || botLike(a.x.name, b.x.name) < 0.6) continue;
+      out.push({ key: 'overlap:' + [a.x.id, b.x.id].sort().join(':'), kind: 'Same work', text: `${a.s.name} (\u201c${a.x.name}\u201d) and ${b.s.name} (\u201c${b.x.name}\u201d) look like they are on the same thing.`,
+        actions: [
+          { label: a.s.name, run: () => openStaff(a.s.id) },
+          { label: b.s.name, run: () => openStaff(b.s.id) },
+          { label: 'Ask', go: true, run: () => botAsk(`${a.s.name} is working on \u201c${a.x.name}\u201d${a.x.url ? ` (${a.x.url})` : ''} and ${b.s.name} on \u201c${b.x.name}\u201d${b.x.url ? ` (${b.x.url})` : ''}. Is this the same work? Who should own it, and what should the other one do?`) },
+        ] });
+    }
+    // 4. New Claude artifacts not filed anywhere (made in the last week).
+    const filed = new Set(items.map(x => normUrl(x.url || '')));
+    const fresh = (lib.artifacts || []).filter(a => a.url && !filed.has(normUrl(a.url)) && a.updated && Date.now() - Date.parse(a.updated) < 7 * 864e5);
+    if (fresh.length) out.push({ key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} artifact${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
+      actions: [{ label: 'Ask Where', go: true, run: () => botAsk(`These were made in Claude this week but are not filed in any ${p.name} folder:\n${fresh.slice(0, 12).map(a => `- \u201c${a.name}\u201d (${a.url})`).join('\n')}\nOur company folders are:\n${companyFolderChoices(p).slice(0, 60).map(([, path]) => '- ' + path).join('\n')}\nWhere should each one go, and which staff member does each belong to?`) }] });
+    return out.filter(x => !bot.dismissed.includes(x.key));
+  }
+  // Quick questions in the chat (each fills the message box; you send it).
+  function botQuick() {
+    const p = activeProfile(), t = cosTeam(p), co = p ? p.name : 'the company';
+    const staff = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') : '';
+    const cur = botCurrent();
+    return [
+      ['Today', `Using my calendar and my Granola meeting notes, what should I focus on today for ${co}? Who on the team should pick up what? The team: ${staff}.`],
+      ['Recent meetings', `What came up in my recent ${co} meetings (Granola) that the team should act on? Say which meeting, and who should pick it up: ${staff}.`],
+      cur && ['Does this exist?', `I am working on \u201c${cur.name}\u201d${cur.url ? ` (${cur.url})` : ''}. Has something like this been done already, in Claude, my meetings or our folders?`],
+      cur && ['Where should this go?', `Where should \u201c${cur.name}\u201d go in our ${co} folders? The folders are:\n${companyFolderChoices(p).slice(0, 60).map(([, path]) => '- ' + path).join('\n')}`],
+      t && ['Who is on what', cosBrief(t.nodes.find(x => x.chief) || t.nodes[0], t).replace(/My question: $/, 'Is anything overlapping, stuck or missing an owner?')],
+    ].filter(Boolean);
+  }
+  // The chat: a Claude chat in the Chief of Staff's Claude Project, kept per profile so it carries on.
+  function botStartUrl() {
+    const t = cosTeam(), chief = t && t.nodes.find(x => x.chief);
+    if (t && t.botChat) return t.botChat;
+    return chief && chief.claudeProject && /\/project\//.test(chief.claudeProject.url || '') ? chief.claudeProject.url : HOME;
+  }
+  function botEnsureView() {
+    if (!isApp) return null;
+    const host = $('cosBot').querySelector('.bot-view');
+    if (botView) return botView;
+    botView = document.createElement('webview');
+    botView.setAttribute('partition', 'persist:claude');
+    botView.setAttribute('allowpopups', '');
+    botView.setAttribute('src', botStartUrl());
+    botView.dataset.profile = state.profileId || '';
+    host.appendChild(botView);
+    const note = () => {
+      let u = ''; try { u = botView.getURL(); } catch (e) { return; }
+      const t = cosTeam();
+      if (t && /\/chat\//.test(pathOf(u) || '') && t.botChat !== u) { t.botChat = u; saveCos(); }
+    };
+    botView.addEventListener('dom-ready', () => { botViewReady = true; host.querySelector('.bot-wait').hidden = true; note(); botFlush(); botFocus(); });
+    ['did-navigate', 'did-navigate-in-page'].forEach(ev => botView.addEventListener(ev, note));
+    return botView;
+  }
+  const botExec = code => { try { return botView && botViewReady ? botView.executeJavaScript(code) : Promise.reject(new Error('not ready')); } catch (e) { return Promise.reject(e); } };
+  const botFocus = () => botExec(FOCUS_COMPOSER).catch(() => {});
+  function botFlush() {
+    if (!botPending || !botViewReady) return;
+    const text = botPending; botPending = null;
+    botExec(`(async () => {
+      for (let i = 0; i < 24; i++) {
+        const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
+        if (box) { box.focus(); document.execCommand('insertText', false, ${JSON.stringify(text)}); return 'ok'; }
+        await new Promise(r => setTimeout(r, 250));
+      }
+      return 'none';
+    })()`).then(r => { if (r !== 'ok') { navigator.clipboard.writeText(text).catch(() => {}); toast('The question is copied: paste it into the Chief of Staff chat.'); } }).catch(() => {});
+  }
+  // Fill the Chief of Staff chat with a question (you check it and send it).
+  function botAsk(text) {
+    bot.open = true; bot.tab = 'chat'; saveBot();
+    botPending = text;
+    cosBotRender();
+    botEnsureView();
+    botFlush();
+  }
+  function botNewChat() {
+    const t = cosTeam();
+    if (t) { delete t.botChat; saveCos(); }
+    if (botView) { botViewReady = false; try { botView.loadURL(botStartUrl()); } catch (e) { botView.setAttribute('src', botStartUrl()); } }
+    toast('A new conversation with your Chief of Staff');
+  }
+  function cosBotRender() {
+    const el = $('cosBot');
+    const t = cosTeam();
+    const on = currentApp === 'cos' && !!activeProfile() && !!t;
+    el.hidden = !on;
+    if (!on) return;
+    // A different profile has its own Chief of Staff chat.
+    if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; el.querySelector('.bot-wait').hidden = false; }
+    botList = botSuggestions();
+    el.classList.toggle('open', !!bot.open);
+    el.dataset.tab = bot.tab;
+    const btn = el.querySelector('.bot-btn');
+    btn.classList.toggle('quiet', !!bot.quiet);
+    const badge = btn.querySelector('.badge');
+    badge.hidden = !botList.length || bot.open;
+    badge.textContent = botList.length > 9 ? '9+' : String(botList.length);
+    btn.title = `Chief of Staff: ${botList.length ? `${botList.length} suggestion${botList.length === 1 ? '' : 's'}` : 'nothing to flag right now'}. Click for suggestions and a chat on the side.${bot.quiet ? ' (Quiet: suggestions do not pop up.)' : ''}`;
+    el.querySelectorAll('.bot-head .seg .tb').forEach(b => b.classList.toggle('on', b.dataset.t === bot.tab));
+    el.querySelector('[data-a="more"]').innerHTML = UI.more;
+    el.querySelector('[data-a="min"]').innerHTML = FICON.hide;
+    // The full list.
+    const list = el.querySelector('.bot-list');
+    list.replaceChildren();
+    if (!botList.length) {
+      const e = document.createElement('div');
+      e.className = 'bot-empty';
+      e.textContent = 'Nothing to flag right now. When something you are on already exists, finished work is not filed, or two people are on the same thing, it shows up here.';
+      list.appendChild(e);
+    }
+    for (const sg of botList) list.appendChild(botCard(sg, 'bot-item'));
+    if (bot.tab === 'chat' && bot.open) botEnsureView();
+    // New suggestions pop up briefly beside the button (not while the panel is open, or when Quiet).
+    const tips = el.querySelector('.bot-tips');
+    tips.replaceChildren();
+    const fresh = bot.open || bot.quiet ? [] : botList.filter(x => !botShown.has(x.key)).slice(0, 2);
+    fresh.forEach(x => botShown.add(x.key));
+    for (const sg of fresh) tips.appendChild(botCard(sg, 'bot-tip'));
+    clearTimeout(botTipTimer);
+    if (fresh.length) botTipTimer = setTimeout(() => tips.replaceChildren(), 15000);
+  }
+  function botCard(sg, cls) {
+    const c = document.createElement('div');
+    c.className = cls;
+    if (cls === 'bot-item') { const k = document.createElement('span'); k.className = 'k'; k.textContent = sg.kind; c.appendChild(k); }
+    const tx = document.createElement('div'); tx.className = 'tx'; tx.textContent = sg.text; c.appendChild(tx);
+    const row = document.createElement('div'); row.className = 'row';
+    for (const a of sg.actions) { const b = document.createElement('button'); b.textContent = a.label; if (a.go) b.className = 'go'; b.addEventListener('click', () => { if (cls === 'bot-tip') c.remove(); a.run(); }); row.appendChild(b); }
+    const sp = document.createElement('span'); sp.className = 'sp'; row.appendChild(sp);
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = cls === 'bot-tip' ? '\u00d7' : 'Dismiss'; x.title = 'Dismiss this suggestion';
+    x.addEventListener('click', () => { bot.dismissed.push(sg.key); saveBot(); c.remove(); cosBotRender(); });
+    row.appendChild(x);
+    c.appendChild(row);
+    return c;
+  }
+  (() => {
+    const el = $('cosBot');
+    el.querySelector('.bot-btn').addEventListener('click', () => { bot.open = !bot.open; saveBot(); cosBotRender(); if (bot.open && bot.tab === 'chat') setTimeout(botFocus, 100); });
+    el.querySelector('.bot-head .seg').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (!b) return; bot.tab = b.dataset.t; saveBot(); cosBotRender(); if (bot.tab === 'chat') setTimeout(botFocus, 100); });
+    el.querySelector('[data-a="min"]').addEventListener('click', () => { bot.open = false; saveBot(); cosBotRender(); });
+    el.querySelector('[data-a="more"]').addEventListener('click', e => {
+      const r = e.currentTarget.getBoundingClientRect();
+      showMenu(r.left - 200, r.bottom + 4, [
+        { label: 'New Conversation', run: botNewChat },
+        { label: 'Open the Chat in the Main View', run: () => { const t = cosTeam(); go({ kind: 'page', url: (t && t.botChat) || botStartUrl() }); } },
+        '-',
+        { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
+        { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
+        '-',
+        { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
+      ]);
+    });
+    // Quick questions.
+    const q = el.querySelector('.bot-quick');
+    const paintQuick = () => {
+      q.replaceChildren();
+      for (const [label, text] of botQuick()) { const b = document.createElement('button'); b.textContent = label; b.title = text.slice(0, 300); b.addEventListener('click', () => botAsk(text)); q.appendChild(b); }
+    };
+    el.addEventListener('mouseenter', paintQuick);
+    paintQuick();
+  })();
 
   // ---------- Chief of Staff: make something new and link it ----------
   // Skills, routines and Claude Projects start by making the real thing in Claude. Claude opens on the right
