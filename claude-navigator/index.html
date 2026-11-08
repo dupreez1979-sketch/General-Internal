@@ -3517,12 +3517,41 @@
     }
     return 'none';
   })()`;
+  // Opened to start a chat: the project page shows only its message box (like a new chat), with the cursor in
+  // it. Everything else on the page is only hidden, and comes back as soon as the page changes (you send, or
+  // go elsewhere), so the project page itself is untouched.
+  const PROJECT_AS_NEW_CHAT = `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const start = location.pathname;
+    for (let i = 0; i < 40; i++) {
+      const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
+      if (box) {
+        const main = box.closest('main') || document.body;
+        // The message box with its own row of buttons (model, attach): the biggest small block around it.
+        let comp = box;
+        for (let p = box.parentElement; p && p !== main && p.getBoundingClientRect().height < 260; p = p.parentElement) comp = p;
+        const marked = [];
+        for (let node = comp; node && node !== main && node.parentElement; node = node.parentElement)
+          for (const sib of node.parentElement.children) if (sib !== node && sib.tagName !== 'SCRIPT' && sib.tagName !== 'STYLE') { sib.setAttribute('data-nav-hidden', ''); marked.push(sib); }
+        const st = document.createElement('style');
+        st.textContent = '[data-nav-hidden]{display:none!important}[data-nav-chat]{margin-top:28vh!important;max-width:760px!important;margin-left:auto!important;margin-right:auto!important;width:100%!important}';
+        document.head.appendChild(st);
+        comp.setAttribute('data-nav-chat', '');
+        box.focus();
+        const undo = () => { marked.forEach(e => e.removeAttribute('data-nav-hidden')); comp.removeAttribute('data-nav-chat'); st.remove(); };
+        const t = setInterval(() => { if (location.pathname !== start || !document.contains(comp)) { clearInterval(t); undo(); } }, 300);
+        return 'chat';
+      }
+      await sleep(250);
+    }
+    return 'none';
+  })()`;
   function focusComposerSoon(url) { state.focusComposer = { path: pathOf(url), until: Date.now() + 20e3 }; }
   function maybeFocusComposer(url) {
     const f = state.focusComposer;
     if (!f || Date.now() > f.until || pathOf(url) !== f.path) return;
     state.focusComposer = null;
-    viewExec(FOCUS_COMPOSER).catch(() => {});
+    viewExec(/^\/project\//.test(f.path) ? PROJECT_AS_NEW_CHAT : FOCUS_COMPOSER).catch(() => {});
   }
   const startInProject = url => { go({ kind: 'page', url }); if (/\/project\//.test(url)) focusComposerSoon(url); };
   function newInFolder(kind = 'chat', folderId = newHereFolder()) {
@@ -7677,11 +7706,17 @@
   const cosRoutines = n => n.routines || (n.routines = []);
   // Claude's page for scheduled tasks: wherever Claude's own sidebar points (read with the library), else
   // the address of a task already read, else Claude Code's Routines page.
+  // Claude's page of routines (scheduled tasks). Worked out from routines already known (their own addresses,
+  // one level up), then from Claude's sidebar; never a Customize or Skills page (which a "Scheduled" link
+  // under Customize can point to, and which opens on Skills).
   function claudeSchedulePage() {
+    const ok = path => path && /^\/[\w\/-]+$/.test(path) && !/customi[sz]e|skills/i.test(path);
+    const parentOf = url => { try { const u = new URL(url); return /claude\.ai$/.test(u.hostname) ? u.pathname.replace(/\/+$/, '').replace(/\/[^\/]+$/, '') : ''; } catch (e) { return ''; } };
+    const known = [...(lib.scheduled || []).map(t => t.url)];
+    try { for (const t of Object.values((cos && cos.teams) || {})) for (const n of t.nodes || []) for (const r of n.routines || []) if (r.link) known.push(r.link.url); } catch (e) { /* Chief of Staff not ready */ }
+    for (const u of known) { const p = parentOf(u || ''); if (ok(p)) return 'https://claude.ai' + p; }
     const p = lib.pagePaths && lib.pagePaths.scheduled;
-    if (p && /^\/[\w\/-]+$/.test(p)) return 'https://claude.ai' + p;
-    const t = (lib.scheduled || [])[0];
-    if (t && t.url) { try { const u = new URL(t.url); return u.origin + u.pathname.replace(/\/[^\/]+\/?$/, ''); } catch (e) { /* fall through */ } }
+    if (ok(p)) return 'https://claude.ai' + p;
     return 'https://claude.ai/code/routines';
   }
   const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -7773,7 +7808,8 @@
     qi.addEventListener('input', applyQ);
     top.append(shapeSeg, fb, calSeg, nb, sq);
     setTimeout(applyQ, 0);
-    if (cosUi.routinesShownFor !== n.id) { cosUi.routinesShownFor = n.id; setTimeout(() => cosRefreshRoutines(n), 500); }
+    const waiting = cosUi.routineWatch && cosUi.routineWatch.staffId === n.id;   // a routine being made with Claude
+    if (cosUi.routinesShownFor !== n.id || waiting) { cosUi.routinesShownFor = n.id; setTimeout(() => cosRefreshRoutines(n), 500); }
     box.appendChild(top);
     const keep = r => flt === 'all' || (flt === 'linked' ? !!r.link : flt === 'unlinked' ? !r.link : flt === 'paused' ? !!r.paused : !r.paused);
     box.appendChild(cosCalendar(cosRoutines(n).filter(keep).map(r => ({ r, n })), cal));
@@ -7872,7 +7908,7 @@
   // New Routine, as in Claude: with Claude, or yourself (Claude's form); or link one already in Claude.
   function cosNewRoutineItems(n) {
     return [
-      { label: 'Create with Claude\u2026', icon: 'schedule', run: () => cosNewRoutine(n, 'with claude') },
+      { label: 'Create with Claude\u2026', icon: 'schedule', run: () => cosRoutineWithClaude(n) },
       { label: 'Create Manually\u2026', run: () => cosNewRoutine(n, 'manual') },
       '-',
       { label: 'Link a Routine Already in Claude', key: '\u25B8', run: () => cosPickSchedule(lastMenuX, lastMenuY, link => {
@@ -7881,6 +7917,40 @@
         setTimeout(() => cosReadRoutine(n, r), 300);
       }) },
     ];
+  }
+  // Create with Claude: a new chat in the staff member's project (filed in their Work) that asks Claude to set
+  // the routine up; the message is sent for you. When Claude has made the scheduled task, it is linked here.
+  const ROUTINE_ASK = 'Help me set up a scheduled task. Ask me what it should do, how often it should run, and when, then create it.';
+  const SEND_PROMPT = text => `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    for (let i = 0; i < 40; i++) {
+      const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
+      if (box) {
+        box.focus();
+        if (!(box.innerText || box.value || '').trim()) document.execCommand('insertText', false, ${JSON.stringify(text)});
+        for (let j = 0; j < 12; j++) {
+          await sleep(250);
+          const send = [...document.querySelectorAll('button')].find(b => /send/i.test((b.getAttribute('aria-label') || '') + ' ' + (b.getAttribute('title') || '')) && !b.disabled);
+          if (send) { send.click(); return 'sent'; }
+        }
+        box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true }));
+        return 'entered';
+      }
+      await sleep(250);
+    }
+    return 'none';
+  })()`;
+  function cosRoutineWithClaude(n) {
+    if (!isApp) return;
+    const f = staffFolder(n);
+    cosUi.routineWatch = { staffId: n.id, known: new Set((lib.scheduled || []).map(x => normUrl(x.url))), since: Date.now() };
+    cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude';
+    renderCos();
+    newInFolder('chat', f ? f.id : null);
+    let tries = 0;
+    const send = () => viewExec(SEND_PROMPT(ROUTINE_ASK)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1500); }).catch(() => { if (++tries < 6) setTimeout(send, 1500); });
+    setTimeout(send, 1500);
+    toast(`A new chat with Claude is starting${n.claudeProject ? ` in ${n.name}\u2019s Claude Project` : ''}. Answer its questions; when it has made the scheduled task, it is added to ${n.name}\u2019s Routines.`);
   }
   // When each routine runs on a given day (hourly ones count once, as "Every hour").
   function routineRunsOn(r, day) {
@@ -8935,7 +9005,8 @@ body { width: max-content !important; min-width: 0 !important; }
   function cosRefreshRoutines(n) {
     // Opening Routines checks Claude (at most once a minute per routine), so changes and deletions there show here.
     for (const r of cosRoutines(n).slice()) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 60e3) cosReadRoutine(n, r, { quiet: true });
-    if (Date.now() - (cosUi.scheduledReadAt || 0) > 60e3) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
+    const gap = cosUi.routineWatch ? 10e3 : 60e3;
+    if (Date.now() - (cosUi.scheduledReadAt || 0) > gap) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
   }
   // Delete a routine here and in Claude: Claude's page for it is opened and its Delete is pressed.
   const ROUTINE_DELETE = `(async () => {
@@ -8979,6 +9050,21 @@ body { width: max-content !important; min-width: 0 !important; }
     setTimeout(attempt, 1800);
   }
   function cosCheckRoutinesAgainst(list) {
+    // A routine Claude made in a chat started with Create with Claude: link it to that staff member.
+    const w = cosUi && cosUi.routineWatch;
+    if (w && Date.now() - w.since < 6 * 3600e3) {
+      const linked = new Set();
+      for (const tm of Object.values((cos && cos.teams) || {})) for (const m of tm.nodes || []) for (const r of m.routines || []) if (r.link) linked.add(normUrl(r.link.url));
+      const fresh = list.filter(x => x.url && !w.known.has(normUrl(x.url)) && !linked.has(normUrl(x.url)));
+      let n = null;
+      for (const tm of Object.values((cos && cos.teams) || {})) { n = (tm.nodes || []).find(x => x.id === w.staffId); if (n) break; }
+      if (fresh.length && n) {
+        cosUi.routineWatch = null;
+        const made = fresh.map(x => ({ id: uid(), name: x.name || 'New routine', what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link: { name: x.name || 'Scheduled task', url: x.url }, output: null, paused: false, created: Date.now() }));
+        cosChange(() => { for (const r of made) cosRoutines(n).push(r); }, `${made.length === 1 ? `\u201c${made[0].name}\u201d` : `${made.length} routines`} made with Claude ${made.length === 1 ? 'is' : 'are'} now in ${n.name}\u2019s Routines`);
+        made.forEach((r, i) => setTimeout(() => cosReadRoutine(n, r, { quiet: true }), 400 + i * 800));
+      }
+    }
     const have = new Set(list.map(x => normUrl(x.url)));
     for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || [])
       for (const r of (n.routines || []).slice()) if (r.link && /claude\.ai/.test(r.link.url || '') && !have.has(normUrl(r.link.url))) cosReadRoutine(n, r, { quiet: true });

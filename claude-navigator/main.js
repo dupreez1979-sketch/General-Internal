@@ -545,8 +545,10 @@ async function fetchLibrary(opts = {}) {
       if (win.isDestroyed()) break;
       const found = await win.webContents.executeJavaScript(discoverPage(label), true).catch(() => null);
       // Skills live under Customize (Customize \u203a Skills); Claude's sidebar may point at Customize itself.
-      const prefix = kind === 'skills' && found && !/skills$/.test(found) ? found + '/skills' : (found || fallback);
-      if (found) (result.pagePaths || (result.pagePaths = {}))[kind] = found;   // where Claude's own sidebar points
+      const usable = found && !(kind === 'scheduled' && /customi[sz]e|skills/i.test(found)) ? found : null;
+      const prefix = kind === 'skills' && usable && !/skills$/.test(usable) ? usable + '/skills' : (usable || fallback);
+      // Where Claude's own sidebar points (a "Scheduled" link that leads into Customize is not the routines page).
+      if (found && !(kind === 'scheduled' && /customi[sz]e|skills/i.test(found))) (result.pagePaths || (result.pagePaths = {}))[kind] = found;
       await openHidden(win, 'https://claude.ai' + prefix);
       if (win.isDestroyed()) break;
       const pattern = kind === 'code'
