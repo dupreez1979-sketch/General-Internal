@@ -3687,7 +3687,7 @@
         const host = new URL(url).hostname;
         if (/(^|\.)(login\.microsoftonline\.com|login\.live\.com|login\.microsoft\.com|accounts\.google\.com)$/i.test(host) && state.passkeyHint !== host) {
           state.passkeyHint = host;
-          toast('Signing in with Face ID, fingerprint or a passkey cannot work inside the app. Click the back arrow and choose Other ways to sign in (password or Authenticator app); you stay signed in after that. Or sign in in your browser.',
+          toast('Passkeys (Face ID, fingerprint) do not work inside the app, so sign in with your password or the Authenticator app; you stay signed in after that. Stuck? Click Reload, or sign in in your browser.',
             { label: 'Open in Browser', run: () => window.open(url, '_blank') });
         }
       } catch (e) { /* not a web address */ }

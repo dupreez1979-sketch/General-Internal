@@ -13,6 +13,10 @@ const monday = require('./monday');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
+// Passkeys (Face ID, Touch ID, security keys through the system) cannot work inside the app: Electron has no way
+// to reach them, so a sign-in that asks for one (Microsoft's, for Clara) waits for ever. With passkey sign-in
+// switched off here, sites offer their other ways straight away (password, Authenticator app, email code).
+app.commandLine.appendSwitch('disable-blink-features', 'WebAuth');
 
 // Present as a normal Chrome browser so sign-in pages treat the app like one.
 app.userAgentFallback = app.userAgentFallback
@@ -169,6 +173,19 @@ app.on('web-contents-created', (_event, contents) => {
   });
 
   if (contents.getType() !== 'webview') return;
+
+  // Belt and braces for sign-in pages: if a page still asks for a passkey, answer "not available" at once,
+  // so it moves on to another way to sign in instead of hanging.
+  contents.on('dom-ready', () => {
+    let host = '';
+    try { host = new URL(contents.getURL()).hostname; } catch (e) { return; }
+    if (!/(^|\.)(microsoftonline\.com|live\.com|microsoft\.com|google\.com|okta\.com|auth0\.com)$/i.test(host)) return;
+    contents.executeJavaScript(`(() => { try {
+      const no = () => Promise.reject(new DOMException('Passkeys are not available in this app', 'NotAllowedError'));
+      if (navigator.credentials) { navigator.credentials.get = no; navigator.credentials.create = no; }
+      if (window.PublicKeyCredential) { window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = () => Promise.resolve(false); window.PublicKeyCredential.isConditionalMediationAvailable = () => Promise.resolve(false); }
+    } catch (e) {} })()`).catch(() => {});
+  });
 
   // Pop-ups from Claude (sign-in, connector authorisation, "open in new tab")
   // open in an app window that shares your Claude sign-in.
