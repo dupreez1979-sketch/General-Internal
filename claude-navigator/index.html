@@ -358,6 +358,11 @@
   body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head { flex-wrap: wrap; }
   body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head::before { content: "Company folders"; padding: 2px 4px 6px; }
   body.cos-mode.cos-work .cos-detail, body.cos-mode.cos-work .col-detail { display: none; }
+  /* Navigator's split view: each side says what it is (what you chose in the sidebar, and your folders to file into). */
+  body:not(.cos-mode) #splitLeft:not([hidden]) ~ #browse::before, body:not(.cos-mode) #splitLeft:not([hidden]) .sl-head::before { display: block; flex: none; width: 100%; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--accent); }
+  body:not(.cos-mode) #splitLeft:not([hidden]) ~ #browse::before { content: attr(data-caption); box-sizing: border-box; padding: 10px 14px 6px; position: sticky; top: 0; z-index: 3; background: var(--win); border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  body:not(.cos-mode) #splitLeft:not([hidden]) .sl-head { flex-wrap: wrap; }
+  body:not(.cos-mode) #splitLeft:not([hidden]) .sl-head::before { content: "Your folders \00b7  drag items here to file them"; padding: 2px 4px 6px; }
   body.cos-mode.cos-clara #cosMain { flex: none; order: -1; }
   body.cos-mode.cos-clara #cosMain .cos-body { flex: none; }
   /* Apple Notes from iCloud: a floating panel that stays open (and signed in) while you work */
@@ -6149,6 +6154,14 @@
     panel.hidden = !show;
     $('splitBtn').classList.toggle('on', splitOn);
     if (!show) return;
+    if (currentApp !== 'cos') {
+      // Say what the other side is showing: what was chosen in the sidebar.
+      const L = state.loc;
+      const what = state.query ? 'Search results' : L.kind === 'library' ? (L.which === 'monday' ? mondayPlace(L.mkey || 'all').name : LIB_KINDS[L.which]) : L.kind === 'folder' && L.id ? (nodeOf(L.id) || {}).name : activeProfile() ? activeProfile().name : 'All Profiles';
+      $('browse').dataset.caption = `Viewing \u00b7 ${what || 'Folder'}`;
+      const other = fr('split').at === 'left' ? 'right' : 'left';
+      panel.querySelector('.sl-foot').textContent = `Drag items from the ${other} onto a folder here, or into the empty space, to file them in that folder.`;
+    }
     if (splitFolder && !nodeOf(splitFolder)) splitFolder = null;
     const ap = activeProfile();
     if (!splitFolder && ap) splitFolder = ap.id;
