@@ -261,7 +261,15 @@
   .cos-step.done .num { background: #328276; color: #fff; }
   .cos-step p { margin: 0; }
   .cos-step code { font-family: inherit; font-weight: 650; background: var(--field); border-radius: 5px; padding: 1px 6px; }
-  .cos-steps p, .cos-steps pre, .cos-steps code, .cos-steps .found span { user-select: text; -webkit-user-select: text; cursor: text; }
+  .cos-steps p, .cos-steps pre, .cos-steps code, .cos-steps .found span, .cos-field .val { user-select: text; -webkit-user-select: text; cursor: text; }
+  .cos-field { display: grid; gap: 4px; }
+  .cos-field .lb { font-size: 11.5px; font-weight: 650; color: var(--muted); }
+  .cos-field .vrow { display: flex; gap: 6px; align-items: flex-start; }
+  .cos-field .val { flex: 1; min-width: 0; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-weight: 600; }
+  .cos-field pre.val { font-weight: 400; font-size: 12px; white-space: pre-wrap; margin: 0; max-height: 200px; overflow: auto; }
+  .cos-field .cp { flex: none; min-width: 64px; }
+  .cos-step .alt { border-top: 1px dashed var(--line); padding-top: 8px; display: grid; gap: 6px; }
+  .cos-step .alt .ah { font-size: 11.5px; font-weight: 650; color: var(--muted); }
   .cos-step pre { margin: 0; white-space: pre-wrap; font: inherit; font-size: 12px; background: var(--field); border-radius: 8px; padding: 8px 10px; max-height: 180px; overflow: auto; }
   .cos-step .row { display: flex; flex-wrap: wrap; gap: 6px; }
   .cos-step .found { display: flex; align-items: center; gap: 8px; background: color-mix(in srgb, #E3A452 12%, var(--win)); border-radius: 8px; padding: 6px 8px; }
@@ -7000,66 +7008,84 @@
     cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; }, `${n.name} now uses \u201c${pr.name}\u201d`);
     if (cosUi.setupFor === n.id) { cosUi.adding = true; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: pr.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n))); }
   }
+  // A short line for Claude's "What are you trying to achieve?" (the instructions come later, in step 2).
+  function cosProjectAbout(n) {
+    const p = activeProfile();
+    return `${n.name}${p ? ` at ${p.name}` : ''}${n.role ? `: ${n.role.replace(/[.\s]+$/, '')}` : ''}.`;
+  }
   function cosSetupSteps(n) {
     const box = document.createElement('div');
     box.className = 'cos-steps';
     const step1 = !n.claudeProject, step2 = !!n.claudeProject && !n.instructionsAt;
-    const h = document.createElement('h3'); h.textContent = `Set up ${n.name}\u2019s Claude Project`;
+    const h = document.createElement('h3'); h.textContent = `Set up ${n.name}’s Claude Project`;
     const lead = document.createElement('p'); lead.className = 'lead';
-    lead.textContent = `Two steps in Claude (on the ${fr('claude').at}). The app fills in what it can; you check it and click.`;
+    lead.textContent = `Two steps, done in Claude (on the ${fr('claude').at}). Each box below matches a box in Claude: copy it across, or check what the app filled in.`;
     box.append(h, lead);
     const step = (num, title, state) => {
       const d = document.createElement('div'); d.className = 'cos-step ' + state;
-      d.innerHTML = `<div class="hd"><span class="num">${state === 'done' ? '\u2713' : num}</span><span></span></div>`;
+      d.innerHTML = `<div class="hd"><span class="num">${state === 'done' ? '✓' : num}</span><span></span></div>`;
       d.querySelector('.hd span:last-child').textContent = title;
       box.appendChild(d); return d;
     };
     const btn = (label, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'btn'; b.textContent = label; b.addEventListener('click', run); return b; };
     const para = (d, text) => { const p = document.createElement('p'); p.textContent = text; d.appendChild(p); return p; };
+    // A box as Claude shows it: its label, what goes in it, and Copy.
+    const field = (d, label, value, tall) => {
+      const f = document.createElement('div'); f.className = 'cos-field';
+      const l = document.createElement('div'); l.className = 'lb'; l.textContent = label;
+      const v = document.createElement(tall ? 'pre' : 'div'); v.className = 'val'; v.textContent = value;
+      const c = btn('Copy', () => { navigator.clipboard.writeText(value).catch(() => {}); c.textContent = 'Copied'; setTimeout(() => { c.textContent = 'Copy'; }, 1500); });
+      c.classList.add('cp');
+      const row = document.createElement('div'); row.className = 'vrow'; row.append(v, c);
+      f.append(l, row); d.appendChild(f); return f;
+    };
     // 1. The project
     const s1 = step(1, n.claudeProject ? `Project: ${n.claudeProject.name}` : 'Make the project', step1 ? 'now' : 'done');
     if (step1) {
+      para(s1, 'In Claude, Create a project is open (if not, click New project). Fill in its two boxes:');
+      field(s1, 'What are you working on?', cosProjectName(n));
+      field(s1, 'What are you trying to achieve?', cosProjectAbout(n));
+      const t = para(s1, ''); t.innerHTML = 'Then click <b>Create project</b> in Claude. It links to this staff member by itself, and step 2 starts.';
+      const row = document.createElement('div'); row.className = 'row';
+      row.append(btn('Fill Them In for Me', () => cosSetUpProject(n)));
+      s1.appendChild(row);
+      // Already made it?
       const showing = state.pageUrl && /^\/project\/[^/]+/.test(pathOf(state.pageUrl) || '') && !cosProjectTaken(state.pageUrl) ? state.pageUrl : '';
+      const found = cosProjectMatches(n).filter(pr => normUrl(pr.url) !== normUrl(showing));
+      const alt = document.createElement('div'); alt.className = 'alt';
+      const ah = document.createElement('div'); ah.className = 'ah'; ah.textContent = 'Already made the project?';
+      alt.appendChild(ah);
       if (showing) {
         const f = document.createElement('div'); f.className = 'found';
-        const sp = document.createElement('span'); sp.textContent = `Claude is showing the project \u201c${cleanTitle(state.pageTitle) || 'this project'}\u201d`;
+        const sp = document.createElement('span'); sp.textContent = `Claude is showing “${cleanTitle(state.pageTitle) || 'a project'}”`;
         f.append(sp, btn('Link This Project', () => cosLinkProject(n, { name: cleanTitle(state.pageTitle) || cosProjectName(n), url: showing }), true));
-        s1.appendChild(f);
+        alt.appendChild(f);
       }
-      const found = cosProjectMatches(n).filter(pr => normUrl(pr.url) !== normUrl(showing));
       for (const pr of found) {
         const f = document.createElement('div'); f.className = 'found';
-        const sp = document.createElement('span'); sp.textContent = `Already in Claude: \u201c${pr.name}\u201d`;
+        const sp = document.createElement('span'); sp.textContent = `In Claude: “${pr.name}”`;
         f.append(sp, btn('Use This', () => cosLinkProject(n, pr), true));
-        s1.appendChild(f);
+        alt.appendChild(f);
       }
-      const p = para(s1, '');
-      p.innerHTML = `${found.length ? 'Or make a new one: in' : 'In'} Claude, the Create a project box is filled in with the name <code></code>. Check it and click <b>Create project</b>. It links here by itself.`;
-      p.querySelector('code').textContent = cosProjectName(n);
-      const row = document.createElement('div'); row.className = 'row';
-      row.append(
-        btn('Fill It In Again', () => cosSetUpProject(n)),
-        btn('Copy the Name', () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => {}); toast(`Copied \u201c${cosProjectName(n)}\u201d`); }),
-        btn('Copy the Description', () => { navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {}); toast('Copied. Paste it into \u201cWhat are you trying to achieve?\u201d'); }),
-        btn('Use the Project Showing Now', () => { const u = state.pageUrl || ''; if (!/\/project\/[^/]+/.test(pathOf(u) || '')) return toast('Open the project in Claude first'); cosLinkProject(n, { name: cleanTitle(state.pageTitle) || cosProjectName(n), url: u }); }),
-        btn('Choose Another Project\u2026', e => { const r = e.currentTarget.getBoundingClientRect(); const projects = (lib.projects || []).slice(0, 40); showMenu(r.left, r.bottom + 4, [
-          ...(projects.length ? projects.map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => cosLinkProject(n, pr) })) : [{ label: 'No projects read from Claude yet', disabled: true, run: () => {} }]),
-          '-', { label: 'Refresh from Claude (for a project made just now)', run: () => { cosUi.projectsReadAt = 0; cosFreshProjects(() => cosRender()); toast('Reading your projects from Claude\u2026'); } }]); }));
-      s1.appendChild(row);
+      const r2 = document.createElement('div'); r2.className = 'row';
+      r2.append(btn('Choose a Project…', e => { const r = e.currentTarget.getBoundingClientRect(); const projects = (lib.projects || []).slice(0, 40); showMenu(r.left, r.bottom + 4, [
+        ...(projects.length ? projects.map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => cosLinkProject(n, pr) })) : [{ label: 'No projects read from Claude yet', disabled: true, run: () => {} }]),
+        '-', { label: 'Refresh from Claude (for a project made just now)', run: () => { cosUi.projectsReadAt = 0; cosFreshProjects(() => cosRender()); toast('Reading your projects from Claude…'); } }]); }));
+      alt.appendChild(r2);
+      s1.appendChild(alt);
     }
     // 2. The instructions
     const s2 = step(2, 'Add their instructions', step2 ? 'now' : n.instructionsAt ? 'done' : 'todo');
     if (!n.instructionsAt) {
-      para(s2, step2 ? 'In the project, the Instructions box is filled in with these (added to anything already there). Check them and click Save.' : 'Next: their role, and where the company files are, go in the project\u2019s instructions.');
-      const pre = document.createElement('pre'); pre.textContent = cosProjectInstructions(n); s2.appendChild(pre);
       if (step2) {
+        para(s2, 'In the project in Claude, open its Instructions, put this in (the app tries to fill it in for you), and click Save:');
+        field(s2, 'Instructions', cosProjectInstructions(n), true);
         const row = document.createElement('div'); row.className = 'row';
         row.append(
-          btn('I\u2019ve Saved Them', () => { cosChange(() => { n.instructionsAt = Date.now(); }, null); cosUi.setupFor = null; cosUi.adding = false; renderCos(); toast(`${n.name} is set up. Their chats start in their Claude Project.`); }, true),
-          btn('Fill Them In Again', () => { go({ kind: 'page', url: n.claudeProject.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n))); }),
-          btn('Copy Them', () => cosCopyInstructions(n)));
+          btn('I’ve Saved Them', () => { cosChange(() => { n.instructionsAt = Date.now(); }, null); cosUi.setupFor = null; cosUi.adding = false; renderCos(); toast(`${n.name} is set up. Their chats start in their Claude Project.`); }, true),
+          btn('Fill Them In for Me', () => { go({ kind: 'page', url: n.claudeProject.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n))); }));
         s2.appendChild(row);
-      }
+      } else para(s2, 'After the project is made: their role, and where the company files are, go in its instructions. (Not in the description.)');
     }
     const end = document.createElement('div'); end.className = 'row';
     end.appendChild(btn('Close', () => { cosUi.setupFor = null; cosUi.adding = false; renderCos(); }));
@@ -7078,7 +7104,7 @@
       // Next: the instructions (their role and where the company files are), filled in for you to save.
       setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => {}); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(m))); toast(`Project made. Now check ${m.name}\u2019s instructions in Claude and click Save.`); }, 1200);
     } });
-    cosFill(FILL_PROJECT(cosProjectName(n), cosProjectInstructions(n)));
+    cosFill(FILL_PROJECT(cosProjectName(n), cosProjectAbout(n)));
   }
   // One More menu on a staff member's page: their project (once set up; setting one up is the card above
   // the tabs), Clara and their dashboard.
@@ -8563,7 +8589,7 @@ body { width: max-content !important; min-width: 0 !important; }
       runPendingClick(current);
     }
     state.autoFile = { kind, lastPath: null, since: Date.now(), onMade: done, from: url ? pathOf(url) : null, startedOn };
-    toast(kind === 'project' ? `Name the project (its name is copied) and click Create Project. It is linked to ${what}.`
+    toast(kind === 'project' ? `Claude\u2019s Create a project is open: check its two boxes (the steps on the left show what goes in each) and click Create project. It is linked to ${what}.`
       : `Claude is open ${document.body.classList.contains('cos-adding') ? `on the ${fr('claude').at}` : 'below'}${url ? ', in the Claude Project' : ''}. It is linked to ${what} as soon as you send your first message.`);
   }
   // Claude's own name for a new chat arrives a little after it is created: keep linked names up to date.
