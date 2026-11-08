@@ -1,7 +1,7 @@
 {
   "name": "claude-navigator",
   "productName": "Claude Navigator",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "Your own folder tree for Claude chats, projects and artifacts, with Claude open alongside.",
   "author": "Kevin du Preez",
   "main": "main.js",
