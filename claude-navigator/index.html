@@ -8253,7 +8253,7 @@
       const w = cosUi.routineWatch;
       if (!w || ++ticks > 225) { clearInterval(cosUi.routinePoll); if (w) { cosUi.routineWatch = null; cosRender(); } return; }
       // Links to the new task: under Claude's scheduled tasks page, or the task card Claude shows in the chat.
-      viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, path: u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && (x.url.includes(${JSON.stringify(base + '/')}) || /^\\/(scheduled|schedules?|tasks?|routines?)\\/[^/]+/.test(x.path)))`)
+      viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, path: u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && (x.url.includes(${JSON.stringify(base + '/')}) || /^\\/(code\\/)?(scheduled|schedules?|tasks?|routines?)\\/[^/]+/.test(x.path)))`)
         .then(found => { if (Array.isArray(found) && found.length) cosLinkWatched(found); }).catch(() => {});
       if (ticks % 11 === 0) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
       if (ticks % 8 === 0) { const m = cosNode(cosTeam(), w.staffId); if (m) cosSyncProjectRoutines(m); }
@@ -9337,7 +9337,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const section = d.section || [];
       const whenFor = name => (section.find(x => x.name.toLowerCase() === name.toLowerCase()) || {}).when || '';
       // Each task: a link from Recents if there is one; otherwise only its name and schedule (from Scheduled).
-      const isTask = u => /^\/(chat|task|tasks|routine|routines|scheduled|schedules?)\/[^/]+/.test(pathOf(u) || '');
+      const isTask = u => /^\/(code\/)?(chat|task|tasks|routine|routines|scheduled|schedules?)\/[^/]+/.test(pathOf(u) || '');
       // Earlier versions could mistake Claude's menu links (Design, Customize) for scheduled tasks: drop those quietly.
       const bogus = rs.filter(r => r.fromProject && r.link && r.link.url && !isTask(r.link.url) && normUrl(r.link.url) !== normUrl(P.url));
       if (bogus.length) { for (const b of bogus) rs.splice(rs.indexOf(b), 1); m.routines = rs; }
@@ -9367,17 +9367,28 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // A routine opens on its own page in Claude (Scheduled tasks / Name). When only the project is known, the
   // project is opened and the task is clicked under Scheduled; the page it lands on is remembered for next time.
-  const ROUTINE_PAGE = /^\/(scheduled|schedules?|tasks?|routines?)\/[^/]+/;
-  const CLICK_SCHEDULED = name => `(async () => {
+  // A task's own page: /scheduled/…, /tasks/…, /routines/… (also under /code/), never the list or a new one.
+  const ROUTINE_PAGE = /^\/(code\/)?(scheduled|schedules?|tasks?|routines?)\/(?!new(\/|$))[^/]+/;
+  // Finds a task by name on the page (inside the Scheduled section when scoped) and opens it: a link's address is
+  // handed back to follow; anything else gets a full click (pointer and mouse events, as a person's click does).
+  const CLICK_TASK = (name, scoped) => `(async () => {
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     const want = ${JSON.stringify(name.toLowerCase())};
     const clean = s => (s || '').replace(/\\s+/g, ' ').trim().toLowerCase();
+    const press = el => { for (const t of ['pointerdown', 'mousedown', 'pointerup', 'mouseup']) el.dispatchEvent(new (t.startsWith('pointer') ? PointerEvent : MouseEvent)(t, { bubbles: true, cancelable: true, view: window })); el.click(); };
     for (let i = 0; i < 15; i++) {
-      const sec = [...document.querySelectorAll('div, section, li')].find(el => el.children.length <= 10 && /^scheduled\\b/.test(clean(el.innerText)) && clean(el.innerText).includes(want) && clean(el.innerText).length < 600);
-      if (sec) {
-        const leaf = [...sec.querySelectorAll('*')].find(e => clean(e.innerText).startsWith(want) && !e.querySelector('*:not(span):not(b):not(strong)'));
-        const el = leaf && (leaf.closest('a, button, [role="button"], [role="link"], li, [tabindex]') || leaf);
-        if (el) { el.click(); return 'clicked'; }
+      let scope = document.querySelector('main') || document.body;
+      if (${scoped ? 'true' : 'false'}) scope = [...document.querySelectorAll('div, section, li')].find(el => el.children.length <= 10 && /^scheduled\\b/.test(clean(el.innerText)) && clean(el.innerText).includes(want) && clean(el.innerText).length < 600) || null;
+      if (scope) {
+        const leaves = [...scope.querySelectorAll('*')].filter(e => (${scoped ? 'true' : 'false'} || !e.closest('nav, [role="navigation"]')) && clean(e.innerText).startsWith(want) && ![...e.children].some(c => clean(c.innerText).startsWith(want)));
+        const leaf = leaves[0];
+        if (leaf) {
+          const a = leaf.closest('a[href]');
+          if (a) return { href: a.href };
+          const el = leaf.closest('button, [role="button"], [role="link"], [role="row"], [role="option"], [tabindex], li') || leaf;
+          press(el); if (el !== leaf) press(leaf);
+          return 'clicked';
+        }
       }
       await sleep(400);
     }
@@ -9386,30 +9397,40 @@ body { width: max-content !important; min-width: 0 !important; }
   function cosOpenRoutine(n, r) {
     if (r.link && (ROUTINE_PAGE.test(pathOf(r.link.url)) || !/claude\.ai/.test(r.link.url))) return cosOpenLink(r.link);
     const P = n.claudeProject;
-    if (!r.fromProject || !P || !/\/project\//.test(P.url || '')) return r.link ? cosOpenLink(r.link) : toast(`\u201c${r.name}\u201d is not linked to a Claude task yet. Right-click it, Link Claude Task.`);
-    cosOpenLink(P);
-    const trim = p => p.replace(/\/+$/, ''), projPath = trim(pathOf(P.url)), started = Date.now();
+    if (!r.fromProject || !P || !/\/project\//.test(P.url || '')) return r.link ? cosOpenLink(r.link) : toast(`“${r.name}” is not linked to a Claude task yet. Right-click it, Link Claude Task.`);
     const cur = () => { try { return view ? view.getURL() : ''; } catch (e) { return ''; } };
-    const fail = () => toast(`Click \u201c${r.name}\u201d under Scheduled in ${n.name}\u2019s Claude Project to open it.`);
-    const remember = () => {
+    const fail = () => toast(`Could not open “${r.name}” by itself. Click it under Scheduled in ${n.name}’s Claude Project.`);
+    const save = u => {
+      const m = cosNode(cosTeam(), n.id) || n, rr = cosRoutines(m).find(x => x.id === r.id);
+      if (rr) { rr.link = { name: r.name, url: u.split(/[?#]/)[0] }; saveCos(); cosRender(); }
+    };
+    // Try on one page: wait until it shows, find the task, then see whether Claude moved to the task's page.
+    const attempt = (url, onPage, scoped, next) => {
+      cosOpenLink({ name: r.name, url });
       const t0 = Date.now();
-      const look = () => {
-        const u = cur();
-        if (ROUTINE_PAGE.test(pathOf(u))) {
-          const m = cosNode(cosTeam(), n.id) || n, rr = cosRoutines(m).find(x => x.id === r.id);
-          if (rr) { rr.link = { name: r.name, url: u.split(/[?#]/)[0] }; saveCos(); cosRender(); }
-        } else if (Date.now() - t0 < 8000) setTimeout(look, 500);
+      const tick = () => {
+        if (Date.now() - t0 > 20000) return next();
+        const here = pathOf(cur());
+        if (!onPage(here)) return setTimeout(tick, 700);
+        Promise.race([viewExec(CLICK_TASK(r.name, scoped)), new Promise(res => setTimeout(() => res('timeout'), 8000))]).then(res => {
+          if (res && res.href) { if (ROUTINE_PAGE.test(pathOf(res.href))) save(res.href); go({ kind: 'page', url: res.href }); return; }
+          if (res === 'timeout') return setTimeout(tick, 1000);
+          if (res !== 'clicked') return next();
+          const t1 = Date.now();
+          const moved = () => {
+            const u = cur(), p = pathOf(u);
+            if (p !== here && !/^\/project\//.test(p)) { if (ROUTINE_PAGE.test(p)) save(u); return; }
+            if (Date.now() - t1 < 5000) setTimeout(moved, 400); else next();
+          };
+          moved();
+        }).catch(() => setTimeout(tick, 1000));
       };
-      look();
+      setTimeout(tick, 1000);
     };
-    const tick = () => {
-      if (Date.now() - started > 25000) return fail();
-      if (trim(pathOf(cur())) !== projPath) return setTimeout(tick, 800);       // still loading (or Claude's check)
-      Promise.race([viewExec(CLICK_SCHEDULED(r.name)), new Promise(res => setTimeout(() => res('timeout'), 8000))])
-        .then(res => res === 'clicked' ? remember() : res === 'not found' ? fail() : setTimeout(tick, 1000))
-        .catch(() => setTimeout(tick, 1000));
-    };
-    setTimeout(tick, 1200);
+    // First under Scheduled in the project; if that does not open it, in Claude's list of scheduled tasks.
+    const list = claudeSchedulePage();
+    attempt(P.url, p => /^\/project\//.test(p), true,
+      () => attempt(list, p => p.replace(/\/+$/, '') === pathOf(list).replace(/\/+$/, ''), false, fail));
   }
   function cosRefreshRoutines(n) {
     if (Date.now() - (cosUi.projectReadAt || 0) > (cosUi.routineWatch ? 10e3 : 30e3)) { cosUi.projectReadAt = Date.now(); cosSyncProjectRoutines(n); }

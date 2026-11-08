@@ -818,7 +818,7 @@ const PROJECT_SCHEDULED = `(() => {
     if (!/\\bScheduled\\b/.test(besides) || /^scheduled$/i.test(clean(a.innerText)) || txt.length > 300) continue;
     let u; try { u = new URL(a.href); } catch (e) { continue; }
     // Only a chat or a scheduled task: never a page like Design, Customize, Projects or the project itself.
-    if (u.origin !== location.origin || !/^\\/(chat|task|tasks|routine|routines|scheduled)\\/[^/]+/.test(u.pathname)) continue;
+    if (u.origin !== location.origin || !/^\\/(code\\/)?(chat|task|tasks|routine|routines|scheduled|schedules?)\\/[^/]+/.test(u.pathname)) continue;
     const name = clean((a.innerText || '').split('\\n').map(x => x.trim().replace(/^[^\\p{L}\\p{N}]+/u, '')).filter(x => x && !/^scheduled$/i.test(x) && !/\\bago$|^just now$/i.test(x))[0] || '');
     if (!name || seen.has(u.pathname)) continue;
     seen.add(u.pathname);
