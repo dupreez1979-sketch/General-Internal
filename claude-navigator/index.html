@@ -416,6 +416,39 @@
   .rcard .when { font-size: 13px; font-weight: 600; color: var(--accent); }
   .rcard.paused { opacity: .6; }
   .rcard .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cos-rbar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 14px; border-bottom: 1px solid var(--line); }
+  html.profiled .cos-rbar { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
+  .cos-rbar .rt { font-size: 14px; }
+  .cos-rbar .sp { flex: 1; }
+  .cos-rbar .tb.on { background: var(--sel); color: var(--text); }
+  .cos-rbar .seg .tb.on { background: var(--win); box-shadow: 0 0 0 1px var(--line); }
+  [data-rname][hidden] { display: none !important; }
+  .cos-cal { padding: 10px 14px 0; display: grid; gap: 8px; }
+  .cos-cal .cal-head { display: flex; align-items: center; gap: 4px; }
+  .cos-cal .cal-head b { margin-left: 8px; font-size: 13px; }
+  .cos-cal .cos-week { padding: 0; }
+  .cal-day { display: grid; gap: 4px; max-width: 520px; }
+  .cal-day .wrun { font-size: 12.5px; padding: 6px 8px; }
+  .cal-month { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+  .cal-month .mh { font-size: 11px; font-weight: 600; color: var(--muted); padding: 0 4px; }
+  .cal-month .mday { background: var(--field); border-radius: 8px; padding: 4px; min-height: 74px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .cal-month .mday.other { opacity: .45; }
+  .cal-month .mday.today { box-shadow: inset 0 0 0 2px var(--accent); }
+  .cal-month .dn { font-size: 11px; font-weight: 600; color: var(--muted); }
+  .cal-month .more { font-size: 10.5px; color: var(--muted); }
+  .cal-month .wrun { font-size: 10.5px; display: flex; gap: 4px; min-width: 0; }
+  .cal-month .wrun .t { flex: none; color: var(--muted); }
+  .cal-month .wrun .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-day .wrun { display: flex; gap: 8px; }
+  .cal-day .wrun .t { flex: none; min-width: 64px; color: var(--muted); }
+  .cos-rlist { display: grid; gap: 2px; padding: 12px 14px 20px; }
+  .rrow { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.6fr) minmax(0, 1fr) 90px; gap: 10px; align-items: center; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; cursor: default; }
+  .rrow:not(.rhd):hover { background: var(--field); }
+  .rrow.rhd { font-size: 11px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--line); border-radius: 0; }
+  .rrow .nm { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .rrow .nm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rrow .wh, .rrow .nx, .rrow .st { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .rrow.paused { opacity: .6; }
   .cos-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; padding: 12px 14px 0; }
   .cos-week .wday { background: var(--field); border-radius: 9px; padding: 6px; min-height: 64px; display: flex; flex-direction: column; gap: 4px; }
   .cos-week .wday.today { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -3675,10 +3708,11 @@
       const nav = navNow();
       if (nav) {
         if (nav.getBoundingClientRect().width < 120) return 'already collapsed';
+        const text = b => (b.innerText || '').trim();
         const tries = [...document.querySelectorAll('button, [role="button"]')].filter(b => {
           const l = label(b);
-          return /sidebar|side bar|collapse|navigation/i.test(l) && !/open|expand|show/i.test(l);
-        });
+          return /sidebar|side bar|collapse|navigation/i.test(l) && !/open|expand|show|edit|customi[sz]e|pin|settings|new/i.test(l + ' ' + text(b)) && text(b).length < 3;
+        }).sort((a, b) => (/close|collapse|toggle/i.test(label(b)) ? 1 : 0) - (/close|collapse|toggle/i.test(label(a)) ? 1 : 0));
         for (const btn of tries) {
           btn.click();
           await sleep(350);
@@ -7639,6 +7673,7 @@
       return `Every ${ds.length === 7 ? 'day' : ds.map(d => DAY_NAMES[d]).join(', ').replace(/, ([^,]*)$/, ' and $1')}${at}`;
     }
     if (r.freq === 'monthly') return `Monthly on the ${ordinal(r.dom || 1)}${at}`;
+    if (r.freq === 'hourly') return `Every hour at :${(r.time || '00:00').split(':')[1] || '00'}`;
     return r.custom || 'Schedule not set';
   }
   // The next time it runs (null for a custom schedule, or when paused).
@@ -7649,6 +7684,7 @@
       const d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i, h, m);
       if (d <= from) continue;
       const wd = d.getDay();
+      if (r.freq === 'hourly') { const x = new Date(from); x.setSeconds(0, 0); x.setMinutes(m); if (x <= from) x.setHours(x.getHours() + 1); return x; }
       if (r.freq === 'daily') return d;
       if (r.freq === 'weekdays' && wd >= 1 && wd <= 5) return d;
       if (r.freq === 'weekly' && (r.days && r.days.length ? r.days : [1]).includes(wd)) return d;
@@ -7677,26 +7713,74 @@
   function renderRoutines(n, host) {
     const box = document.createElement('div');
     box.className = 'cos-tabbody';
+    // The same bar as Work and Skills: title, Cards or List, Filter, the calendar's Day / Week / Month, New, Search.
     const top = document.createElement('div');
-    top.className = 'cos-ptop';
-    top.innerHTML = '<span class="cos-tabnote">Scheduled work this staff member does, linked to the Claude scheduled task that runs it.</span>';
+    top.className = 'cos-rbar';
+    top.innerHTML = '<b class="rt" title="Scheduled work this staff member does, each linked to the Claude routine that runs it">Routines</b><span class="sp"></span>';
+    // Calendar: Day, Week or Month. Routines: as a list or as cards (the same buttons as Navigator's lists).
+    const cal = cosUi.rcal || (cosUi.rcal = ls.get('claudeNavigator.routineCal') || 'week');
+    const shape = cosUi.rshape || (cosUi.rshape = ls.get('claudeNavigator.routineShape') || 'icons');
+    const seg = (items, cur, set, title) => {
+      const g = document.createElement('div'); g.className = 'seg'; g.title = title;
+      for (const [k, html, tip] of items) { const b = document.createElement('button'); b.className = 'tb' + (cur === k ? ' on' : ''); b.innerHTML = html; b.title = tip; b.addEventListener('click', () => set(k)); g.appendChild(b); }
+      return g;
+    };
+    const calSeg = seg([['day', '<span class="t">Day</span>', 'One day'], ['week', '<span class="t">Week</span>', 'This week'], ['month', '<span class="t">Month</span>', 'The month']], cal,
+      k => { cosUi.rcal = k; ls.set('claudeNavigator.routineCal', k); cosRender(); }, 'Calendar: day, week or month');
+    const shapeSeg = seg([['icons', UI.grid, 'as Cards'], ['list', UI.list, 'as List']], shape,
+      k => { cosUi.rshape = k; ls.set('claudeNavigator.routineShape', k); cosRender(); }, 'Show the routines as cards or as a list');
+    const flt = cosUi.rfilter || 'all';
+    const fb = document.createElement('button');
+    fb.className = 'tb' + (flt !== 'all' ? ' on' : '');
+    fb.innerHTML = `<span class="ic">${UI.filter}</span><span class="t">${flt === 'all' ? 'Filter' : { linked: 'Linked', unlinked: 'Not Linked', paused: 'Paused', running: 'Running' }[flt]}</span>`;
+    fb.title = 'Show all routines, or only linked, not linked, running or paused ones';
+    fb.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); const set = k => () => { cosUi.rfilter = k; cosRender(); };
+      showMenu(b.left, b.bottom + 4, [['all', 'All Routines'], ['running', 'Running'], ['paused', 'Paused'], ['linked', 'Linked to Claude'], ['unlinked', 'Not Linked']].map(([k, l]) => ({ label: l, checked: flt === k, run: set(k) }))); });
     const nb = document.createElement('button');
     nb.className = 'tb';
-    nb.innerHTML = '<span class="t">New Routine</span>';
-    nb.title = `Opens Claude\u2019s scheduled tasks on the ${fr('claude').at}: make the task there, and it is linked here with its name and schedule read from Claude`;
-    nb.addEventListener('click', () => cosNewRoutine(n));
-    top.append(nb);
+    nb.innerHTML = UI.plus;
+    nb.title = 'New routine: with Claude, yourself in Claude, or link one you already have';
+    nb.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); showMenu(b.left, b.bottom + 4, cosNewRoutineItems(n)); });
+    const sq = document.createElement('div');
+    sq.className = 'search';
+    sq.innerHTML = `<span>${UI.search}</span><input type="search" placeholder="Search" autocomplete="off" spellcheck="false">`;
+    const qi = sq.querySelector('input');
+    qi.value = cosUi.rq || '';
+    const applyQ = () => { const q = (cosUi.rq = qi.value).trim().toLowerCase(); box.querySelectorAll('[data-rname]').forEach(el => { el.hidden = !!q && !el.dataset.rname.toLowerCase().includes(q); }); };
+    qi.addEventListener('input', applyQ);
+    top.append(shapeSeg, fb, calSeg, nb, sq);
+    setTimeout(applyQ, 0);
     if (cosUi.routinesShownFor !== n.id) { cosUi.routinesShownFor = n.id; setTimeout(() => cosRefreshRoutines(n), 500); }
     box.appendChild(top);
-    box.appendChild(cosWeekStrip(cosRoutines(n).map(r => ({ r, n }))));
+    const keep = r => flt === 'all' || (flt === 'linked' ? !!r.link : flt === 'unlinked' ? !r.link : flt === 'paused' ? !!r.paused : !r.paused);
+    box.appendChild(cosCalendar(cosRoutines(n).filter(keep).map(r => ({ r, n })), cal));
     const grid = document.createElement('div');
-    grid.className = 'cos-cards';
-    const rs = cosRoutines(n).slice().sort((a, b) => ((routineNext(a) || 9e15) - (routineNext(b) || 9e15)));
+    grid.className = shape === 'list' ? 'cos-rlist' : 'cos-cards';
+    const rs = cosRoutines(n).filter(keep).sort((a, b) => ((routineNext(a) || 9e15) - (routineNext(b) || 9e15)));
+    if (shape === 'list' && rs.length) {
+      const hd = document.createElement('div'); hd.className = 'rrow rhd';
+      hd.innerHTML = '<span>Name</span><span>Repeats</span><span>Next run</span><span>Status</span>';
+      grid.appendChild(hd);
+    }
     for (const r of rs) {
       const next = routineNext(r);
+      if (shape === 'list') {
+        const row = document.createElement('div');
+        row.className = 'rcard rrow' + (r.paused ? ' paused' : '');
+        row.dataset.rid = r.id; row.dataset.rname = r.name;
+        row.innerHTML = `<span class="nm">${small('schedule', KIND_COLOUR.schedule)}<b></b></span><span class="wh"></span><span class="nx"></span><span class="st"></span>`;
+        row.querySelector('b').textContent = r.name;
+        row.querySelector('.wh').textContent = routineWhen(r);
+        row.querySelector('.nx').textContent = next ? fmtNext(next) : '\u2013';
+        row.querySelector('.st').textContent = r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
+        row.title = `${r.name}\n${r.what || ''}\nDouble-click to open in Claude; right-click for more.`;
+        row.addEventListener('dblclick', () => r.link && cosOpenLink(r.link));
+        grid.appendChild(row);
+        continue;
+      }
       const c = document.createElement('div');
       c.className = 'fcard rcard' + (r.paused ? ' paused' : '');
-      c.dataset.rid = r.id;
+      c.dataset.rid = r.id; c.dataset.rname = r.name;
       c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="row2"><button class="btn edit" title="Read the name, instructions and schedule from Claude again">Read Again</button><button class="btn pause"></button><span class="last"></span></div>`;
       c.querySelector('b').textContent = r.name;
       c.querySelector('.rstate').textContent = r.missing ? 'Not found in Claude' : r.paused ? 'Paused' : r.link ? 'Linked' : 'Not linked';
@@ -7707,14 +7791,11 @@
       if (r.link) links.appendChild(cosLinkChip(r.link, () => cosChange(() => { r.link = null; }, null)));
       else { const h = document.createElement('button'); h.className = 'tb linkbtn'; h.innerHTML = '<span class="t">Link Claude Task…</span>'; h.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosPickSchedule(b.left, b.bottom + 4, link => cosChange(() => { r.link = link; }, `Linked “${link.name}”`)); }); links.appendChild(h); }
       if (r.output) { const o = cosLinkChip(r.output, () => cosChange(() => { r.output = null; }, null)); o.title = `Results: ${r.output.name}`; links.appendChild(o); }
-      if (r.missing) {
-        const rm = document.createElement('button'); rm.className = 'btn'; rm.textContent = 'Remove';
-        rm.title = 'It was deleted in Claude: remove it here too';
-        rm.addEventListener('click', () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Removed \u201c${r.name}\u201d from Routines`));
-        const keep = document.createElement('button'); keep.className = 'btn'; keep.textContent = 'Keep';
-        keep.title = 'It is still there (Claude was not reachable): keep it';
-        keep.addEventListener('click', () => { delete r.missing; saveCos(); cosRender(); });
-        links.append(rm, keep);
+      if (r.missing) {                                 // (from an earlier version: deleted in Claude)
+        const rm = document.createElement('button'); rm.className = 'btn'; rm.textContent = 'Delete';
+        rm.title = 'It was deleted in Claude: delete it here too';
+        rm.addEventListener('click', () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted \u201c${r.name}\u201d`));
+        links.append(rm);
       }
       c.querySelector('.last').textContent = next ? `Next: ${fmtNext(next)}` : r.paused ? '' : r.freq === 'custom' ? '' : '';
       c.querySelector('.pause').textContent = r.paused ? 'Resume' : 'Pause';
@@ -7734,7 +7815,7 @@
     grid.addEventListener('contextmenu', e => {
       const c = e.target.closest('.rcard');
       e.preventDefault();
-      if (!c) return showMenu(e.clientX, e.clientY, [{ label: 'New Routine', icon: 'schedule', run: () => cosNewRoutine(n) }]);
+      if (!c) return showMenu(e.clientX, e.clientY, cosNewRoutineItems(n));
       const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
       showMenu(e.clientX, e.clientY, [
         r.link && { label: 'Open', key: K.open, run: () => cosOpenLink(r.link) },
@@ -7746,7 +7827,7 @@
         { label: r.paused ? 'Resume' : 'Pause', run: () => cosChange(() => { r.paused = !r.paused; }, null) },
         r.link && { label: 'Copy Link', run: () => navigator.clipboard.writeText(r.link.url).then(() => toast('Link copied')) },
         '-',
-        { label: 'Remove from Routines', run: () => cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Removed \u201c${r.name}\u201d from Routines. Its task in Claude is not changed.`) },
+        { label: 'Delete Routine\u2026', run: () => cosDeleteRoutine(n, r) },
       ]);
     });
     // Drag a scheduled task (or the chat where results land) onto a routine card.
@@ -7765,6 +7846,103 @@
     host.appendChild(box);
   }
   // A week at a glance: what runs on each day (Monday first), coloured by staff member.
+  // New Routine, as in Claude: with Claude, or yourself (Claude's form); or link one already in Claude.
+  function cosNewRoutineItems(n) {
+    return [
+      { label: 'Create with Claude\u2026', icon: 'schedule', run: () => cosNewRoutine(n, 'with claude') },
+      { label: 'Create Manually\u2026', run: () => cosNewRoutine(n, 'manual') },
+      '-',
+      { label: 'Link a Routine Already in Claude', key: '\u25B8', run: () => cosPickSchedule(lastMenuX, lastMenuY, link => {
+        const r = { id: uid(), name: link.name, what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link, output: null, paused: false, created: Date.now() };
+        cosChange(() => cosRoutines(n).push(r), `Linked \u201c${link.name}\u201d`);
+        setTimeout(() => cosReadRoutine(n, r), 300);
+      }) },
+    ];
+  }
+  // When each routine runs on a given day (hourly ones count once, as "Every hour").
+  function routineRunsOn(r, day) {
+    if (r.paused || r.freq === 'custom') return [];
+    const d0 = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    if (r.freq === 'hourly') return [{ hourly: true, at: d0 }];
+    const at = routineNext(r, new Date(d0.getTime() - 1));
+    return at && at.toDateString() === d0.toDateString() ? [{ at }] : [];
+  }
+  function cosCalendar(entries, mode) {
+    const wrap = document.createElement('div');
+    wrap.className = 'cos-cal';
+    const base = cosUi.calDate ? new Date(cosUi.calDate) : new Date();
+    base.setHours(0, 0, 0, 0);
+    const head = document.createElement('div'); head.className = 'cal-head';
+    const move = k => { const d = new Date(base); if (mode === 'day') d.setDate(d.getDate() + k); else if (mode === 'week') d.setDate(d.getDate() + 7 * k); else d.setMonth(d.getMonth() + k); cosUi.calDate = k === 0 ? null : d.getTime(); cosRender(); };
+    const b = (html, tip, run) => { const x = document.createElement('button'); x.className = 'tb'; x.innerHTML = html; x.title = tip; x.addEventListener('click', run); return x; };
+    const lab = document.createElement('b');
+    const monday = d => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+    if (mode === 'day') lab.textContent = base.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+    else if (mode === 'week') { const m = monday(base), e = new Date(m); e.setDate(m.getDate() + 6); lab.textContent = `${m.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} \u2013 ${e.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`; }
+    else lab.textContent = base.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+    head.append(b(UI.back, 'Earlier', () => move(-1)), b('<span class="t">Today</span>', 'Back to today', () => move(0)), b(UI.fwd, 'Later', () => move(1)), lab);
+    wrap.appendChild(head);
+    const runsFor = day => {
+      const out = [];
+      for (const { r, n } of entries) for (const x of routineRunsOn(r, day)) out.push({ r, n, ...x });
+      return out.sort((a, b) => (a.hourly ? -1 : 0) - (b.hourly ? -1 : 0) || a.at - b.at);
+    };
+    const chip = ({ r, n, at, hourly }, full) => {
+      const e = document.createElement('div');
+      e.className = 'wrun';
+      e.style.borderLeftColor = n.color;
+      e.innerHTML = '<span class="t"></span><span class="nm"></span>';
+      e.querySelector('.t').textContent = hourly ? 'Hourly' : fmtTime(`${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`);
+      e.querySelector('.nm').textContent = full ? `${r.name}${entries.some(x => x.n !== n) ? ` \u00b7 ${n.name}` : ''}` : r.name;
+      e.title = `${r.name}\n${n.name} \u00b7 ${routineWhen(r)}${r.link ? '' : '\nNot linked to a Claude task yet'}`;
+      e.dataset.staff = n.id; e.dataset.rname = r.name;
+      if (r.link) e.addEventListener('dblclick', () => cosOpenLink(r.link));
+      return e;
+    };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (mode === 'day') {
+      const list = document.createElement('div'); list.className = 'cal-day';
+      const runs = runsFor(base);
+      for (const x of runs) list.appendChild(chip(x, true));
+      if (!runs.length) { const e = document.createElement('div'); e.className = 'wnone'; e.textContent = 'Nothing runs this day.'; list.appendChild(e); }
+      wrap.appendChild(list);
+      return wrap;
+    }
+    if (mode === 'week') {
+      const m = monday(base);
+      const strip = document.createElement('div'); strip.className = 'cos-week';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(m); d.setDate(m.getDate() + i);
+        const col = document.createElement('div');
+        col.className = 'wday' + (d.getTime() === today.getTime() ? ' today' : d < today ? ' past' : '');
+        col.innerHTML = `<div class="wh">${DAY_NAMES[d.getDay()].slice(0, 3)} ${d.getDate()}</div>`;
+        const runs = runsFor(d);
+        for (const x of runs) col.appendChild(chip(x));
+        if (!runs.length) { const e = document.createElement('div'); e.className = 'wnone'; e.textContent = '\u2013'; col.appendChild(e); }
+        strip.appendChild(col);
+      }
+      wrap.appendChild(strip);
+      return wrap;
+    }
+    // Month: Monday-first weeks covering the month.
+    const first = new Date(base.getFullYear(), base.getMonth(), 1), start = monday(first);
+    const grid = document.createElement('div'); grid.className = 'cal-month';
+    for (const nm of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) { const h = document.createElement('div'); h.className = 'mh'; h.textContent = nm; grid.appendChild(h); }
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      if (i % 7 === 0 && i >= 28 && d.getMonth() !== base.getMonth()) break;   // stop at a week wholly after the month
+      const cell = document.createElement('div');
+      cell.className = 'mday' + (d.getMonth() !== base.getMonth() ? ' other' : '') + (d.getTime() === today.getTime() ? ' today' : '');
+      const dn = document.createElement('div'); dn.className = 'dn'; dn.textContent = d.getDate(); cell.appendChild(dn);
+      const runs = runsFor(d);
+      runs.slice(0, 3).forEach(x => cell.appendChild(chip(x)));
+      if (runs.length > 3) { const more = document.createElement('div'); more.className = 'more'; more.textContent = `+${runs.length - 3} more`; cell.appendChild(more); }
+      cell.addEventListener('dblclick', e => { if (e.target.closest('.wrun')) return; cosUi.calDate = d.getTime(); cosUi.rcal = 'day'; ls.set('claudeNavigator.routineCal', 'day'); cosRender(); });
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
+    return wrap;
+  }
   function cosWeekStrip(entries) {
     const strip = document.createElement('div');
     strip.className = 'cos-week';
@@ -8595,8 +8773,24 @@ body { width: max-content !important; min-width: 0 !important; }
     if (changed) { saveCos(); if (currentApp === 'cos') cosRender(); }
   }
   // ----- New routine: make the scheduled task in Claude, then say here when it runs -----
-  function cosNewRoutine(n) {
+  // Claude's New routine button, then (if Claude offers a choice) the option picked here.
+  const ROUTINE_NEW_SCRIPT = option => `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const label = e => ((e.innerText || '') + ' ' + (e.getAttribute('aria-label') || '')).replace(/\\s+/g, ' ').trim();
+    const nb = [...document.querySelectorAll('button, [role="button"], a')].find(b => /^\\+?\\s*(new|create|add)( routine| scheduled task| task)?$/i.test(label(b)));
+    if (!nb) return 'no button';
+    nb.click();
+    const want = ${JSON.stringify(option)} === 'with claude' ? /with claude|ask claude|describe/i : /manual|blank|yourself|from scratch|custom|form/i;
+    for (let i = 0; i < 8; i++) {
+      await sleep(250);
+      const it = [...document.querySelectorAll('[role="menuitem"], [role="option"], button, a')].filter(e => e.children.length < 6).find(e => want.test(label(e)));
+      if (it) { it.click(); return 'done'; }
+    }
+    return 'opened';
+  })()`;
+  function cosNewRoutine(n, option = 'manual') {
     if (!isApp) return openNewWindow(claudeSchedulePage());
+    { let tries = 0; const press = () => { if (++tries > 20) return; if (!state.pageUrl || !/routines|schedul/.test(pathOf(state.pageUrl) || '')) { setTimeout(press, 700); return; } viewExec(ROUTINE_NEW_SCRIPT(option)).then(r => { if (r === 'no button') setTimeout(press, 700); }).catch(() => setTimeout(press, 700)); }; setTimeout(press, 900); }
     const page = claudeSchedulePage();
     let base = '/code/routines';
     try { base = new URL(page).pathname.replace(/\/+$/, ''); } catch (e) { /* default */ }
@@ -8643,6 +8837,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const text = [...(d.selects || []), ...(d.fields || []), d.text || ''].join('\n');
     const hm = (h, m) => `${String(h).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`;
     // A cron line, as Claude shows for routines (minute hour day-of-month month day-of-week).
+    const hourly = /(?:^|\s)([0-5]?\d)\s+\*\s+\*\s+\*\s+\*(?=\s|$)/m.exec(text);
+    if (hourly) { out.time = hm(0, hourly[1]); out.freq = 'hourly'; return out; }
     const cron = /(?:^|\s)([0-5]?\d)\s+([01]?\d|2[0-3])\s+(\*|[\d,]+)\s+\*\s+(\*|[0-7](?:[-,][0-7])*)(?=\s|$)/m.exec(text);
     if (cron) {
       out.time = hm(cron[2], cron[1]);
@@ -8668,7 +8864,8 @@ body { width: max-content !important; min-width: 0 !important; }
     if (t12) out.time = hm((+t12[1] % 12) + (/pm/i.test(t12[3]) ? 12 : 0), t12[2]);
     else if (t24) out.time = hm(t24[1], t24[2]);
     const days = [...line.toLowerCase().matchAll(/\b(sun|mon|tue|wed|thu|fri|sat)[a-z]*/g)].map(m => DAY_RE[m[1]]);
-    if (/hourly|every \d+ (hours?|minutes?)|fortnight|every (other|second)/i.test(line)) Object.assign(out, { freq: 'custom', custom: line });
+    if (/\bhourly\b|every hour\b/i.test(line)) { const mm = /:(\d{2})/.exec(line); Object.assign(out, { freq: 'hourly', time: hm(0, mm ? mm[1] : 0) }); }
+    else if (/every \d+ (hours?|minutes?)|fortnight|every (other|second)/i.test(line)) Object.assign(out, { freq: 'custom', custom: line });
     else if (/weekdays?|monday\s*(to|through|-|–)\s*friday|mon\s*(-|–)\s*fri/i.test(line)) out.freq = 'weekdays';
     else if (/daily|every day/i.test(line)) out.freq = 'daily';
     else if (/monthly|every month|of (each|every|the) month|\b\d{1,2}(st|nd|rd|th)\b/i.test(line)) { const dm = /\b(\d{1,2})(st|nd|rd|th)\b/i.exec(line); Object.assign(out, { freq: 'monthly', dom: dm ? +dm[1] : 1 }); }
@@ -8685,9 +8882,8 @@ body { width: max-content !important; min-width: 0 !important; }
     try {
       const d = await window.navigatorApp.claudePageDetails(r.link.url);
       if (!d || !d.ok) { if (!quiet) toast(`Could not read it from Claude: ${(d && d.status) || 'no answer'}`); return; }
-      if (d.gone) {
-        if (!r.missing) { r.missing = true; saveCos(); if (currentApp === 'cos') cosRender(); }
-        if (!quiet) toast(`\u201c${r.name}\u201d was not found in Claude. Remove it here, or Keep it, on its card.`);
+      if (d.gone) {                                  // deleted in Claude: deleted here too (Undo puts it back)
+        cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `\u201c${r.name}\u201d was deleted in Claude, so it is deleted here too`);
         return;
       }
       const got = routineFromPage(d);
@@ -8702,7 +8898,50 @@ body { width: max-content !important; min-width: 0 !important; }
   // Routines are read again, quietly, when their tab is shown (at most every 10 minutes), so changes and
   // deletions made in Claude show up here.
   function cosRefreshRoutines(n) {
-    for (const r of cosRoutines(n).slice()) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 10 * 60e3) cosReadRoutine(n, r, { quiet: true });
+    // Opening Routines checks Claude (at most once a minute per routine), so changes and deletions there show here.
+    for (const r of cosRoutines(n).slice()) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 60e3) cosReadRoutine(n, r, { quiet: true });
+    if (Date.now() - (cosUi.scheduledReadAt || 0) > 60e3) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
+  }
+  // Delete a routine here and in Claude: Claude's page for it is opened and its Delete is pressed.
+  const ROUTINE_DELETE = `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    const label = e => ((e.innerText || '') + ' ' + (e.getAttribute('aria-label') || '') + ' ' + (e.getAttribute('title') || '')).replace(/\\s+/g, ' ').trim();
+    const find = (re, root = document) => [...root.querySelectorAll('button, [role="button"], [role="menuitem"]')].find(b => re.test(label(b)) && label(b).length < 40);
+    let del = null;
+    for (let i = 0; i < 24 && !del; i++) {
+      del = find(/^delete( routine| task| scheduled task)?$/i);
+      if (!del) {
+        const more = find(/^(more|more options|options|actions|menu|\u2026|\\.\\.\\.)$/i) || [...document.querySelectorAll('main button[aria-haspopup], button[aria-haspopup="menu"]')].pop();
+        if (more && i % 4 === 3) { more.click(); await sleep(500); del = find(/^delete/i); }
+      }
+      if (!del) await sleep(300);
+    }
+    if (!del) return 'no delete';
+    del.click();
+    for (let i = 0; i < 16; i++) {
+      await sleep(250);
+      const dlg = document.querySelector('[role="alertdialog"], [role="dialog"]');
+      const ok = dlg && find(/^(delete|yes,? delete|confirm|remove)/i, dlg);
+      if (ok) { ok.click(); await sleep(800); return 'deleted'; }
+    }
+    return 'deleted';
+  })()`;
+  function cosDeleteRoutine(n, r) {
+    if (!confirm(`Delete \u201c${r.name}\u201d? It is deleted here and in Claude.`)) return;
+    cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted \u201c${r.name}\u201d`);
+    if (!r.link || !/claude\.ai/.test(r.link.url || '') || r.missing) return;
+    cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude';
+    renderCos();
+    go({ kind: 'page', url: r.link.url });
+    let tries = 0;
+    const attempt = () => {
+      if (++tries > 6) { toast(`Deleted here. Delete \u201c${r.name}\u201d in Claude too: it is open on the ${fr('claude').at}.`); return; }
+      viewExec(ROUTINE_DELETE).then(res => {
+        if (res === 'deleted') { toast(`Deleted \u201c${r.name}\u201d here and in Claude`); setTimeout(() => refreshLibrary(true), 1500); }
+        else setTimeout(attempt, 1500);
+      }).catch(() => setTimeout(attempt, 1500));
+    };
+    setTimeout(attempt, 1800);
   }
   function cosCheckRoutinesAgainst(list) {
     const have = new Set(list.map(x => normUrl(x.url)));
