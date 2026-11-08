@@ -8252,7 +8252,8 @@
     cosUi.routinePoll = setInterval(() => {
       const w = cosUi.routineWatch;
       if (!w || ++ticks > 225) { clearInterval(cosUi.routinePoll); if (w) { cosUi.routineWatch = null; cosRender(); } return; }
-      viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && x.url.includes(${JSON.stringify(base + '/')}))`)
+      // Links to the new task: under Claude's scheduled tasks page, or the task card Claude shows in the chat.
+      viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, path: u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && (x.url.includes(${JSON.stringify(base + '/')}) || /^\\/(scheduled|schedules?|tasks?|routines?)\\/[^/]+/.test(x.path)))`)
         .then(found => { if (Array.isArray(found) && found.length) cosLinkWatched(found); }).catch(() => {});
       if (ticks % 11 === 0) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
       if (ticks % 8 === 0) { const m = cosNode(cosTeam(), w.staffId); if (m) cosSyncProjectRoutines(m); }
@@ -9345,7 +9346,7 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const x of section) if (!tasks.some(t => t.name.toLowerCase() === x.name.toLowerCase())) tasks.push({ name: x.name, url: x.page || '', when: x.when });
       const added = [], removed = [];
       for (const t of tasks) {
-        const have = rs.find(r => (t.url && r.link && normUrl(r.link.url) === normUrl(t.url)) || (r.fromProject && r.name.toLowerCase() === t.name.toLowerCase()));
+        const have = rs.find(r => (t.url && r.link && normUrl(r.link.url) === normUrl(t.url)) || r.name.toLowerCase() === t.name.toLowerCase());
         const sched = t.when ? routineFromPage({ title: '', heading: t.name, text: `${t.name}\n${t.when}`, fields: [], selects: [] }) : {};
         if (have) {
           if (t.when && have.fromProject) Object.assign(have, { freq: sched.freq || have.freq, time: sched.time || have.time, days: sched.days || have.days, dom: sched.dom || have.dom, custom: sched.custom || have.custom });

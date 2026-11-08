@@ -813,7 +813,9 @@ const PROJECT_SCHEDULED = `(() => {
     const row = a.closest('li, [role="listitem"], [role="row"]') || a.parentElement || a;
     if (row.querySelectorAll('a[href]').length > 1) continue;
     const txt = clean(row.innerText || a.innerText);
-    if (!/\\bScheduled\\b/.test(txt) || /^scheduled$/i.test(clean(a.innerText)) || txt.length > 300) continue;
+    // The Scheduled badge must be beside the link, not in its name (a chat called "Scheduled task setup" is a chat).
+    const besides = clean(txt.replace(clean(a.innerText), ' '));
+    if (!/\\bScheduled\\b/.test(besides) || /^scheduled$/i.test(clean(a.innerText)) || txt.length > 300) continue;
     let u; try { u = new URL(a.href); } catch (e) { continue; }
     // Only a chat or a scheduled task: never a page like Design, Customize, Projects or the project itself.
     if (u.origin !== location.origin || !/^\\/(chat|task|tasks|routine|routines|scheduled)\\/[^/]+/.test(u.pathname)) continue;
@@ -834,7 +836,9 @@ const PROJECT_SCHEDULED = `(() => {
       let u; try { u = new URL(a.href); } catch (e) { continue; }
       if (u.origin === location.origin && u.pathname !== location.pathname && !/^\\/(project|chat|new|projects|recents|design|customize)(\\/|$)/.test(u.pathname)) pages.push({ text: clean(a.innerText), url: u.origin + u.pathname });
     }
-    for (const part of body.split(/\\s{2,}|\\n/)) {
+    // Each entry on its own: the innermost element reading "Name · When" (else split the text into lines).
+    const leaves = [...el.querySelectorAll('*')].filter(e => /^.+?\\s+·\\s+.+$/.test(clean(e.innerText)) && ![...e.children].some(c => /·/.test(c.innerText || ''))).map(e => clean(e.innerText));
+    for (const part of leaves.length ? leaves : body.split(/\\s{2,}|\\n/)) {
       const m = /^(.+?)\\s+·\\s+(.+)$/.exec(part.trim()); if (!m) continue;
       const pg = pages.find(x => x.text.startsWith(m[1].trim()));
       section.push({ name: m[1].trim(), when: m[2].trim(), page: pg ? pg.url : '' });
