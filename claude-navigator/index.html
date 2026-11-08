@@ -3769,6 +3769,14 @@
       }
       renderToolbar();
       syncSideSel();
+      // Claude's Settings (Connectors and the like) can draw as a black box inside the app: offer its own window.
+      try {
+        const sp = pathOf(url);
+        if (/^\/(settings|customi[sz]e\/connectors)(\/|$)/.test(sp) && state.settingsHint !== sp) {
+          state.settingsHint = sp;
+          toast('If part of Claude\u2019s Settings shows as a black box here, open it in its own window.', { label: 'Open in Own Window', run: () => openNewWindow(url) });
+        }
+      } catch (e) { /* not a page */ }
       try { cosNoteStaffChat(); } catch (e) { /* starting up */ }
       try { if (currentApp === 'cos') cosBotSoon(); } catch (e) { /* starting up */ }
       // Sign-in pages that ask for a passkey (Face ID, Touch ID, Windows Hello) wait for ever inside the app:
