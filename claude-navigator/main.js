@@ -828,7 +828,17 @@ const PROJECT_SCHEDULED = `(() => {
     const t = clean(el.innerText);
     if (t.length > 400 || !/^Scheduled\\b/.test(t)) continue;
     const body = t.replace(/^Scheduled\\s*/, '').replace(/\\s*Add$/, '');
-    for (const part of body.split(/\\s{2,}|\\n/)) { const m = /^(.+?)\\s+·\\s+(.+)$/.exec(part.trim()); if (m) section.push({ name: m[1].trim(), when: m[2].trim() }); }
+    // Each task's own page (Scheduled tasks / Name), when the entry is a link.
+    const pages = [];
+    for (const a of el.querySelectorAll('a[href]')) {
+      let u; try { u = new URL(a.href); } catch (e) { continue; }
+      if (u.origin === location.origin && u.pathname !== location.pathname && !/^\\/(project|chat|new|projects|recents|design|customize)(\\/|$)/.test(u.pathname)) pages.push({ text: clean(a.innerText), url: u.origin + u.pathname });
+    }
+    for (const part of body.split(/\\s{2,}|\\n/)) {
+      const m = /^(.+?)\\s+·\\s+(.+)$/.exec(part.trim()); if (!m) continue;
+      const pg = pages.find(x => x.text.startsWith(m[1].trim()));
+      section.push({ name: m[1].trim(), when: m[2].trim(), page: pg ? pg.url : '' });
+    }
   }
   const heading = clean((document.querySelector('h1') || {}).innerText || '');
   // The Scheduled section with nothing in it ("Scheduled  Add"): so the app knows the list is really empty.
