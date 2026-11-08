@@ -328,9 +328,9 @@
   .cos-tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
   .cos-tabs button { background: none; border: 0; padding: 8px 12px; font: inherit; font-size: 13px; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; }
   .cos-tabs button.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
-  .cos-tabs .tab-tools { margin-left: auto; display: flex; align-items: center; padding-bottom: 4px; }
-  .cos-tabs .tab-tools .tb { border-bottom: 0; margin: 0; padding: 4px 8px; display: inline-flex; align-items: center; gap: 5px; color: var(--text); }
-  .cos-tabs .tab-tools .tb svg:last-child { transform: rotate(90deg); }
+  .cos-rbar .tab-tools { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .cos-rbar .tab-tools .tb .t { overflow: hidden; text-overflow: ellipsis; }
+  #cosSkillsBtn svg:last-child { transform: rotate(90deg); }
   .cos-tabs button .n { font-size: 11px; color: var(--muted); margin-left: 4px; }
   .cos-proj { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
@@ -1699,6 +1699,7 @@
     if (!/[\p{L}\p{N}]/u.test(c)) return '';
     // While a page loads its title is briefly its address: never use that as a name.
     if (/^(https?:\/\/)?[\w.-]+\.?[\w-]*(:\d+)?\/\S*$/i.test(c) || /^https?:/i.test(c)) return '';
+    if (/^[\w-]+(\.[\w-]+)+$/.test(c)) return '';      // a bare site name, like "claude.ai"
     return c && !GENERIC_TITLE.test(c) ? c : '';
   };
   // Names you have not typed yourself follow the chat's title in Claude.
@@ -3286,6 +3287,16 @@
       $('bSave').title = (saved ? 'Saved. Click for Save a Copy As, Move, Show in Folder or Remove' : 'Save this page') +
         (f ? ` in \u201c${f.name}\u201d` : '') + ` (${K.mod}S)`;
     }
+    // Chief of Staff's Skills tab: Claude Skills (add one of yours, or make one) sits in this bar.
+    let sk = document.getElementById('cosSkillsBtn');
+    const skillsTab = (() => { try { return currentApp === 'cos' && cosUi.page && cosUi.tab === 'skills' && !page; } catch (e) { return false; } })();
+    if (skillsTab && !sk) {
+      sk = document.createElement('button'); sk.id = 'cosSkillsBtn'; sk.className = 'tb';
+      sk.innerHTML = `<span class="ic">${small('skill', 'currentColor')}</span><span class="t">Claude Skills</span>${UI.chev}`;
+      sk.title = 'Add one of your Claude Skills to this person, or make a new one in Claude';
+      sk.addEventListener('click', e => { const n = cosNode(cosTeam(), cosUi.page); if (!n) return; const r = e.currentTarget.getBoundingClientRect(); cosSkillsMenu(r.left, r.bottom + 4, n); });
+    }
+    if (sk) { if (sk.nextElementSibling !== $('bNewChat')) $('bNewChat').before(sk); sk.style.order = $('bNewChat').style.order; sk.hidden = !skillsTab; }
     const here = newHereFolder();
     $('bNewChat').title = `New Chat${here ? ` in \u201c${nodeOf(here).name}\u201d` : ''} (${K.mod}N)`;
   }
@@ -3934,9 +3945,35 @@
   }
 
   // When Claude gives a chat its title, or you rename it in Claude, saved links follow.
+  // Some Claude pages (an installed skill or plugin) only have "claude.ai" as their title: their name is the page's heading.
+  const PAGE_HEADING = `(() => {
+    const ok = t => t && t.length < 120 && !/^(skills?|plugins?|overview|contents|connectors|customi[sz]e|back)$/i.test(t);
+    for (const sel of ['main h1', 'h1', 'main h2', '[role="heading"]', 'h2']) for (const e of document.querySelectorAll(sel)) { const t = (e.innerText || '').replace(/\\s+/g, ' ').trim(); if (ok(t)) return t; }
+    // No heading tags: the biggest short text in the page's main area.
+    let best = '', size = 0;
+    for (const e of (document.querySelector('main') || document.body).querySelectorAll('div, span, p')) {
+      if (e.children.length) continue;
+      const t = (e.innerText || '').replace(/\\s+/g, ' ').trim(), fs = parseFloat(getComputedStyle(e).fontSize) || 0;
+      if (ok(t) && t.length < 60 && fs > size) { size = fs; best = t; }
+    }
+    return size >= 17 ? best : '';
+  })()`;
   function syncNames(url, title) {
     const t = realTitle(title);
-    if (!t) return;
+    if (!t) {
+      // No usable title: for a skill saved with a placeholder name, read the heading on the page instead.
+      const stuck = savedLinksFor(url).filter(n => isAutoName(n) && (!realTitle(n.name) || /^new skill$/i.test(n.name)));
+      if (stuck.length && normUrl(url) === normUrl(state.pageUrl || '') && !syncNames.busy) {
+        syncNames.busy = true;
+        setTimeout(() => Promise.race([viewExec(PAGE_HEADING), new Promise(r => setTimeout(() => r(''), 6000))]).then(h => {
+          const name = realTitle(h);
+          if (!name || normUrl(url) !== normUrl(state.pageUrl || '')) return;
+          for (const n of stuck) { n.name = name; n.autoName = true; }
+          save(); renderAll();
+        }).catch(() => {}).finally(() => { syncNames.busy = false; }), 1500);
+      }
+      return;
+    }
     let changed = false;
     for (const n of savedLinksFor(url)) {
       if (isAutoName(n) && n.name !== t) { n.name = t; n.autoName = true; changed = true; }
@@ -7048,15 +7085,26 @@
     return [`Company files: the ${p.name} folders are on my Mac at ${co}${mine ? ` (your own folder is ${mine})` : ''}. When a task needs files, ask to use that folder at the start, then read, save and move files there.`];
   }
   // The instructions for a staff member's Claude Project: their role, and where the company files are.
+  // Claude Skills are switched on for the whole account, not per project: Claude learns which ones a staff member
+  // uses only from their project instructions. So their skills are listed there, and a change asks for an update.
+  function staffSkillNames(n) {
+    try {
+      const f = staffFolder(n), sf = f && (f.children || []).find(x => x.type === 'folder' && x.skillsFolder);
+      return sf ? workItems(sf).filter(x => !inArchive(x.id) && x.type === 'link').map(x => (x.name || '').trim()).filter(Boolean) : [];
+    } catch (e) { return []; }
+  }
+  const staffSkillSig = n => staffSkillNames(n).slice().sort().join('|');
   function cosProjectInstructions(n) {
     const p = activeProfile();
+    const skills = n.chief ? [] : staffSkillNames(n);
+    const skillLines = skills.length ? [`Your skills: ${skills.join('; ')}. These are Claude Skills switched on in my account. When a request fits one of them, use that skill rather than a similar one, and say which skill you used.`] : [];
     const chiefLines = n.chief ? [
       `You lead the ${p ? p.name + ' ' : ''}team: ${(cosTeam() || { nodes: [] }).nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') || 'no staff yet'}.`,
       'Use my Granola meeting notes and transcripts (my NCTI and Monkey Baa meetings) for what is current and how I am thinking. Say which meeting something came from.',
       'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, suggest where finished work belongs in the company folders, and say when two staff members are working on the same thing.',
       ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
     ] : [];
-    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...chiefLines, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
+    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
     navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {});
@@ -7203,7 +7251,7 @@
         field(s2, 'Instructions', cosProjectInstructions(n), true);
         const row = document.createElement('div'); row.className = 'row';
         row.append(
-          btn('I’ve Saved Them', () => { cosChange(() => { n.instructionsAt = Date.now(); }, null); cosUi.setupFor = null; cosUi.adding = false; renderCos(); toast(`${n.name} is set up. Their chats start in their Claude Project.`); }, true));
+          btn('I’ve Saved Them', () => { cosChange(() => { n.instructionsAt = Date.now(); n.instructionsSkills = staffSkillSig(n); }, null); cosUi.setupFor = null; cosUi.adding = false; renderCos(); toast(`${n.name} is set up. Their chats start in their Claude Project.`); }, true));
         s2.appendChild(row);
       } else para(s2, 'After the project is made: their role, and where the company files are, go in its instructions. (Not in the description.)');
     }
@@ -7336,7 +7384,24 @@
         : `${n.name} needs a Claude Project: their role goes in its instructions, along with where the company files are, and their chats start there.`;
       const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = n.claudeProject ? 'Add Their Instructions' : 'Set Up Claude Project'; b1.addEventListener('click', () => cosStartSetup(n));
       setup.querySelector('.bt').append(b1);
-      if (n.claudeProject) { const b3 = document.createElement('button'); b3.className = 'btn'; b3.textContent = 'Already Done'; b3.title = 'Their project already has these instructions'; b3.addEventListener('click', () => cosChange(() => { n.instructionsAt = Date.now(); }, null)); setup.querySelector('.bt').append(b3); }
+      if (n.claudeProject) { const b3 = document.createElement('button'); b3.className = 'btn'; b3.textContent = 'Already Done'; b3.title = 'Their project already has these instructions'; b3.addEventListener('click', () => cosChange(() => { n.instructionsAt = Date.now(); n.instructionsSkills = staffSkillSig(n); }, null)); setup.querySelector('.bt').append(b3); }
+    }
+    else if (cosUi.setupFor !== n.id && !n.chief && staffSkillSig(n) !== (n.instructionsSkills || '')) {
+      // Their skills changed since the project's instructions were saved: Claude does not know yet.
+      setup = document.createElement('div');
+      setup.className = 'cos-setup';
+      setup.innerHTML = `<span class="ic">${small('skill', KIND_COLOUR.skill || 'currentColor')}</span><div class="tx"><b></b><span></span></div><div class="bt"></div>`;
+      setup.querySelector('b').textContent = `Tell Claude about ${n.name}’s skills`;
+      const names = staffSkillNames(n);
+      setup.querySelector('.tx span').textContent = names.length
+        ? `Claude only knows which skills ${n.name} uses from their project instructions. Update them to include ${names.length === 1 ? `“${names[0]}”` : `their ${names.length} skills`}.`
+        : `${n.name} no longer has skills here. Update their project instructions so Claude stops using the old ones.`;
+      const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Update Instructions';
+      b1.addEventListener('click', () => { cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); });
+      const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Not Now';
+      b2.title = 'Hide this until their skills change again';
+      b2.addEventListener('click', () => cosChange(() => { n.instructionsSkills = staffSkillSig(n); }, null));
+      setup.querySelector('.bt').append(b1, b2);
     }
     const tabs = document.createElement('div');
     tabs.className = 'cos-tabs';
@@ -7352,20 +7417,19 @@
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
     }
-    if (cosUi.tab === 'skills') {
-      const tb = document.createElement('div');
-      tb.className = 'tab-tools';
-      const b = document.createElement('button');
-      b.className = 'tb';
-      b.innerHTML = `<span class="ic">${small('skill', 'currentColor')}</span><span class="t">Claude Skills</span>${UI.chev}`;
-      b.title = 'Add one of your Claude Skills to this person, or make a new one in Claude';
-      b.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); cosSkillsMenu(r.left, r.bottom + 4, n); });
-      tb.appendChild(b);
-      tabs.appendChild(tb);
-    }
+    // Every tab has the same bar under the tabs: its title on the left, its own buttons on the right.
+    // (Work and Skills use the folder view's bar; Claude Skills sits in it, see renderToolbar.)
+    let tabBar = null;
+    const newTabBar = title => {
+      const bar = document.createElement('div');
+      bar.className = 'cos-rbar';
+      bar.innerHTML = '<b class="rt"></b><span class="sp"></span><div class="tab-tools"></div>';
+      bar.querySelector('.rt').textContent = title;
+      tabBar = bar;
+      return bar.querySelector('.tab-tools');
+    };
     if (cosUi.tab === 'dashboard' && n.dashboard) {
-      const tb = document.createElement('div');
-      tb.className = 'tab-tools';
+      const tb = newTabBar('Dashboard');
       const btn = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
       const showing = cosDashShowing(n);
       if (showing) btn(`<span class="ic">${UI.compose}</span><span class="t">Edit in Claude</span>`, 'Open the chat that made this dashboard, and ask Claude for changes there', () => cosDashEdit(n));
@@ -7374,19 +7438,16 @@
       btn(`${n.dashFirst ? `<span class="ic">${UI.check}</span>` : ''}<span class="t">Open First</span>`, n.dashFirst ? `${n.name}\u2019s page opens on the dashboard. Click to open on Work instead.` : `Open ${n.name}\u2019s page on the dashboard (it becomes the first tab)`,
         () => cosChange(() => { n.dashFirst = !n.dashFirst; }, null), !!n.dashFirst);
       btn(UI.more, 'More: open in your browser, use another dashboard, remove', e => { const r = e.currentTarget.getBoundingClientRect(); cosDashMenu(r.left, r.bottom + 4, n); });
-      tabs.appendChild(tb);
     }
     if (cosUi.tab === 'clara' && n.clara) {
-      const tb = document.createElement('div');
-      tb.className = 'tab-tools';
+      const tb = newTabBar('Scheduling');
       const btn = (html, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
       btn(`<span class="ic">${UI.compose}</span><span class="t">Ask Clara to Schedule\u2026</span>`, `A new Outlook email${n.clara.from ? ` from ${n.clara.from}` : ''} with Clara (${clara.email}) copied in`, () => askClara(n));
       btn('<span class="t"></span>', 'The address emails to Clara are sent from. Click to change it.', () => claraFromDialog(n)).firstChild.textContent = `From: ${n.clara.from || 'not set'}`;
       btn(`<span class="ic">${UI.reload}</span>`, 'Reload Clara\u2019s dashboard', () => { try { claraViewEnsure().reload(); } catch (e) { /* starting */ } });
       btn(UI.more, 'More', e => { const r = e.currentTarget.getBoundingClientRect(); cosClaraMenu(r.left, r.bottom + 4, n); });
-      tabs.appendChild(tb);
     }
-    page.append(...[who, setup, tabs].filter(Boolean));
+    page.append(...[who, setup, tabs, tabBar].filter(Boolean));
     body.appendChild(page);
     if (cosUi.setupFor === n.id) {
       page.appendChild(cosSetupSteps(n));
@@ -7417,7 +7478,7 @@
       cosUi.toFolder = false;
       if (!here) go({ kind: 'folder', id: root.id });
       $('browse').dataset.caption = cosUi.tab === 'skills' ? `${n.name}\u2019s skills` : `${n.name}\u2019s work`;
-      setTimeout(() => { try { cosPaintActions(); } catch (e) { /* not ready */ } }, 0);
+      setTimeout(() => { try { cosPaintActions(); renderToolbar(); } catch (e) { /* not ready */ } }, 0);
       if (cosUi.tab === 'skills' && state.loc.kind === 'folder') cosCheckForNewSkills();
       return;
     }
