@@ -179,7 +179,7 @@ app.on('web-contents-created', (_event, contents) => {
   contents.on('dom-ready', () => {
     let host = '';
     try { host = new URL(contents.getURL()).hostname; } catch (e) { return; }
-    if (!/(^|\.)(microsoftonline\.com|live\.com|microsoft\.com|google\.com|okta\.com|auth0\.com)$/i.test(host)) return;
+    if (!/(^|\.)(microsoftonline\.com|live\.com|microsoft\.com|google\.com|okta\.com|auth0\.com|apple\.com|icloud\.com)$/i.test(host)) return;
     contents.executeJavaScript(`(() => { try {
       const no = () => Promise.reject(new DOMException('Passkeys are not available in this app', 'NotAllowedError'));
       if (navigator.credentials) { navigator.credentials.get = no; navigator.credentials.create = no; }

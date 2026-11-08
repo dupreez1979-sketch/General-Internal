@@ -360,6 +360,20 @@
   body.cos-mode.cos-work .cos-detail, body.cos-mode.cos-work .col-detail { display: none; }
   body.cos-mode.cos-clara #cosMain { flex: none; order: -1; }
   body.cos-mode.cos-clara #cosMain .cos-body { flex: none; }
+  /* Apple Notes from iCloud: a floating panel that stays open (and signed in) while you work */
+  #notesPanel { position: fixed; z-index: 45; display: flex; flex-direction: column; background: var(--win); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22); overflow: hidden; resize: both; min-width: 300px; min-height: 260px; }
+  #notesPanel[hidden] { display: none; }
+  #notesPanel .fhead { cursor: move; }
+  #notesPanel .ntabs { display: flex; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); flex: none; overflow-x: auto; }
+  #notesPanel .ntabs button { background: none; border: 0; border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  #notesPanel .ntabs button.on { background: var(--sel); color: var(--text); font-weight: 600; }
+  #notesPanel .nbody { flex: 1; min-height: 0; display: flex; position: relative; }
+  #notesPanel .nbody webview { flex: 1; border: 0; }
+  #notesPanel .nbody webview[hidden] { display: none; }
+  #notesPanel.dragging webview { pointer-events: none; }
+  #notesPanel .nempty { margin: auto; max-width: 300px; text-align: center; color: var(--muted); font-size: 12.5px; line-height: 1.5; display: grid; gap: 10px; justify-items: center; padding: 20px; }
+  #notesPanel .nempty b { color: var(--text); font-size: 14px; }
+  #sNotes.on { color: var(--accent); }
   #claraHost { flex: 1; min-height: 0; display: flex; }
   #claraHost[hidden] { display: none; }
   #claraHost webview { flex: 1; border: 0; }
@@ -872,7 +886,8 @@
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
-    <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
+    <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    <button class="tb" id="sAccount" title=""Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
     <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
   </div>
 </aside>
@@ -940,6 +955,7 @@
   </div>
   <div id="pathbar"></div>
   <div id="claraHost" hidden></div>
+  <div id="notesPanel" hidden aria-label="Notes"></div>
   <div id="cosMain" hidden></div>
   <div id="cosSrcRs" class="col-rs" title="Drag to resize; double-click to reset"></div>
   <div id="cosSrcHead"></div>
@@ -8595,6 +8611,111 @@ body { width: max-content !important; min-width: 0 !important; }
   const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
   function openClara() { go({ kind: 'page', url: clara.url }); }
   // Clara's own page (made once, kept loaded in one place; a moved or reloaded page would ask to sign in again).
+  // ----- Apple Notes (iCloud), in a floating panel -----
+  // Your notes (for example action lists for Monkey Baa and NCTI) stay in Apple Notes on your phone; here they show
+  // live from iCloud.com, signed in once, and each stays loaded while the panel is closed or you move around.
+  const NOTES_KEY = 'claudeNavigator.notes.v1';
+  const notesState = (() => { try { return Object.assign({ list: [], open: false, cur: null }, JSON.parse(ls.get(NOTES_KEY) || '{}')); } catch (e) { return { list: [], open: false, cur: null }; } })();
+  const notesSave = () => ls.set(NOTES_KEY, JSON.stringify(notesState));
+  const notesViews = new Map();
+  const isICloudNote = u => { try { const h = new URL(u).hostname; return /(^|\.)icloud\.com$/i.test(h); } catch (e) { return false; } };
+  function notesAdd(edit) {
+    openDialog({
+      title: edit ? 'Change Note' : 'Add a Note', name: edit ? edit.name : (notesState.list.length ? '' : (activeProfile() || {}).name || ''), url: edit ? edit.url : '',
+      noPicker: true, okLabel: edit ? 'Save' : 'Add',
+      onSave: ({ name, url }) => {
+        if (!isICloudNote(url)) return toast('That is not an iCloud note link. On your phone: open the note, tap Share, then Copy Link.');
+        if (edit) {
+          const changed = edit.url !== url;
+          Object.assign(edit, { name: name || edit.name, url });
+          if (changed && notesViews.has(edit.id)) { notesViews.get(edit.id).remove(); notesViews.delete(edit.id); }
+        } else {
+          const nn = { id: uid(), name: name || 'Notes', url };
+          notesState.list.push(nn); notesState.cur = nn.id;
+        }
+        notesSave(); notesRender();
+      },
+    });
+  }
+  function notesToggle(on = !notesState.open) { notesState.open = on; notesSave(); notesRender(); }
+  function notesRender() {
+    const p = $('notesPanel');
+    $('sNotes').classList.toggle('on', notesState.open);
+    p.hidden = !notesState.open;
+    if (!notesState.open) return;
+    const g = notesState.geo || {};
+    const W = window.innerWidth, H = window.innerHeight;
+    const w = Math.min(g.w || 420, W - 40), h = Math.min(g.h || Math.min(640, H - 140), H - 60);
+    Object.assign(p.style, { width: w + 'px', height: h + 'px', left: Math.max(10, Math.min(g.x != null ? g.x : W - w - 30, W - 120)) + 'px', top: Math.max(10, Math.min(g.y != null ? g.y : 90, H - 80)) + 'px' });
+    if (!p.dataset.built) {
+      p.dataset.built = '1';
+      p.innerHTML = '<div class="fhead"><span class="fname">Notes</span><span class="ftitle"></span><span class="fctl"></span></div><div class="ntabs"></div><div class="nbody"></div>';
+      const head = p.querySelector('.fhead');
+      head.addEventListener('pointerdown', e => {
+        if (e.target.closest('button')) return;
+        const r = p.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+        p.classList.add('dragging');
+        const move = ev => { p.style.left = Math.max(0, Math.min(ev.clientX - dx, window.innerWidth - 80)) + 'px'; p.style.top = Math.max(0, Math.min(ev.clientY - dy, window.innerHeight - 40)) + 'px'; };
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); p.classList.remove('dragging'); notesKeepGeo(); };
+        window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+      });
+      new ResizeObserver(() => { if (!p.hidden) notesKeepGeo(); }).observe(p);
+      const ctl = p.querySelector('.fctl');
+      const b = (html, title, run) => { const x = document.createElement('button'); x.innerHTML = html; x.title = title; x.addEventListener('click', run); ctl.appendChild(x); };
+      b(UI.reload, 'Reload this note', () => { const v = notesViews.get(notesState.cur); if (v) try { v.reload(); } catch (e) { /* loading */ } });
+      b(UI.external, 'Open this note in your web browser', () => { const n = notesState.list.find(x => x.id === notesState.cur); if (n) openExternal(n.url); });
+      b(FICON.hide, 'Close (the note stays signed in; the Notes button at the foot of the sidebar opens it again)', () => notesToggle(false));
+    }
+    const tabs = p.querySelector('.ntabs'), body = p.querySelector('.nbody');
+    tabs.replaceChildren();
+    if (!notesState.list.find(x => x.id === notesState.cur)) notesState.cur = (notesState.list[0] || {}).id || null;
+    for (const n of notesState.list) {
+      const t = document.createElement('button');
+      t.textContent = n.name; t.className = n.id === notesState.cur ? 'on' : '';
+      t.title = `${n.name}: right-click to rename, change its link or remove it`;
+      t.addEventListener('click', () => { notesState.cur = n.id; notesSave(); notesRender(); });
+      t.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [
+        { label: 'Rename or Change Link…', run: () => notesAdd(n) },
+        { label: 'Open in Web Browser', run: () => openExternal(n.url) },
+        '-',
+        { label: 'Remove from Here', run: () => { notesState.list = notesState.list.filter(x => x !== n); const v = notesViews.get(n.id); if (v) v.remove(); notesViews.delete(n.id); notesSave(); notesRender(); toast(`Removed “${n.name}” from here. The note itself is still in Apple Notes.`); } },
+      ]); });
+      tabs.appendChild(t);
+    }
+    const add = document.createElement('button');
+    add.innerHTML = UI.plus; add.title = 'Add another note (paste its iCloud link)';
+    add.addEventListener('click', () => notesAdd());
+    tabs.appendChild(add);
+    const cur = notesState.list.find(x => x.id === notesState.cur);
+    p.querySelector('.ftitle').textContent = cur ? cur.name : '';
+    body.querySelector('.nempty')?.remove();
+    for (const [id, v] of notesViews) v.hidden = id !== notesState.cur;
+    if (!cur) {
+      const e = document.createElement('div'); e.className = 'nempty';
+      e.innerHTML = '<b>Your Apple Notes, here</b><span>Show a note from your phone here, live: changes either side appear on both. On your iPhone, open the note, tap Share, then Copy Link, and paste the link here. The first time, sign in to iCloud with your Apple Account password and code (passkeys do not work inside the app).</span>';
+      const bt = document.createElement('button'); bt.className = 'btn-primary'; bt.textContent = 'Add a Note…'; bt.addEventListener('click', () => notesAdd());
+      e.appendChild(bt); body.appendChild(e);
+      return;
+    }
+    if (!notesViews.has(cur.id)) {
+      const v = document.createElement('webview');
+      v.setAttribute('partition', 'persist:claude');
+      v.setAttribute('allowpopups', '');
+      v.setAttribute('src', cur.url);
+      notesViews.set(cur.id, v);
+      body.appendChild(v);
+    }
+  }
+  function notesKeepGeo() {
+    const r = $('notesPanel').getBoundingClientRect();
+    if (!r.width) return;
+    notesState.geo = { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+    clearTimeout(notesKeepGeo.t); notesKeepGeo.t = setTimeout(notesSave, 400);
+  }
+  $('sNotes').addEventListener('click', () => notesToggle());
+  $('sNotes').hidden = !isApp;
+  setTimeout(() => { try { notesRender(); } catch (e) { /* starting up */ } }, 0);
+
   let claraView = null;
   function claraViewEnsure() {
     if (!isApp) return null;
