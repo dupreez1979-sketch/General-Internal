@@ -17,6 +17,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   renameChat: (item) => ipcRenderer.invoke('claude-rename-chat', item),
   designLook: (url) => ipcRenderer.invoke('design-look', url),
   claudePageDetails: (url) => ipcRenderer.invoke('claude-page-details', url),
+  projectScheduled: (url) => ipcRenderer.invoke('project-scheduled', url),
   cosExport: (req) => ipcRenderer.invoke('cos-export', req),
   cosShowExport: () => ipcRenderer.invoke('cos-show-export'),
   backupWrite: (text) => ipcRenderer.invoke('backup-write', text),

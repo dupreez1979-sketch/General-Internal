@@ -7820,7 +7820,7 @@
       wb.className = 'cos-wait';
       wb.innerHTML = '<span class="dot"></span><span class="tx">Waiting for Claude to finish the routine. Answer its questions in the chat; when it has made the scheduled task, it appears here by itself.</span>';
       const b1 = document.createElement('button'); b1.className = 'btn'; b1.textContent = 'Check Now';
-      b1.addEventListener('click', () => { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); toast('Checking Claude for the new routine\u2026'); });
+      b1.addEventListener('click', () => { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); cosSyncProjectRoutines(n); toast('Checking Claude for the new routine\u2026'); });
       const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Stop Waiting';
       b2.addEventListener('click', () => { cosUi.routineWatch = null; clearInterval(cosUi.routinePoll); cosRender(); });
       wb.append(b1, b2);
@@ -7967,6 +7967,7 @@
       viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && x.url.includes(${JSON.stringify(base + '/')}))`)
         .then(found => { if (Array.isArray(found) && found.length) cosLinkWatched(found); }).catch(() => {});
       if (ticks % 11 === 0) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
+      if (ticks % 8 === 0) { const m = cosNode(cosTeam(), w.staffId); if (m) cosSyncProjectRoutines(m); }
     }, 4000);
   }
   function cosRoutineWithClaude(n) {
@@ -9032,9 +9033,48 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // Routines are read again, quietly, when their tab is shown (at most every 10 minutes), so changes and
   // deletions made in Claude show up here.
+  // A staff member's Claude Project keeps its own scheduled tasks (its page lists them under Scheduled). Those
+  // are this person's routines: add the new ones (with their schedule), and drop ones no longer there.
+  async function cosSyncProjectRoutines(n) {
+    const P = n.claudeProject;
+    if (!P || !/\/project\//.test(P.url || '') || !window.navigatorApp || !window.navigatorApp.projectScheduled) return;
+    if (cosUi.projectSyncing) return;
+    cosUi.projectSyncing = true;
+    try {
+      const d = await window.navigatorApp.projectScheduled(P.url);
+      if (!d || !d.ok) return;
+      const m = cosNode(cosTeam(), n.id) || n;
+      const rs = cosRoutines(m);
+      const section = d.section || [];
+      const whenFor = name => (section.find(x => x.name.toLowerCase() === name.toLowerCase()) || {}).when || '';
+      // Each task: a link from Recents if there is one; otherwise only its name and schedule (from Scheduled).
+      const tasks = (d.items || []).map(x => ({ name: x.name, url: x.url, when: whenFor(x.name) }));
+      for (const x of section) if (!tasks.some(t => t.name.toLowerCase() === x.name.toLowerCase())) tasks.push({ name: x.name, url: '', when: x.when });
+      const added = [], removed = [];
+      for (const t of tasks) {
+        const have = rs.find(r => (t.url && r.link && normUrl(r.link.url) === normUrl(t.url)) || (r.fromProject && r.name.toLowerCase() === t.name.toLowerCase()));
+        const sched = t.when ? routineFromPage({ title: '', heading: t.name, text: `${t.name}\n${t.when}`, fields: [], selects: [] }) : {};
+        if (have) {
+          if (t.when && have.fromProject) Object.assign(have, { freq: sched.freq || have.freq, time: sched.time || have.time, days: sched.days || have.days, dom: sched.dom || have.dom, custom: sched.custom || have.custom });
+          if (t.url && !have.link) have.link = { name: t.name, url: t.url };
+          continue;
+        }
+        added.push(Object.assign({ id: uid(), name: t.name, what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link: t.url ? { name: t.name, url: t.url } : (P ? { name: P.name, url: P.url } : null), output: null, paused: false, created: Date.now(), fromProject: true, readAt: Date.now() }, sched, { name: t.name }));
+      }
+      if (tasks.length || d.sectionEmpty) {          // only when the project's Scheduled list was really read
+        for (const r of rs) if (r.fromProject && !tasks.some(t => t.name.toLowerCase() === r.name.toLowerCase() || (t.url && r.link && normUrl(r.link.url) === normUrl(t.url)))) removed.push(r);
+      }
+      if (added.length || removed.length) {
+        cosChange(() => { m.routines = rs.filter(r => !removed.includes(r)).concat(added); },
+          added.length ? `${added.length === 1 ? `\u201c${added[0].name}\u201d` : `${added.length} routines`} from ${m.name}\u2019s Claude Project ${added.length === 1 ? 'is' : 'are'} now in Routines` : `\u201c${removed[0].name}\u201d is no longer in ${m.name}\u2019s Claude Project, so it is removed here`);
+        if (added.length && cosUi.routineWatch && cosUi.routineWatch.staffId === m.id) { cosUi.routineWatch = null; clearInterval(cosUi.routinePoll); cosRender(); }
+      } else saveCos();
+    } catch (e) { /* not reachable: try again next time */ } finally { cosUi.projectSyncing = false; }
+  }
   function cosRefreshRoutines(n) {
+    if (Date.now() - (cosUi.projectReadAt || 0) > (cosUi.routineWatch ? 10e3 : 30e3)) { cosUi.projectReadAt = Date.now(); cosSyncProjectRoutines(n); }
     // Opening Routines checks Claude (at most once a minute per routine), so changes and deletions there show here.
-    for (const r of cosRoutines(n).slice()) if (r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 60e3) cosReadRoutine(n, r, { quiet: true });
+    for (const r of cosRoutines(n).slice()) if (!r.fromProject && r.link && r.link.url && /claude\.ai/.test(r.link.url) && Date.now() - (r.readAt || 0) > 60e3) cosReadRoutine(n, r, { quiet: true });
     const gap = cosUi.routineWatch ? 10e3 : 60e3;
     if (Date.now() - (cosUi.scheduledReadAt || 0) > gap) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
   }
@@ -9066,6 +9106,13 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!confirm(`Delete \u201c${r.name}\u201d? It is deleted here and in Claude.`)) return;
     cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted \u201c${r.name}\u201d`);
     if (!r.link || !/claude\.ai/.test(r.link.url || '') || r.missing) return;
+    if (r.fromProject || !/\/(routines?|scheduled|tasks?)\//.test(pathOf(r.link.url) || '')) {
+      // A Claude Project's own scheduled task: deleted in the project (never by pressing Delete on a project or chat page).
+      const n2 = n; cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos();
+      go({ kind: 'page', url: (n2.claudeProject && n2.claudeProject.url) || r.link.url });
+      toast(`Deleted here. To delete \u201c${r.name}\u201d in Claude too, open it under Scheduled in ${n2.name}\u2019s Claude Project (on the ${fr('claude').at}) and delete it there.`);
+      return;
+    }
     cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude';
     renderCos();
     go({ kind: 'page', url: r.link.url });

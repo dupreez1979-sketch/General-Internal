@@ -802,6 +802,52 @@ ipcMain.handle('claude-page-details', async (_e, url) => {
   }
 });
 
+// A Claude Project's scheduled tasks, from its own page: the Scheduled section ("Name · Every Monday at 6:09 AM")
+// and the entries marked Scheduled in its Recents (with their links).
+const PROJECT_SCHEDULED = `(() => {
+  const clean = s => (s || '').replace(/\\s+/g, ' ').trim();
+  const items = [], seen = new Set();
+  for (const a of document.querySelectorAll('a[href]')) {
+    const row = a.closest('li, [role="listitem"], [role="row"]') || a.parentElement || a;
+    const txt = clean(row.innerText || a.innerText);
+    if (!/\\bScheduled\\b/.test(txt) || txt.length > 300) continue;
+    let u; try { u = new URL(a.href); } catch (e) { continue; }
+    if (u.origin !== location.origin || /^\\/project\\//.test(u.pathname) && u.pathname === location.pathname) continue;
+    const name = clean((a.innerText || '').split('\\n').map(x => x.trim().replace(/^[^\\p{L}\\p{N}]+/u, '')).filter(x => x && !/^scheduled$/i.test(x) && !/\\bago$|^just now$/i.test(x))[0] || '');
+    if (!name || seen.has(u.pathname)) continue;
+    seen.add(u.pathname);
+    items.push({ name, url: u.origin + u.pathname });
+  }
+  const section = [];
+  for (const el of document.querySelectorAll('div, section, li')) {
+    if (el.children.length > 10) continue;
+    const t = clean(el.innerText);
+    if (t.length > 400 || !/^Scheduled\\b/.test(t)) continue;
+    const body = t.replace(/^Scheduled\\s*/, '').replace(/\\s*Add$/, '');
+    for (const part of body.split(/\\s{2,}|\\n/)) { const m = /^(.+?)\\s+·\\s+(.+)$/.exec(part.trim()); if (m) section.push({ name: m[1].trim(), when: m[2].trim() }); }
+  }
+  const heading = clean((document.querySelector('h1') || {}).innerText || '');
+  // The Scheduled section with nothing in it ("Scheduled  Add"): so the app knows the list is really empty.
+  const sectionEmpty = [...document.querySelectorAll('div, section, li')].some(el => el.children.length < 6 && /^Scheduled\\s*Add$/.test(clean(el.innerText)));
+  return { items, section: section.filter((x, i, a) => a.findIndex(y => y.name === x.name) === i), heading, sectionEmpty };
+})()`;
+ipcMain.handle('project-scheduled', async (_e, url) => {
+  if (typeof url !== 'string' || !isClaudeHost(url) || !/\/project\//.test(url)) return { ok: false, status: 'not a Claude project' };
+  const win = new BrowserWindow({ show: false, width: 1400, height: 1000, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  try {
+    const cleared = await openHidden(win, url);
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, status: 'not signed in' };
+    if (!cleared) return { ok: false, status: 'Claude’s security check did not finish' };
+    await sleep(2500);
+    const d = await withTimeout(win.webContents.executeJavaScript(PROJECT_SCHEDULED, true), 20000, 'Reading the project');
+    return Object.assign({ ok: !!(d && d.heading) }, d);
+  } catch (e) {
+    return { ok: false, status: String(e && e.message || e) };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+});
+
 let libraryRun = null;
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 
