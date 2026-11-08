@@ -423,6 +423,10 @@
   .rcard .when { font-size: 13px; font-weight: 600; color: var(--accent); }
   .rcard.paused { opacity: .6; }
   .rcard .links { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cos-wait { display: flex; align-items: center; gap: 10px; margin: 10px 14px 0; padding: 8px 12px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 9%, var(--win)); font-size: 12.5px; }
+  .cos-wait .tx { flex: 1; }
+  .cos-wait .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); animation: waitPulse 1.2s ease-in-out infinite; flex: none; }
+  @keyframes waitPulse { 50% { opacity: .3; } }
   .cos-rbar { height: 52px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 12px 0 14px; border-bottom: 1px solid var(--line); }
   html.profiled .cos-rbar { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
   .cos-rbar .rt { font-size: 14px; }
@@ -7811,6 +7815,17 @@
     const waiting = cosUi.routineWatch && cosUi.routineWatch.staffId === n.id;   // a routine being made with Claude
     if (cosUi.routinesShownFor !== n.id || waiting) { cosUi.routinesShownFor = n.id; setTimeout(() => cosRefreshRoutines(n), 500); }
     box.appendChild(top);
+    if (cosUi.routineWatch && cosUi.routineWatch.staffId === n.id) {
+      const wb = document.createElement('div');
+      wb.className = 'cos-wait';
+      wb.innerHTML = '<span class="dot"></span><span class="tx">Waiting for Claude to finish the routine. Answer its questions in the chat; when it has made the scheduled task, it appears here by itself.</span>';
+      const b1 = document.createElement('button'); b1.className = 'btn'; b1.textContent = 'Check Now';
+      b1.addEventListener('click', () => { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); toast('Checking Claude for the new routine\u2026'); });
+      const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Stop Waiting';
+      b2.addEventListener('click', () => { cosUi.routineWatch = null; clearInterval(cosUi.routinePoll); cosRender(); });
+      wb.append(b1, b2);
+      box.appendChild(wb);
+    }
     const keep = r => flt === 'all' || (flt === 'linked' ? !!r.link : flt === 'unlinked' ? !r.link : flt === 'paused' ? !!r.paused : !r.paused);
     box.appendChild(cosCalendar(cosRoutines(n).filter(keep).map(r => ({ r, n })), cal));
     const grid = document.createElement('div');
@@ -7940,6 +7955,20 @@
     }
     return 'none';
   })()`;
+  // While Claude sets up a routine: look in the chat for the finished task every few seconds (Claude shows it
+  // as a card with a link), and read Claude's list of scheduled tasks every 45 seconds, for up to 15 minutes.
+  function cosWatchRoutineMaking() {
+    clearInterval(cosUi.routinePoll);
+    let ticks = 0;
+    const base = (() => { try { return new URL(claudeSchedulePage()).pathname.replace(/\/+$/, ''); } catch (e) { return '/code/routines'; } })();
+    cosUi.routinePoll = setInterval(() => {
+      const w = cosUi.routineWatch;
+      if (!w || ++ticks > 225) { clearInterval(cosUi.routinePoll); if (w) { cosUi.routineWatch = null; cosRender(); } return; }
+      viewExec(`[...document.querySelectorAll('a[href]')].map(a => { try { const u = new URL(a.href); return { url: u.origin + u.pathname, name: (a.innerText || '').split('\\n')[0].trim() }; } catch (e) { return null; } }).filter(x => x && x.url.includes(${JSON.stringify(base + '/')}))`)
+        .then(found => { if (Array.isArray(found) && found.length) cosLinkWatched(found); }).catch(() => {});
+      if (ticks % 11 === 0) { cosUi.scheduledReadAt = Date.now(); refreshLibrary(true); }
+    }, 4000);
+  }
   function cosRoutineWithClaude(n) {
     if (!isApp) return;
     const f = staffFolder(n);
@@ -7950,6 +7979,7 @@
     let tries = 0;
     const send = () => viewExec(SEND_PROMPT(ROUTINE_ASK)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1500); }).catch(() => { if (++tries < 6) setTimeout(send, 1500); });
     setTimeout(send, 1500);
+    cosWatchRoutineMaking();
     toast(`A new chat with Claude is starting${n.claudeProject ? ` in ${n.name}\u2019s Claude Project` : ''}. Answer its questions; when it has made the scheduled task, it is added to ${n.name}\u2019s Routines.`);
   }
   // When each routine runs on a given day (hourly ones count once, as "Every hour").
@@ -9050,7 +9080,13 @@ body { width: max-content !important; min-width: 0 !important; }
     setTimeout(attempt, 1800);
   }
   function cosCheckRoutinesAgainst(list) {
-    // A routine Claude made in a chat started with Create with Claude: link it to that staff member.
+    cosLinkWatched(list);
+    const have = new Set(list.map(x => normUrl(x.url)));
+    for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || [])
+      for (const r of (n.routines || []).slice()) if (r.link && /claude\.ai/.test(r.link.url || '') && !have.has(normUrl(r.link.url))) cosReadRoutine(n, r, { quiet: true });
+  }
+  // A routine Claude made in a chat started with Create with Claude: link it to that staff member.
+  function cosLinkWatched(list) {
     const w = cosUi && cosUi.routineWatch;
     if (w && Date.now() - w.since < 6 * 3600e3) {
       const linked = new Set();
@@ -9059,15 +9095,12 @@ body { width: max-content !important; min-width: 0 !important; }
       let n = null;
       for (const tm of Object.values((cos && cos.teams) || {})) { n = (tm.nodes || []).find(x => x.id === w.staffId); if (n) break; }
       if (fresh.length && n) {
-        cosUi.routineWatch = null;
+        cosUi.routineWatch = null; clearInterval(cosUi.routinePoll);
         const made = fresh.map(x => ({ id: uid(), name: x.name || 'New routine', what: '', freq: 'weekly', days: [1], dom: 1, time: '09:00', custom: '', link: { name: x.name || 'Scheduled task', url: x.url }, output: null, paused: false, created: Date.now() }));
         cosChange(() => { for (const r of made) cosRoutines(n).push(r); }, `${made.length === 1 ? `\u201c${made[0].name}\u201d` : `${made.length} routines`} made with Claude ${made.length === 1 ? 'is' : 'are'} now in ${n.name}\u2019s Routines`);
         made.forEach((r, i) => setTimeout(() => cosReadRoutine(n, r, { quiet: true }), 400 + i * 800));
       }
     }
-    const have = new Set(list.map(x => normUrl(x.url)));
-    for (const tm of Object.values((cos && cos.teams) || {})) for (const n of tm.nodes || [])
-      for (const r of (n.routines || []).slice()) if (r.link && /claude\.ai/.test(r.link.url || '') && !have.has(normUrl(r.link.url))) cosReadRoutine(n, r, { quiet: true });
   }
   // ---------- Search ----------
   // How the search box reads what you type (capitals never matter):
