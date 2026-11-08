@@ -877,6 +877,23 @@ ipcMain.handle('fs-apply', async (_e, payload) => {
   try { return await folderSync.apply(payload || {}); } catch (e) { return { map: {}, errors: [e.message] }; }
 });
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
+// The Chief of Staff's reference files, kept by the app in a hidden folder in each company folder (the folder
+// sync skips hidden folders): a live overview of the team, and what the Chief of Staff has learned.
+const COS_NOTE_NAMES = ['Team overview.md', 'What the Chief of Staff has learned.md'];
+ipcMain.handle('fs-cos-notes', (_e, profileRel, files) => {
+  if (!folderSync || typeof profileRel !== 'string' || !profileRel || /(^|[\\/])\.\.([\\/]|$)/.test(profileRel) || !files || typeof files !== 'object') return false;
+  try {
+    const dir = folderSync.abs(path.join(profileRel, '.chief-of-staff'));
+    fs.mkdirSync(dir, { recursive: true });
+    for (const [name, text] of Object.entries(files)) {
+      if (!COS_NOTE_NAMES.includes(name) || typeof text !== 'string' || text.length > 2e6) continue;
+      const f = path.join(dir, name);
+      let old = null; try { old = fs.readFileSync(f, 'utf8'); } catch (e) { /* new */ }
+      if (old !== text) fs.writeFileSync(f, text);
+    }
+    return dir;
+  } catch (e) { return false; }
+});
 ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
 ipcMain.handle('fs-copy', (_e, srcRel, destDirRel, keepName) => {

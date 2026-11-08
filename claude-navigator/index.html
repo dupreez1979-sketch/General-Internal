@@ -286,6 +286,11 @@
   .bot-item { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; display: grid; gap: 6px; font-size: 12.5px; }
   .bot-item .k { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
   .bot-item .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bot-learn { display: grid; gap: 6px; font-size: 12.5px; }
+  .bot-learn h4 { margin: 4px 0 0; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .bot-learn .ln { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; line-height: 1.35; }
+  .bot-learn .ln span { flex: 1; }
+  .bot-learn button { font: inherit; font-size: 11.5px; border: 0; border-radius: 7px; padding: 2px 8px; background: var(--field); color: var(--text); cursor: pointer; flex: none; }
   .bot-empty { color: var(--muted); font-size: 12.5px; text-align: center; padding: 30px 10px; line-height: 1.5; }
   .needs-btn .needs-dot { width: 8px; height: 8px; border-radius: 50%; background: #E3A452; display: inline-block; margin-right: 6px; }
   .ocbox .needs { position: absolute; top: 8px; left: 8px; width: 9px; height: 9px; border-radius: 50%; background: #E3A452; box-shadow: 0 0 0 2px var(--win); }
@@ -841,7 +846,7 @@
 <div id="cosBot" hidden>
   <div class="bot-tips"></div>
   <div class="bot-panel">
-    <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><div class="seg"><button class="tb" data-t="tips">Suggestions</button><button class="tb" data-t="chat">Chat</button></div><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
+    <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><div class="seg"><button class="tb" data-t="tips">Suggestions</button><button class="tb" data-t="learn" title="What the Chief of Staff has learned from what you accept and dismiss">Learned</button><button class="tb" data-t="chat">Chat</button></div><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
     <div class="bot-chat"><div class="bot-quick"></div><div class="bot-view"><div class="bot-wait">Opening a chat with your Chief of Staff\u2026</div></div></div>
     <div class="bot-list"></div>
   </div>
@@ -6747,6 +6752,7 @@
       }
       if (staff && !usualPlace(staff)) { staff.fileTo = folderId; newUsual = staff; }
     }
+    try { botLearnFiling(items.map(x => x.n.name), folderId); } catch (e) { /* Chief of Staff not ready */ }
     if (newUsual) saveCos();
     commit();
     const parts = [];
@@ -6879,6 +6885,7 @@
       `You lead the ${p ? p.name + ' ' : ''}team: ${(cosTeam() || { nodes: [] }).nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') || 'no staff yet'}.`,
       'Use my Granola meeting notes and transcripts (my NCTI and Monkey Baa meetings) for what is current and how I am thinking. Say which meeting something came from.',
       'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, suggest where finished work belongs in the company folders, and say when two staff members are working on the same thing.',
+      ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
     ] : [];
     return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...chiefLines, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
@@ -7914,7 +7921,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const bot = Object.assign({ open: false, tab: 'tips', quiet: false, dismissed: [] }, (() => { try { return JSON.parse(ls.get(BOT_STORE) || '{}'); } catch (e) { return {}; } })());
   const saveBot = () => ls.set(BOT_STORE, JSON.stringify({ open: bot.open, tab: bot.tab, quiet: bot.quiet, dismissed: bot.dismissed.slice(-300) }));
   let botTimer = null, botShown = new Set(), botTipTimer = null, botView = null, botViewReady = false, botPending = null, botList = [];
-  function cosBotSoon() { clearTimeout(botTimer); botTimer = setTimeout(() => { try { cosBotRender(); } catch (e) { console.error('Chief of Staff helper', e); } }, 350); }
+  function cosBotSoon() { clearTimeout(botTimer); botTimer = setTimeout(() => { try { cosBotRender(); } catch (e) { console.error('Chief of Staff helper', e); } }, 350); cosNotesSoon(); }
   // Words that say what something is about (for "this looks like that").
   const BOT_STOP = new Set('the and for with from this that into your our you are was were has have had not but all any can new draft copy untitled chat doc docs final version update notes about page claude more one two via its also only than then them they what when where which who will would should could just make made using use'.split(' '));
   const botWords = t => new Set((cleanTitle(t) || '').toLowerCase().replace(/[^a-z0-9\s]+/g, ' ').split(/\s+/).filter(w => w.length > 2 && !BOT_STOP.has(w) && !/^\d+$/.test(w)));
@@ -7945,12 +7952,14 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // Where a finished item probably belongs: the company folder whose name and contents share most words with it.
   function botBestFolder(n, p) {
+    const learned = botLearnedFolder(n.name, p);
+    if (learned) return learned;
     let best = null, score = 0;
     const w = (list, trail) => (list || []).forEach(x => {
       if (x.type !== 'folder' || x.team) return;
       const path = [...trail, x.name];
       const sample = (x.children || []).filter(c => c.type === 'link').slice(0, 30).map(c => c.name).join(' ');
-      const s = botLike(n.name, path.join(' ') + ' ' + sample) + (botWords(n.name).has((x.name || '').toLowerCase()) ? 0.5 : 0);
+      const s = botLike(n.name, path.join(' ') + ' ' + sample) + (botWords(n.name).has((x.name || '').toLowerCase()) ? 0.5 : 0) - botNotHere(n.name, x.id);
       if (s > score) { score = s; best = x; }
       w(x.children, path);
     });
@@ -7964,11 +7973,12 @@ body { width: max-content !important; min-width: 0 !important; }
     const staffName = id => { const c = teamCtxOf(id); const s = c && c.staff && staffNodeOf(c.staff); return s ? s.name : null; };
     // 1. Something like this already exists.
     if (cur) {
-      const hits = items.filter(x => x.id !== cur.id && normUrl(x.url || '') !== normUrl(cur.url || '') && botLike(cur.name, x.name) >= 0.6).slice(0, 3);
-      const art = (lib.artifacts || []).filter(a => !items.some(x => normUrl(x.url || '') === normUrl(a.url)) && normUrl(a.url) !== normUrl(cur.url || '') && botLike(cur.name, a.name) >= 0.6).slice(0, 2);
+      const th = botThreshold('like');
+      const hits = items.filter(x => x.id !== cur.id && normUrl(x.url || '') !== normUrl(cur.url || '') && botLike(cur.name, x.name) >= th).slice(0, 3);
+      const art = (lib.artifacts || []).filter(a => !items.some(x => normUrl(x.url || '') === normUrl(a.url)) && normUrl(a.url) !== normUrl(cur.url || '') && botLike(cur.name, a.name) >= th).slice(0, 2);
       if (hits.length || art.length) {
         const where = x => { const s = staffName(x.id); return s ? `${s}\u2019s work` : botPath(x.id) || 'your folders'; };
-        out.push({ key: 'like:' + normUrl(cur.url || cur.name) + ':' + [...hits, ...art].map(x => x.url).join(','), kind: 'Already exists',
+        out.push({ type: 'like', key: 'like:' + normUrl(cur.url || cur.name) + ':' + [...hits, ...art].map(x => x.url).join(','), kind: 'Already exists',
           text: `Something like \u201c${cur.name}\u201d already exists: ${[...hits.map(x => `\u201c${x.name}\u201d (${where(x)})`), ...art.map(a => `\u201c${a.name}\u201d (in Claude, not filed)`)].join(', ')}.`,
           actions: [
             { label: 'Open', go: true, run: () => (hits[0] ? openNode(hits[0]) : go({ kind: 'page', url: art[0].url })) },
@@ -7983,7 +7993,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const done = workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && !companyHomes(x.url, p).length).slice(0, 3);
       for (const x of done) {
         const usual = usualPlace(s), best = usual || botBestFolder(x, p);
-        out.push({ key: 'file:' + x.id, kind: 'File it', text: `\u201c${x.name}\u201d is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' \u203a ' : ''}${best.name}` : ''}.`,
+        out.push({ type: 'file', name: x.name, folderId: best ? best.id : null, key: 'file:' + x.id, kind: 'File it', text: `\u201c${x.name}\u201d is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' \u203a ' : ''}${best.name}` : ''}.`,
           actions: [
             best && { label: `File in ${best.name}`, go: true, run: () => { fileIntoCompany([x.id], best.id); cosBotSoon(); } },
             { label: best ? 'Elsewhere\u2026' : 'File\u2026', go: !best, run: () => fileToPicker([x.id]) },
@@ -7998,8 +8008,8 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     for (let i = 0; i < open.length && out.length < 30; i++) for (let j = i + 1; j < open.length; j++) {
       const a = open[i], b = open[j];
-      if (a.s.id === b.s.id || botLike(a.x.name, b.x.name) < 0.6) continue;
-      out.push({ key: 'overlap:' + [a.x.id, b.x.id].sort().join(':'), kind: 'Same work', text: `${a.s.name} (\u201c${a.x.name}\u201d) and ${b.s.name} (\u201c${b.x.name}\u201d) look like they are on the same thing.`,
+      if (a.s.id === b.s.id || botLike(a.x.name, b.x.name) < botThreshold('overlap')) continue;
+      out.push({ type: 'overlap', key: 'overlap:' + [a.x.id, b.x.id].sort().join(':'), kind: 'Same work', text: `${a.s.name} (\u201c${a.x.name}\u201d) and ${b.s.name} (\u201c${b.x.name}\u201d) look like they are on the same thing.`,
         actions: [
           { label: a.s.name, run: () => openStaff(a.s.id) },
           { label: b.s.name, run: () => openStaff(b.s.id) },
@@ -8009,9 +8019,11 @@ body { width: max-content !important; min-width: 0 !important; }
     // 4. New Claude artifacts not filed anywhere (made in the last week).
     const filed = new Set(items.map(x => normUrl(x.url || '')));
     const fresh = (lib.artifacts || []).filter(a => a.url && !filed.has(normUrl(a.url)) && a.updated && Date.now() - Date.parse(a.updated) < 7 * 864e5);
-    if (fresh.length) out.push({ key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} artifact${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
+    if (fresh.length) out.push({ type: 'unfiled', key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} artifact${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
       actions: [{ label: 'Ask Where', go: true, run: () => botAsk(`These were made in Claude this week but are not filed in any ${p.name} folder:\n${fresh.slice(0, 12).map(a => `- \u201c${a.name}\u201d (${a.url})`).join('\n')}\nOur company folders are:\n${companyFolderChoices(p).slice(0, 60).map(([, path]) => '- ' + path).join('\n')}\nWhere should each one go, and which staff member does each belong to?`) }] });
-    return out.filter(x => !bot.dismissed.includes(x.key));
+    // What you usually act on comes first; kinds you nearly always dismiss are left out (see What I've Learned).
+    return out.filter(x => !bot.dismissed.includes(x.key) && botKindState(x.type) !== 'off')
+      .sort((a, b) => botRate(b.type) - botRate(a.type));
   }
   // Quick questions in the chat (each fills the message box; you send it).
   function botQuick() {
@@ -8102,18 +8114,20 @@ body { width: max-content !important; min-width: 0 !important; }
     // The full list.
     const list = el.querySelector('.bot-list');
     list.replaceChildren();
-    if (!botList.length) {
+    if (!botList.length && bot.tab !== 'learn') {
       const e = document.createElement('div');
       e.className = 'bot-empty';
       e.textContent = 'Nothing to flag right now. When something you are on already exists, finished work is not filed, or two people are on the same thing, it shows up here.';
       list.appendChild(e);
     }
-    for (const sg of botList) list.appendChild(botCard(sg, 'bot-item'));
+    if (bot.tab === 'learn') botPaintLearned(list);
+    else for (const sg of botList) list.appendChild(botCard(sg, 'bot-item'));
+    if (bot.tab === 'learn') { const e = list.querySelector('.bot-empty'); if (e && botList.length) e.remove(); }
     if (bot.tab === 'chat' && bot.open) botEnsureView();
     // New suggestions pop up briefly beside the button (not while the panel is open, or when Quiet).
     const tips = el.querySelector('.bot-tips');
     tips.replaceChildren();
-    const fresh = bot.open || bot.quiet ? [] : botList.filter(x => !botShown.has(x.key)).slice(0, 2);
+    const fresh = bot.open || bot.quiet ? [] : botList.filter(x => !botShown.has(x.key) && botKindState(x.type) === 'on').slice(0, 2);
     fresh.forEach(x => botShown.add(x.key));
     for (const sg of fresh) tips.appendChild(botCard(sg, 'bot-tip'));
     clearTimeout(botTipTimer);
@@ -8125,13 +8139,171 @@ body { width: max-content !important; min-width: 0 !important; }
     if (cls === 'bot-item') { const k = document.createElement('span'); k.className = 'k'; k.textContent = sg.kind; c.appendChild(k); }
     const tx = document.createElement('div'); tx.className = 'tx'; tx.textContent = sg.text; c.appendChild(tx);
     const row = document.createElement('div'); row.className = 'row';
-    for (const a of sg.actions) { const b = document.createElement('button'); b.textContent = a.label; if (a.go) b.className = 'go'; b.addEventListener('click', () => { if (cls === 'bot-tip') c.remove(); a.run(); }); row.appendChild(b); }
+    for (const a of sg.actions) { const b = document.createElement('button'); b.textContent = a.label; if (a.go) b.className = 'go'; b.addEventListener('click', () => { if (cls === 'bot-tip') c.remove(); botLearn(sg, 'accept'); a.run(); }); row.appendChild(b); }
     const sp = document.createElement('span'); sp.className = 'sp'; row.appendChild(sp);
     const x = document.createElement('button'); x.className = 'x'; x.textContent = cls === 'bot-tip' ? '\u00d7' : 'Dismiss'; x.title = 'Dismiss this suggestion';
-    x.addEventListener('click', () => { bot.dismissed.push(sg.key); saveBot(); c.remove(); cosBotRender(); });
+    x.addEventListener('click', () => { bot.dismissed.push(sg.key); saveBot(); botLearn(sg, 'dismiss'); c.remove(); cosBotRender(); });
     row.appendChild(x);
     c.appendChild(row);
     return c;
+  }
+  // ----- Learning: what you act on and what you dismiss -----
+  // Kept per company (with the team). It changes what the helper does:
+  // - each kind of suggestion has an acceptance rate; ones you usually dismiss stop popping up (still listed),
+  //   ones you nearly always dismiss stop appearing, and "looks like" matches get stricter;
+  // - filing teaches it where things go: each word of what you file counts toward that folder, and a
+  //   filing suggestion you dismiss counts against it;
+  // - what it has learned is shown under Learned (each with Forget), and written for the Chief of Staff chat.
+  const BOT_KINDS = { like: 'Already exists', file: 'Filing suggestions', overlap: 'Same work', unfiled: 'Not filed' };
+  function botMem() {
+    const t = cosTeam();
+    if (!t) return { kinds: {}, folders: {}, notFolders: {}, since: Date.now() };
+    if (!t.learn) t.learn = { kinds: {}, folders: {}, notFolders: {}, since: Date.now() };
+    return t.learn;
+  }
+  const botKindRec = k => { const m = botMem(); return m.kinds[k] || (m.kinds[k] = { accepted: 0, dismissed: 0, off: false, forced: null }); };
+  const botRate = k => { const r = botKindRec(k); return (r.accepted + 1) / (r.accepted + r.dismissed + 2); };
+  function botKindState(k) {
+    if (!k) return 'on';
+    const r = botKindRec(k);
+    if (r.forced) return r.forced;
+    if (r.dismissed >= 8 && botRate(k) < 0.15) return 'off';
+    if (r.dismissed >= 3 && botRate(k) < 0.35) return 'quiet';
+    return 'on';
+  }
+  // Stricter "looks like" matching for a kind you often dismiss (0.6, up to 0.85).
+  const botThreshold = k => { const r = botKindRec(k); return Math.min(0.85, 0.6 + Math.max(0, r.dismissed - r.accepted) * 0.05); };
+  function botLearn(sg, what) {
+    if (!sg || !sg.type) return;
+    const r = botKindRec(sg.type);
+    if (what === 'accept') r.accepted++; else r.dismissed++;
+    if (what === 'dismiss' && sg.type === 'file' && sg.folderId) {     // "not there"
+      const m = botMem();
+      for (const w of botWords(sg.name)) { const o = m.notFolders[w] || (m.notFolders[w] = {}); o[sg.folderId] = (o[sg.folderId] || 0) + 1; }
+    }
+    saveCos();
+    cosNotesSoon();
+  }
+  // Every filing (from the helper, the Done offer, File… or the picker) teaches where things go.
+  function botLearnFiling(names, folderId) {
+    const m = botMem();
+    for (const nm of names) for (const w of botWords(nm)) { const o = m.folders[w] || (m.folders[w] = {}); o[folderId] = (o[folderId] || 0) + 1; }
+    saveCos();
+    cosNotesSoon();
+  }
+  function botLearnedFolder(name, p) {
+    const m = botMem(), score = {};
+    for (const w of botWords(name)) for (const [id, c] of Object.entries(m.folders[w] || {})) score[id] = (score[id] || 0) + c - ((m.notFolders[w] || {})[id] || 0);
+    const best = Object.entries(score).filter(([id]) => isCompanyFolder(id) && profileOf(id) === p).sort((a, b) => b[1] - a[1])[0];
+    return best && best[1] >= 2 ? nodeOf(best[0]) : null;
+  }
+  const botNotHere = (name, folderId) => { const m = botMem(); let n = 0; for (const w of botWords(name)) n += (m.notFolders[w] || {})[folderId] || 0; return n * 0.25; };
+  // Plain-language list of what it has learned (also written for the Chief of Staff chat).
+  function botLearnedLines() {
+    const m = botMem(), lines = [];
+    const byFolder = {};
+    for (const [w, o] of Object.entries(m.folders)) for (const [id, c] of Object.entries(o)) { if (!nodeOf(id)) continue; (byFolder[id] = byFolder[id] || []).push([w, c]); }
+    for (const [id, ws] of Object.entries(byFolder)) {
+      const top = ws.sort((a, b) => b[1] - a[1]).filter(x => x[1] >= 2).slice(0, 6);
+      if (top.length) lines.push({ kind: 'filing', id, text: `Things about ${top.map(x => x[0]).join(', ')} are filed in ${botPath(id) ? botPath(id) + ' \u203a ' : ''}${nodeOf(id).name}.` });
+    }
+    for (const [k, label] of Object.entries(BOT_KINDS)) {
+      const r = botKindRec(k), st = botKindState(k);
+      if (!r.accepted && !r.dismissed) continue;
+      const base = `${label}: acted on ${r.accepted}, dismissed ${r.dismissed}.`;
+      lines.push({ kind: 'type', id: k, state: st, text: st === 'off' ? `${base} Nearly always dismissed, so no longer suggested.` : st === 'quiet' ? `${base} Often dismissed, so they no longer pop up (still listed).` : base });
+    }
+    return lines;
+  }
+  function botPaintLearned(list) {
+    const box = document.createElement('div');
+    box.className = 'bot-learn';
+    const lines = botLearnedLines();
+    const h = t => { const e = document.createElement('h4'); e.textContent = t; box.appendChild(e); };
+    const ln = (text, btns) => { const d = document.createElement('div'); d.className = 'ln'; const s = document.createElement('span'); s.textContent = text; d.appendChild(s); for (const [label, run] of btns) { const b = document.createElement('button'); b.textContent = label; b.addEventListener('click', run); d.appendChild(b); } box.appendChild(d); };
+    if (!lines.length) {
+      const e = document.createElement('div'); e.className = 'bot-empty';
+      e.textContent = 'Nothing learned yet. As you act on or dismiss suggestions, and file things, it learns what you want and where things go. It shows here, and is written for the Chief of Staff chat.';
+      box.appendChild(e);
+    }
+    const filing = lines.filter(x => x.kind === 'filing'), types = lines.filter(x => x.kind === 'type');
+    if (filing.length) h('Where things go');
+    for (const x of filing) ln(x.text, [['Forget', () => { const m = botMem(); for (const o of Object.values(m.folders)) delete o[x.id]; saveCos(); cosNotesSoon(); cosBotRender(); }]]);
+    if (types.length) h('What you act on');
+    for (const x of types) {
+      const r = botKindRec(x.id);
+      ln(x.text, [
+        x.state !== 'on' ? ['Turn Back On', () => { r.forced = 'on'; saveCos(); cosNotesSoon(); cosBotRender(); }] : ['Stop These', () => { r.forced = 'off'; saveCos(); cosNotesSoon(); cosBotRender(); }],
+        ['Forget', () => { botMem().kinds[x.id] = { accepted: 0, dismissed: 0, off: false, forced: null }; saveCos(); cosNotesSoon(); cosBotRender(); }],
+      ]);
+    }
+    const p = activeProfile(), dir = companyFolderPath(p);
+    h('For the Chief of Staff chat');
+    ln(dir ? `This, and an overview of the whole team (every staff member's role, work, skills and routines), is kept up to date in ${dir}/.chief-of-staff, and the Chief of Staff reads it.`
+      : 'Turn on Keep Folders on This Mac (Navigator\u2019s \u2026 menu) so this, and an overview of the whole team, is kept where the Chief of Staff chat can read it.', []);
+    if (lines.length) ln('Start learning again from nothing.', [['Forget All', () => { if (!confirm('Forget everything the Chief of Staff helper has learned for this company?')) return; const t = cosTeam(); if (t) { t.learn = { kinds: {}, folders: {}, notFolders: {}, since: Date.now() }; saveCos(); cosNotesSoon(); cosBotRender(); } }]]);
+    list.appendChild(box);
+  }
+  // ----- The Chief of Staff's reference files (read by the chat) -----
+  // Team overview.md: every staff member (role, project, folder, open and recent work with links, skills,
+  // routines, dashboard, Clara, where they usually file), the company folders, and unfiled Claude artifacts.
+  // What the Chief of Staff has learned.md: the lines under Learned, and suggestions you have said were wrong.
+  let cosNotesTimer = null, cosNotesLast = '';
+  function cosNotesSoon() {
+    if (cosNotesTimer) return;                       // at most one write every few seconds
+    cosNotesTimer = setTimeout(() => { cosNotesTimer = null; try { cosWriteNotes(); } catch (e) { console.error('Chief of Staff notes', e); } }, 4000);
+  }
+  function cosTeamOverview(p, t) {
+    const L = [`# ${p.name} team overview`, 'Kept up to date by Claude Navigator whenever the team or their work changes.', ''];
+    const byId = id => t.nodes.find(x => x.id === id);
+    for (const n of t.nodes) {
+      if (n.kind === 'dept') { L.push(`## Department: ${n.name}`, n.about ? n.about : '', ''); continue; }
+      const up = byId(n.parent);
+      L.push(`## ${n.name}${n.chief ? ' (Chief of Staff)' : ''}`);
+      if (n.role) L.push(`Role: ${n.role}`);
+      if (up) L.push(`Reports to: ${up.name}${up.kind === 'dept' ? ' (department)' : ''}`);
+      if (n.claudeProject) L.push(`Claude Project: ${n.claudeProject.name} (${n.claudeProject.url})`);
+      const sp = staffFolderPath(n, p); if (sp) L.push(`Folder: ${sp}`);
+      const usual = usualPlace(n); if (usual) L.push(`Usually files in: ${botPath(usual.id) ? botPath(usual.id) + ' \u203a ' : ''}${usual.name}`);
+      if (n.dashboard) L.push(`Dashboard: ${n.dashboard.name} (${cosDashUrl(n.dashboard)})`);
+      if (n.clara) L.push(`Has Clara (scheduling by email, from ${n.clara.from || 'address not set'})`);
+      const f = n.folderId && nodeOf(n.folderId);
+      if (f) {
+        const open = workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id));
+        const done = workItems(f).filter(x => x.done && !inSkills(x.id)).slice(-15);
+        const sf = (f.children || []).find(x => x.skillsFolder);
+        L.push(open.length ? 'Open work:' : 'Open work: none');
+        open.slice(0, 60).forEach(x => L.push(`- ${x.name}${x.url ? ` (${x.url})` : ''}`));
+        if (done.length) { L.push('Recently done:'); done.forEach(x => L.push(`- ${x.name}${x.url ? ` (${x.url})` : ''}${companyHomes(x.url, p).length ? '' : ' [not filed in company folders]'}`)); }
+        if (sf && workItems(sf).length) L.push('Skills: ' + workItems(sf).filter(x => !inArchive(x.id)).map(x => x.name).join(', '));
+      }
+      for (const r of cosRoutines(n)) L.push(`Routine: ${r.name}, ${routineWhen(r)}${r.paused ? ' (paused)' : ''}`);
+      L.push('');
+    }
+    L.push('## Company folders');
+    companyFolderChoices(p).forEach(([id, path]) => { const c = (nodeOf(id).children || []).filter(x => x.type !== 'folder').length; L.push(`- ${path}${c ? ` (${c} item${c === 1 ? '' : 's'})` : ''}`); });
+    const filed = new Set(botItems(p).map(x => normUrl(x.url || '')));
+    const unf = (lib.artifacts || []).filter(a => a.url && !filed.has(normUrl(a.url))).slice(0, 40);
+    if (unf.length) { L.push('', '## In Claude but not filed in any folder'); unf.forEach(a => L.push(`- ${a.name} (${a.url})`)); }
+    return L.filter(x => x !== null).join('\n') + '\n';
+  }
+  function cosLearnedNotes(p) {
+    const lines = botLearnedLines();
+    const L = [`# What the Chief of Staff has learned (${p.name})`, 'From what I act on and dismiss in Claude Navigator, and where I file things. Follow these unless I say otherwise.', ''];
+    if (!lines.length) L.push('Nothing yet.');
+    lines.forEach(x => L.push('- ' + x.text));
+    const pairs = bot.dismissed.filter(k => /^overlap:/.test(k)).map(k => k.split(':').slice(1).map(id => nodeOf(id)).filter(Boolean)).filter(x => x.length === 2);
+    if (pairs.length) { L.push('', 'Said to be different work (not the same thing):'); pairs.slice(-20).forEach(([a, b]) => L.push(`- \u201c${a.name}\u201d and \u201c${b.name}\u201d`)); }
+    return L.join('\n') + '\n';
+  }
+  function cosWriteNotes() {
+    const p = activeProfile(), t = p && cosTeam(p);
+    if (!p || !t || !fsState.enabled || !window.navigatorApp || !window.navigatorApp.fsCosNotes) return;
+    const files = { 'Team overview.md': cosTeamOverview(p, t), 'What the Chief of Staff has learned.md': cosLearnedNotes(p) };
+    const key = (p.path || p.name) + '\n' + files['Team overview.md'] + files['What the Chief of Staff has learned.md'];
+    if (key === cosNotesLast) return;                  // nothing changed: leave the files alone
+    cosNotesLast = key;
+    window.navigatorApp.fsCosNotes(p.path || p.name, files).catch(() => { cosNotesLast = ''; });
   }
   (() => {
     const el = $('cosBot');
