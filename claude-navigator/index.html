@@ -919,6 +919,7 @@
     <button class="tb" id="bReload" data-tb="bReload" title="Reload"><span data-icon="reload"></span></button>
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
+    <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
     <div class="search" data-tb="search">
@@ -3310,6 +3311,7 @@
     $('vList').classList.toggle('on', curView() === 'list');
     $('bReload').hidden = !page;
     $('bExternal').hidden = !page;
+    $('bFolderRef').hidden = !page;
     $('bSave').hidden = !page;
     $('bSaveMore').hidden = !page;
     if (page) {
@@ -5611,6 +5613,53 @@
     if (pageContext().status === 'saved') { const b = e.currentTarget.getBoundingClientRect(); return showSaveMenu(b.left, b.bottom + 4); }
     saveCurrent();
   });
+  // Company Folders for the chat: browse your folders without leaving the chat, and put a folder's location into
+  // the message box (also copied), for example "save the letter in …". With your folders kept on this Mac it is the
+  // real folder Claude can use; otherwise the folder's path here.
+  function folderRefText(f) {
+    if (fsState.enabled && fsState.root && f.path) return fsState.root.replace(/\/+$/, '') + '/' + f.path;
+    return pathTo(f.id).map(x => x.name).join(' \u203a ');
+  }
+  const INSERT_TEXT = text => `(async () => {
+    for (let i = 0; i < 20; i++) {
+      const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
+      if (box) {
+        box.focus();
+        const sel = window.getSelection();
+        if (box.isContentEditable && sel && !box.contains(sel.anchorNode)) { const r = document.createRange(); r.selectNodeContents(box); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+        const before = (box.innerText || box.value || '').length;
+        document.execCommand('insertText', false, ${JSON.stringify(text)});
+        if ((box.innerText || box.value || '').length > before) return 'ok';
+      }
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return 'none';
+  })()`;
+  function pickFolderForChat() {
+    const p = activeProfile();
+    const start = state.lastFolderId && nodeOf(state.lastFolderId) ? state.lastFolderId : p ? p.id : null;
+    openDialog({
+      title: 'Company Folders', folderOnly: true, folderId: start, okLabel: 'Put in the Chat',
+      onSave: ({ folderId }) => {
+        const f = folderId && nodeOf(folderId);
+        if (!f) return;
+        const text = folderRefText(f);
+        navigator.clipboard.writeText(text).catch(() => {});
+        // The Claude pane can be briefly not ready (for example just after the dialog closes): try for a few seconds.
+        let tries = 0;
+        const put = () => {
+          try { view && view.focus(); } catch (e) { /* not ready */ }
+          viewExec(INSERT_TEXT(text + ' ')).then(r => {
+            if (r === 'ok') return toast(`\u201c${f.name}\u201d is in your message (and copied).`);
+            if (++tries < 8) return setTimeout(put, 600);
+            toast(`Copied \u201c${f.name}\u201d: paste it into the chat.`);
+          }).catch(() => { if (++tries < 8) setTimeout(put, 600); else toast(`Copied \u201c${f.name}\u201d: paste it into the chat.`); });
+        };
+        put();
+      },
+    });
+  }
+  $('bFolderRef').addEventListener('click', pickFolderForChat);
   $('bSave').addEventListener('contextmenu', e => { e.preventDefault(); showSaveMenu(e.clientX, e.clientY); });
   $('bSaveMore').addEventListener('click', e => { const b = $('bSave').getBoundingClientRect(); showSaveMenu(b.left, b.bottom + 4); });
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
@@ -9698,7 +9747,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const TB_ITEMS = {
     nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
     libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
-    save: 'Save', bExternal: 'Open in Browser', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
+    save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
   };
   const TB_DEFAULT = Object.keys(TB_ITEMS);
   const isGap = id => /^(flex|space)-\w+$/.test(id);
