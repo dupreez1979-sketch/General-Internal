@@ -73,8 +73,16 @@ jobs:
           [ -n "$GH_TOKEN" ] || missing="$missing RELEASES_TOKEN"
           if [ -n "$missing" ]; then echo "Missing secrets:$missing (see claude-navigator/RELEASING.md)"; exit 1; fi
 
-      - run: npm ci
+      # Installing downloads Electron, whose server sometimes times out (504): try up to four times.
+      - name: Install (retries if a download times out)
         if: steps.published.outputs.skip != 'true'
+        run: |
+          for i in 1 2 3 4; do
+            npm ci && exit 0
+            echo "Install failed (attempt $i). Waiting before trying again..."
+            sleep $((i * 30))
+          done
+          exit 1
 
       # Load the signing certificate into a temporary keychain on GitHub's Mac (deleted when the job ends).
       - name: Load the signing certificate
