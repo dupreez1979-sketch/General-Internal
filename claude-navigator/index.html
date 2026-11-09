@@ -1635,6 +1635,19 @@
   // Folders start closed; a chat's attached items start shown. The sidebar and the lists both use this.
   const isOpen = n => !!n.open;     // folders and chats with attached artifacts start closed
   function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
+  // Coming back to the sidebar fresh (opening the app, switching profile, or back from Chief of Staff): every folder
+  // starts collapsed again, except the way to where you are. While you work, what you open stays open.
+  function tidyTree(keepId) {
+    const keep = new Set();
+    try { if (keepId && nodeOf(keepId)) for (const n of pathTo(keepId)) keep.add(n.id); } catch (e) { /* not in the tree */ }
+    let changed = false;
+    walk(state.tree, n => {
+      if (n.profile || n.group || !n.open || keep.has(n.id)) return;
+      n.open = false; changed = true;
+    });
+    if (changed) save();
+  }
+  const tidyKeep = () => state.loc.kind === 'folder' && state.loc.id ? state.loc.id : state.lastFolderId;
   function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
   function locate(id, nodes = state.tree, parent = null) {
@@ -6271,6 +6284,7 @@
   function setApp(a) {
     cosEndMaking();
     if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash', 'cos-clara'); $('claraHost').hidden = true; cosReturnSource(); }
+    if (a !== 'cos' && currentApp === 'cos') tidyTree(tidyKeep());
     currentApp = a === 'cos' ? 'cos' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
@@ -10221,6 +10235,7 @@ body { width: max-content !important; min-width: 0 !important; }
       nav.hist[nav.pos] = state.loc;
     }
     lastRevealed = null;
+    if (!quiet) tidyTree(tidyKeep());
     renderAll();
     if (currentApp === 'cos') renderCos();
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
@@ -10631,6 +10646,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
       if (s.listLoc && (s.listLoc.kind === 'library' || (s.listLoc.kind === 'folder' && (!s.listLoc.id || nodeOf(s.listLoc.id))))) state.listLoc = s.listLoc;
     }
   } catch (e) { /* ignore */ }
+  try { tidyTree(start.kind === 'folder' && start.id ? start.id : startFolder); } catch (e) { /* first run */ }
   applyProfileTheme();
   applyFrames(false);
   repairGenericNames();
