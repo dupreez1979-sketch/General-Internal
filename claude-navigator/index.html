@@ -165,7 +165,7 @@
   .edge-tab.low::before { top: 58%; }
   body:not(.cos-mode) #splitLeft { order: 1; }
   body:not(.cos-mode) #splitRs { order: 2; }
-  body:not(.cos-mode) #browse { order: 3; min-width: 240px; flex: 1 1 240px; }
+  body:not(.cos-mode) #browse { order: 3; min-width: 300px; flex: 1 1 300px; }
   body:not(.cos-mode) #paneRs { order: 6; }
   body:not(.cos-mode) #pane { order: 7; }
   body:not(.cos-mode).split-right #splitRs { order: 4; }
@@ -193,8 +193,9 @@
   html body.side-off.side-peek #side { transform: none; }
   .mac-app body.side-right .side-top { padding-left: 10px; }
   .mac-app body.side-off #bar, .mac-app body.side-right #bar, .mac-app body.side-off .cos-head, .mac-app body.side-right .cos-head { padding-left: 84px; }
-  .edge-tab { position: fixed; top: 0; bottom: 0; width: 10px; z-index: 55; display: none; cursor: pointer; }
-  .edge-tab::before { content: attr(data-label); position: absolute; top: 50%; writing-mode: vertical-rl; transform: translateY(-50%); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--muted); background: var(--win); border: 1px solid var(--line); padding: 10px 3px; white-space: nowrap; }
+  /* Only the tab itself takes the mouse, not the whole strip down the edge (which would cover the dividers there). */
+  .edge-tab { position: fixed; top: 0; bottom: 0; width: 10px; z-index: 55; display: none; cursor: pointer; pointer-events: none; }
+  .edge-tab::before { pointer-events: auto; cursor: pointer; content: attr(data-label); position: absolute; top: 50%; writing-mode: vertical-rl; transform: translateY(-50%); font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--muted); background: var(--win); border: 1px solid var(--line); padding: 10px 3px; white-space: nowrap; }
   .edge-tab.at-left { left: 0; }
   .edge-tab.at-left::before { left: 0; border-left: 0; border-radius: 0 7px 7px 0; }
   .edge-tab.at-right { right: 0; }
@@ -352,7 +353,7 @@
   body.cos-mode.cos-work #bar { display: flex !important; }
   body.cos-mode.cos-work #content, body.cos-mode.cos-work #pathbar { display: flex !important; }
   body.cos-mode.cos-work #splitLeft:not([hidden]) { display: flex !important; order: 3; border-right: 0; border-left: 1px solid var(--line); }
-  body.cos-mode.cos-work #browse { order: 1; }
+  body.cos-mode.cos-work #browse { order: 1; min-width: 320px; flex: 1 1 320px; }   /* the side panels give way before the list does */
   body.cos-mode.cos-work #splitLeft:not([hidden]) ~ #browse::before, body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head::before { display: block; flex: none; width: 100%; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--accent); }
   body.cos-mode.cos-work #splitLeft:not([hidden]) ~ #browse::before { content: attr(data-caption); box-sizing: border-box; padding: 10px 14px 6px; position: sticky; top: 0; z-index: 3; background: var(--win); border-bottom: 1px solid var(--line); margin-bottom: 6px; }
   body.cos-mode.cos-work #splitLeft:not([hidden]) .sl-head { flex-wrap: wrap; }
@@ -402,9 +403,20 @@
   body.cos-mode.cos-adding #cosSrcHead { display: block; grid-column: 3; grid-row: 1; border-left: 1px solid var(--line); min-width: 0; }
   body.cos-mode.cos-adding #content { grid-column: 3; grid-row: 2; min-height: 0; min-width: 0; border-left: 1px solid var(--line); }
   body.cos-mode.cos-adding #pathbar { grid-column: 3; grid-row: 3; border-left: 1px solid var(--line); }
-  .col-rs { flex: none; width: 7px; margin: 0 -3px; position: relative; z-index: 5; cursor: col-resize; align-self: stretch; }
-  .col-rs::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: transparent; transition: background .12s; }
-  .col-rs:hover::after, body.col-dragging .col-rs::after { background: var(--accent); width: 2px; left: 2.5px; }
+  .col-rs { flex: none; width: 11px; margin: 0 -5px; position: relative; z-index: 5; cursor: col-resize; align-self: stretch; }
+  .col-rs::after { content: ""; position: absolute; top: 0; bottom: 0; left: 5px; width: 1px; background: transparent; transition: background .12s .06s; }
+  .col-rs:hover::after, .col-rs.rs-on::after { background: var(--accent); width: 2px; left: 4.5px; }
+  /* Every other divider you can drag: the same wide grab area and the same coloured line while you point at it or drag. */
+  #splitter, #paneRs, #splitRs, #actRs { z-index: 7; }      /* above the panels beside them, so the grab area works on both sides */
+  #splitter::after, #paneRs::after, #splitRs::after, body.cos-mode.cos-work.cos-acts #actRs::after { inset: 0 -6px; z-index: 6; transition: background .12s .06s; }
+  #splitter:hover::after, #paneRs:hover::after, #splitRs:hover::after, body.cos-mode.cos-work.cos-acts #actRs:hover::after,
+  #splitter.rs-on::after, #paneRs.rs-on::after, #splitRs.rs-on::after, #actRs.rs-on::after {
+    background: linear-gradient(90deg, transparent calc(50% - 1px), var(--accent) calc(50% - 1px), var(--accent) calc(50% + 1px), transparent calc(50% + 1px));
+  }
+  /* While dragging a divider or a floating panel, Claude's pages underneath stop taking the mouse: otherwise the drag
+     stalls, or lets go, as soon as the pointer crosses one. */
+  body.dragging-any webview, body.resizing webview, body.col-dragging webview, body.col-resizing webview { pointer-events: none !important; }
+  body.dragging-any, body.resizing, body.col-dragging { user-select: none; }
   body.col-dragging { cursor: col-resize; user-select: none; }
   body.col-dragging webview, body.col-dragging iframe { pointer-events: none; }
   .cos-src-sub { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--win)); }
@@ -452,7 +464,7 @@
   .rcard .links { display: flex; flex-wrap: wrap; gap: 6px; }
   /* Open actions: every open action of this staff member, in whichever of their folders it is */
   #actPanel, #actRs { display: none; }
-  body.cos-mode.cos-work.cos-acts #actPanel { display: flex; flex-direction: column; flex: 0 0 var(--act-w, 320px); min-width: 240px; max-width: 50%; order: 9; border-left: 1px solid var(--line); background: var(--win); min-height: 0; }
+  body.cos-mode.cos-work.cos-acts #actPanel { display: flex; flex-direction: column; flex: 0 1 var(--act-w, 320px); min-width: 240px; max-width: 50%; order: 9; border-left: 1px solid var(--line); background: var(--win); min-height: 0; }
   body.cos-mode.cos-work.cos-acts #actRs { display: block; flex: none; width: 0; position: relative; order: 8; }
   body.cos-mode.cos-work.cos-acts #actRs::after { content: ""; position: absolute; inset: 0 -4px; cursor: col-resize; z-index: 4; }
   body.cos-mode.cos-work.cos-acts.actions-left #actPanel { order: -3; border-left: 0; border-right: 1px solid var(--line); }
@@ -8735,9 +8747,9 @@ body { width: max-content !important; min-width: 0 !important; }
       head.addEventListener('pointerdown', e => {
         if (e.target.closest('button')) return;
         const r = p.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-        p.classList.add('dragging');
+        p.classList.add('dragging'); document.body.classList.add('dragging-any');
         const move = ev => { p.style.left = Math.max(0, Math.min(ev.clientX - dx, window.innerWidth - 80)) + 'px'; p.style.top = Math.max(0, Math.min(ev.clientY - dy, window.innerHeight - 40)) + 'px'; };
-        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); p.classList.remove('dragging'); notesKeepGeo(); };
+        const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); p.classList.remove('dragging'); document.body.classList.remove('dragging-any'); notesKeepGeo(); };
         window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
       });
       new ResizeObserver(() => { if (!p.hidden) notesKeepGeo(); }).observe(p);
@@ -10247,7 +10259,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const root = document.documentElement;
     root.classList.toggle('profiled', !!p);
     for (const v of ['--tint', '--tint-side', '--tint-bar', '--accent', '--accent-text', '--look-second']) root.style.removeProperty(v);
-    if (p) {
+    if (p && /^#[0-9a-f]{6}$/i.test(p.color || '')) {      // (a profile without a colour keeps the app's own)
       const [side, bar] = TINTS[p.tint] || TINTS.medium;
       root.style.setProperty('--tint', p.color);
       root.style.setProperty('--tint-side', side);
@@ -10676,6 +10688,17 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     addEventListener('mouseup', stop);
   });
   $('splitter').addEventListener('dblclick', () => { setWidth(240); ls.del(WIDTH_STORE); });
+  // For every divider: mark it while dragging, keep Claude's pages from taking the mouse, and if the button is let go
+  // outside the window (so the app never hears it), end the drag on the next move instead of leaving it stuck.
+  document.addEventListener('mousedown', e => {
+    const h = e.button === 0 && e.target.closest && e.target.closest('#splitter, #paneRs, #splitRs, #actRs, #cosSrcRs, .col-rs, .lhead .rz');
+    if (!h) return;
+    h.classList.add('rs-on'); document.body.classList.add('dragging-any');
+    const end = () => { h.classList.remove('rs-on'); document.body.classList.remove('dragging-any'); removeEventListener('mouseup', end, true); removeEventListener('mousemove', check, true); removeEventListener('blur', lost); };
+    const check = ev => { if (ev.buttons === 0) { end(); document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: ev.clientX, clientY: ev.clientY })); } };
+    const lost = () => { end(); document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: e.clientX, clientY: e.clientY })); };
+    addEventListener('mouseup', end, true); addEventListener('mousemove', check, true); addEventListener('blur', lost);
+  }, true);
 
   let fitTimer = null;
   addEventListener('resize', () => {
