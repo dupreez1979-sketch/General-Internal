@@ -565,6 +565,7 @@
   .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
   .cos-chart { display: inline-block; min-width: 100%; padding: 36px 40px 60px; transform-origin: top left; }
+  .cos-chart > ul { width: max-content; min-width: 100%; }        /* a wide chart scrolls, it never spills off the left */
   .oc ul { display: flex; justify-content: center; padding: 22px 0 0; margin: 0; position: relative; }
   .oc > ul { padding-top: 0; }
   .oc li { list-style: none; text-align: center; position: relative; padding: 22px 8px 0; }
@@ -584,6 +585,35 @@
   .oc li > ul::before { margin-left: -0.75px; }
   .oc > ul > li:only-child::after { display: none; }
   :root { --oc-line: color-mix(in srgb, var(--muted) 55%, transparent); }
+  /* Groups beside a box (an office or assistants next to the Chief of Staff): equal columns keep the box centred. */
+  .oc .oc-row { display: inline-grid; grid-template-columns: 1fr auto 1fr; align-items: start; }
+  .oc .oc-aside { display: flex; position: relative; min-width: 0; }
+  .oc .oc-aside.left { justify-content: flex-end; padding-right: 26px; }
+  .oc .oc-aside.right { justify-content: flex-start; padding-left: 26px; }
+  .oc .oc-row { position: relative; }
+  /* Tall view (for a wide team): top to bottom, each person indented under their manager, compact boxes. */
+  .oc.tall ul { display: block; padding: 0 0 0 36px; }
+  .oc.tall > ul { padding-left: 0; width: auto; }
+  .oc.tall li { text-align: left; padding: 10px 0 0 0; }
+  .oc.tall > ul > li { padding-top: 0; }
+  .oc.tall li::before, .oc.tall li::after, .oc.tall li:only-child::before, .oc.tall li:only-child::after,
+  .oc.tall li:first-child::before, .oc.tall li:last-child::before, .oc.tall li:first-child::after, .oc.tall li:last-child::after {
+    content: ''; display: block; position: absolute; border: 0 none; border-radius: 0; margin: 0; right: auto; height: auto; width: auto;
+  }
+  .oc.tall li::before, .oc.tall li:first-child::before, .oc.tall li:only-child::before, .oc.tall li:last-child::before { left: -20px; top: 0; bottom: 0; border-left: 1.5px solid var(--oc-line); }
+  .oc.tall li:last-child::before, .oc.tall li:only-child::before { bottom: auto; height: 41px; }
+  .oc.tall li::after, .oc.tall li:only-child::after, .oc.tall li:first-child::after, .oc.tall li:last-child::after { left: -20px; top: 41px; width: 20px; height: 0; border-top: 1.5px solid var(--oc-line); }
+  .oc.tall > ul > li::before, .oc.tall > ul > li::after, .oc.tall li > ul::before { display: none !important; }
+  .oc.tall .ocbox { display: grid; grid-template-columns: 38px minmax(0, 1fr); column-gap: 10px; align-items: center; justify-items: start; width: 280px; height: 62px; padding: 8px 12px; text-align: left; }
+  .oc.tall .ocbox .av { grid-row: 1 / span 2; }
+  .oc.tall .ocbox .nm, .oc.tall .ocbox .rl { grid-column: 2; }
+  .oc.tall .ocbox .rl { -webkit-line-clamp: 1; }
+  .oc.tall .ocbox .kids { display: none; }
+  .oc .oc-link { position: absolute; border-top: 1.5px dashed var(--oc-line); pointer-events: none; }
+  .oc .oc-aside > ul.oc-sub { padding-top: 0; gap: 0; }
+  .oc .oc-sub > li { padding-top: 0; }
+  .oc .oc-sub > li::before, .oc .oc-sub > li::after { display: none; }
+  .ocbox.aside { background: color-mix(in srgb, var(--accent) 4%, var(--win)); }
   .ocbox { display: inline-flex; flex-direction: column; align-items: center; gap: 5px; width: 176px; padding: 12px 10px 11px; border-radius: 14px; background: var(--win); border: 1.5px solid var(--line); box-shadow: 0 1px 3px rgba(0,0,0,.08); cursor: default; user-select: none; position: relative; }
   .ocbox:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
   .ocbox.sel { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -6384,7 +6414,7 @@
   const COS_STORE = 'claudeNavigator.cos.v1';
   var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
   const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
-  const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null };
+  const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null, tall: ls.get('claudeNavigator.cosTall') === '1' };
   function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
@@ -6423,12 +6453,13 @@
     }
     renderCos();
   }
-  function cosAdd(kind, parentId) {
+  function cosAdd(kind, parentId, aside) {
     const t = cosTeam();
     if (!t) return;
     const parent = cosNode(t, parentId) || t.nodes.find(n => n.chief);
     const n = { id: uid(), kind, name: kind === 'dept' ? 'New department' : 'New staff member', role: '', about: '',
       color: cosColours()[(t.nodes.length + 1) % cosColours().length], parent: parent.id };
+    if (aside === 'left' || aside === 'right') n.aside = aside;     // beside its manager, like an office or assistants
     if (fr('detail').hidden) { const d = fr('detail'); d.hidden = false; ls.set(FRAMES_STORE, JSON.stringify(frames)); applyFrames(false); }   // their details, to name them
     cosChange(() => { t.nodes.push(n); cosUi.sel = n.id; }, null);
     setTimeout(() => { const f = document.querySelector('.cos-detail input[name="name"]'); if (f) { f.focus(); f.select(); } }, 30);
@@ -6449,7 +6480,7 @@
     const t = cosTeam();
     const n = cosNode(t, id), p = cosNode(t, newParent);
     if (!n || !p || n.chief || id === newParent || cosUnder(t, id, newParent) || n.parent === newParent) return;
-    cosChange(() => { n.parent = newParent; n.lead = false; }, `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}`);
+    cosChange(() => { n.parent = newParent; n.lead = false; delete n.aside; }, `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}`);
   }
   // Put a box beside another one (same manager, just before or after it). The chart keeps its grid;
   // only the order along the row, or who it sits under, changes.
@@ -6460,6 +6491,7 @@
     const moved = n.parent !== m.parent, p = cosNode(t, m.parent);
     cosChange(() => {
       if (moved) { n.parent = m.parent; n.lead = false; }
+      if (m.aside) n.aside = m.aside; else delete n.aside;      // joins the group it is put beside
       t.nodes.splice(t.nodes.indexOf(n), 1);
       t.nodes.splice(t.nodes.indexOf(m) + (after ? 1 : 0), 0, n);
     }, moved && p ? `${n.name} now ${n.kind === 'dept' ? 'sits under' : 'reports to'} ${p.name}` : null);
@@ -6468,7 +6500,7 @@
     const t = cosTeam();
     const n = cosNode(t, id);
     if (!n || n.chief) return;
-    const sibs = cosKids(t, n.parent), i = sibs.indexOf(n), o = sibs[i + dir];
+    const sibs = cosKids(t, n.parent).filter(k => (k.aside || '') === (n.aside || '')), i = sibs.indexOf(n), o = sibs[i + dir];
     if (o) cosPlace(id, o.id, dir > 0);
   }
   function cosMenu(x, y, id) {
@@ -6479,6 +6511,17 @@
     showMenu(x, y, [
       { label: 'Add Staff Below', run: () => cosAdd('staff', n.id) },
       { label: 'Add Department Below', run: () => cosAdd('dept', n.id) },
+      { label: `Add a Department Beside \u201c${n.name}\u201d`, key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+        { label: 'On the Left', run: () => cosAdd('dept', n.id, 'left') },
+        { label: 'On the Right', run: () => cosAdd('dept', n.id, 'right') },
+      ]) },
+      parent && { label: n.aside ? `Sit Below \u201c${parent.name}\u201d Again` : `Sit Beside \u201c${parent.name}\u201d`, key: n.aside ? '' : '\u25B8', run: () => n.aside
+        ? cosChange(() => { delete n.aside; }, `${n.name} sits below ${parent.name} again`)
+        : showMenu(lastMenuX, lastMenuY, [
+          { label: 'On the Left', run: () => cosChange(() => { n.aside = 'left'; }, `${n.name} now sits beside ${parent.name}, on the left`) },
+          { label: 'On the Right', run: () => cosChange(() => { n.aside = 'right'; }, `${n.name} now sits beside ${parent.name}, on the right`) },
+        ]) },
+      parent && n.aside && { label: `Move to the ${n.aside === 'left' ? 'Right' : 'Left'} of \u201c${parent.name}\u201d`, run: () => cosChange(() => { n.aside = n.aside === 'left' ? 'right' : 'left'; }, null) },
       '-',
       n.kind === 'staff' && { label: 'Open Page', run: () => openStaff(n.id) },
       { label: 'Edit…', run: () => { cosUi.page = null; cosUi.sel = n.id; renderCos(); } },
@@ -6513,6 +6556,7 @@
     if (n.kind === 'dept') b.querySelector('.av').innerHTML = small('folder', '#fff', 18);
     b.querySelector('.nm').textContent = n.name;
     b.querySelector('.rl').textContent = n.kind === 'dept' ? (lead ? `Led by ${lead.name}` : 'Department') : (n.role || '');
+    if (n.aside) b.classList.add('aside');
     if (n.chief) b.insertAdjacentHTML('afterbegin', '<span class="tag">Chief of Staff</span>');
     else if (n.clara) b.insertAdjacentHTML('afterbegin', '<span class="tag ext">Clara</span>');
     if (n.kind === 'staff' && !n.claudeProject) { b.insertAdjacentHTML('beforeend', '<span class="needs" title="No Claude Project yet: open their page to set it up"></span>'); }
@@ -6522,8 +6566,22 @@
   }
   function cosTree(t, n) {
     const li = document.createElement('li');
-    li.appendChild(cosBox(t, n));
-    const kids = cosKids(t, n.id);                     // in the order you set (drag beside, or Move Left/Right)
+    const all = cosKids(t, n.id);                      // in the order you set (drag beside, or Move Left/Right)
+    // (The tall view lists groups that sit beside first, below as usual.)
+    const left = cosUi.tall ? [] : all.filter(k => k.aside === 'left'), right = cosUi.tall ? [] : all.filter(k => k.aside === 'right');
+    const kids = cosUi.tall ? all.filter(k => k.aside).concat(all.filter(k => !k.aside)) : all.filter(k => !k.aside);
+    if (left.length || right.length) {
+      // Groups that sit beside this box (an office, assistants): to its left or right, joined by a line,
+      // with their own people below them. Everyone else is below as usual. The box stays centred over them.
+      const row = document.createElement('div'); row.className = 'oc-row';
+      const side = (list, cls) => {
+        const d = document.createElement('div'); d.className = 'oc-aside ' + cls;
+        if (list.length) { const ul = document.createElement('ul'); ul.className = 'oc-sub'; for (const k of list) ul.appendChild(cosTree(t, k)); d.appendChild(ul); d.classList.add('has'); }
+        return d;
+      };
+      row.append(side(left, 'left'), cosBox(t, n), side(right, 'right'));
+      li.appendChild(row);
+    } else li.appendChild(cosBox(t, n));
     if (kids.length) { const ul = document.createElement('ul'); for (const k of kids) ul.appendChild(cosTree(t, k)); li.appendChild(ul); }
     return li;
   }
@@ -6671,12 +6729,35 @@
   }
   function cosChartEl(t) {
     const c = document.createElement('div');
-    c.className = 'cos-chart oc';
+    c.className = 'cos-chart oc' + (cosUi.tall ? ' tall' : '');
     c.style.transform = `scale(${cosUi.zoom})`;
     const ul = document.createElement('ul');
     for (const r of t.nodes.filter(n => !n.parent)) ul.appendChild(cosTree(t, r));
     c.appendChild(ul);
+    setTimeout(() => cosAsideLines(c), 0);
     return c;
+  }
+  // The dashed line from a group beside a box to that box, at the box's middle (measured once drawn).
+  function cosAsideLines(c) {
+    const off = (el, root) => { let x = 0, y = 0; for (let e = el; e && e !== root; e = e.offsetParent) { x += e.offsetLeft; y += e.offsetTop; } return { x, y }; };
+    for (const row of c.querySelectorAll('.oc-row')) {
+      row.querySelectorAll(':scope > .oc-link').forEach(l => l.remove());
+      const box = row.querySelector(':scope > .ocbox');
+      if (!box) continue;
+      const b = off(box, row), mid = b.y + box.offsetHeight / 2;
+      for (const side of ['left', 'right']) {
+        const tops = [...row.querySelectorAll(`:scope > .oc-aside.${side} > ul > li > .ocbox, :scope > .oc-aside.${side} > ul > li > .oc-row > .ocbox`)];
+        const near = side === 'left' ? tops[tops.length - 1] : tops[0];
+        if (!near) continue;
+        const a = off(near, row);
+        const x1 = side === 'left' ? a.x + near.offsetWidth : b.x + box.offsetWidth;
+        const x2 = side === 'left' ? b.x : a.x;
+        if (x2 <= x1) continue;
+        const l = document.createElement('div'); l.className = 'oc-link';
+        Object.assign(l.style, { left: x1 + 'px', top: mid + 'px', width: (x2 - x1) + 'px' });
+        row.appendChild(l);
+      }
+    }
   }
   function cosListEl(t) {
     const l = document.createElement('div');
@@ -6760,6 +6841,8 @@
           btn('', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); }, '<span class="t">−</span>'),
           btn('', 'Fit to window', () => cosFit(), '<span class="t">Fit</span>'),
           btn('', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); }, '<span class="t">+</span>'),
+          btn('', cosUi.tall ? 'Show the chart across (wide)' : 'Show the chart top to bottom: easier when the team is too wide for the window', () => { cosUi.tall = !cosUi.tall; ls.set('claudeNavigator.cosTall', cosUi.tall ? '1' : ''); renderCos(); },
+            `<span class="t">${cosUi.tall ? 'Wide' : 'Tall'}</span>`),
         ] : []),
         seg);
     }
