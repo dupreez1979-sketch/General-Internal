@@ -2096,7 +2096,8 @@
       state.ctxFolder = c.folderId;
     }
     // Open the folders above the highlighted row so you can see it (once per place).
-    if (state.sideSel && !String(state.sideSel).startsWith('lib:') && state.sideSel !== lastRevealed) {
+    // (Not while in Chief of Staff: going through staff pages there should not open folders in Navigator's sidebar.)
+    if (currentApp !== 'cos' && state.sideSel && !String(state.sideSel).startsWith('lib:') && state.sideSel !== lastRevealed) {
       lastRevealed = state.sideSel;
       let l = locate(state.sideSel), changed = false;
       while (l && l.parent) { if (!l.parent.open) { l.parent.open = true; changed = true; } l = locate(l.parent.id); }
@@ -6333,7 +6334,11 @@
   function setApp(a) {
     cosEndMaking();
     if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash', 'cos-clara'); $('claraHost').hidden = true; cosReturnSource(); }
-    if (a !== 'cos' && currentApp === 'cos') tidyTree(tidyKeep());
+    if (a !== 'cos' && currentApp === 'cos') {
+      // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
+      tidyTree(null);
+      try { const c = state.loc.kind === 'folder' ? { id: state.loc.id } : { id: pageContext().linkId || pageContext().folderId }; lastRevealed = c.id || lastRevealed; } catch (e) { /* not ready */ }
+    }
     currentApp = a === 'cos' ? 'cos' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
