@@ -249,6 +249,7 @@
   .app-tile b { font-size: 12.5px; line-height: 1.2; max-width: 72px; }     /* the name in a neat block, over two lines if need be */
   .app-ic { width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center; color: #fff; }
   .app-ic.notes { background: #E0A800; }
+  .app-ic.cal { background: #D9534F; }
   .app-ic.nav { background: #3D8BE6; }
   .app-ic.cos { background: #1B5A68; }
   .app-ic svg { width: 20px; height: 20px; }
@@ -384,6 +385,94 @@
   #notesSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.notes-mode #notesSide { display: block; }
   body.notes-mode #tree, body.notes-mode #sNewFolder { display: none !important; }
+  /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
+  body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
+  body.cal-mode #profileBtn { visibility: hidden; }
+  body.cal-mode .cal-head .tb.on { background: #DCE4EC; color: #1F3346; }
+  body.cal-mode #main > :not(#calPanel) { display: none !important; }
+  body.cal-mode #tree, body.cal-mode #sNewFolder { display: none !important; }
+  #calSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
+  body.cal-mode #calSide { display: block; }
+  #calSide .cos-side-h { padding: 10px 8px 6px; }
+  #calSide .cal-tg { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
+  #calSide .cal-tg:hover { background: var(--hover); }
+  #calSide .cal-tg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  #calSide .cal-tg input { margin: 0; }
+  #calSide button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
+  #calSide button.add:hover { background: var(--hover); }
+  #calPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
+  #calPanel[hidden] { display: none; }
+  .cal-head { flex: none; display: flex; align-items: center; gap: 4px; padding: 0 12px; height: 52px; border-bottom: 1px solid var(--line); }
+  .cal-head .cal-title { font-size: 15px; margin-left: 8px; white-space: nowrap; }
+  .cal-head .sp { flex: 1; }
+  .cal-head .tb.on { background: var(--sel); color: var(--text); }
+  .cal-head .seg { display: flex; background: var(--field); border-radius: 8px; padding: 2px; margin-left: 6px; }
+  .cal-upd { font-size: 11.5px; color: var(--muted); margin-right: 4px; white-space: nowrap; }
+  .cal-err { flex: none; background: #fbeee9; color: #99351E; font-size: 12px; padding: 6px 14px; }
+  .cal-empty { margin: 60px auto; max-width: 460px; display: grid; gap: 10px; justify-items: start; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .cal-empty b { font-size: 16px; color: var(--text); }
+  .cal-empty ol { margin: 0; padding-left: 18px; }
+  .cal-ev { --ev: #5B7A99; position: relative; cursor: default; font-size: 11.5px; line-height: 1.25; overflow: hidden; border-radius: 5px; background: color-mix(in srgb, var(--ev) 20%, var(--win)); border-left: 3px solid var(--ev); color: var(--text); }
+  .cal-ev:hover { background: color-mix(in srgb, var(--ev) 32%, var(--win)); }
+  .cal-ev.free { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ev) 12%, var(--win)) 0 6px, var(--win) 6px 10px); }
+  .cal-week { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .cal-wk-head, .cal-allday { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--line); }
+  .cal-dh { padding: 6px 8px; display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+  .cal-dh b { font-size: 18px; color: var(--text); font-weight: 600; }
+  .cal-dh.today b { background: var(--accent); color: var(--accent-text, #fff); border-radius: 50%; width: 28px; height: 28px; display: inline-grid; place-items: center; font-size: 15px; }
+  .cal-adl { font-size: 10.5px; color: var(--muted); padding: 6px 6px; text-align: right; }
+  .cal-adc { padding: 3px; display: grid; gap: 2px; align-content: start; border-left: 1px solid var(--line); min-height: 26px; }
+  .cal-ev.ad, .cal-ev.mc { padding: 2px 6px; white-space: nowrap; text-overflow: ellipsis; }
+  .cal-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+  .cal-grid { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); position: relative; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 46px); }
+  .cal-gut { position: relative; }
+  .cal-gut span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); background: var(--win); padding: 0 2px; }
+  .cal-col { position: relative; border-left: 1px solid var(--line); }
+  .cal-col.today { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .cal-ev.tm { position: absolute; padding: 3px 6px; display: flex; flex-direction: column; gap: 1px; box-shadow: 0 0 0 1px var(--win); }
+  .cal-ev.tm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-ev.tm span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-ev.tm.short { flex-direction: row; gap: 6px; align-items: center; padding-top: 1px; }
+  .cal-ev.tm.short span { order: -1; flex: none; }
+  .cal-ev.tm.short b { min-width: 0; }
+  .cal-now { position: absolute; left: 0; right: 0; border-top: 2px solid #D9534F; z-index: 2; pointer-events: none; }
+  .cal-now::before { content: ''; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #D9534F; }
+  .cal-month { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto repeat(6, minmax(96px, 1fr)); }
+  .cal-mh { font-size: 11.5px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .cal-md { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px; display: grid; gap: 2px; align-content: start; min-width: 0; }
+  .cal-md.other { background: color-mix(in srgb, var(--muted) 5%, transparent); }
+  .cal-md.other .n { color: var(--muted); }
+  .cal-md .n { font-size: 12px; font-weight: 600; padding: 1px 4px; justify-self: start; border-radius: 10px; cursor: pointer; }
+  .cal-md.today .n { background: var(--accent); color: var(--accent-text, #fff); }
+  .cal-ev.mc span { color: var(--muted); margin-right: 4px; }
+  .cal-ev.mc b { font-weight: 600; }
+  .cal-md .more { background: none; border: 0; font: inherit; font-size: 11px; color: var(--muted); text-align: left; padding: 0 6px; }
+  .cal-list { flex: 1; overflow: auto; padding: 8px 20px 30px; display: grid; gap: 4px; align-content: start; max-width: 860px; }
+  .cal-lh { font-size: 12.5px; font-weight: 700; padding: 14px 2px 4px; }
+  .cal-ev.li { display: grid; grid-template-columns: 150px minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 12px; padding: 8px 10px; font-size: 13px; align-items: center; }
+  .cal-ev.li .tm { grid-row: 1 / span 2; color: var(--muted); font-size: 12px; }
+  .cal-ev.li b { font-weight: 600; }
+  .cal-ev.li .loc { grid-column: 2; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-ev.li .join { grid-column: 3; grid-row: 1 / span 2; }
+  .cal-ev .join { background: var(--ev); color: #fff; border: 0; border-radius: 7px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; }
+  .cal-none { color: var(--muted); font-size: 13px; padding: 30px 0; }
+  .cal-pop { --ev: #5B7A99; position: absolute; z-index: 30; width: 380px; max-height: min(560px, calc(100% - 16px)); overflow: auto; background: var(--win); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 0 16px 14px; display: grid; gap: 10px; font-size: 13px; }
+  .cal-pop .bar { height: 5px; margin: 0 -16px; background: var(--ev); position: sticky; top: 0; }
+  .cal-pop .hd { display: flex; gap: 8px; align-items: flex-start; }
+  .cal-pop .hd b { flex: 1; font-size: 15px; line-height: 1.3; }
+  .cal-pop .x { background: none; border: 0; color: var(--muted); font-size: 13px; padding: 2px 4px; }
+  .cal-pop .when { color: var(--muted); }
+  .cal-pop .rows { display: grid; gap: 6px; }
+  .cal-pop .join { justify-self: start; }
+  .cal-pop .r { display: grid; grid-template-columns: 82px minmax(0, 1fr); gap: 8px; }
+  .cal-pop .r .l { color: var(--muted); font-size: 12px; }
+  .cal-pop .r .v { word-break: break-word; }
+  .cal-pop .prof { display: flex; flex-wrap: wrap; gap: 4px; }
+  .cal-pop .pchip { display: inline-flex; align-items: center; gap: 5px; background: var(--field); border: 1.5px solid transparent; border-radius: 12px; padding: 2px 9px; font: inherit; font-size: 12px; color: var(--text); }
+  .cal-pop .pchip i { width: 8px; height: 8px; border-radius: 50%; }
+  .cal-pop .pchip.on { border-color: var(--text); font-weight: 600; }
+  .cal-pop .desc { white-space: pre-wrap; font-size: 12.5px; color: var(--text); border-top: 1px solid var(--line); padding-top: 10px; max-height: 260px; overflow: auto; }
+  .cal-pop a { color: var(--accent); }
   #notesSide .cos-side-h { padding: 8px 8px 6px; }
   #notesSide button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--text); text-align: left; }
   #notesSide button:hover { background: var(--hover); }
@@ -951,6 +1040,7 @@
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
   <div id="cosSide" hidden aria-label="Team"></div>
   <div id="notesSide" aria-label="Notes"></div>
+  <div id="calSide" aria-label="Calendars"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
@@ -1025,6 +1115,7 @@
   <div id="pathbar"></div>
   <div id="claraHost" hidden></div>
   <div id="notesPanel" hidden aria-label="Notes"></div>
+  <div id="calPanel" hidden aria-label="Calendar"></div>
   <div id="cosMain" hidden></div>
   <div id="cosSrcRs" class="col-rs" title="Drag to resize; double-click to reset"></div>
   <div id="cosSrcHead"></div>
@@ -1032,7 +1123,8 @@
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="cos" title="Your AI team: who does what, their work, skills and routines"><span class="app-ic cos"></span><b>Chief of Staff</b></button>
   <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and artifacts, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
-  <button class="app-tile" data-app="notes" title="Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
+  <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
+  <button class="app-tile" data-app="notes" title=""Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
 </div>
 
 <div id="menu" role="menu"></div>
@@ -6411,7 +6503,7 @@
 
   // ---------- Apps: Navigator and Chief of Staff ----------
   // The nine-dot button switches between the apps. Each keeps its own place.
-  var currentApp = ['cos', 'notes'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
+  var currentApp = ['cos', 'notes', 'cal'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
@@ -6425,11 +6517,13 @@
       // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
       tidyTree(null); tidyFresh = true;
     }
-    currentApp = a === 'cos' ? 'cos' : a === 'notes' ? 'notes' : 'navigator';
+    currentApp = ['cos', 'notes', 'cal'].includes(a) ? a : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
     document.body.classList.toggle('notes-mode', currentApp === 'notes');
+    document.body.classList.toggle('cal-mode', currentApp === 'cal');
     try { notesRender(); } catch (e) { /* starting up */ }
+    try { $('calPanel').hidden = currentApp !== 'cal'; if (currentApp === 'cal') { calRender(); calRefresh(false); } } catch (e) { /* starting up */ }
     $('cosSide').hidden = currentApp !== 'cos';
     $('cosMain').hidden = currentApp !== 'cos';
     $('appPop').hidden = true;
@@ -6440,6 +6534,7 @@
   }
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
   $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
+  $('appPop').querySelector('.app-ic.cal').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>';
   $('appPop').querySelector('.app-ic.notes').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
   $('appBtn').addEventListener('click', e => {
     e.stopPropagation();
@@ -8968,6 +9063,518 @@ body { width: max-content !important; min-width: 0 !important; }
   $('sNotes').hidden = true;      // Notes is an app now (the apps button at the top)
   setTimeout(() => { try { notesRender(); } catch (e) { /* starting up */ } }, 0);
 
+  // ----- Calendar (your Outlook calendar, read from its published ICS link) -----
+  // Read only: Outlook stays where meetings are made and changed. Here: Day, Work Week, Week, Month and List
+  // views; a meeting opens with its details and a Join button for Teams (or Zoom, Meet, Webex); right-click
+  // assigns it to a profile (Monkey Baa, NCTI, ...), and its colour follows that profile. Always every profile.
+  const CAL_KEY = 'claudeNavigator.cal.v1';
+  const calState = (() => {
+    const d = { feeds: [], assign: {}, assignOne: {}, hideFeeds: [], hideProfiles: [], view: 'week' };
+    try { return Object.assign(d, JSON.parse(ls.get(CAL_KEY) || '{}')); } catch (e) { return d; }
+  })();
+  const calSave = () => ls.set(CAL_KEY, JSON.stringify(calState));
+  const calUi = { date: new Date(), events: {}, loading: {}, errors: {}, fetchedAt: {}, scrolled: false, pop: null };
+  const CAL_COLOUR = '#5B7A99';                          // meetings not assigned to a profile
+  const CAL_WIN_TZ = { 'AUS Eastern Standard Time': 'Australia/Sydney', 'E. Australia Standard Time': 'Australia/Brisbane', 'Cen. Australia Standard Time': 'Australia/Adelaide',
+    'AUS Central Standard Time': 'Australia/Darwin', 'W. Australia Standard Time': 'Australia/Perth', 'Tasmania Standard Time': 'Australia/Hobart', 'New Zealand Standard Time': 'Pacific/Auckland',
+    'UTC': 'UTC', 'Coordinated Universal Time': 'UTC', 'GMT Standard Time': 'Europe/London', 'Greenwich Standard Time': 'Atlantic/Reykjavik', 'W. Europe Standard Time': 'Europe/Berlin',
+    'Romance Standard Time': 'Europe/Paris', 'Central Europe Standard Time': 'Europe/Budapest', 'E. Europe Standard Time': 'Europe/Bucharest', 'South Africa Standard Time': 'Africa/Johannesburg',
+    'Pacific Standard Time': 'America/Los_Angeles', 'Mountain Standard Time': 'America/Denver', 'Central Standard Time': 'America/Chicago', 'Eastern Standard Time': 'America/New_York',
+    'Singapore Standard Time': 'Asia/Singapore', 'China Standard Time': 'Asia/Shanghai', 'Tokyo Standard Time': 'Asia/Tokyo', 'India Standard Time': 'Asia/Kolkata', 'Korea Standard Time': 'Asia/Seoul',
+    'SE Asia Standard Time': 'Asia/Bangkok', 'Arabian Standard Time': 'Asia/Dubai', 'Hawaiian Standard Time': 'Pacific/Honolulu' };
+  // Offset of a time zone (ms) at a moment.
+  function calTzOffset(ms, tz) {
+    try {
+      const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        .formatToParts(new Date(ms)).map(x => [x.type, x.value]));
+      return Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - Math.floor(ms / 1000) * 1000;
+    } catch (e) { return null; }
+  }
+  // A wall-clock time in a zone, as a moment (ms). Zone: IANA name, null for this Mac's own time, or a fixed offset.
+  function calWall(y, mo, d, h, mi, s, tz) {
+    if (tz && typeof tz === 'object') return Date.UTC(y, mo, d, h, mi, s) - tz.fixed;
+    if (!tz) return new Date(y, mo, d, h, mi, s).getTime();
+    const guess = Date.UTC(y, mo, d, h, mi, s);
+    let off = calTzOffset(guess, tz);
+    if (off === null) return new Date(y, mo, d, h, mi, s).getTime();
+    let t = guess - off;
+    const off2 = calTzOffset(t, tz);
+    if (off2 !== null && off2 !== off) t = guess - off2;
+    return t;
+  }
+  function calParse(text, feedId) {
+    const lines = text.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '').split(/\r?\n/);
+    const unesc = v => v.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+    const vtz = {};                                   // VTIMEZONE: standard offset, for zones this list does not know
+    const events = [];
+    let cur = null, tzCur = null, stack = [];
+    for (const raw of lines) {
+      if (!raw) continue;
+      const i = raw.indexOf(':'); if (i < 0) continue;
+      const left = raw.slice(0, i), value = raw.slice(i + 1);
+      const [name, ...paramList] = left.split(';');
+      const params = {}; for (const p of paramList) { const j = p.indexOf('='); if (j > 0) params[p.slice(0, j).toUpperCase()] = p.slice(j + 1).replace(/^"|"$/g, ''); }
+      const N = name.toUpperCase();
+      if (N === 'BEGIN') {
+        stack.push(value.toUpperCase());
+        if (value.toUpperCase() === 'VEVENT') cur = { exdate: [], attendees: [], feedId };
+        if (value.toUpperCase() === 'VTIMEZONE') tzCur = {};
+        continue;
+      }
+      if (N === 'END') {
+        const what = stack.pop();
+        if (what === 'VEVENT' && cur) { events.push(cur); cur = null; }
+        if (what === 'VTIMEZONE' && tzCur) { if (tzCur.id) vtz[tzCur.id] = tzCur; tzCur = null; }
+        continue;
+      }
+      if (tzCur && !cur) {
+        if (N === 'TZID') tzCur.id = value;
+        if (N === 'TZOFFSETTO' && stack[stack.length - 1] === 'STANDARD') tzCur.std = value;
+        continue;
+      }
+      if (!cur) continue;
+      const dt = () => ({ v: value, tzid: params.TZID || null, date: params.VALUE === 'DATE' || /^\d{8}$/.test(value) });
+      switch (N) {
+        case 'UID': cur.uid = value; break;
+        case 'SUMMARY': cur.title = unesc(value); break;
+        case 'LOCATION': cur.location = unesc(value); break;
+        case 'DESCRIPTION': cur.desc = unesc(value); break;
+        case 'DTSTART': cur.dtstart = dt(); break;
+        case 'DTEND': cur.dtend = dt(); break;
+        case 'DURATION': cur.duration = value; break;
+        case 'RRULE': cur.rrule = value; break;
+        case 'EXDATE': for (const v of value.split(',')) cur.exdate.push({ v, tzid: params.TZID || null, date: params.VALUE === 'DATE' }); break;
+        case 'RECURRENCE-ID': cur.recurId = dt(); break;
+        case 'STATUS': cur.status = value; break;
+        case 'TRANSP': cur.transp = value; break;
+        case 'URL': cur.url = value; break;
+        case 'ORGANIZER': cur.organizer = params.CN || value.replace(/^mailto:/i, ''); break;
+        case 'ATTENDEE': cur.attendees.push(params.CN || value.replace(/^mailto:/i, '')); break;
+        case 'X-MICROSOFT-CDO-ALLDAYEVENT': if (/TRUE/i.test(value)) cur.allDayFlag = true; break;
+        case 'X-MICROSOFT-SKYPETEAMSMEETINGURL': case 'X-MICROSOFT-ONLINEMEETINGCONFLINK': cur.meetUrl = cur.meetUrl || value; break;
+      }
+    }
+    const zoneOf = tzid => {
+      if (!tzid) return null;
+      if (CAL_WIN_TZ[tzid]) return CAL_WIN_TZ[tzid];
+      if (/^[A-Za-z]+\/[A-Za-z_+-]+/.test(tzid) && calTzOffset(Date.now(), tzid) !== null) return tzid;
+      const v = vtz[tzid];
+      const m = v && /^([+-])(\d\d)(\d\d)$/.exec(v.std || '');
+      return m ? { fixed: (m[1] === '-' ? -1 : 1) * (+m[2] * 3600e3 + +m[3] * 60e3) } : null;
+    };
+    // A date-time property: its fields (wall clock), its zone, and the moment.
+    const when = p => {
+      if (!p) return null;
+      const m = /^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)(Z)?)?/.exec(p.v || '');
+      if (!m) return null;
+      const f = [+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)];
+      if (p.date || !m[4]) return { f, tz: null, date: true, ms: new Date(f[0], f[1], f[2]).getTime() };
+      const tz = m[7] ? 'UTC' : zoneOf(p.tzid);
+      return { f, tz, date: false, ms: calWall(...f, tz) };
+    };
+    for (const e of events) {
+      e.s = when(e.dtstart); e.e = when(e.dtend); e.rid = when(e.recurId);
+      e.exms = new Set(e.exdate.map(x => { const w = when(x); return w && w.ms; }).filter(Boolean));
+      e.allDay = !!(e.s && (e.s.date || e.allDayFlag));
+      let dur = e.e && e.s ? e.e.ms - e.s.ms : 0;
+      if (!e.e && e.duration) { const d = /P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?/.exec(e.duration) || []; dur = ((+d[1] || 0) * 7 * 86400 + (+d[2] || 0) * 86400 + (+d[3] || 0) * 3600 + (+d[4] || 0) * 60) * 1000; }
+      if (!dur) dur = e.allDay ? 86400e3 : 0;
+      e.dur = dur;
+    }
+    return events.filter(e => e.s && e.uid);
+  }
+  // Every instance of the events between two moments (repeating meetings expanded; changed and cancelled ones applied).
+  function calExpand(events, from, to) {
+    const out = [];
+    const overrides = new Map();
+    for (const e of events) if (e.rid) overrides.set(e.uid + '|' + e.rid.ms, e);
+    const push = (e, startMs, origMs) => {
+      if (/CANCELLED/i.test(e.status || '')) return;
+      const endMs = startMs + e.dur;
+      if (endMs < from || startMs > to) return;
+      out.push({ key: e.uid + '|' + origMs, uid: e.uid, recurring: !!e.rrule || !!e.rid, ev: e, start: startMs, end: Math.max(endMs, startMs + (e.allDay ? 0 : 15 * 60e3)), allDay: e.allDay });
+    };
+    const DAYS = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+    for (const e of events) {
+      if (e.rid) continue;                                  // changed instances are placed with their series
+      if (!e.rrule) { push(e, e.s.ms, e.s.ms); continue; }
+      const r = Object.fromEntries(e.rrule.split(';').map(x => x.split('=')).map(([k, v]) => [k.toUpperCase(), v]));
+      const interval = Math.max(1, +r.INTERVAL || 1), count = r.COUNT ? +r.COUNT : Infinity;
+      let until = Infinity;
+      if (r.UNTIL) { const m = /^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)(Z)?)?/.exec(r.UNTIL); if (m) until = m[7] ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : calWall(+m[1], +m[2] - 1, +m[3], +(m[4] || 23), +(m[5] || 59), +(m[6] || 59), e.s.tz); }
+      const [y0, mo0, d0, h, mi, se] = e.s.f;
+      const byday = (r.BYDAY || '').split(',').filter(Boolean).map(x => { const m = /^([+-]?\d+)?([A-Z]{2})$/.exec(x); return m ? { n: m[1] ? +m[1] : 0, wd: DAYS[m[2]] } : null; }).filter(Boolean);
+      const bymd = (r.BYMONTHDAY || '').split(',').filter(Boolean).map(Number);
+      const bymo = (r.BYMONTH || '').split(',').filter(Boolean).map(x => +x - 1);
+      const setpos = r.BYSETPOS ? +r.BYSETPOS : 0;
+      const at = (y, mo, d) => e.allDay ? new Date(y, mo, d).getTime() : calWall(y, mo, d, h, mi, se, e.s.tz);
+      let n = 0, guard = 0;
+      const emit = (y, mo, d) => {
+        const t = at(y, mo, d);
+        if (t < e.s.ms) return true;
+        if (t > until || n >= count) return false;
+        n++;
+        if (!e.exms.has(t)) { const o = overrides.get(e.uid + '|' + t); if (o) push(o, o.s.ms, t); else push(e, t, t); }
+        return t <= to;
+      };
+      const dim = (y, mo) => new Date(y, mo + 1, 0).getDate();
+      const nthWeekday = (y, mo, wd, nth) => {             // 2nd Tuesday, last Friday...
+        const days = []; for (let d = 1; d <= dim(y, mo); d++) if (new Date(y, mo, d).getDay() === wd) days.push(d);
+        return nth > 0 ? days[nth - 1] : days[days.length + nth];
+      };
+      const freq = r.FREQ;
+      let go = true;
+      if (freq === 'DAILY') {
+        for (let k = 0; go && guard++ < 20000; k += interval) {
+          const dt = new Date(y0, mo0, d0 + k);
+          if (byday.length && !byday.some(b => b.wd === dt.getDay())) continue;
+          go = emit(dt.getFullYear(), dt.getMonth(), dt.getDate());
+        }
+      } else if (freq === 'WEEKLY') {
+        const days = byday.length ? byday.map(b => b.wd) : [new Date(y0, mo0, d0).getDay()];
+        const start = new Date(y0, mo0, d0); const mon = new Date(y0, mo0, d0 - ((start.getDay() + 6) % 7));
+        for (let w = 0; go && guard++ < 6000; w += interval) {
+          const order = days.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+          for (const wd of order) { const dt = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + w * 7 + ((wd + 6) % 7)); go = emit(dt.getFullYear(), dt.getMonth(), dt.getDate()); if (!go) break; }
+        }
+      } else if (freq === 'MONTHLY' || freq === 'YEARLY') {
+        const step = freq === 'YEARLY' ? 12 * interval : interval;
+        for (let k = 0; go && guard++ < 3000; k += step) {
+          const base = new Date(y0, mo0 + k, 1);
+          const months = freq === 'YEARLY' && bymo.length ? bymo.map(m => new Date(base.getFullYear(), m, 1)) : [base];
+          for (const mb of months) {
+            const y = mb.getFullYear(), mo = mb.getMonth();
+            let ds = [];
+            if (byday.length) {
+              for (const b of byday) {
+                if (b.n) { const d = nthWeekday(y, mo, b.wd, b.n); if (d) ds.push(d); }
+                else for (let d = 1; d <= dim(y, mo); d++) if (new Date(y, mo, d).getDay() === b.wd) ds.push(d);
+              }
+              ds.sort((a, b) => a - b);
+              if (setpos) ds = [setpos > 0 ? ds[setpos - 1] : ds[ds.length + setpos]].filter(Boolean);
+            } else if (bymd.length) ds = bymd.map(d => d < 0 ? dim(y, mo) + d + 1 : d).filter(d => d >= 1 && d <= dim(y, mo));
+            else if (d0 <= dim(y, mo)) ds = [d0];
+            for (const d of ds) { go = emit(y, mo, d); if (!go) break; }
+            if (!go) break;
+          }
+        }
+      } else push(e, e.s.ms, e.s.ms);
+    }
+    return out.sort((a, b) => a.start - b.start || b.end - a.end);
+  }
+  const calProfiles = () => { try { return profiles(); } catch (e) { return []; } };
+  const calProfileOf = inst => {
+    const p = calState.assignOne[inst.key] !== undefined ? calState.assignOne[inst.key] : calState.assign[inst.uid];
+    return p && calProfiles().find(x => x.id === p) ? p : '';
+  };
+  const calColour = inst => { const p = calProfileOf(inst); const n = p && calProfiles().find(x => x.id === p); return (n && n.color) || CAL_COLOUR; };
+  const calMeetLink = inst => {
+    const e = inst.ev, hay = [e.meetUrl, e.location, e.desc, e.url].filter(Boolean).join('\n');
+    const m = /https:\/\/(?:teams\.microsoft\.com\/l\/meetup-join\/|teams\.live\.com\/meet\/|[\w.-]*zoom\.us\/(?:j|my|w)\/|meet\.google\.com\/|[\w.-]*webex\.com\/)[^\s"<>)\]]+/i.exec(hay);
+    if (!m) return null;
+    const url = m[0].replace(/[.,;]+$/, '');
+    return { url, what: /teams/.test(url) ? 'Teams' : /zoom/.test(url) ? 'Zoom' : /meet\.google/.test(url) ? 'Google Meet' : 'Webex' };
+  };
+  async function calRefresh(force) {
+    for (const f of calState.feeds) {
+      if (calUi.loading[f.id]) continue;
+      if (!force && calUi.fetchedAt[f.id] && Date.now() - calUi.fetchedAt[f.id] < 5 * 60e3) continue;
+      if (!calUi.events[f.id]) { try { const c = ls.get('claudeNavigator.calcache.' + f.id); if (c) { calUi.events[f.id] = calParse(c, f.id); } } catch (e) { /* none yet */ } }
+      if (!isApp || !window.navigatorApp.calFetch) continue;
+      calUi.loading[f.id] = true;
+      calRender();
+      const r = await window.navigatorApp.calFetch(f.url).catch(e => ({ ok: false, status: String(e) }));
+      calUi.loading[f.id] = false;
+      if (r && r.ok) {
+        calUi.events[f.id] = calParse(r.text, f.id); calUi.fetchedAt[f.id] = Date.now(); delete calUi.errors[f.id];
+        try { ls.set('claudeNavigator.calcache.' + f.id, r.text); } catch (e) { /* too big to keep: read again next time */ }
+      } else calUi.errors[f.id] = (r && r.status) || 'Could not read it';
+      calRender();
+    }
+  }
+  function calAddFeed(edit) {
+    openDialog({
+      title: edit ? 'Change Calendar' : 'Add a Calendar', name: edit ? edit.name : (calState.feeds.length ? '' : 'Outlook'), url: edit ? edit.url : '', noPicker: true, okLabel: edit ? 'Save' : 'Add',
+      onSave: ({ name, url }) => {
+        if (!/^(https|webcals?):\/\//i.test(url || '')) return toast('That is not a calendar link. In Outlook on the web: Settings › Calendar › Shared calendars › Publish a calendar, then copy the ICS link.');
+        if (edit) { Object.assign(edit, { name: name || edit.name, url }); delete calUi.fetchedAt[edit.id]; }
+        else calState.feeds.push({ id: uid(), name: name || 'Calendar', url });
+        calSave(); calRender(); calRefresh(true);
+      },
+    });
+  }
+  const calDayStart = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const calAddDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const calFmtTime = ms => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm');
+  function calRange() {
+    const v = calState.view, d = calDayStart(calUi.date);
+    if (v === 'day') return [d, calAddDays(d, 1)];
+    if (v === 'week' || v === 'workweek') { const mon = calAddDays(d, -((d.getDay() + 6) % 7)); return [mon, calAddDays(mon, v === 'week' ? 7 : 5)]; }
+    if (v === 'month') { const first = new Date(d.getFullYear(), d.getMonth(), 1); const s = calAddDays(first, -((first.getDay() + 6) % 7)); return [s, calAddDays(s, 42)]; }
+    return [d, calAddDays(d, 21)];                         // list: three weeks ahead
+  }
+  function calVisible(from, to) {
+    const all = [];
+    for (const f of calState.feeds) if (!calState.hideFeeds.includes(f.id) && calUi.events[f.id]) all.push(...calExpand(calUi.events[f.id], from.getTime(), to.getTime()));
+    return all.filter(i => !calState.hideProfiles.includes(calProfileOf(i) || 'none'));
+  }
+  function calRender() {
+    if (currentApp !== 'cal') return;
+    calSideRender();
+    const P = $('calPanel');
+    P.hidden = false;
+    P.replaceChildren();
+    const head = document.createElement('div'); head.className = 'cal-head';
+    const tb = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); return b; };
+    const move = k => { const v = calState.view, d = calUi.date; calUi.date = v === 'month' ? new Date(d.getFullYear(), d.getMonth() + k, 1) : calAddDays(d, k * (v === 'day' ? 1 : v === 'list' ? 21 : 7)); calRender(); };
+    const [from, to] = calRange();
+    const title = document.createElement('b'); title.className = 'cal-title';
+    const v = calState.view;
+    title.textContent = v === 'month' ? calUi.date.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' })
+      : v === 'day' ? calUi.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+      : `${from.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} – ${calAddDays(to, -1).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    const seg = document.createElement('div'); seg.className = 'seg';
+    for (const [k, l] of [['day', 'Day'], ['workweek', 'Work Week'], ['week', 'Week'], ['month', 'Month'], ['list', 'List']]) seg.appendChild(tb(`<span class="t">${l}</span>`, `Show ${l}`, () => { calState.view = k; calSave(); calUi.scrolled = false; calRender(); }, v === k));
+    const busy = Object.values(calUi.loading).some(Boolean);
+    const lastAt = Math.max(0, ...Object.values(calUi.fetchedAt));
+    const upd = document.createElement('span'); upd.className = 'cal-upd';
+    upd.textContent = busy ? 'Reading your calendar…' : lastAt ? `Updated ${new Date(lastAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}` : '';
+    head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.scrolled = false; calRender(); }),
+      tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), upd,
+      tb(UI.reload, 'Read your calendar again', () => calRefresh(true)), seg);
+    P.appendChild(head);
+    const errs = Object.entries(calUi.errors).map(([id, m]) => `${(calState.feeds.find(f => f.id === id) || {}).name || 'Calendar'}: ${m}`);
+    if (errs.length) { const e = document.createElement('div'); e.className = 'cal-err'; e.textContent = errs.join(' · '); P.appendChild(e); }
+    if (!calState.feeds.length) {
+      const e = document.createElement('div'); e.className = 'cal-empty';
+      e.innerHTML = '<b>Your Outlook calendar, here</b><span>It shows every meeting with its details and a Join button, in Day, Week, Month or List view. It reads your calendar and never changes it: make and change meetings in Outlook as usual.</span><ol><li>In Outlook on the web: Settings › Calendar › Shared calendars.</li><li>Under Publish a calendar, choose your calendar and Can view all details, then Publish.</li><li>Copy the ICS link and paste it here.</li></ol>';
+      const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add a Calendar…'; b.addEventListener('click', () => calAddFeed());
+      e.appendChild(b); P.appendChild(e); return;
+    }
+    const list = calVisible(from, to);
+    if (v === 'month') P.appendChild(calMonth(from, list));
+    else if (v === 'list') P.appendChild(calList(from, to, list));
+    else P.appendChild(calWeek(from, to, list));
+  }
+  function calChip(inst, cls) {
+    const c = document.createElement('div');
+    c.className = 'cal-ev ' + (cls || '');
+    c.style.setProperty('--ev', calColour(inst));
+    c.dataset.key = inst.key;
+    const tentative = /TRANSPARENT/i.test(inst.ev.transp || '') ? ' free' : '';
+    if (tentative) c.classList.add('free');
+    c.title = `${inst.ev.title || '(No title)'}\n${inst.allDay ? 'All day' : `${calFmtTime(inst.start)} – ${calFmtTime(inst.end)}`}${inst.ev.location ? '\n' + inst.ev.location : ''}\nClick for details; right-click to assign it to a profile.`;
+    c.addEventListener('click', e => { e.stopPropagation(); calOpen(inst, c); });
+    c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); calMenu(inst, e.clientX, e.clientY); });
+    return c;
+  }
+  function calWeek(from, to, list) {
+    const days = []; for (let d = from; d < to; d = calAddDays(d, 1)) days.push(d);
+    const H = 46;                                          // pixels per hour
+    const wrap = document.createElement('div'); wrap.className = 'cal-week';
+    wrap.style.setProperty('--cols', days.length);
+    const today = calDayStart(new Date()).getTime();
+    const hd = document.createElement('div'); hd.className = 'cal-wk-head';
+    hd.appendChild(document.createElement('span'));
+    for (const d of days) { const c = document.createElement('div'); c.className = 'cal-dh' + (d.getTime() === today ? ' today' : ''); c.innerHTML = `<span>${d.toLocaleDateString('en-AU', { weekday: 'short' })}</span><b>${d.getDate()}</b>`; c.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calRender(); }); c.title = 'Show this day'; hd.appendChild(c); }
+    wrap.appendChild(hd);
+    // All-day meetings (and ones that run over midnight for a day or more) along the top.
+    const ad = document.createElement('div'); ad.className = 'cal-allday';
+    ad.appendChild(Object.assign(document.createElement('span'), { className: 'cal-adl', textContent: 'All day' }));
+    days.forEach(d => {
+      const cell = document.createElement('div'); cell.className = 'cal-adc';
+      const s = d.getTime(), e = calAddDays(d, 1).getTime();
+      for (const i of list) if ((i.allDay || i.end - i.start >= 86400e3) && i.start < e && i.end > s) { const c = calChip(i, 'ad'); c.textContent = i.ev.title || '(No title)'; cell.appendChild(c); }
+      ad.appendChild(cell);
+    });
+    wrap.appendChild(ad);
+    const sc = document.createElement('div'); sc.className = 'cal-scroll';
+    const grid = document.createElement('div'); grid.className = 'cal-grid'; grid.style.height = (24 * H) + 'px';
+    const gut = document.createElement('div'); gut.className = 'cal-gut';
+    for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
+    grid.appendChild(gut);
+    for (const d of days) {
+      const col = document.createElement('div'); col.className = 'cal-col' + (d.getTime() === today ? ' today' : '');
+      const s = d.getTime(), e = calAddDays(d, 1).getTime();
+      const evs = list.filter(i => !i.allDay && i.end - i.start < 86400e3 && i.start < e && i.end > s)
+        .map(i => ({ i, a: Math.max(i.start, s), b: Math.min(i.end, e) }));
+      // Side by side when meetings overlap.
+      let group = [], groupEnd = 0;
+      const place = g => { const cols = []; for (const x of g) { let k = cols.findIndex(endAt => endAt <= x.a); if (k < 0) { k = cols.length; cols.push(0); } cols[k] = x.b; x.col = k; } g.forEach(x => { x.n = cols.length; }); };
+      for (const x of evs) { if (group.length && x.a >= groupEnd) { place(group); group = []; groupEnd = 0; } group.push(x); groupEnd = Math.max(groupEnd, x.b); }
+      if (group.length) place(group);
+      for (const x of evs) {
+        const c = calChip(x.i, 'tm');
+        const top = (x.a - s) / 3600e3 * H, ht = Math.max(20, (x.b - x.a) / 3600e3 * H - 2);
+        Object.assign(c.style, { top: top + 'px', height: ht + 'px', left: `calc(${x.col / x.n * 100}% + 2px)`, width: `calc(${100 / x.n}% - 4px)` });
+        c.innerHTML = `<b></b><span>${calFmtTime(x.i.start)}${ht > 34 && x.i.ev.location ? ' · ' : ''}</span>`;
+        c.querySelector('b').textContent = x.i.ev.title || '(No title)';
+        if (ht > 34 && x.i.ev.location) c.querySelector('span').appendChild(document.createTextNode(x.i.ev.location));
+        if (ht < 34) c.classList.add('short');
+        col.appendChild(c);
+      }
+      if (d.getTime() === today) { const now = new Date(); const ln = document.createElement('div'); ln.className = 'cal-now'; ln.style.top = ((now.getHours() + now.getMinutes() / 60) * H) + 'px'; col.appendChild(ln); }
+      grid.appendChild(col);
+    }
+    sc.appendChild(grid);
+    wrap.appendChild(sc);
+    if (!calUi.scrolled) { calUi.scrolled = true; setTimeout(() => { sc.scrollTop = 7 * H; }, 0); }
+    return wrap;
+  }
+  function calMonth(from, list) {
+    const wrap = document.createElement('div'); wrap.className = 'cal-month';
+    for (const n of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) wrap.appendChild(Object.assign(document.createElement('div'), { className: 'cal-mh', textContent: n }));
+    const today = calDayStart(new Date()).getTime(), mo = calUi.date.getMonth();
+    for (let k = 0; k < 42; k++) {
+      const d = calAddDays(from, k), s = d.getTime(), e = calAddDays(d, 1).getTime();
+      const cell = document.createElement('div'); cell.className = 'cal-md' + (d.getMonth() !== mo ? ' other' : '') + (s === today ? ' today' : '');
+      const num = document.createElement('span'); num.className = 'n'; num.textContent = d.getDate(); num.title = 'Show this day';
+      num.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calUi.scrolled = false; calRender(); });
+      cell.appendChild(num);
+      const evs = list.filter(i => i.start < e && i.end > s);
+      evs.slice(0, 4).forEach(i => { const c = calChip(i, 'mc'); c.innerHTML = `${i.allDay ? '' : `<span>${calFmtTime(Math.max(i.start, s))}</span>`}<b></b>`; c.querySelector('b').textContent = i.ev.title || '(No title)'; cell.appendChild(c); });
+      if (evs.length > 4) { const m = document.createElement('button'); m.className = 'more'; m.textContent = `+${evs.length - 4} more`; m.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calUi.scrolled = false; calRender(); }); cell.appendChild(m); }
+      wrap.appendChild(cell);
+    }
+    return wrap;
+  }
+  function calList(from, to, list) {
+    const wrap = document.createElement('div'); wrap.className = 'cal-list';
+    let any = false;
+    for (let d = from; d < to; d = calAddDays(d, 1)) {
+      const s = d.getTime(), e = calAddDays(d, 1).getTime();
+      const evs = list.filter(i => i.start < e && i.end > s);
+      if (!evs.length) continue;
+      any = true;
+      const h = document.createElement('div'); h.className = 'cal-lh'; h.textContent = d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+      wrap.appendChild(h);
+      for (const i of evs) {
+        const c = calChip(i, 'li');
+        c.innerHTML = `<span class="tm">${i.allDay ? 'All day' : `${calFmtTime(i.start)} – ${calFmtTime(i.end)}`}</span><b></b><span class="loc"></span>`;
+        c.querySelector('b').textContent = i.ev.title || '(No title)';
+        c.querySelector('.loc').textContent = i.ev.location || '';
+        const ml = calMeetLink(i);
+        if (ml) { const j = document.createElement('button'); j.className = 'join'; j.textContent = 'Join'; j.title = `Join the ${ml.what} meeting`; j.addEventListener('click', ev => { ev.stopPropagation(); openExternal(ml.url); }); c.appendChild(j); }
+        wrap.appendChild(c);
+      }
+    }
+    if (!any) wrap.appendChild(Object.assign(document.createElement('div'), { className: 'cal-none', textContent: 'No meetings in these three weeks.' }));
+    return wrap;
+  }
+  // A meeting's details: when, where, Join, who, and its notes (links can be clicked).
+  function calOpen(inst, anchor) {
+    calClosePop();
+    const e = inst.ev, pop = document.createElement('div');
+    pop.className = 'cal-pop';
+    pop.style.setProperty('--ev', calColour(inst));
+    pop.innerHTML = '<div class="bar"></div><div class="hd"><b></b><button class="x" title="Close">✕</button></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
+    pop.querySelector('b').textContent = e.title || '(No title)';
+    pop.querySelector('.x').addEventListener('click', calClosePop);
+    const day = new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    pop.querySelector('.when').textContent = inst.allDay ? `${day} · All day` : `${day} · ${calFmtTime(inst.start)} – ${calFmtTime(inst.end)}${inst.recurring ? ' · Repeats' : ''}`;
+    const rows = pop.querySelector('.rows');
+    const row = (label, text) => { const r = document.createElement('div'); r.className = 'r'; r.innerHTML = '<span class="l"></span><span class="v"></span>'; r.querySelector('.l').textContent = label; calLinkify(r.querySelector('.v'), text); rows.appendChild(r); };
+    const ml = calMeetLink(inst);
+    if (ml) { const j = document.createElement('button'); j.className = 'btn-primary join'; j.textContent = `Join ${ml.what} Meeting`; j.addEventListener('click', () => openExternal(ml.url)); rows.appendChild(j); }
+    if (e.location) row('Where', e.location);
+    if (e.organizer) row('Organiser', e.organizer);
+    if (e.attendees.length) row(`${e.attendees.length} invited`, e.attendees.join(', '));
+    const feed = calState.feeds.find(f => f.id === e.feedId);
+    if (feed && calState.feeds.length > 1) row('Calendar', feed.name);
+    // Profile: one click to assign.
+    const pr = pop.querySelector('.prof');
+    const cur = calProfileOf(inst);
+    for (const p of [...calProfiles().map(p => ({ id: p.id, name: p.name, color: p.color })), { id: '', name: 'None', color: CAL_COLOUR }]) {
+      const b = document.createElement('button'); b.className = 'pchip' + (cur === p.id ? ' on' : '');
+      b.innerHTML = '<i></i><span></span>'; b.querySelector('i').style.background = p.color || CAL_COLOUR; b.querySelector('span').textContent = p.name;
+      b.title = p.id ? `Assign this meeting${inst.recurring ? ' (every one in the series)' : ''} to ${p.name}` : 'Not assigned to a profile';
+      b.addEventListener('click', () => { calAssign(inst, p.id, false); calClosePop(); });
+      pr.appendChild(b);
+    }
+    if (e.desc) calLinkify(pop.querySelector('.desc'), e.desc.replace(/\n{3,}/g, '\n\n').trim());
+    else pop.querySelector('.desc').remove();
+    $('calPanel').appendChild(pop);
+    const r = anchor.getBoundingClientRect(), pr0 = $('calPanel').getBoundingClientRect();
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    let x = r.right + 8 - pr0.left; if (x + w > pr0.width - 8) x = Math.max(8, r.left - w - 8 - pr0.left);
+    let y = Math.max(8, Math.min(r.top - pr0.top, pr0.height - h - 8));
+    Object.assign(pop.style, { left: x + 'px', top: y + 'px' });
+    calUi.pop = pop;
+  }
+  function calClosePop() { if (calUi.pop) { calUi.pop.remove(); calUi.pop = null; } }
+  function calLinkify(el, text) {
+    const re = /(https?:\/\/[^\s<>"')\]]+)/g; let last = 0, m;
+    while ((m = re.exec(text))) {
+      el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const a = document.createElement('a'); a.href = '#'; a.textContent = m[1].length > 70 ? m[1].slice(0, 67) + '…' : m[1]; a.title = m[1];
+      const u = m[1].replace(/[.,;]+$/, ''); a.addEventListener('click', ev => { ev.preventDefault(); openExternal(u); });
+      el.appendChild(a); last = m.index + m[1].length;
+    }
+    el.appendChild(document.createTextNode(text.slice(last)));
+  }
+  function calAssign(inst, profileId, onlyThis) {
+    if (onlyThis) calState.assignOne[inst.key] = profileId;
+    else { calState.assign[inst.uid] = profileId; for (const k of Object.keys(calState.assignOne)) if (k.startsWith(inst.uid + '|')) delete calState.assignOne[k]; }
+    if (!profileId && !onlyThis) delete calState.assign[inst.uid];
+    calSave(); calRender();
+    const p = calProfiles().find(x => x.id === profileId);
+    toast(p ? `“${inst.ev.title || 'Meeting'}”${inst.recurring && !onlyThis ? ' (every one in the series)' : ''} is now ${p.name}` : `“${inst.ev.title || 'Meeting'}” is not assigned to a profile`);
+  }
+  function calMenu(inst, x, y) {
+    const cur = calProfileOf(inst);
+    const items = calProfiles().map(p => ({ label: p.name, dot: p.color, checked: cur === p.id, run: () => calAssign(inst, p.id, false) }));
+    const ml = calMeetLink(inst);
+    showMenu(x, y, [
+      { label: 'Open Details', run: () => { const c = document.querySelector(`#calPanel .cal-ev[data-key="${CSS.escape(inst.key)}"]`); if (c) calOpen(inst, c); } },
+      ml && { label: `Join ${ml.what} Meeting`, run: () => openExternal(ml.url) },
+      '-',
+      ...items,
+      { label: 'No Profile', checked: !cur, run: () => calAssign(inst, '', false) },
+      inst.recurring && '-',
+      inst.recurring && { label: 'Just This One', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, [
+        ...calProfiles().map(p => ({ label: p.name, run: () => calAssign(inst, p.id, true) })),
+        { label: 'No Profile', run: () => calAssign(inst, '', true) },
+      ]) },
+      '-',
+      { label: 'Copy Details', run: () => {
+        const e = inst.ev;
+        navigator.clipboard.writeText([e.title, new Date(inst.start).toLocaleString('en-AU'), e.location, ml && ml.url].filter(Boolean).join('\n')).then(() => toast('Copied'));
+      } },
+    ].filter(Boolean));
+  }
+  // The sidebar: your calendars, and the profiles (tick to show or hide; all shown to start).
+  function calSideRender() {
+    const sd = $('calSide');
+    if (!sd || currentApp !== 'cal') return;
+    sd.replaceChildren();
+    const h = (t) => { const x = document.createElement('div'); x.className = 'cos-side-h'; x.textContent = t; sd.appendChild(x); };
+    const toggle = (label, colour, on, flip, extra) => {
+      const b = document.createElement('label'); b.className = 'cal-tg';
+      b.innerHTML = '<input type="checkbox"><i></i><span></span>';
+      b.querySelector('input').checked = on; b.querySelector('i').style.background = colour; b.querySelector('span').textContent = label;
+      b.querySelector('input').addEventListener('change', flip);
+      if (extra) b.addEventListener('contextmenu', extra);
+      sd.appendChild(b);
+    };
+    h('Calendars');
+    for (const f of calState.feeds) toggle(f.name + (calUi.loading[f.id] ? ' …' : ''), '#8a9bb0', !calState.hideFeeds.includes(f.id),
+      () => { calState.hideFeeds = calState.hideFeeds.includes(f.id) ? calState.hideFeeds.filter(x => x !== f.id) : calState.hideFeeds.concat(f.id); calSave(); calRender(); },
+      e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [
+        { label: 'Read It Again', run: () => { delete calUi.fetchedAt[f.id]; calRefresh(true); } },
+        { label: 'Rename or Change Link…', run: () => calAddFeed(f) },
+        '-',
+        { label: 'Remove from Here', run: () => { calState.feeds = calState.feeds.filter(x => x !== f); delete calUi.events[f.id]; try { ls.del('claudeNavigator.calcache.' + f.id); } catch (er) { /* none */ } calSave(); calRender(); toast(`Removed “${f.name}”. Your calendar in Outlook is unchanged.`); } },
+      ]); });
+    const add = document.createElement('button'); add.className = 'add'; add.innerHTML = `${UI.plus}<span>Add a Calendar…</span>`; add.addEventListener('click', () => calAddFeed()); sd.appendChild(add);
+    h('Profiles');
+    for (const p of [...calProfiles().map(p => ({ id: p.id, name: p.name, color: p.color })), { id: 'none', name: 'Not assigned', color: CAL_COLOUR }]) {
+      toggle(p.name, p.color || CAL_COLOUR, !calState.hideProfiles.includes(p.id), () => { calState.hideProfiles = calState.hideProfiles.includes(p.id) ? calState.hideProfiles.filter(x => x !== p.id) : calState.hideProfiles.concat(p.id); calSave(); calRender(); });
+    }
+  }
+  document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
+  setInterval(() => { if (currentApp === 'cal') calRefresh(false); }, 5 * 60e3);
+
   let claraView = null;
   function claraViewEnsure() {
     if (!isApp) return null;
@@ -10919,7 +11526,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   renderSide();
   state.lastFolderId = startFolder;
   go(start);
-  if (currentApp === 'cos' || currentApp === 'notes') setApp(currentApp);
+  if (currentApp !== 'navigator') setApp(currentApp);
   if (isApp) {
     setTimeout(() => refreshLibrary(false), 4000);
     setInterval(() => refreshLibrary(false), 10 * 60e3);

@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -1169,6 +1169,24 @@ const CLARA_SCRIPT = `on run argv
   end tell
   return "ok"
 end run`;
+// Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
+ipcMain.handle('cal-fetch', async (_e, url) => {
+  if (typeof url !== 'string') return { ok: false, status: 'no link' };
+  const u = url.trim().replace(/^webcals?:\/\//i, 'https://');
+  if (!/^https:\/\//i.test(u)) return { ok: false, status: 'The link must start with https:// or webcal://' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const res = await net.fetch(u, { signal: ctl.signal, headers: { Accept: 'text/calendar, */*' } });
+    if (!res.ok) return { ok: false, status: `The calendar answered ${res.status}` };
+    const text = await res.text();
+    if (text.length > 15e6) return { ok: false, status: 'That calendar is too large' };
+    if (!/BEGIN:VCALENDAR/i.test(text)) return { ok: false, status: 'That link is not a calendar (ICS) link' };
+    return { ok: true, text };
+  } catch (e) {
+    return { ok: false, status: ctl.signal.aborted ? 'The calendar took too long to answer' : String(e && e.message || e) };
+  } finally { clearTimeout(timer); }
+});
 ipcMain.handle('clara-mail', async (_e, opts) => {
   const ok = s => typeof s === 'string' && s.length < 200 && /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/.test(s);
   const from = opts && opts.from, cc = opts && opts.cc;
