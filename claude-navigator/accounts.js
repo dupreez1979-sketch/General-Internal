@@ -136,8 +136,25 @@ async function tokenFor(id) {
   return run;
 }
 
+// Microsoft allows an app only four requests at a time per mailbox ("MailboxConcurrency"). Requests for an account
+// therefore queue here, three at a time, and one that is told to slow down waits as asked and tries again.
+const lanes = new Map();                  // account id -> { busy, waiting }
+function inLane(id, work) {
+  const lane = lanes.get(id) || { busy: 0, waiting: [] };
+  lanes.set(id, lane);
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      lane.busy++;
+      work().then(resolve, reject).finally(() => { lane.busy--; const next = lane.waiting.shift(); if (next) next(); });
+    };
+    if (lane.busy < 3) run(); else lane.waiting.push(run);
+  });
+}
+const pause = ms => new Promise(r => setTimeout(r, ms));
+
 // One request to Microsoft Graph for an account. Only Graph paths; the token is added here.
-async function graph(id, req) {
+function graph(id, req) { return inLane(id, () => graphNow(id, req)); }
+async function graphNow(id, req) {
   const r = req || {};
   const method = String(r.method || 'GET').toUpperCase();
   if (!['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { ok: false, status: 0, error: 'Not allowed' };
@@ -152,6 +169,11 @@ async function graph(id, req) {
     });
     let res = await send(await tokenFor(id));
     if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
+    for (let tries = 0; (res.status === 429 || res.status === 503 || res.status === 504) && tries < 4; tries++) {
+      const wait = Math.min(15, Math.max(1, +res.headers.get('retry-after') || 2 * (tries + 1)));
+      await pause(wait * 1000);
+      res = await send(await tokenFor(id));
+    }
     const text = await res.text();
     let data = null; try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
     return { ok: res.ok, status: res.status, data, error: res.ok ? undefined : (data && data.error && data.error.message) || `Microsoft answered ${res.status}` };

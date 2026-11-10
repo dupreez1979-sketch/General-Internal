@@ -9908,8 +9908,14 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailLoadFolders(acc) {
     const wk = {};
     // Which folder is the Inbox, Sent and so on (their names differ by language).
-    const names = await Promise.all(MAIL_ORDER.map(n => mailApi(acc.id, { path: `/me/mailFolders/${n}?$select=id` }).then(r => [n, r.ok && r.data && r.data.id]).catch(() => [n, null])));
-    for (const [n, id] of names) if (id) wk[id] = n;
+    // (Looked up once per account and remembered: they do not change.)
+    mailUi.wk = mailUi.wk || {};
+    if (!mailUi.wk[acc.id]) {
+      const names = await Promise.all(MAIL_ORDER.map(n => mailApi(acc.id, { path: `/me/mailFolders/${n}?$select=id` }).then(r => [n, r.ok && r.data && r.data.id]).catch(() => [n, null])));
+      const found = {}; for (const [n, id] of names) if (id) found[id] = n;
+      if (Object.keys(found).length >= 3) mailUi.wk[acc.id] = found; else Object.assign(wk, found);
+    }
+    Object.assign(wk, mailUi.wk[acc.id] || {});
     const r = await mailApi(acc.id, { path: '/me/mailFolders?$top=100&$select=id,displayName,unreadItemCount,totalItemCount,childFolderCount' });
     if (!r.ok) { mailUi.folders[acc.id] = { error: r.needsSignIn ? 'Sign in again' : r.error }; if (r.needsSignIn) acc.needsSignIn = true; return; }
     const byName = n => ({ 'inbox': 'inbox', 'drafts': 'drafts', 'sent items': 'sentitems', 'sent': 'sentitems', 'archive': 'archive', 'deleted items': 'deleteditems', 'junk email': 'junkemail', 'junk e-mail': 'junkemail', 'outbox': 'outbox' }[n.toLowerCase()] || '');
