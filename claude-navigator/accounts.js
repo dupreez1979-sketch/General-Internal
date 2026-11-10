@@ -12,6 +12,11 @@ const crypto = require('crypto');
 // The app's registration with Microsoft (an identifier, not a secret; there is no client secret).
 const MS_CLIENT_ID = 'dab5446b-4bd7-4764-8d0e-4a5cdc747487';
 const MS_SCOPES = 'offline_access User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.Read People.Read';
+// Rules, automatic replies and shared mailboxes need more. They are asked for only when you turn those on, with a
+// second sign-in, so an account that cannot be given them (an organisation may need its administrator to agree)
+// still works for everything else.
+const MS_SCOPES_MORE = 'offline_access User.Read Mail.ReadWrite Mail.Send Calendars.ReadWrite MailboxSettings.ReadWrite People.Read Mail.ReadWrite.Shared Mail.Send.Shared Calendars.ReadWrite.Shared';
+const scopesOf = acc => (acc && acc.more ? MS_SCOPES_MORE : MS_SCOPES);
 // (When run from source for testing, the two addresses can be pointed at a stand-in server.)
 const TEST = !app.isPackaged && process.env.NAV_TEST_MS ? process.env.NAV_TEST_MS.replace(/\/+$/, '') : '';
 const MS_AUTH = TEST ? TEST + '/auth' : 'https://login.microsoftonline.com/common/oauth2/v2.0';
@@ -35,7 +40,7 @@ const seal = text => {
   return safeStorage.encryptString(text).toString('base64');
 };
 const unseal = b64 => { try { return safeStorage.decryptString(Buffer.from(b64, 'base64')); } catch (e) { return null; } };
-const view = a => ({ id: a.id, provider: a.provider, email: a.email, name: a.name, needsSignIn: !!a.needsSignIn });
+const view = a => ({ id: a.id, provider: a.provider, email: a.email, name: a.name, needsSignIn: !!a.needsSignIn, more: !!a.more });
 
 function list() { return load().map(view); }
 
@@ -52,9 +57,10 @@ async function tokenRequest(params) {
 // Sign in: Microsoft's page opens in your web browser; when you finish, it hands a one-time code back to the app
 // on this Mac only (http://localhost), which the app exchanges for the tokens.
 let signingIn = null;
-function add(hintEmail) {
+function add(hintEmail, more) {
   if (signingIn) return signingIn;
   signingIn = (async () => {
+    const scope = more ? MS_SCOPES_MORE : MS_SCOPES;
     const verifier = b64url(crypto.randomBytes(48));
     const challenge = b64url(crypto.createHash('sha256').update(verifier).digest());
     const state = b64url(crypto.randomBytes(16));
@@ -74,18 +80,19 @@ function add(hintEmail) {
           clearTimeout(timer);
           if (ok) resolve(ok); else reject(new Error(u.searchParams.get('error_description') || u.searchParams.get('error') || 'Signing in was cancelled'));
         });
-        const q = new URLSearchParams({ client_id: MS_CLIENT_ID, response_type: 'code', redirect_uri: redirect, response_mode: 'query', scope: MS_SCOPES, state,
+        const q = new URLSearchParams({ client_id: MS_CLIENT_ID, response_type: 'code', redirect_uri: redirect, response_mode: 'query', scope, state,
           code_challenge: challenge, code_challenge_method: 'S256', prompt: 'select_account' });
         if (hintEmail) q.set('login_hint', hintEmail);
         shell.openExternal(`${MS_AUTH}/authorize?${q}`);
       });
-      const t = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirect, code_verifier: verifier, scope: MS_SCOPES });
+      const t = await tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: redirect, code_verifier: verifier, scope });
       if (!t.refresh_token) throw new Error('Microsoft did not allow the app to stay signed in');
       const meRes = await net.fetch(MS_GRAPH + '/me?$select=id,displayName,mail,userPrincipalName', { headers: { Authorization: 'Bearer ' + t.access_token } });
       const me = await meRes.json().catch(() => ({}));
       if (!meRes.ok || !me.id) throw new Error((me.error && me.error.message) || 'Could not read the account');
       const id = 'ms:' + me.id;
       const acc = { id, provider: 'microsoft', email: (me.mail || me.userPrincipalName || '').toLowerCase(), name: me.displayName || '', refresh: seal(t.refresh_token) };
+      if (more) acc.more = true;
       load();
       const i = cache.findIndex(a => a.id === id);
       if (i >= 0) cache[i] = acc; else cache.push(acc);
@@ -120,7 +127,7 @@ async function tokenFor(id) {
     const refresh = unseal(acc.refresh);
     if (!refresh) { acc.needsSignIn = true; save(); throw Object.assign(new Error('Sign in again'), { needsSignIn: true }); }
     try {
-      const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: refresh, scope: MS_SCOPES });
+      const t = await tokenRequest({ grant_type: 'refresh_token', refresh_token: refresh, scope: scopesOf(acc) });
       if (t.refresh_token && t.refresh_token !== refresh) acc.refresh = seal(t.refresh_token);   // Microsoft renews it as it is used
       if (acc.needsSignIn) delete acc.needsSignIn;
       save();
@@ -183,9 +190,10 @@ async function graphNow(id, req) {
 }
 
 // Save one attachment into Downloads (never over a file already there) and say where it went.
-async function saveAttachment(id, msgId, attId, name) {
+async function saveAttachment(id, msgId, attId, name, box) {
   try {
-    const send = async token => net.fetch(`${MS_GRAPH}/me/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
+    const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';   // a shared mailbox, or your own
+    const send = async token => net.fetch(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
     let res = await send(await tokenFor(id));
     if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
     if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };

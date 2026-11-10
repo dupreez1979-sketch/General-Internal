@@ -577,6 +577,29 @@
   dialog.mail-sigdlg h2 { margin: 0 0 6px; font-size: 16px; }
   dialog.mail-sigdlg .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
+  .mail-acc.shared b { font-weight: 600; }
+  .mail-oofnote { display: block; width: calc(100% - 20px); margin: 0 10px 6px; padding: 5px 9px; border: 0; border-radius: 7px; background: color-mix(in srgb, #ECEB00 38%, transparent); color: var(--text); font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; }
+  .mail-oofnote:hover { background: color-mix(in srgb, #ECEB00 60%, transparent); }
+  dialog.cal-evdlg .pick { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; font-size: 13px; color: var(--text); }
+  dialog.cal-evdlg .sec { margin: 14px 0 7px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  dialog.cal-evdlg textarea, dialog.cal-evdlg .outside select { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--win); color: var(--text); margin: 0 0 9px; resize: vertical; }
+  dialog.cal-evdlg .outside[hidden] { display: none; }
+  dialog.cal-evdlg :disabled { opacity: .5; }
+  dialog.mail-more, dialog.mail-oof, dialog.mail-rules, dialog.mail-shared { height: fit-content; background: var(--win); color: var(--text); }
+  dialog.mail-rules { width: 560px; }
+  dialog.mail-rules .row { grid-template-columns: 84px minmax(0, 1fr); }
+  dialog.mail-rules .rl { display: flex; align-items: center; gap: 11px; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+  dialog.mail-rules .rl .tx { flex: 1; min-width: 0; cursor: pointer; }
+  dialog.mail-rules .rl .tx b { display: block; font-size: 13px; }
+  dialog.mail-rules .rl .tx span { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  dialog.mail-rules .rl.off .tx { opacity: .55; }
+  dialog.mail-rules .rl.bad .tx span { color: #99351E; }
+  dialog.mail-rules .sw { position: relative; flex: none; width: 30px; height: 18px; }
+  dialog.mail-rules .sw input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+  dialog.mail-rules .sw i { position: absolute; inset: 0; border-radius: 9px; background: var(--line); transition: background .15s; pointer-events: none; }
+  dialog.mail-rules .sw i::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+  dialog.mail-rules .sw input:checked + i { background: var(--accent); }
+  dialog.mail-rules .sw input:checked + i::after { transform: translateX(12px); }
   dialog.mail-sigdlg .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
   body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
@@ -9978,11 +10001,12 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!force && (calG.key === key || calG.loading)) { if (calG.loading) calG.want = [from, to]; return; }
     calG.loading = true; calG.err = '';
     try {
-      calG.accounts = await window.navigatorApp.acctList();
+      calG.accounts = mailWithShared(await window.navigatorApp.acctList());
       const out = [];
       for (const acc of calG.accounts) {
         if (!calG.cals[acc.id] || force) {
           const r = await mailApi(acc.id, { path: '/me/calendars?$top=50&$select=id,name,canEdit,isDefaultCalendar,hexColor' });
+          if (!r.ok && acc.shared) { calG.cals[acc.id] = []; continue; }      // a shared mailbox without a calendar you can open
           if (!r.ok) { calG.err = `${acc.email}: ${r.needsSignIn ? 'sign in again (in Mail, right-click the account)' : r.error}`; continue; }
           calG.cals[acc.id] = r.data.value || [];
         }
@@ -10004,8 +10028,8 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   const calGReload = () => { const [f, t] = calRange(); return calGLoad(f, t, true); };
   // The default profile of an account's meetings: the one profile the account belongs to (if just one).
-  const calAccColour = accId => { try { const ps = (mailState.profiles[accId] || []).map(p => calProfiles().find(x => x.id === p)).filter(Boolean); return ps.length === 1 && ps[0].color ? ps[0].color : CAL_COLOUR; } catch (e) { return CAL_COLOUR; } };
-  const calGProfile = inst => { try { const ps = (mailState.profiles[inst.g.acc] || []).filter(p => calProfiles().some(x => x.id === p)); return ps.length === 1 ? ps[0] : ''; } catch (e) { return ''; } };
+  const calAccColour = accId => { try { const ps = mailProf(accId).map(p => calProfiles().find(x => x.id === p)).filter(Boolean); return ps.length === 1 && ps[0].color ? ps[0].color : CAL_COLOUR; } catch (e) { return CAL_COLOUR; } };
+  const calGProfile = inst => { try { const ps = mailProf(inst.g.acc).filter(p => calProfiles().some(x => x.id === p)); return ps.length === 1 ? ps[0] : ''; } catch (e) { return ''; } };
   async function calGRespond(inst, how) {
     const r = await mailApi(inst.g.acc, { method: 'POST', path: `/me/events/${inst.g.id}/${how}`, body: { sendResponse: true } });
     toast(r.ok ? { accept: 'Accepted', tentativelyAccept: 'Marked as maybe', decline: 'Declined' }[how] : `That did not work: ${r.error || 'try again'}`);
@@ -10128,7 +10152,16 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailState = (() => { const d = { profiles: {}, sel: null, open: {} }; try { return Object.assign(d, JSON.parse(ls.get(MAIL_KEY) || '{}')); } catch (e) { return d; } })();
   const mailSave = () => ls.set(MAIL_KEY, JSON.stringify(mailState));
   const mailUi = { accounts: null, folders: {}, kids: {}, msgs: null, msgsFor: '', next: null, loading: false, msg: null, msgBody: null, err: '', adding: false };
-  const mailApi = (id, req) => window.navigatorApp.acctGraph(id, req);
+  // (A shared mailbox is 'account id>its address': the same sign-in, asking for that mailbox instead of your own.)
+  const mailApi = (id, req) => {
+    const i = String(id).indexOf('>');
+    if (i < 0) return window.navigatorApp.acctGraph(id, req);
+    const r = Object.assign({}, req);
+    if (/^\/me\//.test(r.path) && !/^\/me\/people/.test(r.path)) r.path = '/users/' + encodeURIComponent(id.slice(i + 1)) + r.path.slice(3);
+    return window.navigatorApp.acctGraph(id.slice(0, i), r);
+  };
+  const mailProf = id => mailState.profiles[String(id).split('>')[0]] || [];
+  const mailWithShared = list => (list || []).flatMap(a => [a].concat(((mailState.shared || {})[a.id] || []).map(b => ({ id: `${a.id}>${b.address}`, email: b.address, name: b.name || b.address, shared: true, via: a.id, provider: a.provider, needsSignIn: a.needsSignIn, more: a.more }))));
   const mailOn = () => currentApp === 'mail' || sideApp() === 'mail';          // showing as the app, or beside another one
   const mailPopped = () => mailState.pane === false || sideApp() === 'mail';   // no reading pane: messages pop up
   const calOn = () => currentApp === 'cal' || sideApp() === 'cal';
@@ -10136,11 +10169,12 @@ body { width: max-content !important; min-width: 0 !important; }
   const MAIL_HIDE = /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures)$/i;
   async function mailLoadAccounts() {
     if (!isApp || !window.navigatorApp.acctList) { mailUi.accounts = []; return; }
-    mailUi.accounts = await window.navigatorApp.acctList();
+    const own = await window.navigatorApp.acctList();
+    mailUi.accounts = mailWithShared(own);
     // An account new to this list belongs to the profile you are in.
-    for (const a of mailUi.accounts) if (!mailState.profiles[a.id]) { mailState.profiles[a.id] = state.profileId ? [state.profileId] : []; mailSave(); }
+    for (const a of own) if (!mailState.profiles[a.id]) { mailState.profiles[a.id] = state.profileId ? [state.profileId] : []; mailSave(); }
   }
-  const mailVisible = () => (mailUi.accounts || []).filter(a => !state.profileId || (mailState.profiles[a.id] || []).includes(state.profileId));
+  const mailVisible = () => (mailUi.accounts || []).filter(a => !state.profileId || mailProf(a.id).includes(state.profileId));
   async function mailLoadFolders(acc) {
     const wk = {};
     // Which folder is the Inbox, Sent and so on (their names differ by language).
@@ -10177,6 +10211,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     mailRender();
     mailLoadMessages(true);
+    for (const a of mailVisible()) if (!a.shared && !a.needsSignIn && (force || !mailUi.oof || mailUi.oof[a.id] === undefined)) mailOofCheck(a);
   }
   async function mailLoadMessages(fresh, keep) {            // keep: new mail arrived; the message you have open stays open
     const s = mailState.sel;
@@ -10249,12 +10284,12 @@ body { width: max-content !important; min-width: 0 !important; }
       mailRenderMain();
     }
   }
-  async function mailAddAccount(forProfile) {
+  async function mailAddAccount(forProfile, more) {
     const pid = forProfile || state.profileId;
     if (mailUi.adding) return toast('Finish signing in with Microsoft in your web browser, then come back here.');
     mailUi.adding = true; mailRender();
     toast('Microsoft’s sign-in page is opening in your web browser. Sign in there, then come back here.');
-    const r = await window.navigatorApp.acctAdd('');
+    const r = await window.navigatorApp.acctAdd('', more === true);
     mailUi.adding = false;
     if (!r || !r.ok) { mailRender(); return toast(`Could not sign in: ${(r && r.status) || 'try again'}`); }
     const a = r.account;
@@ -10269,6 +10304,12 @@ body { width: max-content !important; min-width: 0 !important; }
     if (mailOn()) mailStart(true);
   }
   function mailAccountMenu(a, x, y) {
+    if (a.shared) return showMenu(x, y, [
+      { label: activeProfile() ? `Signature in ${activeProfile().name}\u2026` : 'Signature\u2026', run: () => mailEditSignature(a) },
+      { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
+      '-',
+      { label: 'Remove This Shared Mailbox from the App\u2026', run: () => mailRemoveShared(a) },
+    ]);
     const mine = mailState.profiles[a.id] || [];
     showMenu(x, y, [
       { label: 'Belongs to', disabled: true, run: () => {} },
@@ -10278,16 +10319,260 @@ body { width: max-content !important; min-width: 0 !important; }
       '-',
       { label: activeProfile() ? `Signature in ${activeProfile().name}\u2026` : 'Signature\u2026', run: () => mailEditSignature(a) },
       activeProfile() && { label: `${activeProfile().name} Settings\u2026`, run: () => openProfileDialog(activeProfile()) },
-      a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount() },
+      '-',
+      { label: 'Rules\u2026', run: () => mailRules(a) },
+      { label: 'Automatic Replies\u2026', checked: !!(mailUi.oof && mailUi.oof[a.id]), run: () => mailAutoReplies(a) },
+      { label: 'Add a Shared Mailbox\u2026', run: () => mailAddShared(a) },
+      '-',
+      a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount(null, a.more) },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
       '-',
       { label: 'Remove This Account from the App…', run: async () => {
         if (!confirm(`Remove ${a.email} from Claude Navigator? Your mail stays in Outlook; the app just signs out of this account.`)) return;
         await window.navigatorApp.acctRemove(a.id);
-        delete mailState.profiles[a.id]; if (mailState.sel && mailState.sel.acc === a.id) mailState.sel = null; mailSave();
+        delete mailState.profiles[a.id]; if (mailState.shared) delete mailState.shared[a.id]; if (mailState.sel && mailState.sel.acc.split('>')[0] === a.id) mailState.sel = null; mailSave();
         mailStart(true);
       } },
     ].filter(Boolean));
+  }
+  // ----- Rules, automatic replies and shared mailboxes -----
+  // These need more permission from Microsoft than reading and sending, so the first time you use one, the app asks
+  // you to sign in once more to allow it. (An organisation can require its administrator to agree first.)
+  const mailText = html => { try { return (new DOMParser().parseFromString(String(html || ''), 'text/html').body.innerText || '').replace(/ /g, ' ').trim(); } catch (e) { return ''; } };
+  const mailHtml = text => mailEsc(String(text || '').trim()).replace(/\r?\n/g, '<br>');
+  const mailDlg = (cls, html) => { const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg ' + cls; d.innerHTML = html; document.body.appendChild(d); d.addEventListener('close', () => d.remove()); d.showModal(); return d; };
+  function mailNeedMore(a, what, then) {
+    const real = (mailUi.accounts || []).find(x => x.id === (a.via || a.id)) || a;
+    if (real.more) return then(real);
+    const d = mailDlg('mail-more', `<h2></h2><p class="hint">${mailEsc(what)} need one more permission from Microsoft for <b>${mailEsc(real.email)}</b>. Sign in once more to allow it. Microsoft’s page opens in your web browser and lists what the app is asking for.</p><p class="hint">If Microsoft says an administrator must approve, nothing changes here and everything you use now keeps working. Ask whoever looks after Microsoft 365 for that organisation to approve “Claude Navigator”.</p><div class="dlg-actions"><button class="btn" data-x="cancel">Not Now</button><button class="btn-primary" data-x="ok">Sign In to Allow</button></div>`);
+    d.querySelector('h2').textContent = `Allow ${what.toLowerCase()}`;
+    d.addEventListener('click', async e => {
+      const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+      d.close();
+      if (x !== 'ok') return;
+      if (mailUi.adding) return toast('Finish signing in with Microsoft in your web browser, then come back here.');
+      mailUi.adding = true; mailSideRender();
+      toast('Microsoft’s sign-in page is opening in your web browser. Sign in there, then come back here.');
+      const r = await window.navigatorApp.acctAdd(real.email, true);
+      mailUi.adding = false;
+      if (!r || !r.ok) { mailSideRender(); return toast(`That was not allowed: ${(r && r.status) || 'try again'}`); }
+      if (r.account.id !== real.id) { await mailLoadAccounts(); mailRender(); return toast(`You signed in as ${r.account.email}, not ${real.email}. Try again and choose ${real.email}.`); }
+      await mailLoadAccounts(); mailSideRender();
+      then((mailUi.accounts || []).find(z => z.id === real.id) || real);
+    });
+  }
+
+  // Automatic replies (out of office).
+  const mailOofDate = t => { if (!t || !t.dateTime) return null; const d = new Date(/utc|gmt|^z$/i.test(t.timeZone || '') ? t.dateTime.slice(0, 19) + 'Z' : t.dateTime.slice(0, 19)); return isNaN(d) ? null : d; };
+  const mailLocalInput = d => { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+  async function mailOofCheck(a) {                       // is it on? (shown under the account, as Outlook does at the top)
+    mailUi.oof = mailUi.oof || {};
+    const r = await mailApi(a.id, { path: '/me/mailboxSettings/automaticRepliesSetting' });
+    if (!r.ok) return;
+    const s = r.data || {}, st = s.status, end = mailOofDate(s.scheduledEndDateTime), start = mailOofDate(s.scheduledStartDateTime);
+    const was = mailUi.oof[a.id];
+    mailUi.oof[a.id] = st === 'alwaysEnabled' ? 'on' : st === 'scheduled' && end && end > new Date() ? (start && start > new Date() ? 'soon' : 'on') : '';
+    if (was !== mailUi.oof[a.id]) mailSideRender();
+  }
+  function mailAutoReplies(a0) {
+    mailNeedMore(a0, 'Automatic replies', async a => {
+      const r = await mailApi(a.id, { path: '/me/mailboxSettings/automaticRepliesSetting' });
+      if (!r.ok) return toast(`Could not read the automatic replies: ${r.error || 'try again'}`);
+      const s = r.data || {};
+      const d = mailDlg('mail-oof', `<h2>Automatic Replies</h2><p class="hint"></p>
+        <label class="pick"><input type="radio" name="st" value="disabled"><span>Do not send automatic replies</span></label>
+        <label class="pick"><input type="radio" name="st" value="alwaysEnabled"><span>Send automatic replies</span></label>
+        <label class="pick"><input type="radio" name="st" value="scheduled"><span>Send replies only during this time</span></label>
+        <div class="row when"><span>From</span><div class="dt"><input type="datetime-local" name="from"></div></div>
+        <div class="row when"><span>Until</span><div class="dt"><input type="datetime-local" name="to"></div></div>
+        <div class="sec">Reply once to each sender inside my organisation with</div>
+        <textarea name="inside" rows="4"></textarea>
+        <label class="pick"><input type="checkbox" name="out"><span>Also reply to people outside my organisation</span></label>
+        <div class="outside"><select name="aud"><option value="all">Anyone outside my organisation</option><option value="contactsOnly">Only my contacts</option></select>
+        <textarea name="outsideMsg" rows="4"></textarea></div>
+        <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`);
+      d.querySelector('.hint').textContent = a.email;
+      const f = n => d.querySelector(`[name="${n}"]`), st = s.status === 'alwaysEnabled' || s.status === 'scheduled' ? s.status : 'disabled';
+      d.querySelector(`[name="st"][value="${st}"]`).checked = true;
+      const t0 = new Date(); t0.setMinutes(0, 0, 0); t0.setHours(t0.getHours() + 1);
+      f('from').value = mailLocalInput(mailOofDate(s.scheduledStartDateTime) || t0);
+      f('to').value = mailLocalInput(mailOofDate(s.scheduledEndDateTime) || new Date(t0.getTime() + 7 * 86400e3));
+      f('inside').value = mailText(s.internalReplyMessage);
+      f('outsideMsg').value = mailText(s.externalReplyMessage);
+      f('out').checked = !!s.externalAudience && s.externalAudience !== 'none';
+      f('aud').value = s.externalAudience === 'contactsOnly' ? 'contactsOnly' : 'all';
+      const cur = () => d.querySelector('[name="st"]:checked').value;
+      const sync = () => { const v = cur(); for (const w of d.querySelectorAll('.when')) w.hidden = v !== 'scheduled'; const off = v === 'disabled'; for (const n of ['inside', 'out', 'aud', 'outsideMsg']) f(n).disabled = off; d.querySelector('.outside').hidden = !f('out').checked; };
+      d.addEventListener('change', sync); sync();
+      d.addEventListener('click', async e => {
+        const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+        if (x !== 'ok') return d.close();
+        const v = cur(), from = new Date(f('from').value), to = new Date(f('to').value);
+        if (v === 'scheduled' && (isNaN(from) || isNaN(to) || to <= from)) return toast('The end needs to be after the start.');
+        if (v !== 'disabled' && !f('inside').value.trim()) { f('inside').focus(); return toast('Write the reply to send first.'); }
+        const iso = t => ({ dateTime: t.toISOString().slice(0, 19), timeZone: 'UTC' });
+        const set = { status: v, internalReplyMessage: mailHtml(f('inside').value), externalAudience: f('out').checked ? f('aud').value : 'none', externalReplyMessage: mailHtml(f('out').checked ? (f('outsideMsg').value.trim() || f('inside').value) : f('outsideMsg').value) };
+        if (v === 'scheduled') { set.scheduledStartDateTime = iso(from); set.scheduledEndDateTime = iso(to); }
+        e.target.disabled = true;
+        const sv = await mailApi(a.id, { method: 'PATCH', path: '/me/mailboxSettings', body: { automaticRepliesSetting: set } });
+        if (!sv.ok) { e.target.disabled = false; return toast(`Could not save: ${sv.error || 'try again'}`); }
+        d.close();
+        toast(v === 'disabled' ? 'Automatic replies are off' : v === 'scheduled' ? 'Automatic replies are set for those dates' : 'Automatic replies are on');
+        mailOofCheck(a);
+      });
+    });
+  }
+
+  // Rules: what Outlook does with a message as it arrives. They live in Outlook, so they run even when this app is shut.
+  const MAIL_RULE_KNOWN = { c: ['fromAddresses', 'senderContains', 'subjectContains', 'bodyOrSubjectContains', 'sentToAddresses', 'hasAttachments'], a: ['moveToFolder', 'markAsRead', 'delete', 'forwardTo', 'stopProcessingRules'] };
+  const mailRuleSimple = r => Object.keys(r.conditions || {}).every(k => MAIL_RULE_KNOWN.c.includes(k) || r.conditions[k] == null) && Object.keys(r.actions || {}).every(k => MAIL_RULE_KNOWN.a.includes(k) || r.actions[k] == null) && !Object.values(r.exceptions || {}).some(v => v != null && v !== false && !(Array.isArray(v) && !v.length));
+  function mailRuleSays(r, accId) {
+    const c = r.conditions || {}, a = r.actions || {}, w = [], t = [];
+    const adr = l => (l || []).map(x => x.emailAddress && (x.emailAddress.name || x.emailAddress.address)).filter(Boolean).join(', ');
+    if ((c.fromAddresses || []).length) w.push(`from ${adr(c.fromAddresses)}`);
+    if ((c.senderContains || []).length) w.push(`from someone with “${c.senderContains.join('” or “')}” in their address`);
+    if ((c.subjectContains || []).length) w.push(`subject has “${c.subjectContains.join('” or “')}”`);
+    if ((c.bodyOrSubjectContains || []).length) w.push(`message has “${c.bodyOrSubjectContains.join('” or “')}”`);
+    if ((c.sentToAddresses || []).length) w.push(`sent to ${adr(c.sentToAddresses)}`);
+    if (c.hasAttachments) w.push('has an attachment');
+    if (a.moveToFolder) { const z = mailAllFolders(accId).find(q => q.f.id === a.moveToFolder); t.push(`move to ${z ? z.f.displayName : 'a folder'}`); }
+    if (a.markAsRead) t.push('mark as read');
+    if (a.delete) t.push('delete');
+    if ((a.forwardTo || []).length) t.push(`forward to ${adr(a.forwardTo)}`);
+    if (!mailRuleSimple(r)) t.push('more, set in Outlook');
+    return `${w.length ? 'When ' + w.join(' and ') : 'Every message'}: ${t.join(', ') || 'nothing yet'}`;
+  }
+  function mailRules(a0, seed) {
+    mailNeedMore(a0, 'Rules', async a => {
+      const base = '/me/mailFolders/inbox/messageRules';
+      const d = mailDlg('mail-rules', '<h2>Rules</h2><p class="hint"></p><div class="rl-body"></div>');
+      d.querySelector('.hint').textContent = `${a.email} · Rules run in Outlook itself as mail arrives in the Inbox, in this order, even when this app is closed.`;
+      const body = d.querySelector('.rl-body');
+      let rules = [];
+      const list = async () => {
+        body.innerHTML = '<div class="mail-note">Reading the rules…</div>';
+        const r = await mailApi(a.id, { path: base });
+        if (!r.ok) { body.innerHTML = '<div class="mail-note"></div><div class="dlg-actions"><button class="btn" data-x="close">Close</button></div>'; body.querySelector('.mail-note').textContent = `Could not read the rules: ${r.error || 'try again'}`; return; }
+        rules = (r.data.value || []).sort((x, y) => (x.sequence || 0) - (y.sequence || 0));
+        body.replaceChildren();
+        if (!rules.length) body.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'No rules yet. A rule can file, forward or delete mail for you as it arrives.' }));
+        for (const ru of rules) {
+          const row = document.createElement('div'); row.className = 'rl' + (ru.isEnabled ? '' : ' off') + (ru.hasError ? ' bad' : '');
+          row.innerHTML = '<label class="sw" title="Turn this rule on or off"><input type="checkbox"><i></i></label><div class="tx"><b></b><span></span></div><button class="tb" data-r="del" title="Delete this rule">' + (FICON.hide || '×') + '</button>';
+          row.querySelector('b').textContent = ru.displayName || '(No name)';
+          row.querySelector('.tx span').textContent = (ru.hasError ? 'Outlook reports a problem with this rule. ' : '') + mailRuleSays(ru, a.id);
+          const cb = row.querySelector('input'); cb.checked = !!ru.isEnabled;
+          cb.addEventListener('change', async () => { const sv = await mailApi(a.id, { method: 'PATCH', path: `${base}/${ru.id}`, body: { isEnabled: cb.checked } }); if (!sv.ok) { cb.checked = !cb.checked; return toast(`Could not change the rule: ${sv.error || 'try again'}`); } ru.isEnabled = cb.checked; row.classList.toggle('off', !cb.checked); });
+          row.querySelector('[data-r="del"]').addEventListener('click', async e => { e.stopPropagation(); if (!confirm(`Delete the rule “${ru.displayName}”?`)) return; const sv = await mailApi(a.id, { method: 'DELETE', path: `${base}/${ru.id}` }); if (!sv.ok) return toast(`Could not delete the rule: ${sv.error || 'try again'}`); list(); });
+          row.querySelector('.tx').addEventListener('click', () => { if (ru.isReadOnly) return toast('This rule was set by your organisation and cannot be changed.'); if (!mailRuleSimple(ru)) return toast('This rule uses settings made in Outlook. Here you can turn it on or off, or delete it.'); form(ru); });
+          body.appendChild(row);
+        }
+        const act = document.createElement('div'); act.className = 'dlg-actions';
+        act.innerHTML = '<button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="new">New Rule…</button>';
+        body.appendChild(act);
+      };
+      const form = (ru, pre) => {
+        const c = (ru && ru.conditions) || pre || {}, ac = (ru && ru.actions) || {};
+        const adr = l => (l || []).map(x => x.emailAddress && x.emailAddress.address).filter(Boolean).join(', ');
+        const folders = mailAllFolders(a.id);
+        body.innerHTML = `<div class="row"><span>Name</span><input name="name" maxlength="120"></div>
+          <div class="sec">When a message arrives that is</div>
+          <div class="row"><span>From</span><input name="from" placeholder="name@example.com, or part of an address such as @example.com"></div>
+          <div class="row"><span>Subject has</span><input name="subj" placeholder="words in the subject"></div>
+          <div class="row"><span>Sent to</span><input name="to" placeholder="name@example.com"></div>
+          <label class="pick"><input type="checkbox" name="att"><span>Has an attachment</span></label>
+          <div class="sec">Do this</div>
+          <div class="row"><span>Move to</span><select name="move"><option value="">(Leave in the Inbox)</option></select></div>
+          <div class="row"><span>Forward to</span><input name="fwd" placeholder="name@example.com"></div>
+          <label class="pick"><input type="checkbox" name="read"><span>Mark as read</span></label>
+          <label class="pick"><input type="checkbox" name="del"><span>Delete it</span></label>
+          <label class="pick"><input type="checkbox" name="stop"><span>Do not apply the rules after this one</span></label>
+          <div class="dlg-actions"><button class="btn" data-x="back">Back</button><button class="btn-primary" data-x="save">Save Rule</button></div>`;
+        const f = n => body.querySelector(`[name="${n}"]`);
+        for (const z of folders) { const o = document.createElement('option'); o.value = z.f.id; o.textContent = '  '.repeat(z.depth) + z.f.displayName; if (z.f.wk !== 'inbox') f('move').appendChild(o); }
+        f('name').value = (ru && ru.displayName) || '';
+        f('from').value = [adr(c.fromAddresses), (c.senderContains || []).join(', ')].filter(Boolean).join(', ');
+        f('subj').value = (c.subjectContains || []).concat(c.bodyOrSubjectContains || []).join(', ');
+        f('to').value = adr(c.sentToAddresses);
+        f('att').checked = !!c.hasAttachments;
+        f('move').value = ac.moveToFolder || ''; f('fwd').value = adr(ac.forwardTo);
+        f('read').checked = !!ac.markAsRead; f('del').checked = !!ac.delete; f('stop').checked = ru ? !!ac.stopProcessingRules : true;
+        body._save = async btn => {
+          const words = t => String(t || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
+          const cond = {}, act = {};
+          const fr = words(f('from').value), whole = fr.filter(x => /^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(x)), part = fr.filter(x => !whole.includes(x));
+          if (whole.length) cond.fromAddresses = whole.map(x => ({ emailAddress: { address: x } }));
+          if (part.length) cond.senderContains = part;
+          if (words(f('subj').value).length) cond.subjectContains = words(f('subj').value);
+          const to = mailParse(f('to').value), fw = mailParse(f('fwd').value);
+          if (to.concat(fw).some(x => x.bad)) return toast(`“${to.concat(fw).find(x => x.bad).bad}” is not an email address.`);
+          if (to.length) cond.sentToAddresses = to;
+          if (f('att').checked) cond.hasAttachments = true;
+          if (f('move').value) act.moveToFolder = f('move').value;
+          if (fw.length) act.forwardTo = fw;
+          if (f('read').checked) act.markAsRead = true;
+          if (f('del').checked) act.delete = true;
+          if (!Object.keys(act).length) return toast('Choose what the rule should do.');
+          if (!Object.keys(cond).length && !confirm('This rule has no conditions, so it will apply to every message that arrives. Save it anyway?')) return;
+          if (act.delete && !confirm('Messages this rule matches will go straight to Deleted Items. Save it?')) return;
+          if (fw.length && !confirm(`Messages this rule matches will be forwarded to ${fw.map(x => x.emailAddress.address).join(', ')} without asking. Save it?`)) return;
+          act.stopProcessingRules = f('stop').checked;
+          const name = f('name').value.trim() || (whole[0] || part[0] ? `From ${whole[0] || part[0]}` : cond.subjectContains ? `Subject: ${cond.subjectContains[0]}` : 'New rule');
+          btn.disabled = true;
+          const sv = ru
+            ? await mailApi(a.id, { method: 'PATCH', path: `${base}/${ru.id}`, body: { displayName: name, conditions: cond, actions: act } })
+            : await mailApi(a.id, { method: 'POST', path: base, body: { displayName: name, sequence: (rules.reduce((n, x) => Math.max(n, x.sequence || 0), 0) || 0) + 1, isEnabled: true, conditions: cond, actions: act } });
+          if (!sv.ok) { btn.disabled = false; return toast(`Could not save the rule: ${sv.error || 'try again'}`); }
+          toast(ru ? 'Rule saved' : 'Rule added. It applies to mail that arrives from now on.');
+          list();
+        };
+        f('name').focus();
+      };
+      d.addEventListener('click', e => {
+        const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+        if (x === 'close') d.close(); else if (x === 'new') form(null); else if (x === 'back') list(); else if (x === 'save') body._save(e.target);
+      });
+      if (!mailUi.folders[a.id]) await mailLoadFolders(a);
+      await list();
+      if (seed) form(null, seed);
+    });
+  }
+
+  // A shared mailbox (such as info@): one you have been given access to in Microsoft 365. It sits under your own
+  // account, uses that account's sign-in, and mail you write from it is sent from the shared address.
+  function mailAddShared(a0) {
+    mailNeedMore(a0, 'Shared mailboxes', a => {
+      const d = mailDlg('mail-shared', '<h2>Add a Shared Mailbox</h2><p class="hint"></p><input class="ask" type="email" placeholder="info@example.com" style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Add</button></div>');
+      d.querySelector('.hint').textContent = `The address of a mailbox that ${a.email} has been given access to in Microsoft 365.`;
+      const inp = d.querySelector('input');
+      const go = async btn => {
+        const adr = inp.value.trim().toLowerCase();
+        if (!/^[^@\s>|]+@[^@\s>|]+\.[^@\s>|]+$/.test(adr)) return toast('Type the whole address, such as info@example.com.');
+        if (adr === a.email) return toast('That is this account’s own address.');
+        mailState.shared = mailState.shared || {};
+        if ((mailState.shared[a.id] || []).some(x => x.address === adr)) { d.close(); return toast('That mailbox is already here.'); }
+        btn.disabled = true;
+        const r = await mailApi(`${a.id}>${adr}`, { path: '/me/mailFolders/inbox?$select=id,displayName' });
+        if (!r.ok) { btn.disabled = false; return toast(r.status === 403 || r.status === 404 ? `${a.email} does not have access to ${adr}. Check the address, or ask for access to be given in Microsoft 365.` : `Could not open ${adr}: ${r.error || 'try again'}`); }
+        let name = '';
+        try { const pr = await mailApi(a.id, { path: `/me/people?$search=${encodeURIComponent('"' + adr + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); const hit = pr.ok && (pr.data.value || []).find(p => (p.scoredEmailAddresses || []).some(z => String(z.address).toLowerCase() === adr)); if (hit) name = hit.displayName || ''; } catch (e2) { /* the address will do */ }
+        mailState.shared[a.id] = (mailState.shared[a.id] || []).concat({ address: adr, name }); mailSave();
+        d.close();
+        toast(`${adr} is added under ${a.email}`);
+        try { calG.key = ''; } catch (e3) { /* calendar not started */ }
+        await mailLoadAccounts(); mailStart(true);
+      };
+      d.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x === 'ok') go(e.target); else if (x) d.close(); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(d.querySelector('[data-x="ok"]')); } });
+      inp.focus();
+    });
+  }
+  function mailRemoveShared(a) {
+    if (!confirm(`Take ${a.email} out of Claude Navigator? The mailbox and its mail stay as they are in Outlook.`)) return;
+    mailState.shared[a.via] = (mailState.shared[a.via] || []).filter(x => x.address !== a.email);
+    if (mailState.sel && mailState.sel.acc === a.id) mailState.sel = null;
+    mailSave(); try { calG.key = ''; } catch (e) { /* calendar not started */ }
+    mailLoadAccounts().then(() => mailStart(true));
   }
   const MAIL_ICON = { inbox: 'M2 9.5l1.6-5.6a1 1 0 011-.7h6.8a1 1 0 011 .7L14 9.5v2.7a1 1 0 01-1 1H3a1 1 0 01-1-1zM2 9.5h3.5l.8 1.5h3.4l.8-1.5H14', drafts: 'M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2', sentitems: 'M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3',
     archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
@@ -10309,14 +10594,21 @@ body { width: max-content !important; min-width: 0 !important; }
     mailState.shut = mailState.shut || {};
     for (const a of vis) {
       const shut = !!mailState.shut[a.id];
-      const h = document.createElement('div'); h.className = 'mail-acc' + (a.needsSignIn ? ' warn' : '');
+      const h = document.createElement('div'); h.className = 'mail-acc' + (a.needsSignIn ? ' warn' : '') + (a.shared ? ' shared' : '');
       h.innerHTML = `<span class="tw">${shut ? '▸' : '▾'}</span><div><b></b><span class="em"></span></div>${a.needsSignIn ? '<i title="Sign in again">!</i>' : ''}`;
       h.querySelector('b').textContent = a.name || a.email;
-      h.querySelector('.em').textContent = a.needsSignIn ? 'Click to sign in again' : a.email;
-      h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nClick to hide or show its folders. Right-click: profiles, signature, sign in again, remove.`;
+      h.querySelector('.em').textContent = a.needsSignIn ? 'Click to sign in again' : a.shared ? `Shared · ${a.email}` : a.email;
+      h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nClick to hide or show its folders. Right-click: ${a.shared ? 'signature, remove' : 'profiles, signature, rules, automatic replies, shared mailboxes, sign in again, remove'}.`;
       h.addEventListener('contextmenu', e => { e.preventDefault(); mailAccountMenu(a, e.clientX, e.clientY); });
-      h.addEventListener('click', () => { if (a.needsSignIn) return mailAddAccount(); mailState.shut[a.id] = !shut; mailSave(); mailSideRender(); });
+      h.addEventListener('click', () => { if (a.needsSignIn) return mailAddAccount(null, a.more); mailState.shut[a.id] = !shut; mailSave(); mailSideRender(); });
       sd.appendChild(h);
+      if (!a.shared && mailUi.oof && mailUi.oof[a.id]) {
+        const o = document.createElement('button'); o.className = 'mail-oofnote';
+        o.textContent = mailUi.oof[a.id] === 'soon' ? 'Automatic replies are set to start' : 'Automatic replies are on';
+        o.title = 'People who write to you are getting your automatic reply. Click to change it or turn it off.';
+        o.addEventListener('click', () => mailAutoReplies(a));
+        sd.appendChild(o);
+      }
       if (shut) continue;
       const F = mailUi.folders[a.id];
       if (!F) { sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading folders…' })); continue; }
@@ -10352,6 +10644,7 @@ body { width: max-content !important; min-width: 0 !important; }
     add.innerHTML = `${UI.plus}<span>${mailUi.adding ? 'Waiting for you to sign in…' : 'Add an Account…'}</span>`;
     add.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom + 4, [
       { label: 'Microsoft 365, Outlook.com or Hotmail', run: () => mailAddAccount() },
+      ...vis.filter(z => !z.shared && z.provider !== 'google').map(z => ({ label: `A shared mailbox under ${z.email}\u2026`, run: () => mailAddShared(z) })),
       { label: 'Gmail (later)', disabled: true, run: () => {} },
     ]); });
     sd.appendChild(add);
@@ -10565,7 +10858,7 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailOpenAttachment(a) {
     const s = mailState.sel, m = mailUi.msg;
     toast(`Opening “${a.name}”…`);
-    const r = await window.navigatorApp.acctAttachment(s.acc, m.id, a.id, a.name);
+    const r = await window.navigatorApp.acctAttachment(s.acc.split('>')[0], m.id, a.id, a.name, s.acc.split('>')[1] || '');
     if (!r || !r.ok) return toast(`Could not open “${a.name}”: ${(r && r.error) || 'try again'}`);
     toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
   }
@@ -10604,7 +10897,9 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Archive', run: () => mailAct(m, 'archive') },
       { label: 'Move to', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))) },
       { label: 'Delete', run: () => mailAct(m, 'delete') },
-    ]);
+      !s.acc.includes('>') && m.from && m.from.emailAddress && '-',
+      !s.acc.includes('>') && m.from && m.from.emailAddress && { label: `Make a Rule for Mail from ${mailWho(m.from)}\u2026`, run: () => mailRules(mailAccOf(), { fromAddresses: [m.from] }) },
+    ].filter(Boolean));
   }
   function mailFolderMenu(a, f, x, y) {
     const sys = !!f.wk;

@@ -1199,12 +1199,12 @@ const CLARA_SCRIPT = `on run argv
 end run`;
 // Mail and calendar accounts: sign-ins are kept in this process (see accounts.js); the window only gets names.
 ipcMain.handle('acct-list', () => accounts.list());
-ipcMain.handle('acct-add', (_e, hint) => accounts.add(typeof hint === 'string' ? hint : ''));
+ipcMain.handle('acct-add', (_e, hint, more) => accounts.add(typeof hint === 'string' ? hint : '', more === true));
 ipcMain.handle('acct-remove', (_e, id) => accounts.remove(String(id)));
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
 // An attachment is saved to Downloads; documents and pictures then open, anything else is shown in Finder.
-ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name) => {
-  const r = await accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''));
+ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name, box) => {
+  const r = await accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''), typeof box === 'string' ? box : '');
   if (!r.ok) return r;
   if (/\.(pdf|docx?|xlsx?|pptx?|csv|txt|rtf|png|jpe?g|gif|heic|webp|ics|pages|numbers|key|md)$/i.test(r.path)) shell.openPath(r.path); else shell.showItemInFolder(r.path);
   return r;
