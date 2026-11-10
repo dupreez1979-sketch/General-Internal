@@ -431,6 +431,14 @@
   .mail-rh .who b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mail-rh .dt, .mail-rh .to { font-size: 12px; color: var(--muted); }
   .mail-read iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+  .mail-body { position: relative; }
+  .mail-body.nopane { grid-template-columns: minmax(0, 1fr); }
+  .mail-body.nopane .mail-list { border-right: 0; }
+  .mail-read.pop { position: absolute; z-index: 4; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.3), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
+  .mail-read.pop[hidden] { display: none; }
+  .mail-read.pop .mail-rh { padding-right: 46px; }
+  .mail-popx { position: absolute; top: 10px; right: 10px; z-index: 2; }
+  .mail-shade { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.14); }
   .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
   .mail-search { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 6px 10px; width: 220px; color: var(--text); margin-left: 6px; }
   .mail-acts { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0 0 -6px; }
@@ -1106,6 +1114,11 @@
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
   .swatch.on { outline: 2.5px solid var(--text); outline-offset: 2px; }
   .swatches input[type=color] { width: 30px; height: 28px; border: 0; padding: 0; background: none; }
+  #profileDlg { max-height: 92vh; overflow: auto; }
+  #profileDlg .dlg-actions { position: sticky; bottom: 0; background: var(--win); padding: 12px 0 2px; margin-bottom: -2px; }
+  .psec { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; display: grid; gap: 3px; }
+  .psec span { font-size: 11.5px; font-weight: 400; letter-spacing: 0; text-transform: none; }
+  .psec[hidden] { display: none; }
   .pmail { display: grid; gap: 6px; }
   .pmail .pm { display: flex; align-items: center; gap: 8px; font-size: 13px; }
   .pmail .pm label { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; grid-template-columns: none; text-align: left; }
@@ -1281,12 +1294,15 @@
   <form method="dialog">
     <h2 id="profileDlgTitle">New Profile</h2>
     <label>Name:<input id="profileName" placeholder="e.g. Monkey Baa" required></label>
+    <div class="psec">Appearance</div>
     <div class="prow"><span>Colour:</span><div class="swatches" id="profileSwatches"></div></div>
     <div class="prow"><span>Tint:</span><div class="seg" id="profileTint">
       <button type="button" class="tb" data-tint="subtle" title="A light wash of colour">Subtle</button>
       <button type="button" class="tb" data-tint="medium" title="A clear wash of colour">Medium</button>
       <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
     </div></div>
+    <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
+    <div class="psec">Design system<span>For what you make with Claude in this profile, and the app’s own look</span></div>
     <div class="prow"><span>Design system:</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
     <div class="prow" id="lookRow" hidden><span>Look:</span><div class="look-pick">
       <div class="look-top"><button type="button" class="btn" id="lookRead">Read Colours and Fonts</button><span class="ds-note" id="lookNote"></span></div>
@@ -1298,8 +1314,8 @@
         <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Navigator and Chief of Staff</label>
       </div>
     </div></div>
-    <div class="prow" id="profileMailRow" hidden><span>Mail:</span><div class="pmail" id="profileMail"></div></div>
-    <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
+    <div class="psec" id="profileMailHead">Mail and calendar<span>The accounts that belong to this profile, and how you sign off from each. These apply straight away.</span></div>
+    <div class="prow" id="profileMailRow" hidden><span>Accounts:</span><div class="pmail" id="profileMail"></div></div>
     <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     <div class="dlg-actions">
       <button type="button" class="btn left" id="profileDelete" title="Delete this profile and everything in it">Delete Profile…</button>
@@ -9717,6 +9733,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
+  document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && currentApp === 'mail' && mailState.pane === false && mailUi.msg && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); } } catch (er) { /* not ready */ } });
   setInterval(() => { if (currentApp === 'cal') { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
 
   // ----- Calendar: the calendars of your signed-in accounts (read and write) -----
@@ -9951,15 +9968,16 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   async function mailLoadMessages(fresh) {
     const s = mailState.sel;
-    if (!s || mailUi.loading) return;
+    if (!s || (mailUi.loading && !fresh)) return;
     const key = s.acc + '|' + s.folder;
+    const seq = mailUi.seq = (mailUi.seq || 0) + 1;      // a newer request (another folder, a search) wins
     if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
     mailUi.loading = true; mailUi.err = ''; mailRenderMain();
     const path = mailUi.next && !fresh ? mailUi.next
       : `/me/mailFolders/${s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
     const r = await mailApi(s.acc, { path });
+    if (mailUi.seq !== seq) return;                        // moved on meanwhile
     mailUi.loading = false;
-    if (mailUi.msgsFor !== key) return;                    // moved to another folder meanwhile
     if (!r.ok) mailUi.err = r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder';
     else { mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(r.data.value || []); mailUi.next = r.data['@odata.nextLink'] || null; }
     mailRenderMain();
@@ -10110,11 +10128,16 @@ body { width: max-content !important; min-width: 0 !important; }
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
+    const paneOn = mailState.pane !== false;
+    const pn = document.createElement('button'); pn.className = 'tb' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 3v10" stroke="currentColor" stroke-width="1.3"/></svg><span class="t">Reading Pane</span>';
+    pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
+    pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
+    head.appendChild(pn);
     const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = UI.reload; rf.title = 'Check for new mail';
     rf.addEventListener('click', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true); });
     head.appendChild(rf);
     P.appendChild(head);
-    const body = document.createElement('div'); body.className = 'mail-body';
+    const body = document.createElement('div'); body.className = 'mail-body' + (mailState.pane === false ? ' nopane' : '');
     const list = document.createElement('div'); list.className = 'mail-list';
     if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
     const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
@@ -10136,7 +10159,14 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (mailUi.next) { const more = document.createElement('button'); more.className = 'btn more'; more.textContent = 'Show Older Messages'; more.addEventListener('click', () => mailLoadMessages(false)); list.appendChild(more); }
     const read = document.createElement('div'); read.className = 'mail-read';
     const m = mailUi.msg, d = mailUi.msgBody;
-    if (!m) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' }));
+    const popped = mailState.pane === false;
+    if (popped) {
+      read.classList.add('pop'); read.hidden = !m;
+      const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '\u2715'; x.title = 'Close (Esc)';
+      x.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); });
+      read.appendChild(x);
+    }
+    if (!m) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
     else {
       const hd = document.createElement('div'); hd.className = 'mail-rh';
       hd.innerHTML = '<h2></h2><div class="who"><b></b><span class="dt"></span></div><div class="to"></div>';
@@ -10174,6 +10204,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
     }
     body.append(list, read);
+    if (popped && m) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); }); body.appendChild(shade); }
     P.appendChild(body);
     if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
@@ -10281,10 +10312,11 @@ body { width: max-content !important; min-width: 0 !important; }
     const s = mailState.sel;
     if (!s) return;
     if (!q) { mailUi.search = ''; return mailLoadMessages(true); }
+    const seq = mailUi.seq = (mailUi.seq || 0) + 1;
     mailUi.search = q; mailUi.loading = true; mailUi.msgs = null; mailUi.next = null; mailUi.msg = null; mailUi.msgBody = null; mailUi.err = ''; mailRenderMain();
     const r = await mailApi(s.acc, { path: `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft` });
+    if (mailUi.seq !== seq) return;
     mailUi.loading = false;
-    if (mailUi.search !== q) return;
     if (!r.ok) mailUi.err = r.error || 'Search did not work'; else { mailUi.msgs = r.data.value || []; mailUi.next = r.data['@odata.nextLink'] || null; }
     mailRenderMain();
   }
@@ -10296,6 +10328,7 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailProfileRows(p) {
     const row = $('profileMailRow'), box = $('profileMail');
     row.hidden = !p || !isApp || !window.navigatorApp.acctList;
+    $('profileMailHead').hidden = row.hidden;
     if (row.hidden) return;
     if (mailUi.accounts === null) await mailLoadAccounts();
     box.replaceChildren();
