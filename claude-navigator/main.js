@@ -1202,6 +1202,7 @@ ipcMain.handle('acct-list', () => accounts.list());
 ipcMain.handle('acct-add', (_e, hint, more) => accounts.add(typeof hint === 'string' ? hint : '', more === true));
 ipcMain.handle('acct-remove', (_e, id) => accounts.remove(String(id)));
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
+ipcMain.handle('acct-upload', (_e, url, bytes, start, total) => accounts.uploadPiece(url, bytes, start, total));
 // An attachment is saved to Downloads; documents and pictures then open, anything else is shown in Finder.
 ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name, box) => {
   const r = await accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''), typeof box === 'string' ? box : '');

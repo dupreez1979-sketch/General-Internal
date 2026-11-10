@@ -579,6 +579,13 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  .mail-invite { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 9px 12px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 9%, transparent); font-size: 12.5px; }
+  .mail-invite svg { flex: none; color: var(--accent); }
+  .mail-invite > div { flex: 1; min-width: 0; }
+  .mail-invite b { display: block; font-size: 13px; }
+  .mail-invite span { color: var(--muted); }
+  .mail-invite .btn.on { background: var(--accent); color: #fff; border-color: transparent; }
+  .mail-compose.dropping { outline: 2px dashed var(--accent); outline-offset: -6px; }
   .mail-m.tagged { box-shadow: inset 3px 0 0 var(--acc); }
   .mail-oofnote { display: block; width: calc(100% - 20px); margin: 0 10px 6px; padding: 5px 9px; border: 0; border-radius: 7px; background: color-mix(in srgb, #ECEB00 38%, transparent); color: var(--text); font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; }
   .mail-oofnote:hover { background: color-mix(in srgb, #ECEB00 60%, transparent); }
@@ -10293,11 +10300,28 @@ body { width: max-content !important; min-width: 0 !important; }
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
     mailRenderMain();
     if (r.ok) mailLoadAttachments(A, m, mailUi.msgBody);
+    if (r.ok && /eventMessage/i.test(r.data['@odata.type'] || '')) mailLoadInvite(A, m, mailUi.msgBody);
     if (r.ok && !m.isRead) {                               // opening it marks it read, here and in Outlook
       m.isRead = true;
       mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === A); if (acc) mailLoadFolders(acc).then(mailSideRender); mailPoll(); });
       mailRenderMain();
     }
+  }
+  // A meeting invitation shows when and where, with Accept, Tentative and Decline, as Outlook does.
+  async function mailLoadInvite(A, m, d) {
+    const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=id&$expand=microsoft.graph.eventMessage/event($select=id,subject,start,end,location,isAllDay,responseStatus,isCancelled,isOrganizer)`, prefer: 'outlook.timezone="UTC"' });
+    if (mailUi.msg !== m || mailUi.msgBody !== d || !r.ok || !r.data.event) return;
+    d.invite = Object.assign({ kind: r.data.meetingMessageType || d.meetingMessageType || '' }, r.data.event);
+    mailRenderMain();
+  }
+  async function mailInviteAnswer(A, d, how) {
+    const ev = d.invite;
+    const r = await mailApi(A, { method: 'POST', path: `/me/events/${ev.id}/${how}`, body: { sendResponse: true } });
+    if (!r.ok) return toast(`Could not send your answer: ${r.error || 'try again'}`);
+    ev.responseStatus = { response: how === 'accept' ? 'accepted' : how === 'decline' ? 'declined' : 'tentativelyAccepted' };
+    toast(how === 'accept' ? 'Accepted. It is in your calendar.' : how === 'decline' ? 'Declined' : 'Marked as tentative');
+    try { calG.key = ''; if (calOn()) calRefresh(false); } catch (e) { /* calendar not started */ }
+    mailRenderMain();
   }
   async function mailAddAccount(forProfile, more) {
     const pid = forProfile || state.profileId;
@@ -10839,6 +10863,26 @@ body { width: max-content !important; min-width: 0 !important; }
         for (const a of d.files) { const c = document.createElement('button'); c.className = 'mail-att'; c.textContent = `📎 ${a.name}${a.size ? ` (${a.size > 1e6 ? (a.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1e3)) + ' KB'})` : ''}`; c.title = 'Open it (it is saved in Downloads)'; c.addEventListener('click', () => mailOpenAttachment(a)); fl.appendChild(c); }
         hd.appendChild(fl);
       }
+      if (d && d.invite) {
+        const ev = d.invite, bar = document.createElement('div'); bar.className = 'mail-invite';
+        const at = t => new Date(String(t.dateTime).slice(0, 19) + 'Z');
+        const st = at(ev.start), en = at(ev.end), day = { weekday: 'short', day: 'numeric', month: 'short' }, tm = { hour: 'numeric', minute: '2-digit' };
+        const when = ev.isAllDay ? new Date(String(ev.start.dateTime).slice(0, 10) + 'T00:00').toLocaleDateString('en-AU', day) + ', all day'
+          : `${st.toLocaleDateString('en-AU', day)}, ${st.toLocaleTimeString('en-AU', tm)} to ${en.toLocaleTimeString('en-AU', tm)}`;
+        const resp = (ev.responseStatus && ev.responseStatus.response) || '';
+        bar.innerHTML = '<svg width="18" height="18" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5h12M5.2 1.8v2.4M10.8 1.8v2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><div><b></b><span></span></div>';
+        bar.querySelector('b').textContent = when;
+        const said = { accepted: 'You accepted', declined: 'You declined', tentativelyAccepted: 'You said maybe' }[resp] || '';
+        bar.querySelector('span').textContent = [ev.location && ev.location.displayName, ev.isCancelled || ev.kind === 'meetingCancelled' ? 'This meeting was cancelled' : said].filter(Boolean).join('  ·  ');
+        if (!ev.isCancelled && !ev.isOrganizer && ev.kind !== 'meetingCancelled' && !/^meeting(Accepted|Declined|TentativelyAccepted)$/.test(ev.kind)) {
+          for (const [how, label, key] of [['accept', 'Accept', 'accepted'], ['tentativelyAccept', 'Tentative', 'tentativelyAccepted'], ['decline', 'Decline', 'declined']]) {
+            const b = document.createElement('button'); b.className = 'btn' + (resp === key ? ' on' : ''); b.textContent = label; b.title = `${label}, and tell the organiser`;
+            b.addEventListener('click', () => { b.disabled = true; mailInviteAnswer(m._acc || s.acc, d, how); });
+            bar.appendChild(b);
+          }
+        }
+        hd.appendChild(bar);
+      }
       read.appendChild(hd);
       if (!d) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Opening…' }));
       else if (d.error) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: d.error }));
@@ -11103,20 +11147,38 @@ body { width: max-content !important; min-width: 0 !important; }
     el.addEventListener('focusout', () => setTimeout(() => { sug.hidden = true; }, 150));
     const paintFiles = () => {
       const box = el.querySelector('.mc-files'); box.replaceChildren();
-      for (const fl of C.files) { const c = document.createElement('span'); c.className = 'mail-att'; c.textContent = `📎 ${fl.name}${fl.sent ? '' : ' …'}`; box.appendChild(c); }
+      for (const fl of C.files) { const c = document.createElement('span'); c.className = 'mail-att'; c.textContent = `📎 ${fl.name}${fl.sent ? '' : fl.pct ? ` ${fl.pct}%` : ' …'}`; box.appendChild(c); }
     };
     const fileIn = el.querySelector('input[type="file"]');
-    fileIn.addEventListener('change', async () => {
-      for (const file of fileIn.files) {
-        if (file.size > 3e6) { toast(`“${file.name}” is over 3 MB, which is the most the app can attach for now. Attach it from Outlook.`); continue; }
+    // Files join the draft in Outlook as you add them: small ones in one go, larger ones (to 25 MB) in pieces.
+    const attach = async files => {
+      for (const file of files) {
+        if (!file || !file.name) continue;
+        if (file.size > 25e6) { toast(`“${file.name}” is over 25 MB, which is more than most mail systems accept. Share a link to it instead.`); continue; }
         const rec = { name: file.name }; C.files.push(rec); paintFiles();
-        const b64 = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1]); rd.readAsDataURL(file); });
-        const up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: file.name, contentType: file.type || 'application/octet-stream', contentBytes: b64 } });
-        if (up.ok) rec.sent = true; else { C.files = C.files.filter(x => x !== rec); toast(`Could not attach “${file.name}”: ${up.error || 'try again'}`); }
+        let up;
+        if (file.size <= 3e6) {
+          const b64 = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1]); rd.readAsDataURL(file); });
+          up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: file.name, contentType: file.type || 'application/octet-stream', contentBytes: b64 } });
+        } else {
+          up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments/createUploadSession`, body: { AttachmentItem: { attachmentType: 'file', name: file.name, size: file.size, contentType: file.type || 'application/octet-stream' } } });
+          const url = up.ok && up.data && up.data.uploadUrl, STEP = 3276800;
+          for (let at = 0; url && at < file.size && up.ok; at += STEP) {
+            const part = await file.slice(at, Math.min(file.size, at + STEP)).arrayBuffer();
+            up = await window.navigatorApp.acctUpload(url, part, at, file.size);
+            rec.pct = Math.round(Math.min(file.size, at + STEP) / file.size * 100); paintFiles();
+          }
+        }
+        if (up && up.ok) rec.sent = true; else { C.files = C.files.filter(x => x !== rec); toast(`Could not attach “${file.name}”: ${(up && up.error) || 'try again'}`); }
         paintFiles();
       }
-      fileIn.value = '';
-    });
+    };
+    fileIn.addEventListener('change', async () => { const fs0 = [...fileIn.files]; fileIn.value = ''; await attach(fs0); });
+    const hasFiles = e => e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files');
+    el.addEventListener('dragover', e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; el.classList.add('dropping'); });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
+    el.addEventListener('drop', e => { if (!hasFiles(e)) return; e.preventDefault(); el.classList.remove('dropping'); attach([...e.dataTransfer.files]); });
+    el.addEventListener('paste', e => { const fs0 = [...((e.clipboardData && e.clipboardData.files) || [])]; if (fs0.length) { e.preventDefault(); attach(fs0); } });
     const fields = () => {
       const lists = { to: mailParse(f('to').value), cc: mailParse(f('cc').value), bcc: mailParse(f('bcc').value) };
       const bad = [...lists.to, ...lists.cc, ...lists.bcc].find(x => x.bad);

@@ -209,4 +209,21 @@ async function saveAttachment(id, msgId, attId, name, box) {
   }
 }
 
-module.exports = { list, add, remove, graph, saveAttachment };
+// One piece of a large attachment. Microsoft hands out a one-off upload address for the file (it needs no token);
+// only Microsoft's own mail servers are accepted here.
+async function uploadPiece(url, bytes, start, total) {
+  try {
+    const u = new URL(String(url));
+    const okHost = TEST ? String(url).startsWith(TEST + '/') : u.protocol === 'https:' && /(^|\.)(office\.com|office365\.com|outlook\.com|microsoft\.com)$/i.test(u.hostname);
+    if (!okHost) return { ok: false, error: 'Not an upload address from Microsoft' };
+    const buf = Buffer.from(bytes);
+    if (!buf.length || buf.length > 4 * 1024 * 1024) return { ok: false, error: 'Piece too large' };
+    const res = await net.fetch(u.toString(), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes ${+start}-${+start + buf.length - 1}/${+total}` }, body: buf });
+    if (!res.ok) { const t = await res.text().catch(() => ''); let m = ''; try { m = JSON.parse(t).error.message; } catch (e) { /* plain text */ } return { ok: false, error: m || `Microsoft answered ${res.status}` }; }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
+module.exports = { list, add, remove, graph, saveAttachment, uploadPiece };
