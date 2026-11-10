@@ -6389,7 +6389,7 @@
     $('appPop').hidden = true;
     applyCosLook();
     applyFrames(false);
-    if (currentApp === 'cos') renderCos(); else renderAll();
+    if (currentApp === 'cos') { cosUi.sel = null; renderCos(); } else renderAll();     // the chart starts with nobody chosen
     try { cosBotSoon(); } catch (e) { /* starting up */ }
   }
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
@@ -6658,13 +6658,9 @@
       return d;
     };
     const n = cosNode(t, cosUi.sel);
-    if (!n) {
-      // Always there (so the chart never shifts under your mouse); a hint until someone is selected.
-      const d = document.createElement('div');
-      d.className = 'cos-detail';
-      d.innerHTML = '<h2>Team</h2><div class="soon">Click someone to edit them. Double-click a staff member to open their page (their work, skills and routines).<br><br>Drag a box onto another to put it below; drag it to another box\u2019s left or right edge to put it beside. Right-click for more.</div>';
-      return head(d);
-    }
+    // Nobody chosen: no panel, so the chart has the room. One click on someone opens it; a click on the
+    // empty chart (or Escape) closes it again.
+    if (!n) return null;
     const d = document.createElement('div');
     d.className = 'cos-detail';
     const parentOpts = t.nodes.filter(x => x.id !== n.id && !cosUnder(t, n.id, x.id));
@@ -6818,7 +6814,7 @@
       back.className = 'tb';
       back.innerHTML = `${UI.back}<span class="t">Team</span>`;
       back.title = 'Back to the team';
-      back.addEventListener('click', () => { cosUi.page = null; cosUi.adding = false; cosUi.setupFor = null; renderCos(); });
+      back.addEventListener('click', () => { cosUi.page = null; cosUi.sel = null; cosUi.adding = false; cosUi.setupFor = null; renderCos(); });
       head.insertBefore(back, head.firstChild);
       head.querySelector('h1').textContent = `${staff.name} · ${p.name}`;
     }
@@ -6920,13 +6916,22 @@
     el.addEventListener('dblclick', e => {
       const x = e.target.closest('.ocbox[data-cid], .crow[data-cid], .cos-side-row[data-cid]');
       const n = x && cosNode(cosTeam(), x.dataset.cid);
-      if (n && n.kind === 'staff') openStaff(n.id);
+      if (n && n.kind === 'staff') { clearTimeout(cosUi.selT); openStaff(n.id); }
     });
     el.addEventListener('click', e => {
       if (e.target.closest('.cos-detail, .cos-head, .cos-page')) return;
       if (el === $('cosSide') && cosUi.page) { const x = cosTarget(e); const n = x && cosNode(cosTeam(), x.dataset.cid); if (n && n.kind === 'staff') return openStaff(n.id); }
       const x = cosTarget(e);
-      cosSelect(x ? x.dataset.cid : null);
+      const id = x ? x.dataset.cid : null;
+      // The Details panel opens a moment after a single click (it narrows the chart): a double-click to open
+      // someone's page is never thrown off by the chart moving under the mouse.
+      clearTimeout(cosUi.selT);
+      if (id && !cosUi.page && !document.querySelector('#cosMain .cos-detail')) {
+        document.querySelectorAll('#cosMain [data-cid], #cosSide [data-cid]').forEach(b => b.classList.toggle('sel', b.dataset.cid === id));
+        cosUi.selT = setTimeout(() => cosSelect(id), 300);
+        return;
+      }
+      cosSelect(id);
     });
     el.addEventListener('contextmenu', e => {
       const x = cosTarget(e);
@@ -10370,7 +10375,7 @@ body { width: max-content !important; min-width: 0 !important; }
     applyCosLook();
   }
   function setProfile(id, { quiet = false } = {}) {
-    try { cosEndMaking(); cosUi.adding = false; cosUi.page = null; } catch (e) { /* starting up */ }
+    try { cosEndMaking(); cosUi.adding = false; cosUi.page = null; cosUi.sel = null; } catch (e) { /* starting up */ }
     state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
     ls.set('claudeNavigator.activeProfile', state.profileId || '');
     applyProfileTheme();
