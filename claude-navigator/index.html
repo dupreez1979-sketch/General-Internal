@@ -579,6 +579,10 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  .mail-cnt { flex: none; border: 0; border-radius: 9px; min-width: 20px; padding: 1px 6px; margin: 0 4px; background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .mail-cnt:hover, .mail-cnt.on { background: var(--accent); color: #fff; }
+  .mail-m.sub { padding-left: 34px; background: color-mix(in srgb, var(--text) 3%, transparent); }
+  .mail-m.sub .avs { display: none; }
   .mail-invite { display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 9px 12px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 9%, transparent); font-size: 12.5px; }
   .mail-invite svg { flex: none; color: var(--accent); }
   .mail-invite > div { flex: 1; min-width: 0; }
@@ -10311,7 +10315,7 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
     mailUi.loading = !keep || !mailUi.msgs; mailUi.err = ''; if (mailUi.loading) mailRenderMain();
     // All Inboxes reads every account's Inbox at once and puts the newest first.
-    const first = `/me/mailFolders/${s.acc === '*' ? 'inbox' : s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
+    const first = `/me/mailFolders/${s.acc === '*' ? 'inbox' : s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId`;
     const want = mailUi.next && !fresh ? mailUi.next : Object.fromEntries(mailSelAccs().map(id => [id, first]));
     const r = await mailReadLists(want);
     if (mailUi.seq !== seq) return;                        // moved on meanwhile
@@ -10871,6 +10875,11 @@ body { width: max-content !important; min-width: 0 !important; }
     flt.title = mailUi.onlyUnread ? 'Showing unread messages only. Click to show all.' : 'Showing all messages. Click to show only unread.';
     flt.addEventListener('click', () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); });
     fh.appendChild(flt);
+    const threads = mailState.threads !== false;
+    const thb = document.createElement('button'); thb.className = 'tb' + (threads ? ' on' : ''); thb.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4h8M2.5 8h11M5.5 12h8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    thb.title = threads ? 'Messages in the same conversation are kept together. Click to list every message by itself.' : 'Every message is listed by itself. Click to keep conversations together.';
+    thb.addEventListener('click', () => { mailState.threads = !threads; mailSave(); mailRenderMain(); });
+    fh.appendChild(thb);
     col.appendChild(fh);
     const wide = popped && !inSide;
     if (wide) { const ch = document.createElement('div'); ch.className = 'mail-cols'; ch.innerHTML = '<span></span><span>From</span><span>Subject</span><span>Date</span>'; col.appendChild(ch); }
@@ -10880,7 +10889,18 @@ body { width: max-content !important; min-width: 0 !important; }
     mailUi.shutGroups = mailUi.shutGroups || {};
     let group = null;
     const shown = (mailUi.msgs || []).filter(x => !mailUi.onlyUnread || !x.isRead || (m && x.id === m.id));
-    for (const x of shown) {
+    // Conversations: the newest message stands for the rest, with a count that opens the earlier ones under it.
+    mailUi.openThreads = mailUi.openThreads || {};
+    let rows = shown.map(x => ({ x }));
+    if (threads && !mailUi.search) {
+      const leads = new Map(); rows = [];
+      for (const x of shown) {
+        const k = x.conversationId ? `${x._acc || ''}|${x.conversationId}` : '';
+        if (k && leads.has(k)) leads.get(k).more.push(x); else { const row = { x, k, more: [] }; if (k) leads.set(k, row); rows.push(row); }
+      }
+      rows = rows.flatMap(row => row.more.length && mailUi.openThreads[row.k] ? [row, ...row.more.map(y => ({ x: y, sub: true }))] : [row]);
+    }
+    for (const { x, k: tk, more, sub } of rows) {
       const g = mailGroupOf(x.receivedDateTime);
       if (g !== group && !mailUi.search) {
         group = g;
@@ -10892,7 +10912,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const who = sent ? (x.toRecipients || [])[0] : x.from;
       const name = sent ? (x.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(x.from) || '(No sender)';
       const r = document.createElement('div');
-      r.className = 'mail-m' + (x.isRead ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '');
+      r.className = 'mail-m' + (x.isRead && !(more && !mailUi.openThreads[tk] && more.some(y => !y.isRead)) ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '') + (sub ? ' sub' : '');
       r.innerHTML = wide ? '<i class="dot"></i><span class="avs"></span><b></b><span class="fl"></span><div class="sjw"><span class="sj"></span><span class="pv"></span></div><span class="dt"></span>'
         : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
       r.querySelector('.avs').appendChild(mailAvatar(who && who.emailAddress && who.emailAddress.name, who && who.emailAddress && who.emailAddress.address));
@@ -10902,6 +10922,12 @@ body { width: max-content !important; min-width: 0 !important; }
       r.querySelector('.sj').textContent = x.subject || '(No subject)';
       r.querySelector('.pv').textContent = (x.bodyPreview || '').replace(/\s+/g, ' ');
       if (everyone && x._acc) { const o = mailAccById(x._acc); if (o) { r.title = `In ${o.email}`; r.style.setProperty('--acc', calAccColour(x._acc)); r.classList.add('tagged'); } }
+      if (more && more.length) {
+        const cn = document.createElement('button'); cn.className = 'mail-cnt' + (mailUi.openThreads[tk] ? ' on' : ''); cn.textContent = more.length + 1;
+        cn.title = mailUi.openThreads[tk] ? 'Hide the earlier messages in this conversation' : `${more.length + 1} messages in this conversation. Click to see the earlier ones.`;
+        cn.addEventListener('click', e => { e.stopPropagation(); mailUi.openThreads[tk] = !mailUi.openThreads[tk]; mailRenderMain(); });
+        r.querySelector('.fl').before(cn);
+      }
       r.addEventListener('click', () => mailOpen(x));
       r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
@@ -11078,7 +11104,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!q) { mailUi.search = ''; return mailLoadMessages(true); }
     const seq = mailUi.seq = (mailUi.seq || 0) + 1;
     mailUi.search = q; mailUi.loading = true; mailUi.msgs = null; mailUi.next = null; mailUi.msg = null; mailUi.msgBody = null; mailUi.err = ''; mailRenderMain();
-    const path = `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
+    const path = `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId`;
     const r = await mailReadLists(Object.fromEntries(mailSelAccs().map(id => [id, path])));
     if (mailUi.seq !== seq) return;
     mailUi.loading = false;
@@ -11191,11 +11217,21 @@ body { width: max-content !important; min-width: 0 !important; }
     const sig = mailSigOf(acc.id);
     if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
     else ed.innerHTML = `<div><br></div>${sig ? `<div><br></div><div class="mc-sig">${sig}</div>` : ''}`;
-    // What you are replying to or forwarding (or the draft so far) shows below, sealed, and is sent with the message.
+    // What you are replying to or forwarding (or the draft so far) shows below and is sent with the message. You can
+    // edit it there too. It sits in a frame that cannot run scripts; if you change nothing, it is sent exactly as it came.
     const under = C.quoted || C.draftBody;
     if (under) {
-      const q = document.createElement('iframe'); q.setAttribute('sandbox', '');
-      q.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'"><style>body{font:13px -apple-system,sans-serif;color:#444;margin:8px 0}img{max-width:100%}</style>${under}`;
+      const q = document.createElement('iframe'); q.setAttribute('sandbox', 'allow-same-origin');
+      q.title = 'The message so far. Click in it to edit it.';
+      q.srcdoc = `<!doctype html><meta charset="utf-8" data-nav><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'" data-nav><style data-nav>body{font:13px -apple-system,sans-serif;color:#444;margin:8px 0;outline:none}img{max-width:100%}</style>${under}`;
+      q.addEventListener('load', () => {
+        try {
+          const doc = q.contentDocument; doc.body.contentEditable = 'true'; doc.body.spellcheck = true;
+          doc.addEventListener('input', () => { C.edited = true; });
+          doc.addEventListener('click', e2 => { if (e2.target.closest && e2.target.closest('a')) e2.preventDefault(); });
+          C.under = () => { if (!C.edited) return under; const d2 = q.contentDocument; return [...d2.querySelectorAll('style:not([data-nav])')].map(x => x.outerHTML).join('') + d2.body.innerHTML; };
+        } catch (e2) { /* stays as it came */ }
+      });
       el.querySelector('.mc-quote').appendChild(q);
     }
     // Suggestions as you type a name (people you write to).
@@ -11252,7 +11288,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const lists = { to: mailParse(f('to').value), cc: mailParse(f('cc').value), bcc: mailParse(f('bcc').value) };
       const bad = [...lists.to, ...lists.cc, ...lists.bcc].find(x => x.bad);
       const mine = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:11pt">${ed.innerHTML}</div>`;
-      return { bad, lists, body: { subject: f('subject').value, toRecipients: lists.to, ccRecipients: lists.cc, bccRecipients: lists.bcc, body: { contentType: 'html', content: mine + (C.quoted || C.draftBody || '') } } };
+      return { bad, lists, body: { subject: f('subject').value, toRecipients: lists.to, ccRecipients: lists.cc, bccRecipients: lists.bcc, body: { contentType: 'html', content: mine + (C.under ? C.under() : C.quoted || C.draftBody || '') } } };
     };
     const shut = () => { el.remove(); mailUi.compose = null; mailUi.composeEl = null; mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); };
     el.addEventListener('click', async e => {
