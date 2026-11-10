@@ -407,6 +407,9 @@
   .dock-b.app-drop-b { box-shadow: 0 -3px 0 var(--accent); }
   .dock-b.app-drop-a { box-shadow: 0 3px 0 var(--accent); }
   .app-tile[hidden] { display: none; }
+  .dock-badge { position: absolute; top: -3px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 8px; background: #D9363E; color: #fff; font: 700 10px/16px -apple-system, sans-serif; font-style: normal; text-align: center; }
+  .app-tile .app-ic { position: relative; }
+  .app-tile .app-ic[data-badge]:not([data-badge=""])::after { content: attr(data-badge); position: absolute; top: -5px; right: -7px; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box; border-radius: 9px; background: #D9363E; color: #fff; font: 700 11px/18px -apple-system, sans-serif; }
   .dock-sep { width: 22px; height: 1px; background: var(--line); margin: 2px 0; }
   .app-ic.mini { width: 30px; height: 30px; border-radius: 8px; }
   .app-ic.mini svg { width: 16px; height: 16px; }
@@ -9827,6 +9830,20 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
+  // Mail keys on the open message: Delete, \u2318\u21E7R reply all, \u2318J forward, \u2318E archive, \u2318\u21E7U unread.
+  document.addEventListener('keydown', e => {
+    try {
+      if (currentApp !== 'mail' || !mailUi.msg || mailUi.compose || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable)) return;
+      const m = mailUi.msg, mod = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
+      let run = null;
+      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) run = () => mailAct(m, 'delete');
+      else if (mod && e.shiftKey && key === 'r') run = () => mailCompose('replyAll', m);
+      else if (mod && !e.shiftKey && key === 'j') run = () => mailCompose('forward', m);
+      else if (mod && !e.shiftKey && key === 'e') run = () => mailAct(m, 'archive');
+      else if (mod && e.shiftKey && key === 'u') run = () => mailAct(m, 'read', false);
+      if (run) { e.preventDefault(); run(); }
+    } catch (er) { /* mail not ready */ }
+  });
   document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && mailOn() && mailPopped() && mailUi.msg && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); } } catch (er) { /* not ready */ } });
   setInterval(() => { if (calOn()) { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
 
@@ -10063,22 +10080,62 @@ body { width: max-content !important; min-width: 0 !important; }
     mailRender();
     mailLoadMessages(true);
   }
-  async function mailLoadMessages(fresh) {
+  async function mailLoadMessages(fresh, keep) {            // keep: new mail arrived; the message you have open stays open
     const s = mailState.sel;
     if (!s || (mailUi.loading && !fresh)) return;
     const key = s.acc + '|' + s.folder;
     const seq = mailUi.seq = (mailUi.seq || 0) + 1;      // a newer request (another folder, a search) wins
-    if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
-    mailUi.loading = true; mailUi.err = ''; mailRenderMain();
+    if (keep && mailUi.msgsFor === key && mailUi.msgs) { /* the list stays on screen while it is read again */ }
+    else if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
+    mailUi.loading = !keep || !mailUi.msgs; mailUi.err = ''; if (mailUi.loading) mailRenderMain();
     const path = mailUi.next && !fresh ? mailUi.next
       : `/me/mailFolders/${s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
     const r = await mailApi(s.acc, { path });
     if (mailUi.seq !== seq) return;                        // moved on meanwhile
     mailUi.loading = false;
     if (!r.ok) mailUi.err = r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder';
-    else { mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(r.data.value || []); mailUi.next = r.data['@odata.nextLink'] || null; }
+    else {
+      const got = r.data.value || [];
+      if (keep && mailUi.msg) { const same = got.find(x => x.id === mailUi.msg.id); if (same) mailUi.msg = Object.assign(same, { isRead: mailUi.msg.isRead }); }
+      mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(got); mailUi.next = r.data['@odata.nextLink'] || null;
+    }
     mailRenderMain();
   }
+  // New mail by itself: every minute each account's Inbox is asked how much is unread (one small request). The Mail
+  // icon carries the count; a new message shows a notification; and the Inbox on screen is read again.
+  const mailSeen = {};                       // account id -> { unread, total }
+  async function mailPoll() {
+    if (!isApp || !window.navigatorApp.acctList || document.hidden && !mailUi.accounts) return;
+    try {
+      if (mailUi.accounts === null) await mailLoadAccounts();
+      let sum = 0;
+      for (const a of mailUi.accounts || []) {
+        if (a.needsSignIn) continue;
+        const r = await mailApi(a.id, { path: '/me/mailFolders/inbox?$select=id,unreadItemCount,totalItemCount' });
+        if (!r.ok) continue;
+        const now = { unread: r.data.unreadItemCount || 0, total: r.data.totalItemCount || 0 }, was = mailSeen[a.id];
+        mailSeen[a.id] = now; sum += now.unread;
+        if (!was || (now.unread === was.unread && now.total === was.total)) continue;
+        const arrived = now.total > was.total && now.unread > was.unread;
+        if (arrived) {
+          const top = await mailApi(a.id, { path: '/me/mailFolders/inbox/messages?$top=1&$orderby=receivedDateTime desc&$select=subject,from,bodyPreview' });
+          const m = top.ok && (top.data.value || [])[0];
+          if (m && !(document.hasFocus() && currentApp === 'mail')) { try { const n = new Notification(mailWho(m.from) || a.email, { body: `${m.subject || '(No subject)'}\n${(m.bodyPreview || '').slice(0, 90)}`, silent: false }); n.onclick = () => { window.focus(); setApp('mail'); }; } catch (e) { /* notifications are off */ } }
+        }
+        if (mailOn()) {
+          const f = (mailUi.folders[a.id] || {}).list; const inbox = f && f.find(x => x.id === r.data.id);
+          if (inbox) { inbox.unreadItemCount = now.unread; inbox.totalItemCount = now.total; mailSideRender(); }
+          if (mailState.sel && mailState.sel.acc === a.id && mailState.sel.folder === r.data.id && !mailUi.search && !mailUi.loading) mailLoadMessages(true, true);
+        }
+      }
+      if (mailUi.unread !== sum) { mailUi.unread = sum; dockRender(); appBadge(); }
+    } catch (e) { /* offline: try again next minute */ }
+  }
+  function appBadge() {
+    const t = $('appPop').querySelector('.app-tile[data-app="mail"] .app-ic'); if (!t) return;
+    t.dataset.badge = mailUi.unread ? (mailUi.unread > 99 ? '99+' : String(mailUi.unread)) : '';
+  }
+  setInterval(mailPoll, 60e3); setTimeout(mailPoll, 6000);
   async function mailOpen(m) {
     const s = mailState.sel;
     if (m.isDraft) return mailCompose('draft', m);
@@ -10090,7 +10147,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (r.ok) mailLoadAttachments(s.acc, m, mailUi.msgBody);
     if (r.ok && !m.isRead) {                               // opening it marks it read, here and in Outlook
       m.isRead = true;
-      mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === s.acc); if (acc) mailLoadFolders(acc).then(mailSideRender); });
+      mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === s.acc); if (acc) mailLoadFolders(acc).then(mailSideRender); mailPoll(); });
       mailRenderMain();
     }
   }
@@ -10339,7 +10396,7 @@ body { width: max-content !important; min-width: 0 !important; }
     toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
   }
   const mailAccOf = () => (mailUi.accounts || []).find(a => mailState.sel && a.id === mailState.sel.acc);
-  const mailRefreshFolders = () => { const a = mailAccOf(); if (a) mailLoadFolders(a).then(mailSideRender); };
+  const mailRefreshFolders = () => { const a = mailAccOf(); if (a) mailLoadFolders(a).then(mailSideRender); setTimeout(mailPoll, 1200); };
   // Take a message out of the list at once (the change is then made in Outlook); it comes back if that fails.
   async function mailAct(m, what, arg) {
     const s = mailState.sel;
@@ -10640,7 +10697,8 @@ body { width: max-content !important; min-width: 0 !important; }
       if (k === currentApp) continue;                     // the app you are in is not offered beside itself
       if (hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideApp() === k;
-      mk(k, label, dockIcon(cls), on, on ? `Close ${label} beside this` : `Open ${label} beside this`);
+      const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
+      mk(k, label, dockIcon(cls) + badge, on, (on ? `Close ${label} beside this` : `Open ${label} beside this`) + (badge ? ` (${mailUi.unread} unread)` : ''));
     }
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
@@ -12149,7 +12207,17 @@ body { width: max-content !important; min-width: 0 !important; }
     window.navigatorApp.onShortcut(k => {
       const m = /^profile-(\d)$/.exec(k);
       if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);
-      if (!document.querySelector('dialog[open]') && !tbCustomizing && actions[k]) actions[k]();
+      if (document.querySelector('dialog[open]') || tbCustomizing) return;
+      // In Mail and Calendar the same keys do the usual mail things: \u2318N new, \u2318R reply (or check for mail), \u2318F search.
+      try {
+        if (currentApp === 'mail') {
+          if (k === 'new-chat') return mailCompose('new');
+          if (k === 'reload') return mailUi.msg && !mailUi.compose ? mailCompose('reply', mailUi.msg) : (mailRefreshFolders(), mailLoadMessages(true, true));
+          if (k === 'find') { const q = document.querySelector('#mailPanel .mail-search'); if (q) { q.focus(); q.select(); } return; }
+        }
+        if (currentApp === 'cal') { if (k === 'new-chat') return calGEdit(null); if (k === 'reload') { calRefresh(true); return calGReload(); } }
+      } catch (e) { /* fall through to the usual action */ }
+      if (actions[k]) actions[k]();
     });
 
     // Files saved from Claude land in Downloads.
