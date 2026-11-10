@@ -400,6 +400,13 @@
   .dock-b:hover { opacity: 1; background: var(--hover); }
   .dock-b.on { opacity: 1; background: var(--sel); }
   .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
+  body #menu { z-index: 300; }            /* above the app switcher, the dock and the side panel */
+  .app-dragging { opacity: .4; }
+  .app-tile.app-drop-b { box-shadow: -3px 0 0 var(--accent); }
+  .app-tile.app-drop-a { box-shadow: 3px 0 0 var(--accent); }
+  .dock-b.app-drop-b { box-shadow: 0 -3px 0 var(--accent); }
+  .dock-b.app-drop-a { box-shadow: 0 3px 0 var(--accent); }
+  .app-tile[hidden] { display: none; }
   .dock-sep { width: 22px; height: 1px; background: var(--line); margin: 2px 0; }
   .app-ic.mini { width: 30px; height: 30px; border-radius: 8px; }
   .app-ic.mini svg { width: 16px; height: 16px; }
@@ -6749,6 +6756,7 @@
     pop.style.left = Math.max(8, r.left) + 'px';
     pop.style.top = (r.bottom + 6) + 'px';
     pop.querySelectorAll('.app-tile').forEach(t => t.classList.toggle('on', t.dataset.app === appKey()));
+    try { appApplyOrder(); } catch (e2) { /* starting up */ }
     pop.hidden = false;
   });
   $('appPop').addEventListener('click', e => { const t = e.target.closest('.app-tile'); if (t) setApp(t.dataset.app); });
@@ -10565,6 +10573,47 @@ body { width: max-content !important; min-width: 0 !important; }
   // what you are doing: Mail, Calendar, Notes, Claude, monday.com and your folders. (In File Navigator, Claude and
   // Chief of Staff, the Claude and Folders icons open the panels those apps already had, which you can drag between.)
   // A side app opens without its own sidebar; the button at its top left brings that back.
+  // The order of the apps (in the switcher and in the dock) is yours: drag one to move it, or right-click it.
+  const APP_KEYS = ['cos', 'navigator', 'claude', 'mail', 'cal', 'notes', 'monday'];
+  const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', mail: 'Mail', cal: 'Calendar', notes: 'Notes', monday: 'monday.com' };
+  function appOrder() { let o = []; try { o = JSON.parse(ls.get('claudeNavigator.appOrder') || '[]'); } catch (e) { /* default */ } o = o.filter(k => APP_KEYS.includes(k)); for (const k of APP_KEYS) if (!o.includes(k)) o.push(k); return o; }
+  function appHidden() { try { return JSON.parse(ls.get('claudeNavigator.appHidden') || '[]').filter(k => APP_KEYS.includes(k)); } catch (e) { return []; } }
+  function appApplyOrder() {
+    const pop = $('appPop'), hid = appHidden();
+    for (const k of appOrder()) { const t = pop.querySelector(`.app-tile[data-app="${k}"]`); if (t) { pop.appendChild(t); t.hidden = hid.includes(k) && appKey() !== k; } }
+    try { dockRender(); } catch (e) { /* starting up */ }
+  }
+  function appMove(k, before, target) {                  // put k just before (or after) target
+    const o = appOrder().filter(x => x !== k);
+    const i = o.indexOf(target);
+    o.splice(i < 0 ? o.length : before ? i : i + 1, 0, k);
+    ls.set('claudeNavigator.appOrder', JSON.stringify(o)); appApplyOrder();
+  }
+  function appSetHidden(k, hide) { const h = appHidden().filter(x => x !== k); if (hide) h.push(k); ls.set('claudeNavigator.appHidden', JSON.stringify(h)); appApplyOrder(); }
+  let appDragKey = null;
+  function appDragWire(el, k, axis) {
+    el.draggable = true;
+    el.addEventListener('dragstart', e => { appDragKey = k; e.dataTransfer.setData('application/x-navigator-app', k); e.dataTransfer.effectAllowed = 'move'; el.classList.add('app-dragging'); });
+    el.addEventListener('dragend', () => { appDragKey = null; el.classList.remove('app-dragging'); document.querySelectorAll('.app-drop-a, .app-drop-b').forEach(x => x.classList.remove('app-drop-a', 'app-drop-b')); });
+    const side = e => { const r = el.getBoundingClientRect(); return axis === 'y' ? e.clientY < r.top + r.height / 2 : e.clientX < r.left + r.width / 2; };
+    el.addEventListener('dragover', e => { if (!appDragKey || appDragKey === k) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'move'; el.classList.toggle('app-drop-b', side(e)); el.classList.toggle('app-drop-a', !side(e)); });
+    el.addEventListener('dragleave', () => el.classList.remove('app-drop-a', 'app-drop-b'));
+    el.addEventListener('drop', e => { if (!appDragKey || appDragKey === k) return; e.preventDefault(); e.stopPropagation(); appMove(appDragKey, side(e), k); });
+    el.addEventListener('contextmenu', e => {
+      e.preventDefault(); e.stopPropagation();
+      const o = appOrder(), i = o.indexOf(k), hid = appHidden(), vert = axis === 'y';
+      showMenu(e.clientX, e.clientY, [
+        { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
+        { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
+        '-',
+        { label: `Hide ${APP_NAMES[k]}`, disabled: appKey() === k, run: () => { appSetHidden(k, true); toast(`${APP_NAMES[k]} is hidden from the apps and the dock. Right-click any app to show it again.`); } },
+        ...(hid.length ? ['-', ...hid.map(h => ({ label: `Show ${APP_NAMES[h]}`, run: () => appSetHidden(h, false) }))] : []),
+        '-',
+        { label: 'Put Back the Usual Order', run: () => { ls.del('claudeNavigator.appOrder'); ls.del('claudeNavigator.appHidden'); appApplyOrder(); } },
+      ]);
+    });
+  }
+  $('appPop').querySelectorAll('.app-tile').forEach(t => appDragWire(t, t.dataset.app, 'x'));
   var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
   function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
@@ -10582,10 +10631,14 @@ body { width: max-content !important; min-width: 0 !important; }
       const b = document.createElement('button');
       b.className = 'dock-b' + (on ? ' on' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
       b.addEventListener('click', () => dockClick(k));
+      if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
-    for (const [k, label, cls] of DOCK) {
+    const hid = appHidden();
+    const order = appOrder().map(a => a === 'navigator' ? 'folders' : a);
+    for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
       if (k === currentApp) continue;                     // the app you are in is not offered beside itself
+      if (hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideApp() === k;
       mk(k, label, dockIcon(cls), on, on ? `Close ${label} beside this` : `Open ${label} beside this`);
     }
@@ -10682,6 +10735,7 @@ body { width: max-content !important; min-width: 0 !important; }
     rs.addEventListener('dblclick', () => { sideState.w = 0; sideSave(); sideMount(); });
   })();
   document.body.classList.toggle('has-dock', !!isApp);
+  appApplyOrder();
 
   let claraView = null;
   function claraViewEnsure() {
