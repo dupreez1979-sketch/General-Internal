@@ -455,9 +455,14 @@
   body.mail-mode #tree, body.mail-mode #sNewFolder { display: none !important; }
   #mailSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.mail-mode #mailSide { display: block; }
-  .mailnav .mail-acc { display: flex; align-items: baseline; gap: 6px; padding: 12px 8px 5px; font-size: 11.5px; color: var(--muted); cursor: default; }
-  .mailnav .mail-acc b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mailnav .mail-acc.warn span { color: #B36E24; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  .mailnav .mail-acc { display: flex; align-items: center; gap: 6px; padding: 10px 8px 6px 6px; cursor: default; border-radius: 8px; }
+  .mailnav .mail-acc:hover { background: var(--hover); }
+  .mailnav .mail-acc .tw { width: 12px; font-size: 9px; color: var(--muted); flex: none; }
+  .mailnav .mail-acc > div { flex: 1; min-width: 0; display: grid; }
+  .mailnav .mail-acc b { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mailnav .mail-acc .em { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mailnav .mail-acc i { flex: none; width: 16px; height: 16px; border-radius: 50%; background: #D9363E; color: #fff; font: 700 11px/16px -apple-system, sans-serif; font-style: normal; text-align: center; }
+  .mailnav .mail-acc.warn .em { color: #B36E24; font-weight: 600; }
   .mailnav .mail-f { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; color: var(--text); }
   .mailnav .mail-f:hover { background: var(--hover); }
   .mailnav .mail-f.on { background: var(--sel); }
@@ -473,48 +478,88 @@
   #mailPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
   #mailPanel[hidden] { display: none; }
   .mail-sub { font-size: 12px; color: var(--muted); margin-left: 10px; }
-  .mail-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); }
-  .mail-list { overflow: auto; border-right: 1px solid var(--line); min-height: 0; }
-  .mail-m { padding: 9px 14px 10px; border-bottom: 1px solid var(--line); cursor: default; display: grid; gap: 2px; border-left: 3px solid transparent; }
+  .mail-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
+  .mail-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
+  .mail-fhead { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px 16px; }
+  .mail-fhead .cal-title { font-size: 16px; margin: 0; }
+  .mail-fhead .sp { flex: 1; }
+  .mail-fhead .tb.on { background: var(--sel); color: var(--text); }
+  .mail-cols { flex: none; display: grid; grid-template-columns: 62px 250px minmax(0, 1fr) 104px; padding: 4px 16px 6px 0; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .mail-list { flex: 1; overflow: auto; min-height: 0; }
+  .mail-g { padding: 8px 16px 6px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); cursor: default; white-space: pre; }
+  .mail-g:hover { color: var(--text); }
+  .mail-m { padding: 9px 14px 10px 0; border-bottom: 1px solid var(--line); cursor: default; display: grid; grid-template-columns: 18px 38px minmax(0, 1fr); column-gap: 4px; row-gap: 2px; align-items: center; }
   .mail-m:hover { background: var(--hover); }
   .mail-m.on { background: var(--sel); }
-  .mail-m.unread { border-left-color: var(--accent); }
-  .mail-m .l1 { display: flex; gap: 6px; align-items: baseline; }
-  .mail-m .l1 b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
-  .mail-m.unread .l1 b, .mail-m.unread .sj { font-weight: 700; }
+  .mail-m .dot { grid-row: 1 / span 3; justify-self: center; width: 7px; height: 7px; border-radius: 50%; }
+  .mail-m.unread .dot { background: var(--accent); }
+  .mail-m .avs { grid-row: 1 / span 3; align-self: start; }
+  .mail-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; letter-spacing: .02em; flex: none; }
+  .mail-m .l1 { display: flex; gap: 6px; align-items: baseline; grid-column: 3; }
+  .mail-m .l1 b { flex: 1; min-width: 0; }
+  .mail-m b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 500; }
+  .mail-m.unread b { font-weight: 700; }
+  .mail-m.unread .sj { font-weight: 700; color: var(--accent); }
+  .mail-m.unread .dt { color: var(--accent); font-weight: 600; }
   .mail-m .fl { font-size: 11px; color: #B36E24; flex: none; }
   .mail-m .dt { font-size: 11.5px; color: var(--muted); flex: none; }
-  .mail-m .sj { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .mail-m.unread .sj { color: var(--accent); }
-  .mail-m .pv { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-m .sj { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; grid-column: 3; }
+  .mail-m .pv { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; grid-column: 3; }
   .mail-list .more { margin: 12px auto; display: block; }
+  /* Reading pane off: one line a message in columns, as in Outlook (From, Subject with the first words, Date). */
+  .mail-body.wide .mail-m { grid-template-columns: 18px 38px 250px 34px minmax(0, 1fr) 104px; row-gap: 0; padding: 8px 16px 8px 0; }
+  .mail-body.wide .mail-m .dot, .mail-body.wide .mail-m .avs { grid-row: auto; align-self: center; }
+  .mail-body.wide .mail-m .sjw { display: flex; gap: 8px; min-width: 0; align-items: baseline; }
+  .mail-body.wide .mail-m .sj { flex: 0 1 auto; font-size: 13px; }
+  .mail-body.wide .mail-m .pv { flex: 1 1 0; min-width: 0; }
+  .mail-body.wide .mail-m .dt { text-align: right; font-size: 12px; }
+  .mail-body.wide .mail-m b { font-size: 14px; }
   .mail-read { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   .mail-rh { flex: none; padding: 14px 20px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
   .mail-rh h2 { margin: 0; font-size: 17px; line-height: 1.3; }
-  .mail-rh .who { display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
-  .mail-rh .who b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rh .who { display: flex; gap: 10px; align-items: center; font-size: 13px; }
+  .mail-rh .who > div { flex: 1; min-width: 0; }
+  .mail-rh .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rh .who .mail-av { width: 36px; height: 36px; font-size: 12.5px; }
   .mail-rh .dt, .mail-rh .to { font-size: 12px; color: var(--muted); }
   .mail-read iframe { flex: 1; border: 0; width: 100%; background: #fff; }
   .mail-body { position: relative; }
   .mail-body.nopane { grid-template-columns: minmax(0, 1fr); }
-  .mail-body.nopane .mail-list { border-right: 0; }
+  .mail-body.nopane .mail-col { border-right: 0; }
   .mail-read.pop { position: absolute; z-index: 4; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.3), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
   .mail-read.pop[hidden] { display: none; }
   .mail-read.pop .mail-rh { padding-right: 46px; }
   .mail-popx { position: absolute; top: 10px; right: 10px; z-index: 2; }
   .mail-shade { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.14); }
   .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
+  .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
   .mail-search { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 6px 10px; width: 220px; color: var(--text); margin-left: 6px; }
-  .mail-acts { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0 0 -6px; }
-  .mail-acts .tb { color: var(--text); }
+  .mail-tools { gap: 6px; }
+  .mail-acts { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
+  .mail-acts .tb { color: var(--text); padding: 0 8px; gap: 6px; flex: none; }
+  .mail-acts .tb:disabled { opacity: .35; }
+  .mail-acts .tb.on { color: #B36E24; }
+  .mail-tools .mail-pane-btn.on { background: var(--sel); color: var(--text); }
+  #sidePanel .mail-acts .tb .t { display: none; }
+  #sidePanel .mail-acts .tb { padding: 0 5px; }
   .mail-files, .mc-files { display: flex; flex-wrap: wrap; gap: 6px; }
   .mail-files { margin-top: 6px; }
   .mail-att { background: var(--field); border: 0; border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--text); }
   button.mail-att:hover { background: var(--sel); }
-  .mail-compose { position: absolute; top: 53px; bottom: 0; right: 0; left: min(380px, 45%); z-index: 5; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .mail-compose { position: absolute; top: 53px; bottom: 0; right: 0; left: min(400px, 45%); z-index: 5; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
   .mail-compose .mc-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
   .mail-compose .mc-bar .sp { flex: 1; }
-  .mail-compose .mc-from { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .mail-compose .mc-from { font-size: 13px; color: var(--text); padding: 8px 0; }
+  .mail-compose label[hidden] { display: none; }
+  .mail-compose label { grid-template-columns: 62px minmax(0, 1fr) auto !important; }
+  .mail-compose .mc-ccb { display: flex; gap: 2px; }
+  .mail-compose .mc-ccb .tb { font-size: 12px; height: 24px; }
+  .mail-compose .mc-fmt { flex: none; display: flex; align-items: center; gap: 2px; padding: 5px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .mail-compose .mc-fmt .tb { font-size: 12.5px; color: var(--text); min-width: 28px; }
+  .mail-compose .mc-fmt select { font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px; background: var(--win); color: var(--text); }
+  .mail-compose .mc-fmt .fsep { width: 1px; height: 16px; background: var(--line); margin: 0 5px; }
+  .mail-compose .mc-ed ul, .mail-compose .mc-ed ol { margin: 4px 0; padding-left: 26px; }
+  .mail-compose .mc-ed a { color: #0563C1; }
   .mail-compose label { flex: none; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
   .mail-compose label input { font: inherit; font-size: 13px; border: 0; background: none; padding: 8px 0; color: var(--text); outline: none; }
   .mail-compose .mc-files:not(:empty) { padding: 8px 14px; border-bottom: 1px solid var(--line); }
@@ -10194,21 +10239,32 @@ body { width: max-content !important; min-width: 0 !important; }
   const MAIL_ICON = { inbox: 'M2 9.5l1.6-5.6a1 1 0 011-.7h6.8a1 1 0 011 .7L14 9.5v2.7a1 1 0 01-1 1H3a1 1 0 01-1-1zM2 9.5h3.5l.8 1.5h3.4l.8-1.5H14', drafts: 'M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2', sentitems: 'M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3',
     archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
   const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // The sidebar, as in Outlook: New Email at the top, then each account (name over address) with its folders.
   function mailSideRender() {
     const sd = currentApp === 'mail' ? $('mailSide') : sideApp() === 'mail' ? $('spNav') : null;
     if (!sd) return;
     sd.classList.add('mailnav'); sd.classList.remove('calnav');
     sd.replaceChildren();
     const vis = mailVisible();
+    if (vis.length) {
+      const nw = document.createElement('button'); nw.className = 'btn-primary mail-new';
+      nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.8H4a1.5 1.5 0 00-1.5 1.5V12A1.5 1.5 0 004 13.5h7.7a1.5 1.5 0 001.5-1.5V7M7.2 9.3l.5-2.2 5-5 1.7 1.7-5 5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>New Email</span>';
+      nw.title = `Write a new message (${K.mod}N)`;
+      nw.addEventListener('click', () => mailCompose('new'));
+      sd.appendChild(nw);
+    }
+    mailState.shut = mailState.shut || {};
     for (const a of vis) {
-      const h = document.createElement('div'); h.className = 'mail-acc';
-      h.innerHTML = '<b></b><span></span>';
-      h.querySelector('b').textContent = a.email || a.name;
-      if (a.needsSignIn) { h.querySelector('span').textContent = 'Sign in again'; h.classList.add('warn'); }
-      h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nRight-click: which profiles it belongs to, sign in again, remove.`;
+      const shut = !!mailState.shut[a.id];
+      const h = document.createElement('div'); h.className = 'mail-acc' + (a.needsSignIn ? ' warn' : '');
+      h.innerHTML = `<span class="tw">${shut ? '▸' : '▾'}</span><div><b></b><span class="em"></span></div>${a.needsSignIn ? '<i title="Sign in again">!</i>' : ''}`;
+      h.querySelector('b').textContent = a.name || a.email;
+      h.querySelector('.em').textContent = a.needsSignIn ? 'Click to sign in again' : a.email;
+      h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nClick to hide or show its folders. Right-click: profiles, signature, sign in again, remove.`;
       h.addEventListener('contextmenu', e => { e.preventDefault(); mailAccountMenu(a, e.clientX, e.clientY); });
-      if (a.needsSignIn) h.addEventListener('click', () => mailAddAccount());
+      h.addEventListener('click', () => { if (a.needsSignIn) return mailAddAccount(); mailState.shut[a.id] = !shut; mailSave(); mailSideRender(); });
       sd.appendChild(h);
+      if (shut) continue;
       const F = mailUi.folders[a.id];
       if (!F) { sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading folders…' })); continue; }
       if (F.error) { sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: F.error })); continue; }
@@ -10216,7 +10272,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const b = document.createElement('div');
         const on = mailState.sel && mailState.sel.acc === a.id && mailState.sel.folder === f.id;
         b.className = 'mail-f' + (on ? ' on' : '') + (f.unreadItemCount ? ' unread' : '');
-        b.style.paddingLeft = (8 + depth * 14) + 'px';
+        b.style.paddingLeft = (10 + depth * 16) + 'px';
         const open = !!mailState.open[f.id];
         b.innerHTML = `<span class="tw">${f.childFolderCount ? (open ? '▾' : '▸') : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
         b.querySelector('.nm').textContent = f.displayName;
@@ -10243,7 +10299,7 @@ body { width: max-content !important; min-width: 0 !important; }
     add.innerHTML = `${UI.plus}<span>${mailUi.adding ? 'Waiting for you to sign in…' : 'Add an Account…'}</span>`;
     add.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom + 4, [
       { label: 'Microsoft 365, Outlook.com or Hotmail', run: () => mailAddAccount() },
-      { label: 'Gmail (coming next)', disabled: true, run: () => {} },
+      { label: 'Gmail (later)', disabled: true, run: () => {} },
     ]); });
     sd.appendChild(add);
     const hidden = (mailUi.accounts || []).length - vis.length;
@@ -10256,6 +10312,41 @@ body { width: max-content !important; min-width: 0 !important; }
     if (now - d < 6 * 86400e3) return d.toLocaleDateString('en-AU', { weekday: 'short' });
     return d.toLocaleDateString('en-AU', d.getFullYear() === now.getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
   };
+  // As Outlook's wide list shows it: the time today, "Yesterday", otherwise the date.
+  const mailWhenWide = iso => {
+    const d = new Date(iso), now = new Date(), day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    if (d.getTime() >= day0) return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    if (d.getTime() >= day0 - 86400e3) return 'Yesterday';
+    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  };
+  // Outlook's groups: Today, Yesterday, This Week, Last Week, This Month, Last Month, then by year.
+  const mailGroupOf = iso => {
+    const d = new Date(iso), now = new Date(), day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime(), t = d.getTime();
+    const week0 = day0 - ((now.getDay() + 6) % 7) * 86400e3;
+    if (t >= day0) return 'Today';
+    if (t >= day0 - 86400e3) return 'Yesterday';
+    if (t >= week0) return 'This Week';
+    if (t >= week0 - 7 * 86400e3) return 'Last Week';
+    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) return 'This Month';
+    const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    if (d.getFullYear() === lm.getFullYear() && d.getMonth() === lm.getMonth()) return 'Last Month';
+    return d.getFullYear() === now.getFullYear() ? 'This Year' : String(d.getFullYear());
+  };
+  const MAIL_AV = ['#B36E24', '#1B5A68', '#99351E', '#328276', '#7A4DB3', '#C2410C', '#2F7DD1', '#A61E69', '#4D7C0F', '#57606A'];
+  function mailAvatar(name, address) {
+    const src = (name || address || '?').trim();
+    const parts = src.replace(/[^\p{L}\p{N}\s@.]/gu, '').split(/[\s@.]+/).filter(Boolean);
+    const ini = ((parts[0] || '?')[0] + (parts.length > 1 && !/@/.test(src.split(' ')[0]) ? parts[parts.length - 1][0] : '')).toUpperCase();
+    let h = 0; for (const c of (address || src).toLowerCase()) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    const el = document.createElement('span'); el.className = 'mail-av'; el.textContent = ini; el.style.background = MAIL_AV[h % MAIL_AV.length];
+    return el;
+  }
+  const MAIL_TOOL = {
+    del: 'M2.5 4.5h11M6.5 4.5V3a.8.8 0 01.8-.8h1.4a.8.8 0 01.8.8v1.5M4 4.5l.7 8.3a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8.3', reply: 'M6.5 4L2.5 8l4 4M3 8h6a4.5 4.5 0 014.5 4.5', replyAll: 'M5.5 4L1.5 8l4 4M9 4L5 8l4 4M5.5 8H10a3.5 3.5 0 013.5 3.5',
+    forward: 'M9.5 4l4 4-4 4M13 8H7a4.5 4.5 0 00-4.5 4.5', sync: 'M13 8a5 5 0 01-8.7 3.4M3 8a5 5 0 018.7-3.4M11.5 2v2.8H8.7M4.5 14v-2.8h2.8', move: 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1zM6 8.8h4M8.5 7l1.8 1.8-1.8 1.8',
+    unread: 'M2 4.5h9.5M2 4.5v7.5h12V7M2 4.5l6 4.5 3-2.2M13.2 2.6a1.6 1.6 0 110 3.2 1.6 1.6 0 010-3.2', flag: 'M4 14V2.5M4 3h8l-1.6 2.8L12 8.6H4', archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', filter: 'M2.5 4h11M4.5 8h7M6.5 12h3',
+  };
+  const mailToolIcon = k => `<svg width="16" height="16" viewBox="0 0 16 16"><path d="${MAIL_TOOL[k]}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   function mailRender() { if (!mailOn()) return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
   function mailRenderMain() {
     const P = $('mailPanel');
@@ -10266,83 +10357,114 @@ body { width: max-content !important; min-width: 0 !important; }
     if (mailUi.accounts !== null && !vis.length) {
       const e = document.createElement('div'); e.className = 'cal-empty';
       const other = (mailUi.accounts || []).length;
-      e.innerHTML = `<b>Your mail, here</b><span>${other ? 'No account belongs to this profile yet. Add one, or choose All Profiles to see the accounts you have already added (right-click one to say which profiles it belongs to).' : 'Add your Microsoft 365, Outlook.com or Hotmail account. You sign in on Microsoft’s own page in your web browser, once: the app keeps you signed in after that, through restarts and updates. Your password is never seen by the app.'}</span>`;
+      e.innerHTML = `<b>Your mail, here</b><span>${other ? 'No account belongs to this profile yet. Add one, or choose All Profiles to see the accounts you have already added (which profiles an account belongs to is in each profile’s settings).' : 'Add your Microsoft 365, Outlook.com or Hotmail account. You sign in on Microsoft’s own page in your web browser, once: the app keeps you signed in after that, through restarts and updates. Your password is never seen by the app.'}</span>`;
       const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add an Account…'; b.addEventListener('click', () => mailAddAccount());
       e.appendChild(b); P.appendChild(e); return;
     }
     const s = mailState.sel;
     const acc = s && (mailUi.accounts || []).find(a => a.id === s.acc);
-    const head = document.createElement('div'); head.className = 'cal-head';
-    head.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
-    head.querySelector('b').textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
-    head.querySelector('.mail-sub').textContent = acc ? acc.email : '';
-    const nw = document.createElement('button'); nw.className = 'btn-primary mail-new'; nw.textContent = 'New Message'; nw.title = acc ? `Write a new message from ${acc.email}` : '';
-    nw.addEventListener('click', () => mailCompose('new'));
-    head.insertBefore(nw, head.firstChild);
-    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = acc ? `Search ${acc.email}` : 'Search'; sr.value = mailUi.search || '';
+    const m = mailUi.msg, d = mailUi.msgBody;
+    const popped = mailPopped(), inSide = sideApp() === 'mail' && currentApp !== 'mail';
+    // The toolbar across the top, as in Outlook: what you can do with the message you have chosen.
+    const head = document.createElement('div'); head.className = 'cal-head mail-tools';
+    const tool = (icon, label, title, run, opts = {}) => {
+      const b = document.createElement('button'); b.className = 'tb' + (opts.on ? ' on' : ''); b.innerHTML = `${mailToolIcon(icon)}<span class="t"></span>`; b.querySelector('.t').textContent = label;
+      b.title = title; b.disabled = !!opts.off; b.addEventListener('click', run); acts.appendChild(b); return b;
+    };
+    if (inSide) { const nw = document.createElement('button'); nw.className = 'btn-primary mail-new'; nw.textContent = 'New Email'; nw.addEventListener('click', () => mailCompose('new')); head.appendChild(nw); }
+    const acts = document.createElement('div'); acts.className = 'mail-acts';
+    const none = !m;
+    const flagged = m && m.flag && m.flag.flagStatus === 'flagged';
+    tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
+    tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+    tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
+    tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
+    tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
+    tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
+    tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
+    tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
+    tool('flag', flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged });
+    head.appendChild(acts);
+    head.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
+    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search'; sr.title = acc ? `Search ${acc.email} (${K.mod}F)` : 'Search'; sr.value = mailUi.search || '';
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
     const paneOn = mailState.pane !== false;
-    const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 3v10" stroke="currentColor" stroke-width="1.3"/></svg><span class="t">Reading Pane</span>';
-    pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
+    const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 3v10" stroke="currentColor" stroke-width="1.3"/></svg>';
+    pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up, and the list shows columns).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
     pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
     head.appendChild(pn);
-    const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = UI.reload; rf.title = 'Check for new mail';
-    rf.addEventListener('click', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true); });
-    head.appendChild(rf);
     P.appendChild(head);
-    const body = document.createElement('div'); body.className = 'mail-body' + (mailPopped() ? ' nopane' : '');
+    const body = document.createElement('div'); body.className = 'mail-body' + (popped ? ' nopane' : '') + (popped && !inSide ? ' wide' : '');
+    const col = document.createElement('div'); col.className = 'mail-col';
+    // The folder's name, with a filter, then the messages in Outlook's date groups.
+    const fh = document.createElement('div'); fh.className = 'mail-fhead';
+    fh.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
+    fh.querySelector('b').textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
+    fh.querySelector('.mail-sub').textContent = acc ? acc.email : '';
+    const flt = document.createElement('button'); flt.className = 'tb' + (mailUi.onlyUnread ? ' on' : ''); flt.innerHTML = `${mailToolIcon('filter')}<span class="t">${mailUi.onlyUnread ? 'Unread' : 'All'}</span>`;
+    flt.title = mailUi.onlyUnread ? 'Showing unread messages only. Click to show all.' : 'Showing all messages. Click to show only unread.';
+    flt.addEventListener('click', () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); });
+    fh.appendChild(flt);
+    col.appendChild(fh);
+    const wide = popped && !inSide;
+    if (wide) { const ch = document.createElement('div'); ch.className = 'mail-cols'; ch.innerHTML = '<span></span><span>From</span><span>Subject</span><span>Date</span>'; col.appendChild(ch); }
     const list = document.createElement('div'); list.className = 'mail-list';
     if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
     const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
-    for (const m of mailUi.msgs || []) {
+    mailUi.shutGroups = mailUi.shutGroups || {};
+    let group = null;
+    const shown = (mailUi.msgs || []).filter(x => !mailUi.onlyUnread || !x.isRead || (m && x.id === m.id));
+    for (const x of shown) {
+      const g = mailGroupOf(x.receivedDateTime);
+      if (g !== group && !mailUi.search) {
+        group = g;
+        const gh = document.createElement('div'); gh.className = 'mail-g'; gh.textContent = `${mailUi.shutGroups[g] ? '▸' : '▾'}  ${g}`;
+        gh.addEventListener('click', () => { mailUi.shutGroups[g] = !mailUi.shutGroups[g]; mailRenderMain(); });
+        list.appendChild(gh);
+      }
+      if (!mailUi.search && mailUi.shutGroups[g]) continue;
+      const who = sent ? (x.toRecipients || [])[0] : x.from;
+      const name = sent ? (x.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(x.from) || '(No sender)';
       const r = document.createElement('div');
-      r.className = 'mail-m' + (m.isRead ? '' : ' unread') + (mailUi.msg && mailUi.msg.id === m.id ? ' on' : '');
-      r.innerHTML = '<div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
-      r.querySelector('b').textContent = sent ? (m.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(m.from) || '(No sender)';
-      r.querySelector('.fl').textContent = `${m.importance === 'high' ? '! ' : ''}${m.hasAttachments ? '📎 ' : ''}${m.flag && m.flag.flagStatus === 'flagged' ? '⚑' : ''}`;
-      r.querySelector('.dt').textContent = mailWhen(m.receivedDateTime);
-      r.querySelector('.sj').textContent = m.subject || '(No subject)';
-      r.querySelector('.pv').textContent = (m.bodyPreview || '').replace(/\s+/g, ' ');
-      r.addEventListener('click', () => mailOpen(m));
-      r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(m, e.clientX, e.clientY); });
+      r.className = 'mail-m' + (x.isRead ? '' : ' unread') + (m && m.id === x.id ? ' on' : '');
+      r.innerHTML = wide ? '<i class="dot"></i><span class="avs"></span><b></b><span class="fl"></span><div class="sjw"><span class="sj"></span><span class="pv"></span></div><span class="dt"></span>'
+        : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
+      r.querySelector('.avs').appendChild(mailAvatar(who && who.emailAddress && who.emailAddress.name, who && who.emailAddress && who.emailAddress.address));
+      r.querySelector('b').textContent = name;
+      r.querySelector('.fl').textContent = `${x.importance === 'high' ? '! ' : ''}${x.hasAttachments ? '📎 ' : ''}${x.flag && x.flag.flagStatus === 'flagged' ? '⚑' : ''}`;
+      r.querySelector('.dt').textContent = wide ? mailWhenWide(x.receivedDateTime) : mailWhen(x.receivedDateTime);
+      r.querySelector('.sj').textContent = x.subject || '(No subject)';
+      r.querySelector('.pv').textContent = (x.bodyPreview || '').replace(/\s+/g, ' ');
+      r.addEventListener('click', () => mailOpen(x));
+      r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
     }
     if (mailUi.loading) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading…' }));
-    else if (mailUi.msgs && !mailUi.msgs.length && !mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Nothing in this folder.' }));
+    else if (mailUi.msgs && !shown.length && !mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.onlyUnread && mailUi.msgs.length ? 'Nothing unread here.' : 'Nothing in this folder.' }));
     else if (mailUi.next) { const more = document.createElement('button'); more.className = 'btn more'; more.textContent = 'Show Older Messages'; more.addEventListener('click', () => mailLoadMessages(false)); list.appendChild(more); }
+    col.appendChild(list);
     const read = document.createElement('div'); read.className = 'mail-read';
-    const m = mailUi.msg, d = mailUi.msgBody;
-    const popped = mailPopped();
     if (popped) {
       read.classList.add('pop'); read.hidden = !m;
-      const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '\u2715'; x.title = 'Close (Esc)';
+      const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '✕'; x.title = 'Close (Esc)';
       x.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); });
       read.appendChild(x);
     }
     if (!m) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
     else {
       const hd = document.createElement('div'); hd.className = 'mail-rh';
-      hd.innerHTML = '<h2></h2><div class="who"><b></b><span class="dt"></span></div><div class="to"></div>';
+      hd.innerHTML = '<h2></h2><div class="who"><span class="avs"></span><div><b></b><div class="to"></div></div><span class="dt"></span></div>';
       hd.querySelector('h2').textContent = m.subject || '(No subject)';
-      hd.querySelector('b').textContent = m.from && m.from.emailAddress ? `${m.from.emailAddress.name || ''} <${m.from.emailAddress.address || ''}>` : '';
+      const fe = m.from && m.from.emailAddress;
+      hd.querySelector('.avs').appendChild(mailAvatar(fe && fe.name, fe && fe.address));
+      hd.querySelector('b').textContent = fe ? `${fe.name || ''} <${fe.address || ''}>` : '';
       hd.querySelector('.dt').textContent = new Date(m.receivedDateTime).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-      const to = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
-      hd.querySelector('.to').textContent = to;
-      const bar = document.createElement('div'); bar.className = 'mail-acts';
-      const flagged = m.flag && m.flag.flagStatus === 'flagged';
-      for (const [l, t, run] of [['Reply', 'Reply to the sender', () => mailCompose('reply', m)], ['Reply All', 'Reply to everyone', () => mailCompose('replyAll', m)], ['Forward', 'Forward this message', () => mailCompose('forward', m)],
-        ['Archive', 'Move to Archive', () => mailAct(m, 'archive')], ['Delete', 'Move to Deleted Items', () => mailAct(m, 'delete')], [flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag')], ['Unread', 'Mark as unread', () => mailAct(m, 'read', false)]]) {
-        const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = l; b.title = t; b.addEventListener('click', run); bar.appendChild(b);
-      }
-      const mv = document.createElement('button'); mv.className = 'tb'; mv.innerHTML = '<span class="t">Move\u2026</span>'; mv.title = 'Move to another folder';
-      mv.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: '\u2003'.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); });
-      bar.appendChild(mv);
-      hd.appendChild(bar);
+      hd.querySelector('.to').textContent = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
       if (d && d.files && d.files.length) {
         const fl = document.createElement('div'); fl.className = 'mail-files';
-        for (const a of d.files) { const c = document.createElement('button'); c.className = 'mail-att'; c.textContent = `\uD83D\uDCCE ${a.name}${a.size ? ` (${a.size > 1e6 ? (a.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1e3)) + ' KB'})` : ''}`; c.title = 'Open it (it is saved in Downloads)'; c.addEventListener('click', () => mailOpenAttachment(a)); fl.appendChild(c); }
+        for (const a of d.files) { const c = document.createElement('button'); c.className = 'mail-att'; c.textContent = `📎 ${a.name}${a.size ? ` (${a.size > 1e6 ? (a.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1e3)) + ' KB'})` : ''}`; c.title = 'Open it (it is saved in Downloads)'; c.addEventListener('click', () => mailOpenAttachment(a)); fl.appendChild(c); }
         hd.appendChild(fl);
       }
       read.appendChild(hd);
@@ -10358,13 +10480,12 @@ body { width: max-content !important; min-width: 0 !important; }
         read.appendChild(fr0);
       }
     }
-    body.append(list, read);
+    body.append(col, read);
     if (popped && m) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); }); body.appendChild(shade); }
     P.appendChild(body);
     if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
   }
-
   // ----- Mail: attachments, actions, folders, search, and writing -----
   const mailEsc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   // A message's attachments: files to open, and the pictures placed inside it (cid: links become the pictures).
@@ -10528,6 +10649,15 @@ body { width: max-content !important; min-width: 0 !important; }
     const address = m ? m[2] : x, name = m ? m[1].trim().replace(/^"|"$/g, '') : '';
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? { emailAddress: name ? { address, name } : { address } } : { bad: x };
   });
+  function mailAskLink(start, done) {
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
+    d.innerHTML = '<h2>Link</h2><input style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box" placeholder="https://"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Add Link</button></div>';
+    const inp = d.querySelector('input'); inp.value = start || '';
+    const fin = ok => { let v = inp.value.trim(); d.close(); d.remove(); if (ok && v) { if (!/^[a-z]+:/i.test(v)) v = 'https://' + v; if (/^(https?|mailto):/i.test(v)) done(v); } };
+    d.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x) fin(x === 'ok'); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fin(true); } });
+    document.body.appendChild(d); d.showModal(); inp.focus();
+  }
   async function mailCompose(mode, m) {
     const s = mailState.sel, acc = mailAccOf();
     if (!acc) return toast('Choose an account first');
@@ -10541,16 +10671,33 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = r.data;
     const C = mailUi.compose = { acc: acc.id, id: d.id, mode, quoted: mode === 'new' ? '' : (d.body && d.body.content) || '', files: [] };
     const el = document.createElement('div'); el.className = 'mail-compose';
-    el.innerHTML = `<div class="mc-bar"><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach</span></button><span class="mc-from"></span><span class="sp"></span><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="close" title="Close and keep it in Drafts">✕</button></div>
-      <label><span>To</span><input name="to" autocomplete="off" spellcheck="false"></label><div class="mc-sug" hidden></div>
-      <label><span>Cc</span><input name="cc" autocomplete="off" spellcheck="false"></label>
-      <label><span>Bcc</span><input name="bcc" autocomplete="off" spellcheck="false"></label>
-      <label><span>Subject</span><input name="subject"></label>
+    const fb = (cmd, html, title, arg) => `<button type="button" class="tb" data-cmd="${cmd}"${arg ? ` data-arg="${arg}"` : ''} title="${title}">${html}</button>`;
+    el.innerHTML = `<div class="mc-bar"><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><span class="sp"></span><button class="tb" data-x="close" title="Close and keep it in Drafts">\u2715</button></div>
+      <label class="from"><span>From:</span><span class="mc-from"></span></label>
+      <label><span>To:</span><input name="to" autocomplete="off" spellcheck="false"><span class="mc-ccb"><button type="button" class="tb" data-x="cc">Cc</button><button type="button" class="tb" data-x="bcc">Bcc</button></span></label><div class="mc-sug" hidden></div>
+      <label data-row="cc" hidden><span>Cc:</span><input name="cc" autocomplete="off" spellcheck="false"></label>
+      <label data-row="bcc" hidden><span>Bcc:</span><input name="bcc" autocomplete="off" spellcheck="false"></label>
+      <label><span>Subject:</span><input name="subject"></label>
       <div class="mc-files"></div>
+      <div class="mc-fmt">${fb('bold', '<b>B</b>', 'Bold')}${fb('italic', '<i>I</i>', 'Italic')}${fb('underline', '<u>U</u>', 'Underline')}<span class="fsep"></span>
+        <select data-cmd="fontSize" title="Text size"><option value="2">Small</option><option value="3" selected>Normal</option><option value="5">Large</option><option value="6">Huge</option></select><span class="fsep"></span>
+        ${fb('insertUnorderedList', '\u2022 List', 'Bulleted list')}${fb('insertOrderedList', '1. List', 'Numbered list')}${fb('outdent', '\u21E4', 'Less indent')}${fb('indent', '\u21E5', 'More indent')}<span class="fsep"></span>
+        ${fb('link', 'Link', 'Make the selected words a link')}${fb('removeFormat', 'Clear', 'Remove formatting from the selected words')}</div>
       <div class="mc-scroll"><div class="mc-ed" contenteditable="true"></div><div class="mc-quote"></div></div><input type="file" multiple hidden>`;
     const f = n => el.querySelector(`[name="${n}"]`);
     f('to').value = mailAddrs(d.toRecipients); f('cc').value = mailAddrs(d.ccRecipients); f('bcc').value = mailAddrs(d.bccRecipients); f('subject').value = d.subject || '';
-    el.querySelector('.mc-from').textContent = `From ${acc.email}`;
+    el.querySelector('.mc-from').textContent = `${acc.name || ''} (${acc.email})`;
+    const showRow = n => { el.querySelector(`[data-row="${n}"]`).hidden = false; const b = el.querySelector(`[data-x="${n}"]`); if (b) b.hidden = true; };
+    if (f('cc').value) showRow('cc'); if (f('bcc').value) showRow('bcc');
+    // Formatting acts on what is selected in the message (the buttons do not take the cursor away).
+    el.querySelector('.mc-fmt').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+    el.querySelector('.mc-fmt').addEventListener('click', e => {
+      const b = e.target.closest('button[data-cmd]'); if (!b) return;
+      el.querySelector('.mc-ed').focus();
+      if (b.dataset.cmd === 'link') { const sel = String(window.getSelection()); const u = /^https?:\/\//i.test(sel.trim()) ? sel.trim() : ''; mailAskLink(u, url => { el.querySelector('.mc-ed').focus(); document.execCommand('createLink', false, url); }); return; }
+      document.execCommand(b.dataset.cmd, false, null);
+    });
+    el.querySelector('.mc-fmt select').addEventListener('change', e => { el.querySelector('.mc-ed').focus(); document.execCommand('fontSize', false, e.target.value); });
     const ed = el.querySelector('.mc-ed');
     const sig = mailSigOf(acc.id);
     if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
@@ -10605,6 +10752,16 @@ body { width: max-content !important; min-width: 0 !important; }
       const x = e.target.closest('[data-x]'); if (!x || C.sending) return;
       const what = x.dataset.x;
       if (what === 'attach') return fileIn.click();
+      if (what === 'cc' || what === 'bcc') { showRow(what); return f(what).focus(); }
+      if (what === 'sig') {
+        const r0 = x.getBoundingClientRect();
+        return showMenu(r0.left, r0.bottom + 4, [
+          { label: 'Put My Signature In', disabled: !mailSigOf(acc.id), run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = mailSigOf(acc.id); if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } },
+          { label: 'Take It Out', disabled: !ed.querySelector('.mc-sig'), run: () => { const old = ed.querySelector('.mc-sig'); if (old) old.remove(); } },
+          '-',
+          { label: 'Change My Signature\u2026', run: () => mailEditSignature(acc) },
+        ]);
+      }
       if (what === 'discard') { if (!confirm('Delete this draft?')) return; await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}` }); toast('Draft deleted'); return shut(); }
       const v = fields();
       if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? 'Kept in Drafts' : `Could not save the draft: ${sv.error || ''}`); return shut(); }
