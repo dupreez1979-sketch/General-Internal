@@ -233,14 +233,14 @@
 
   /* ---------- Apps and Chief of Staff ---------- */
   .app-btn { -webkit-app-region: no-drag; color: var(--muted); }
-  #appPop { position: fixed; z-index: 60; background: var(--win); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 420px; }
+  #appPop { position: fixed; z-index: 60; background: var(--win); border-radius: 14px; box-shadow: 0 12px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 8px; display: grid; grid-auto-flow: column; grid-auto-columns: 92px; gap: 4px; }
   #appPop[hidden] { display: none; }
-  .app-tile { display: grid; justify-items: start; gap: 4px; text-align: left; padding: 12px; border-radius: 10px; border: 1.5px solid transparent; background: none; color: var(--text); }
+  .app-tile { display: grid; justify-items: center; align-content: start; gap: 7px; text-align: center; padding: 12px 6px 10px; border-radius: 10px; border: 1.5px solid transparent; background: none; color: var(--text); }
   .app-tile:hover { background: var(--hover); }
   .app-tile.on { border-color: var(--accent); }
-  .app-tile b { font-size: 14px; }
-  .app-tile span:last-child { font-size: 11.5px; color: var(--muted); line-height: 1.35; }
-  .app-ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #fff; }
+  .app-tile b { font-size: 12.5px; line-height: 1.2; max-width: 72px; }     /* the name in a neat block, over two lines if need be */
+  .app-ic { width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center; color: #fff; }
+  .app-ic.notes { background: #E0A800; }
   .app-ic.nav { background: #3D8BE6; }
   .app-ic.cos { background: #1B5A68; }
   .app-ic svg { width: 20px; height: 20px; }
@@ -369,6 +369,18 @@
   /* Apple Notes from iCloud: a floating panel that stays open (and signed in) while you work */
   #notesPanel { position: fixed; z-index: 45; display: flex; flex-direction: column; background: var(--win); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22); overflow: hidden; resize: both; min-width: 300px; min-height: 260px; }
   #notesPanel[hidden] { display: none; }
+  /* Notes as its own app: the panel fills the main area, and the sidebar lists your notes. */
+  body.notes-mode #main > :not(#notesPanel) { display: none !important; }
+  body.notes-mode #notesPanel { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; border: 0; border-radius: 0; box-shadow: none; resize: none; z-index: 1; }
+  body.notes-mode #notesPanel .fhead { cursor: default; }
+  #notesSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
+  body.notes-mode #notesSide { display: block; }
+  body.notes-mode #tree, body.notes-mode #sNewFolder { display: none !important; }
+  #notesSide .cos-side-h { padding: 8px 8px 6px; }
+  #notesSide button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--text); text-align: left; }
+  #notesSide button:hover { background: var(--hover); }
+  #notesSide button.on { background: var(--sel); font-weight: 600; }
+  #notesSide button.add { color: var(--muted); }
   #notesPanel .fhead { cursor: move; }
   #notesPanel .ntabs { display: flex; gap: 2px; padding: 4px 8px; border-bottom: 1px solid var(--line); flex: none; overflow-x: auto; }
   #notesPanel .ntabs button { background: none; border: 0; border-radius: 6px; padding: 4px 10px; font: inherit; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
@@ -925,11 +937,12 @@
 
 <aside id="side" aria-label="Sidebar">
   <div class="side-top"><span class="brand">Claude Navigator</span>
-    <button class="tb app-btn" id="appBtn" title="Apps: Navigator and Chief of Staff"><span data-icon="apps"></span></button>
+    <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator and Notes"><span data-icon="apps"></span></button>
     <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="pname">All Profiles</span><span class="pchev" data-icon="chev"></span></button>
   </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
   <div id="cosSide" hidden aria-label="Team"></div>
+  <div id="notesSide" aria-label="Notes"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
@@ -1009,8 +1022,9 @@
   <div id="cosSrcHead"></div>
 </main>
 <div id="appPop" hidden role="dialog" aria-label="Apps">
-  <button class="app-tile" data-app="navigator"><span class="app-ic nav"></span><b>Navigator</b><span>Your folders, Claude chats and artifacts, monday.com boards and files</span></button>
-  <button class="app-tile" data-app="cos"><span class="app-ic cos"></span><b>Chief of Staff</b><span>Your AI team: who does what, their work, skills and routines</span></button>
+  <button class="app-tile" data-app="cos" title="Your AI team: who does what, their work, skills and routines"><span class="app-ic cos"></span><b>Chief of Staff</b></button>
+  <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and artifacts, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
+  <button class="app-tile" data-app="notes" title="Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
 </div>
 
 <div id="menu" role="menu"></div>
@@ -1690,6 +1704,7 @@
     });
     if (changed) save();
   }
+  var tidyFresh = false;
   const tidyKeep = () => state.loc.kind === 'folder' && state.loc.id ? state.loc.id : state.lastFolderId;
   function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
@@ -2139,6 +2154,7 @@
     }
     // Open the folders above the highlighted row so you can see it (once per place).
     // (Not while in Chief of Staff: going through staff pages there should not open folders in Navigator's sidebar.)
+    if (tidyFresh) { tidyFresh = false; lastRevealed = state.sideSel; }   // a fresh start stays collapsed
     if (currentApp !== 'cos' && state.sideSel && !String(state.sideSel).startsWith('lib:') && state.sideSel !== lastRevealed) {
       lastRevealed = state.sideSel;
       let l = locate(state.sideSel), changed = false;
@@ -6367,23 +6383,25 @@
 
   // ---------- Apps: Navigator and Chief of Staff ----------
   // The nine-dot button switches between the apps. Each keeps its own place.
-  var currentApp = ls.get('claudeNavigator.app') === 'cos' ? 'cos' : 'navigator';
+  var currentApp = ['cos', 'notes'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
     if (typeof cosUi !== 'undefined') cosUi.making = null;
   }
   function setApp(a) {
+    if (a === 'notes' && currentApp !== 'notes') { try { notesState.from = currentApp; } catch (e) { /* starting up */ } }
     cosEndMaking();
     if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash', 'cos-clara'); $('claraHost').hidden = true; cosReturnSource(); }
     if (a !== 'cos' && currentApp === 'cos') {
       // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
-      tidyTree(null);
-      try { const c = state.loc.kind === 'folder' ? { id: state.loc.id } : { id: pageContext().linkId || pageContext().folderId }; lastRevealed = c.id || lastRevealed; } catch (e) { /* not ready */ }
+      tidyTree(null); tidyFresh = true;
     }
-    currentApp = a === 'cos' ? 'cos' : 'navigator';
+    currentApp = a === 'cos' ? 'cos' : a === 'notes' ? 'notes' : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
+    document.body.classList.toggle('notes-mode', currentApp === 'notes');
+    try { notesRender(); } catch (e) { /* starting up */ }
     $('cosSide').hidden = currentApp !== 'cos';
     $('cosMain').hidden = currentApp !== 'cos';
     $('appPop').hidden = true;
@@ -6394,6 +6412,7 @@
   }
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
   $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
+  $('appPop').querySelector('.app-ic.notes').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
   $('appBtn').addEventListener('click', e => {
     e.stopPropagation();
     const pop = $('appPop');
@@ -8821,9 +8840,11 @@ body { width: max-content !important; min-width: 0 !important; }
   function notesToggle(on = !notesState.open) { notesState.open = on; notesSave(); notesRender(); }
   function notesRender() {
     const p = $('notesPanel');
+    const app = currentApp === 'notes';
     $('sNotes').classList.toggle('on', notesState.open);
-    p.hidden = !notesState.open;
-    if (!notesState.open) return;
+    p.hidden = !(notesState.open || app);
+    notesSideRender();
+    if (p.hidden) return;
     const g = notesState.geo || {};
     const W = window.innerWidth, H = window.innerHeight;
     const w = Math.min(g.w || 420, W - 40), h = Math.min(g.h || Math.min(640, H - 140), H - 60);
@@ -8833,7 +8854,7 @@ body { width: max-content !important; min-width: 0 !important; }
       p.innerHTML = '<div class="fhead"><span class="fname">Notes</span><span class="ftitle"></span><span class="fctl"></span></div><div class="ntabs"></div><div class="nbody"></div>';
       const head = p.querySelector('.fhead');
       head.addEventListener('pointerdown', e => {
-        if (e.target.closest('button')) return;
+        if (e.target.closest('button') || currentApp === 'notes') return;
         const r = p.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
         p.classList.add('dragging'); document.body.classList.add('dragging-any');
         const move = ev => { p.style.left = Math.max(0, Math.min(ev.clientX - dx, window.innerWidth - 80)) + 'px'; p.style.top = Math.max(0, Math.min(ev.clientY - dy, window.innerHeight - 40)) + 'px'; };
@@ -8845,8 +8866,16 @@ body { width: max-content !important; min-width: 0 !important; }
       const b = (html, title, run) => { const x = document.createElement('button'); x.innerHTML = html; x.title = title; x.addEventListener('click', run); ctl.appendChild(x); };
       b(UI.reload, 'Reload this note', () => { const v = notesViews.get(notesState.cur); if (v) try { v.reload(); } catch (e) { /* loading */ } });
       b(UI.external, 'Open this note in your web browser', () => { const n = notesState.list.find(x => x.id === notesState.cur); if (n) openExternal(n.url); });
-      b(FICON.hide, 'Close (the note stays signed in; the Notes button at the foot of the sidebar opens it again)', () => notesToggle(false));
+      // As an app: Keep Open floats it over the other apps while you work. Floating: Close.
+      const fl = document.createElement('button'); fl.className = 'nfloat'; fl.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5V3.5A1.5 1.5 0 017 2h5.5A1.5 1.5 0 0114 3.5V9a1.5 1.5 0 01-1.5 1.5H10.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>'; ctl.appendChild(fl);
+      fl.addEventListener('click', () => {
+        if (currentApp === 'notes') { notesState.open = true; notesSave(); setApp(notesState.from || 'navigator'); }
+        else { notesState.open = false; notesSave(); setApp('notes'); }
+      });
+      b(FICON.hide, 'Close (the note stays signed in; open Notes again from the apps button at the top)', () => { if (currentApp === 'notes') setApp(notesState.from || 'navigator'); else notesToggle(false); });
     }
+    const fl = p.querySelector('.nfloat');
+    if (fl) fl.title = app ? 'Keep it open in a floating window while you use the other apps' : 'Show Notes full size, as an app';
     const tabs = p.querySelector('.ntabs'), body = p.querySelector('.nbody');
     tabs.replaceChildren();
     if (!notesState.list.find(x => x.id === notesState.cur)) notesState.cur = (notesState.list[0] || {}).id || null;
@@ -8887,6 +8916,20 @@ body { width: max-content !important; min-width: 0 !important; }
       body.appendChild(v);
     }
   }
+  function notesSideRender() {
+    const sd = $('notesSide');
+    if (!sd || currentApp !== 'notes') return;
+    sd.replaceChildren();
+    const h = document.createElement('div'); h.className = 'cos-side-h'; h.textContent = 'Notes'; sd.appendChild(h);
+    for (const n of notesState.list) {
+      const b = document.createElement('button'); b.className = n.id === notesState.cur ? 'on' : '';
+      b.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#E0A800" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5" stroke="#E0A800" stroke-width="1.3" stroke-linecap="round"/></svg><span></span>';
+      b.querySelector('span').textContent = n.name;
+      b.addEventListener('click', () => { notesState.cur = n.id; notesSave(); notesRender(); });
+      sd.appendChild(b);
+    }
+    const a = document.createElement('button'); a.className = 'add'; a.innerHTML = `${UI.plus}<span>Add a Note\u2026</span>`; a.addEventListener('click', () => notesAdd()); sd.appendChild(a);
+  }
   function notesKeepGeo() {
     const r = $('notesPanel').getBoundingClientRect();
     if (!r.width) return;
@@ -8894,7 +8937,7 @@ body { width: max-content !important; min-width: 0 !important; }
     clearTimeout(notesKeepGeo.t); notesKeepGeo.t = setTimeout(notesSave, 400);
   }
   $('sNotes').addEventListener('click', () => notesToggle());
-  $('sNotes').hidden = !isApp;
+  $('sNotes').hidden = true;      // Notes is an app now (the apps button at the top)
   setTimeout(() => { try { notesRender(); } catch (e) { /* starting up */ } }, 0);
 
   let claraView = null;
@@ -10389,7 +10432,7 @@ body { width: max-content !important; min-width: 0 !important; }
       nav.hist[nav.pos] = state.loc;
     }
     lastRevealed = null;
-    if (!quiet) tidyTree(tidyKeep());
+    if (!quiet) { tidyTree(null); tidyFresh = true; }
     renderAll();
     if (currentApp === 'cos') renderCos();
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
@@ -10811,7 +10854,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
       if (s.listLoc && (s.listLoc.kind === 'library' || (s.listLoc.kind === 'folder' && (!s.listLoc.id || nodeOf(s.listLoc.id))))) state.listLoc = s.listLoc;
     }
   } catch (e) { /* ignore */ }
-  try { tidyTree(start.kind === 'folder' && start.id ? start.id : startFolder); } catch (e) { /* first run */ }
+  try { tidyTree(null); tidyFresh = true; } catch (e) { /* first run */ }     // opening the app: every folder collapsed, Team included
   applyProfileTheme();
   applyFrames(false);
   repairGenericNames();
@@ -10848,7 +10891,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   renderSide();
   state.lastFolderId = startFolder;
   go(start);
-  if (currentApp === 'cos') setApp('cos');
+  if (currentApp === 'cos' || currentApp === 'notes') setApp(currentApp);
   if (isApp) {
     setTimeout(() => refreshLibrary(false), 4000);
     setInterval(() => refreshLibrary(false), 10 * 60e3);
