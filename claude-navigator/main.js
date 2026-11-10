@@ -1058,7 +1058,34 @@ ipcMain.handle('update-check', async () => {
   try { await updater.checkForUpdates(); } catch (e) { update.state = 'error'; update.error = String(e.message || e); }
   return Object.assign({ current: app.getVersion() }, update);
 });
-ipcMain.handle('update-install', () => { if (updater && update.state === 'ready') setImmediate(() => updater.quitAndInstall()); });
+ipcMain.handle('update-install', async () => {
+  if (!updater || update.state !== 'ready') return;
+  try { await session.fromPartition(PARTITION).cookies.flushStore(); } catch (e) { /* quit anyway */ }
+  setImmediate(() => updater.quitAndInstall());
+});
+
+// Stay signed in across restarts and updates. Many sites (iCloud among them) sign you in with "session" cookies,
+// which are thrown away whenever the app quits, and every update quits the app. They are kept for 30 days
+// instead (as a browser set to reopen its tabs does), and everything is written to disk before quitting.
+function keepSignIns() {
+  const ses = session.fromPartition(PARTITION);
+  const keep = c => {
+    if (!c.session || !c.domain) return;
+    const host = c.domain.replace(/^\./, '');
+    ses.cookies.set({
+      url: `http${c.secure ? 's' : ''}://${host}${c.path || '/'}`, name: c.name, value: c.value, path: c.path, secure: c.secure, httpOnly: c.httpOnly,
+      sameSite: c.sameSite, expirationDate: Math.floor(Date.now() / 1000) + 30 * 86400, ...(c.hostOnly ? {} : { domain: c.domain }),
+    }).catch(() => {});
+  };
+  ses.cookies.on('changed', (_e, cookie, _cause, removed) => { if (!removed) keep(cookie); });
+  ses.cookies.get({}).then(all => all.forEach(keep)).catch(() => {});
+  let flushed = false;
+  app.on('before-quit', e => {
+    if (flushed) return;
+    e.preventDefault();
+    ses.cookies.flushStore().catch(() => {}).finally(() => { flushed = true; app.quit(); });
+  });
+}
 
 // ---------- monday.com ----------
 ipcMain.handle('monday-status', () => ({ connected: monday.hasToken() }));
@@ -1230,6 +1257,7 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.whenReady().then(() => {
+    try { keepSignIns(); } catch (e) { /* sign-ins then behave as before */ }
     const syncSettings = readSyncSettings();
     if (syncSettings.enabled) { try { startSync(syncSettings.root || defaultRoot()); } catch (e) { /* folder unavailable */ } }
     setUpSession();
