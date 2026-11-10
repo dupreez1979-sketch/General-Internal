@@ -578,6 +578,8 @@
   dialog.mail-sigdlg .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
+  .mail-f.all { margin-bottom: 4px; }
+  .mail-m.tagged { box-shadow: inset 3px 0 0 var(--acc); }
   .mail-oofnote { display: block; width: calc(100% - 20px); margin: 0 10px 6px; padding: 5px 9px; border: 0; border-radius: 7px; background: color-mix(in srgb, #ECEB00 38%, transparent); color: var(--text); font: inherit; font-size: 11.5px; text-align: left; cursor: pointer; }
   .mail-oofnote:hover { background: color-mix(in srgb, #ECEB00 60%, transparent); }
   dialog.cal-evdlg .pick { display: flex; align-items: center; gap: 8px; margin: 0 0 7px; font-size: 13px; color: var(--text); }
@@ -10203,7 +10205,7 @@ body { width: max-content !important; min-width: 0 !important; }
     await Promise.all(mailVisible().filter(a => force || !mailUi.folders[a.id]).map(a => mailLoadFolders(a)));
     // Start in the first account's Inbox.
     const vis = mailVisible();
-    if ((!mailState.sel || !vis.some(a => a.id === mailState.sel.acc)) && vis.length) {
+    if ((!mailState.sel || !(vis.some(a => a.id === mailState.sel.acc) || (mailState.sel.acc === '*' && vis.length > 1))) && vis.length) {
       const fs0 = (mailUi.folders[vis[0].id] || {}).list || [];
       const inbox = fs0.find(f => f.wk === 'inbox') || fs0[0];
       mailState.sel = inbox ? { acc: vis[0].id, folder: inbox.id, name: inbox.displayName } : null;
@@ -10213,6 +10215,17 @@ body { width: max-content !important; min-width: 0 !important; }
     mailLoadMessages(true);
     for (const a of mailVisible()) if (!a.shared && !a.needsSignIn && (force || !mailUi.oof || mailUi.oof[a.id] === undefined)) mailOofCheck(a);
   }
+  // Which accounts the list on screen is drawn from: the one you chose, or all of them for All Inboxes.
+  const mailSelAccs = () => { const s = mailState.sel; return !s ? [] : s.acc === '*' ? mailVisible().filter(a => !a.needsSignIn).map(a => a.id) : [s.acc]; };
+  // Read one page of messages from each account ({ account id: path }); every message remembers its account.
+  async function mailReadLists(want) {
+    const rs = await Promise.all(Object.entries(want).map(([id, path]) => mailApi(id, { path }).then(r => [id, r])));
+    const ok = rs.filter(([, r]) => r.ok);
+    if (!ok.length) { const r = (rs[0] || [0, {}])[1]; return { err: r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder' }; }
+    const got = [], next = {};
+    for (const [id, r] of ok) { for (const x of r.data.value || []) { x._acc = id; got.push(x); } if (r.data['@odata.nextLink']) next[id] = r.data['@odata.nextLink']; }
+    return { got, next: Object.keys(next).length ? next : null };
+  }
   async function mailLoadMessages(fresh, keep) {            // keep: new mail arrived; the message you have open stays open
     const s = mailState.sel;
     if (!s || (mailUi.loading && !fresh)) return;
@@ -10221,16 +10234,18 @@ body { width: max-content !important; min-width: 0 !important; }
     if (keep && mailUi.msgsFor === key && mailUi.msgs) { /* the list stays on screen while it is read again */ }
     else if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
     mailUi.loading = !keep || !mailUi.msgs; mailUi.err = ''; if (mailUi.loading) mailRenderMain();
-    const path = mailUi.next && !fresh ? mailUi.next
-      : `/me/mailFolders/${s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
-    const r = await mailApi(s.acc, { path });
+    // All Inboxes reads every account's Inbox at once and puts the newest first.
+    const first = `/me/mailFolders/${s.acc === '*' ? 'inbox' : s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
+    const want = mailUi.next && !fresh ? mailUi.next : Object.fromEntries(mailSelAccs().map(id => [id, first]));
+    const r = await mailReadLists(want);
     if (mailUi.seq !== seq) return;                        // moved on meanwhile
     mailUi.loading = false;
-    if (!r.ok) mailUi.err = r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder';
+    if (r.err) mailUi.err = r.err;
     else {
-      const got = r.data.value || [];
-      if (keep && mailUi.msg) { const same = got.find(x => x.id === mailUi.msg.id); if (same) mailUi.msg = Object.assign(same, { isRead: mailUi.msg.isRead }); }
-      mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(got); mailUi.next = r.data['@odata.nextLink'] || null;
+      const got = r.got;
+      if (keep && mailUi.msg) { const same = got.find(x => x.id === mailUi.msg.id && (!mailUi.msg._acc || x._acc === mailUi.msg._acc)); if (same) mailUi.msg = Object.assign(same, { isRead: mailUi.msg.isRead }); }
+      mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(got); mailUi.next = r.next;
+      if (s.acc === '*') mailUi.msgs.sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime)));
     }
     mailRenderMain();
   }
@@ -10258,7 +10273,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (mailOn()) {
           const f = (mailUi.folders[a.id] || {}).list; const inbox = f && f.find(x => x.id === r.data.id);
           if (inbox) { inbox.unreadItemCount = now.unread; inbox.totalItemCount = now.total; mailSideRender(); }
-          if (mailState.sel && mailState.sel.acc === a.id && mailState.sel.folder === r.data.id && !mailUi.search && !mailUi.loading) mailLoadMessages(true, true);
+          if (mailState.sel && ((mailState.sel.acc === a.id && mailState.sel.folder === r.data.id) || mailState.sel.acc === '*') && !mailUi.search && !mailUi.loading) mailLoadMessages(true, true);
         }
       }
       if (mailUi.unread !== sum) { mailUi.unread = sum; dockRender(); appBadge(); }
@@ -10270,17 +10285,17 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   setInterval(mailPoll, 60e3); setTimeout(mailPoll, 6000);
   async function mailOpen(m) {
-    const s = mailState.sel;
+    const s = mailState.sel, A = m._acc || (mailState.sel || {}).acc;
     if (m.isDraft) return mailCompose('draft', m);
     mailUi.msg = m; mailUi.msgBody = null; mailRenderMain();
-    const r = await mailApi(s.acc, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
+    const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
     if (mailUi.msg !== m) return;
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
     mailRenderMain();
-    if (r.ok) mailLoadAttachments(s.acc, m, mailUi.msgBody);
+    if (r.ok) mailLoadAttachments(A, m, mailUi.msgBody);
     if (r.ok && !m.isRead) {                               // opening it marks it read, here and in Outlook
       m.isRead = true;
-      mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === s.acc); if (acc) mailLoadFolders(acc).then(mailSideRender); mailPoll(); });
+      mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === A); if (acc) mailLoadFolders(acc).then(mailSideRender); mailPoll(); });
       mailRenderMain();
     }
   }
@@ -10591,6 +10606,15 @@ body { width: max-content !important; min-width: 0 !important; }
       nw.addEventListener('click', () => mailCompose('new'));
       sd.appendChild(nw);
     }
+    if (vis.filter(a => !a.needsSignIn).length > 1) {
+      const b = document.createElement('div'), on = mailState.sel && mailState.sel.acc === '*';
+      const n = vis.reduce((t, a) => t + ((((mailUi.folders[a.id] || {}).list || []).find(f => f.wk === 'inbox') || {}).unreadItemCount || 0), 0);
+      b.className = 'mail-f all' + (on ? ' on' : '') + (n ? ' unread' : '');
+      b.innerHTML = `<span class="tw"></span>${mailIcon('inbox')}<span class="nm">All Inboxes</span><span class="n">${n || ''}</span>`;
+      b.title = 'The Inbox of every account here, newest first';
+      b.addEventListener('click', () => { mailState.sel = { acc: '*', folder: 'inbox', name: 'All Inboxes' }; mailUi.search = ''; mailSave(); mailSideRender(); mailLoadMessages(true); });
+      sd.appendChild(b);
+    }
     mailState.shut = mailState.shut || {};
     for (const a of vis) {
       const shut = !!mailState.shut[a.id];
@@ -10708,7 +10732,8 @@ body { width: max-content !important; min-width: 0 !important; }
       e.appendChild(b); P.appendChild(e); return;
     }
     const s = mailState.sel;
-    const acc = s && (mailUi.accounts || []).find(a => a.id === s.acc);
+    const everyone = !!s && s.acc === '*';
+    const acc = s && !everyone && (mailUi.accounts || []).find(a => a.id === s.acc);
     const m = mailUi.msg, d = mailUi.msgBody;
     const popped = mailPopped(), inSide = sideApp() === 'mail' && currentApp !== 'mail';
     // The toolbar across the top, as in Outlook: what you can do with the message you have chosen.
@@ -10726,13 +10751,13 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
-    tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
-    tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
+    tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
+    tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
     tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
     tool('flag', flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged });
     head.appendChild(acts);
     head.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
-    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search'; sr.title = acc ? `Search ${acc.email} (${K.mod}F)` : 'Search'; sr.value = mailUi.search || '';
+    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search'; sr.title = acc ? `Search ${acc.email} (${K.mod}F)` : everyone ? `Search every account (${K.mod}F)` : 'Search'; sr.value = mailUi.search || '';
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
@@ -10748,7 +10773,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const fh = document.createElement('div'); fh.className = 'mail-fhead';
     fh.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
     fh.querySelector('b').textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
-    fh.querySelector('.mail-sub').textContent = acc ? acc.email : '';
+    fh.querySelector('.mail-sub').textContent = acc ? acc.email : everyone ? `${mailSelAccs().length} accounts` : '';
     const flt = document.createElement('button'); flt.className = 'tb' + (mailUi.onlyUnread ? ' on' : ''); flt.innerHTML = `${mailToolIcon('filter')}<span class="t">${mailUi.onlyUnread ? 'Unread' : 'All'}</span>`;
     flt.title = mailUi.onlyUnread ? 'Showing unread messages only. Click to show all.' : 'Showing all messages. Click to show only unread.';
     flt.addEventListener('click', () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); });
@@ -10774,7 +10799,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const who = sent ? (x.toRecipients || [])[0] : x.from;
       const name = sent ? (x.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(x.from) || '(No sender)';
       const r = document.createElement('div');
-      r.className = 'mail-m' + (x.isRead ? '' : ' unread') + (m && m.id === x.id ? ' on' : '');
+      r.className = 'mail-m' + (x.isRead ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '');
       r.innerHTML = wide ? '<i class="dot"></i><span class="avs"></span><b></b><span class="fl"></span><div class="sjw"><span class="sj"></span><span class="pv"></span></div><span class="dt"></span>'
         : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
       r.querySelector('.avs').appendChild(mailAvatar(who && who.emailAddress && who.emailAddress.name, who && who.emailAddress && who.emailAddress.address));
@@ -10783,6 +10808,7 @@ body { width: max-content !important; min-width: 0 !important; }
       r.querySelector('.dt').textContent = wide ? mailWhenWide(x.receivedDateTime) : mailWhen(x.receivedDateTime);
       r.querySelector('.sj').textContent = x.subject || '(No subject)';
       r.querySelector('.pv').textContent = (x.bodyPreview || '').replace(/\s+/g, ' ');
+      if (everyone && x._acc) { const o = mailAccById(x._acc); if (o) { r.title = `In ${o.email}`; r.style.setProperty('--acc', calAccColour(x._acc)); r.classList.add('tagged'); } }
       r.addEventListener('click', () => mailOpen(x));
       r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
@@ -10858,22 +10884,23 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailOpenAttachment(a) {
     const s = mailState.sel, m = mailUi.msg;
     toast(`Opening “${a.name}”…`);
-    const r = await window.navigatorApp.acctAttachment(s.acc.split('>')[0], m.id, a.id, a.name, s.acc.split('>')[1] || '');
+    const r = await window.navigatorApp.acctAttachment((m._acc || s.acc).split('>')[0], m.id, a.id, a.name, (m._acc || s.acc).split('>')[1] || '');
     if (!r || !r.ok) return toast(`Could not open “${a.name}”: ${(r && r.error) || 'try again'}`);
     toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
   }
-  const mailAccOf = () => (mailUi.accounts || []).find(a => mailState.sel && a.id === mailState.sel.acc);
+  const mailAccOf = () => { const s = mailState.sel; if (!s) return undefined; const id = s.acc === '*' ? ((mailUi.msg && mailUi.msg._acc) || (mailVisible()[0] || {}).id) : s.acc; return (mailUi.accounts || []).find(a => a.id === id); };
+  const mailAccById = id => (mailUi.accounts || []).find(a => a.id === id);
   const mailRefreshFolders = () => { const a = mailAccOf(); if (a) mailLoadFolders(a).then(mailSideRender); setTimeout(mailPoll, 1200); };
   // Take a message out of the list at once (the change is then made in Outlook); it comes back if that fails.
   async function mailAct(m, what, arg) {
-    const s = mailState.sel;
+    const s = mailState.sel, A = m._acc || s.acc;
     const drop = () => { mailUi.msgs = (mailUi.msgs || []).filter(x => x !== m); if (mailUi.msg === m) { mailUi.msg = null; mailUi.msgBody = null; } mailRenderMain(); };
     let r;
-    if (what === 'delete') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
-    else if (what === 'archive') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
-    else if (what === 'move') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok) toast(`Moved to ${arg.displayName}`); }
-    else if (what === 'read') { m.isRead = arg; mailRenderMain(); r = await mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: arg } }); }
-    else if (what === 'flag') { const on = !(m.flag && m.flag.flagStatus === 'flagged'); m.flag = { flagStatus: on ? 'flagged' : 'notFlagged' }; mailRenderMain(); r = await mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: m.flag } }); }
+    if (what === 'delete') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
+    else if (what === 'archive') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
+    else if (what === 'move') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok) toast(`Moved to ${arg.displayName}`); }
+    else if (what === 'read') { m.isRead = arg; mailRenderMain(); r = await mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: arg } }); }
+    else if (what === 'flag') { const on = !(m.flag && m.flag.flagStatus === 'flagged'); m.flag = { flagStatus: on ? 'flagged' : 'notFlagged' }; mailRenderMain(); r = await mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: m.flag } }); }
     if (r && !r.ok) { toast(`That did not work: ${r.error || 'try again'}`); mailLoadMessages(true); }
     mailRefreshFolders();
   }
@@ -10895,10 +10922,10 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: flagged ? 'Clear Flag' : 'Flag', run: () => mailAct(m, 'flag') },
       '-',
       { label: 'Archive', run: () => mailAct(m, 'archive') },
-      { label: 'Move to', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))) },
+      { label: 'Move to', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, mailAllFolders(m._acc || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))) },
       { label: 'Delete', run: () => mailAct(m, 'delete') },
-      !s.acc.includes('>') && m.from && m.from.emailAddress && '-',
-      !s.acc.includes('>') && m.from && m.from.emailAddress && { label: `Make a Rule for Mail from ${mailWho(m.from)}\u2026`, run: () => mailRules(mailAccOf(), { fromAddresses: [m.from] }) },
+      !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && '-',
+      !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && { label: `Make a Rule for Mail from ${mailWho(m.from)}\u2026`, run: () => mailRules(mailAccById(m._acc || s.acc), { fromAddresses: [m.from] }) },
     ].filter(Boolean));
   }
   function mailFolderMenu(a, f, x, y) {
@@ -10938,10 +10965,11 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!q) { mailUi.search = ''; return mailLoadMessages(true); }
     const seq = mailUi.seq = (mailUi.seq || 0) + 1;
     mailUi.search = q; mailUi.loading = true; mailUi.msgs = null; mailUi.next = null; mailUi.msg = null; mailUi.msgBody = null; mailUi.err = ''; mailRenderMain();
-    const r = await mailApi(s.acc, { path: `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft` });
+    const path = `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
+    const r = await mailReadLists(Object.fromEntries(mailSelAccs().map(id => [id, path])));
     if (mailUi.seq !== seq) return;
     mailUi.loading = false;
-    if (!r.ok) mailUi.err = r.error || 'Search did not work'; else { mailUi.msgs = r.data.value || []; mailUi.next = r.data['@odata.nextLink'] || null; }
+    if (r.err) mailUi.err = r.err || 'Search did not work'; else { mailUi.msgs = r.got; mailUi.next = r.next; if (s.acc === '*') mailUi.msgs.sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime))); }
     mailRenderMain();
   }
   // Signatures: one per account, and a different one per profile if you set it (Consulting and Personal can differ).
@@ -11007,7 +11035,7 @@ body { width: max-content !important; min-width: 0 !important; }
     document.body.appendChild(d); d.showModal(); inp.focus();
   }
   async function mailCompose(mode, m) {
-    const s = mailState.sel, acc = mailAccOf();
+    const s = mailState.sel, acc = (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
     if (!acc) return toast('Choose an account first');
     if (mailUi.compose) return toast('Finish or close the message you are writing first.');
     mailUi.compose = { busy: true };
