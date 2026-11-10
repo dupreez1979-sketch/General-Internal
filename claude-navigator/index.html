@@ -549,6 +549,21 @@
   .cal-pop .pchip.on { border-color: var(--text); font-weight: 600; }
   .cal-pop .desc { white-space: pre-wrap; font-size: 12.5px; color: var(--text); border-top: 1px solid var(--line); padding-top: 10px; max-height: 260px; overflow: auto; }
   .cal-pop a { color: var(--accent); }
+  .cal-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .cal-acts .btn { padding: 4px 10px; font-size: 12px; }
+  dialog.cal-evdlg { width: 500px; height: auto; max-height: 92vh; overflow: auto; display: block; }
+  dialog.cal-evdlg:not([open]) { display: none; }
+  dialog.cal-evdlg .dlg-actions { position: sticky; bottom: -18px; background: var(--win); padding: 10px 0 0; }
+  dialog.cal-evdlg .row { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: 10px; margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+  dialog.cal-evdlg .row.top { align-items: start; }
+  dialog.cal-evdlg .row[hidden] { display: none; }
+  dialog.cal-evdlg .row input:not([type="checkbox"]), dialog.cal-evdlg .row select, dialog.cal-evdlg .row textarea { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--win); color: var(--text); box-sizing: border-box; width: 100%; }
+  dialog.cal-evdlg .row .dt { display: flex; gap: 8px; align-items: center; color: var(--text); }
+  dialog.cal-evdlg .row .dt input, dialog.cal-evdlg .row .dt select { width: auto; flex: 0 1 auto; }
+  dialog.cal-evdlg .until { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+  dialog.cal-evdlg .until[hidden] { display: none; }
+  dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
+  dialog.cal-evdlg .hint:empty { display: none; }
   #notesSide .cos-side-h { padding: 8px 8px 6px; }
   #notesSide button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--text); text-align: left; }
   #notesSide button:hover { background: var(--hover); }
@@ -9347,7 +9362,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const calProfiles = () => { try { return profiles(); } catch (e) { return []; } };
   const calProfileOf = inst => {
     const p = calState.assignOne[inst.key] !== undefined ? calState.assignOne[inst.key] : calState.assign[inst.uid];
-    return p && calProfiles().find(x => x.id === p) ? p : '';
+    return p && calProfiles().find(x => x.id === p) ? p : inst.g ? calGProfile(inst) : '';
   };
   const calColour = inst => { const p = calProfileOf(inst); const n = p && calProfiles().find(x => x.id === p); return (n && n.color) || CAL_COLOUR; };
   const calMeetLink = inst => {
@@ -9398,6 +9413,9 @@ body { width: max-content !important; min-width: 0 !important; }
   function calVisible(from, to) {
     const all = [];
     for (const f of calState.feeds) if (!calState.hideFeeds.includes(f.id) && calUi.events[f.id]) all.push(...calExpand(calUi.events[f.id], from.getTime(), to.getTime()));
+    const a = from.getTime(), b = to.getTime();
+    for (const i of calG.inst) if (i.start < b && i.end > a && !calState.hideFeeds.includes(i.ev.feedId)) all.push(i);
+    all.sort((x, y) => x.start - y.start || y.end - x.end);
     return all.filter(i => !calState.hideProfiles.includes(calProfileOf(i) || 'none'));
   }
   function calRender() {
@@ -9423,13 +9441,18 @@ body { width: max-content !important; min-width: 0 !important; }
     upd.textContent = busy ? 'Reading your calendar…' : lastAt ? `Updated ${new Date(lastAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}` : '';
     head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.scrolled = false; calRender(); }),
       tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), upd,
-      tb(UI.reload, 'Read your calendar again', () => calRefresh(true)), seg);
+      tb(UI.reload, 'Read your calendars again', () => { calRefresh(true); calGReload(); }), seg);
+    const nm = document.createElement('button'); nm.className = 'btn-primary mail-new'; nm.textContent = 'New Meeting'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
+    nm.addEventListener('click', () => calGEdit(null));
+    head.insertBefore(nm, head.firstChild);
+    calGLoad(from, to, false);
     P.appendChild(head);
     const errs = Object.entries(calUi.errors).map(([id, m]) => `${(calState.feeds.find(f => f.id === id) || {}).name || 'Calendar'}: ${m}`);
-    if (errs.length) { const e = document.createElement('div'); e.className = 'cal-err'; e.textContent = errs.join(' · '); P.appendChild(e); }
-    if (!calState.feeds.length) {
+    if (calG.err) errs.push(calG.err);
+    if (errs.length) { const e = document.createElement('div'); e.className = 'cal-err'; e.textContent = errs.join(' \u00b7 '); P.appendChild(e); }
+    if (!calState.feeds.length && calG.accounts && !calG.accounts.length) {
       const e = document.createElement('div'); e.className = 'cal-empty';
-      e.innerHTML = '<b>Your Outlook calendar, here</b><span>It shows every meeting with its details and a Join button, in Day, Week, Month or List view. It reads your calendar and never changes it: make and change meetings in Outlook as usual.</span><ol><li>In Outlook on the web: Settings › Calendar › Shared calendars.</li><li>Under Publish a calendar, choose your calendar and Can view all details, then Publish.</li><li>Copy the ICS link and paste it here.</li></ol>';
+      e.innerHTML = '<b>Your calendar, here</b><span>Add an account in Mail (the apps button, then Mail): its calendars then show here, and you can make and change meetings. Or show a calendar from its published link, to look at only:</span><ol><li>In Outlook on the web: Settings › Calendar › Shared calendars.</li><li>Under Publish a calendar, choose your calendar and Can view all details, then Publish.</li><li>Copy the ICS link and paste it here.</li></ol>';
       const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add a Calendar…'; b.addEventListener('click', () => calAddFeed());
       e.appendChild(b); P.appendChild(e); return;
     }
@@ -9495,6 +9518,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (ht < 34) c.classList.add('short');
         col.appendChild(c);
       }
+      col.addEventListener('dblclick', ev2 => { if (ev2.target !== col) return; const mins = Math.floor((ev2.offsetY / H) * 2) * 30; calGEdit(null, false, new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(mins / 60), mins % 60)); });
       if (d.getTime() === today) { const now = new Date(); const ln = document.createElement('div'); ln.className = 'cal-now'; ln.style.top = ((now.getHours() + now.getMinutes() / 60) * H) + 'px'; col.appendChild(ln); }
       grid.appendChild(col);
     }
@@ -9513,6 +9537,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const num = document.createElement('span'); num.className = 'n'; num.textContent = d.getDate(); num.title = 'Show this day';
       num.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calUi.scrolled = false; calRender(); });
       cell.appendChild(num);
+      cell.addEventListener('dblclick', ev2 => { if (ev2.target === cell) calGEdit(null, false, new Date(d.getFullYear(), d.getMonth(), d.getDate(), 9, 0)); });
       const evs = list.filter(i => i.start < e && i.end > s);
       evs.slice(0, 4).forEach(i => { const c = calChip(i, 'mc'); c.innerHTML = `${i.allDay ? '' : `<span>${calFmtTime(Math.max(i.start, s))}</span>`}<b></b>`; c.querySelector('b').textContent = i.ev.title || '(No title)'; cell.appendChild(c); });
       if (evs.length > 4) { const m = document.createElement('button'); m.className = 'more'; m.textContent = `+${evs.length - 4} more`; m.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calUi.scrolled = false; calRender(); }); cell.appendChild(m); }
@@ -9561,6 +9586,25 @@ body { width: max-content !important; min-width: 0 !important; }
     if (e.location) row('Where', e.location);
     if (e.organizer) row('Organiser', e.organizer);
     if (e.attendees.length) row(`${e.attendees.length} invited`, e.attendees.join(', '));
+    if (inst.g) {
+      row('Calendar', `${inst.g.calName} (${inst.g.email})`);
+      const acts = document.createElement('div'); acts.className = 'cal-acts';
+      const ab = (label, run, cls) => { const b = document.createElement('button'); b.className = cls || 'btn'; b.textContent = label; b.addEventListener('click', run); acts.appendChild(b); };
+      if (!inst.g.organiser) {
+        const rs = inst.g.response;
+        ab(rs === 'accepted' ? '\u2713 Accepted' : 'Accept', () => calGRespond(inst, 'accept'));
+        ab(rs === 'tentativelyAccepted' ? '\u2713 Maybe' : 'Maybe', () => calGRespond(inst, 'tentativelyAccept'));
+        ab(rs === 'declined' ? '\u2713 Declined' : 'Decline', () => calGRespond(inst, 'decline'));
+      }
+      if (inst.g.canEdit && inst.g.organiser) ab('Edit\u2026', ev2 => inst.recurring && inst.g.master ? showMenu(ev2.clientX, ev2.clientY, [{ label: 'This Meeting Only', run: () => calGEdit(inst, false) }, { label: 'The Whole Series', run: () => calGEdit(inst, true) }]) : calGEdit(inst, inst.recurring));
+      if (inst.g.canEdit) ab('Delete\u2026', ev2 => inst.recurring && inst.g.master ? showMenu(ev2.clientX, ev2.clientY, [{ label: 'This Meeting Only', run: () => calGDelete(inst, false) }, { label: 'The Whole Series', run: () => calGDelete(inst, true) }]) : calGDelete(inst, false));
+      rows.appendChild(acts);
+      // The full notes (the list only carries their first lines).
+      mailApi(inst.g.acc, { path: `/me/events/${inst.g.id}?$select=body`, prefer: 'outlook.body-content-type="text"' }).then(r => {
+        const dv = pop.querySelector('.desc'); const t = r.ok && r.data.body && (r.data.body.content || '').replace(/\r/g, '').replace(/\n{3,}/g, '\n\n').trim();
+        if (dv && t) { dv.replaceChildren(); calLinkify(dv, t); }
+      });
+    }
     const feed = calState.feeds.find(f => f.id === e.feedId);
     if (feed && calState.feeds.length > 1) row('Calendar', feed.name);
     // Profile: one click to assign.
@@ -9609,6 +9653,13 @@ body { width: max-content !important; min-width: 0 !important; }
     showMenu(x, y, [
       { label: 'Open Details', run: () => { const c = document.querySelector(`#calPanel .cal-ev[data-key="${CSS.escape(inst.key)}"]`); if (c) calOpen(inst, c); } },
       ml && { label: `Join ${ml.what} Meeting`, run: () => openExternal(ml.url) },
+      inst.g && inst.g.canEdit && inst.g.organiser && { label: inst.recurring && inst.g.master ? 'Edit This Meeting\u2026' : 'Edit\u2026', run: () => calGEdit(inst, inst.recurring && !inst.g.master) },
+      inst.g && inst.g.canEdit && inst.g.organiser && inst.recurring && inst.g.master && { label: 'Edit the Series\u2026', run: () => calGEdit(inst, true) },
+      inst.g && !inst.g.organiser && { label: 'Accept', run: () => calGRespond(inst, 'accept') },
+      inst.g && !inst.g.organiser && { label: 'Maybe', run: () => calGRespond(inst, 'tentativelyAccept') },
+      inst.g && !inst.g.organiser && { label: 'Decline', run: () => calGRespond(inst, 'decline') },
+      inst.g && inst.g.canEdit && { label: inst.recurring && inst.g.master ? 'Delete This Meeting\u2026' : 'Delete\u2026', run: () => calGDelete(inst, false) },
+      inst.g && inst.g.canEdit && inst.recurring && inst.g.master && { label: 'Delete the Series\u2026', run: () => calGDelete(inst, true) },
       '-',
       ...items,
       { label: 'No Profile', checked: !cur, run: () => calAssign(inst, '', false) },
@@ -9638,7 +9689,11 @@ body { width: max-content !important; min-width: 0 !important; }
       if (extra) b.addEventListener('contextmenu', extra);
       sd.appendChild(b);
     };
-    h('Calendars');
+    for (const a of calG.accounts || []) {
+      h(a.email);
+      for (const c of calG.cals[a.id] || []) { const k = calGKey(a.id, c.id); toggle(c.name, '#8a9bb0', !calState.hideFeeds.includes(k), () => { calState.hideFeeds = calState.hideFeeds.includes(k) ? calState.hideFeeds.filter(x => x !== k) : calState.hideFeeds.concat(k); calSave(); calGReload(); }); }
+    }
+    h(calG.accounts && calG.accounts.length ? 'From a link (view only)' : 'Calendars');
     for (const f of calState.feeds) toggle(f.name + (calUi.loading[f.id] ? ' …' : ''), '#8a9bb0', !calState.hideFeeds.includes(f.id),
       () => { calState.hideFeeds = calState.hideFeeds.includes(f.id) ? calState.hideFeeds.filter(x => x !== f.id) : calState.hideFeeds.concat(f.id); calSave(); calRender(); },
       e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [
@@ -9655,7 +9710,182 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
-  setInterval(() => { if (currentApp === 'cal') calRefresh(false); }, 5 * 60e3);
+  setInterval(() => { if (currentApp === 'cal') { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
+
+  // ----- Calendar: the calendars of your signed-in accounts (read and write) -----
+  // Each account's calendars are listed in the sidebar. Their meetings can be made, changed and deleted here, with
+  // repeats, invitations, a Teams link and accept or decline; Outlook does the sending. A meeting from an account
+  // that belongs to one profile takes that profile's colour unless you assign another.
+  const calG = { accounts: null, cals: {}, inst: [], key: '', loading: false, err: '' };
+  const calTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } };
+  const calPad = n => String(n).padStart(2, '0');
+  const calYmd = d => `${d.getFullYear()}-${calPad(d.getMonth() + 1)}-${calPad(d.getDate())}`;
+  const calHm = d => `${calPad(d.getHours())}:${calPad(d.getMinutes())}`;
+  const calGKey = (accId, calId) => `g:${accId}:${calId}`;
+  const calGTime = (t, allDay) => {
+    const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/.exec((t && t.dateTime) || '');
+    if (!m) return 0;
+    if (allDay) return new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+    return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);       // asked for in UTC
+  };
+  function calGInst(acc, cal, e) {
+    const start = calGTime(e.start, e.isAllDay), end = calGTime(e.end, e.isAllDay);
+    const uid = 'g:' + (e.seriesMasterId || e.id);
+    return {
+      key: 'g:' + e.id, uid, recurring: !!e.seriesMasterId || e.type === 'seriesMaster', start, end: Math.max(end, start + (e.isAllDay ? 0 : 15 * 60e3)), allDay: !!e.isAllDay,
+      g: { acc: acc.id, email: acc.email, cal: cal.id, calName: cal.name, id: e.id, master: e.seriesMasterId || '', organiser: !!e.isOrganizer, response: (e.responseStatus && e.responseStatus.response) || '', canEdit: cal.canEdit !== false, web: e.webLink || '' },
+      ev: { title: e.subject || '', location: (e.location && e.location.displayName) || '', desc: e.bodyPreview || '', organizer: (e.organizer && e.organizer.emailAddress && (e.organizer.emailAddress.name || e.organizer.emailAddress.address)) || '',
+        attendees: (e.attendees || []).map(a => a.emailAddress && (a.emailAddress.name || a.emailAddress.address)).filter(Boolean), feedId: calGKey(acc.id, cal.id),
+        transp: e.showAs === 'free' ? 'TRANSPARENT' : '', meetUrl: (e.onlineMeeting && e.onlineMeeting.joinUrl) || e.onlineMeetingUrl || '', status: e.isCancelled ? 'CANCELLED' : '' },
+    };
+  }
+  async function calGLoad(from, to, force) {
+    if (!isApp || !window.navigatorApp.acctList) return;
+    const pf = new Date(from.getFullYear(), from.getMonth() - 1, 1), pt = new Date(to.getFullYear(), to.getMonth() + 1, 1);   // a month either side, so moving about is instant
+    const key = `${pf.getTime()}|${pt.getTime()}`;
+    if (!force && (calG.key === key || calG.loading)) { if (calG.loading) calG.want = [from, to]; return; }
+    calG.loading = true; calG.err = '';
+    try {
+      calG.accounts = await window.navigatorApp.acctList();
+      const out = [];
+      for (const acc of calG.accounts) {
+        if (!calG.cals[acc.id] || force) {
+          const r = await mailApi(acc.id, { path: '/me/calendars?$top=50&$select=id,name,canEdit,isDefaultCalendar,hexColor' });
+          if (!r.ok) { calG.err = `${acc.email}: ${r.needsSignIn ? 'sign in again (in Mail, right-click the account)' : r.error}`; continue; }
+          calG.cals[acc.id] = r.data.value || [];
+        }
+        await Promise.all(calG.cals[acc.id].filter(c => !calState.hideFeeds.includes(calGKey(acc.id, c.id))).map(async cal => {
+          let path = `/me/calendars/${cal.id}/calendarView?startDateTime=${encodeURIComponent(pf.toISOString())}&endDateTime=${encodeURIComponent(pt.toISOString())}&$top=250&$select=id,subject,start,end,isAllDay,location,organizer,attendees,bodyPreview,onlineMeeting,onlineMeetingUrl,seriesMasterId,type,showAs,responseStatus,isCancelled,isOrganizer,webLink`;
+          for (let page = 0; path && page < 8; page++) {
+            const r = await mailApi(acc.id, { path });
+            if (!r.ok) { calG.err = `${acc.email}: ${r.error}`; break; }
+            for (const e of r.data.value || []) if (!e.isCancelled) out.push(calGInst(acc, cal, e));
+            path = r.data['@odata.nextLink'] || null;
+          }
+        }));
+      }
+      calG.inst = out; calG.key = key; calG.at = Date.now();
+    } catch (e) { calG.err = String(e && e.message || e); }
+    calG.loading = false;
+    if (calG.want) { const w = calG.want; calG.want = null; calGLoad(w[0], w[1], false); }
+    calRender();
+  }
+  const calGReload = () => { const [f, t] = calRange(); return calGLoad(f, t, true); };
+  // The default profile of an account's meetings: the one profile the account belongs to (if just one).
+  const calGProfile = inst => { try { const ps = (mailState.profiles[inst.g.acc] || []).filter(p => calProfiles().some(x => x.id === p)); return ps.length === 1 ? ps[0] : ''; } catch (e) { return ''; } };
+  async function calGRespond(inst, how) {
+    const r = await mailApi(inst.g.acc, { method: 'POST', path: `/me/events/${inst.g.id}/${how}`, body: { sendResponse: true } });
+    toast(r.ok ? { accept: 'Accepted', tentativelyAccept: 'Marked as maybe', decline: 'Declined' }[how] : `That did not work: ${r.error || 'try again'}`);
+    calClosePop(); calGReload();
+  }
+  async function calGDelete(inst, series) {
+    const what = inst.ev.title || 'this meeting';
+    const others = inst.g.organiser && inst.ev.attendees.length;
+    if (!confirm(`Delete “${what}”${series ? ' and every meeting in the series' : ''}?${others ? ' The people invited are told it is cancelled.' : ''}`)) return;
+    const r = await mailApi(inst.g.acc, { method: 'DELETE', path: `/me/events/${series && inst.g.master ? inst.g.master : inst.g.id}` });
+    toast(r.ok ? 'Deleted' : `Could not delete it: ${r.error || 'try again'}`);
+    calClosePop(); calGReload();
+  }
+  const CAL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  // New meeting, or change one (this one, or the whole series).
+  async function calGEdit(inst, series, when) {
+    await (calG.accounts ? Promise.resolve() : calGReload());
+    const accounts = calG.accounts || [];
+    if (!inst && !accounts.length) return toast('Add an account in Mail first: its calendars then show here, and you can make meetings.');
+    let ev = null, accId, calId;
+    if (inst) {
+      accId = inst.g.acc; calId = inst.g.cal;
+      const id = series && inst.g.master ? inst.g.master : inst.g.id;
+      const r = await mailApi(accId, { path: `/me/events/${id}?$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type`, prefer: 'outlook.body-content-type="text"' });
+      if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
+      ev = r.data;
+    }
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg';
+    const s0 = ev ? new Date(calGTime(ev.start, ev.isAllDay)) : (when || (() => { const x = new Date(calUi.date); const n = new Date(); x.setHours(n.getHours() + 1, 0, 0, 0); return x; })());
+    const e0 = ev ? new Date(calGTime(ev.end, ev.isAllDay) - (ev.isAllDay ? 86400e3 : 0)) : new Date(s0.getTime() + 30 * 60e3);
+    const rec = ev && ev.recurrence, pat = rec && rec.pattern;
+    const repeat0 = !pat ? 'none' : pat.type === 'daily' && pat.interval === 1 ? 'daily'
+      : pat.type === 'weekly' && pat.interval === 1 && (pat.daysOfWeek || []).length === 5 && !(pat.daysOfWeek || []).some(x => /sat|sun/.test(x)) ? 'weekdays'
+      : pat.type === 'weekly' && pat.interval === 1 && (pat.daysOfWeek || []).length === 1 ? 'weekly' : pat.type === 'weekly' && pat.interval === 2 && (pat.daysOfWeek || []).length === 1 ? 'fortnightly'
+      : pat.type === 'absoluteMonthly' && pat.interval === 1 ? 'monthly' : pat.type === 'absoluteYearly' && pat.interval === 1 ? 'yearly' : 'keep';
+    const canRepeat = !inst || series || ev.type === 'singleInstance' || ev.type === 'seriesMaster';
+    d.innerHTML = `<h2></h2>
+      <label class="row"><span>Title</span><input name="title"></label>
+      <label class="row" data-new><span>Calendar</span><select name="cal"></select></label>
+      <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
+      <label class="row"><span>Starts</span><span class="dt"><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
+      <label class="row"><span>Ends</span><span class="dt"><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
+      <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
+      <label class="row"><span>Where</span><input name="loc"></label>
+      <label class="row"><span>Invite</span><input name="att" placeholder="Email addresses, separated by commas" spellcheck="false"></label>
+      <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
+      <label class="row"><span>Show as</span><select name="show"><option value="busy">Busy</option><option value="free">Free</option><option value="tentative">Tentative</option><option value="oof">Away</option></select></label>
+      <label class="row top"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
+      <p class="hint"></p>
+      <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
+    const f = n => d.querySelector(`[name="${n}"]`);
+    d.querySelector('h2').textContent = inst ? (series ? 'Change the Series' : 'Change Meeting') : 'New Meeting';
+    f('title').value = ev ? ev.subject || '' : '';
+    f('allday').checked = !!(ev && ev.isAllDay);
+    f('sd').value = calYmd(s0); f('st').value = calHm(s0); f('ed').value = calYmd(e0); f('et').value = calHm(e0);
+    f('loc').value = ev ? (ev.location && ev.location.displayName) || '' : '';
+    f('att').value = ev ? (ev.attendees || []).map(a => a.emailAddress && a.emailAddress.address).filter(Boolean).join(', ') : '';
+    f('teams').checked = !!(ev && ev.isOnlineMeeting);
+    f('show').value = ev && ['busy', 'free', 'tentative', 'oof'].includes(ev.showAs) ? ev.showAs : 'busy';
+    f('notes').value = ev ? ((ev.body && ev.body.content) || '').trim() : '';
+    f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
+    f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
+    if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
+    const online0 = !!(ev && ev.isOnlineMeeting);
+    if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
+    if (inst) d.querySelector('[data-new]').hidden = true;
+    else {
+      for (const a of accounts) for (const c of (calG.cals[a.id] || []).filter(c => c.canEdit !== false)) { const o = document.createElement('option'); o.value = `${a.id}\n${c.id}`; o.textContent = `${c.name} (${a.email})`; if (c.isDefaultCalendar) o.dataset.def = '1'; f('cal').appendChild(o); }
+      const last = calState.lastCal && [...f('cal').options].find(o => o.value === calState.lastCal);
+      const def = last || [...f('cal').options].find(o => o.dataset.def);
+      if (def) f('cal').value = def.value;
+    }
+    const sync = () => { const ad = f('allday').checked; f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
+    f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
+    // Moving the start moves the end with it.
+    let gap = e0.getTime() - s0.getTime();
+    const readDt = (dn, tn) => { const [y, m, dd] = f(dn).value.split('-').map(Number); const [h, mi] = (f(tn).value || '00:00').split(':').map(Number); return new Date(y, m - 1, dd, f('allday').checked ? 0 : h, f('allday').checked ? 0 : mi); };
+    for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = calYmd(e); f('et').value = calHm(e); });
+    for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
+    const shut = () => { d.close(); d.remove(); };
+    d.addEventListener('click', async e => {
+      const x = e.target.dataset && e.target.dataset.x;
+      if (x === 'cancel') return shut();
+      if (x !== 'ok') return;
+      const ad = f('allday').checked, s = readDt('sd', 'st'), en = readDt('ed', 'et');
+      if (!f('title').value.trim()) return toast('Give the meeting a title.');
+      if (isNaN(s) || isNaN(en) || en < s || (!ad && en.getTime() === s.getTime())) return toast('The end must be after the start.');
+      const people = mailParse(f('att').value);
+      if (people.find(p => p.bad)) return toast(`“${people.find(p => p.bad).bad}” is not an email address.`);
+      const tz = calTz(), iso = dt => `${calYmd(dt)}T${ad ? '00:00' : calHm(dt)}:00`;
+      const endAd = new Date(en.getFullYear(), en.getMonth(), en.getDate() + 1);
+      const body = { subject: f('title').value.trim(), isAllDay: ad, start: { dateTime: iso(s), timeZone: tz }, end: { dateTime: ad ? iso(endAd) : iso(en), timeZone: tz },
+        location: { displayName: f('loc').value.trim() }, attendees: people.map(p => ({ emailAddress: p.emailAddress, type: 'required' })), showAs: f('show').value };
+      if (!online0) { body.body = { contentType: 'text', content: f('notes').value }; if (f('teams').checked) { body.isOnlineMeeting = true; body.onlineMeetingProvider = 'teamsForBusiness'; } }
+      const rep = f('rep').value;
+      if (canRepeat && rep !== 'keep') {
+        const day = CAL_DAYS[s.getDay()];
+        const pattern = rep === 'daily' ? { type: 'daily', interval: 1 } : rep === 'weekdays' ? { type: 'weekly', interval: 1, daysOfWeek: CAL_DAYS.slice(1, 6), firstDayOfWeek: 'monday' }
+          : rep === 'weekly' ? { type: 'weekly', interval: 1, daysOfWeek: [day], firstDayOfWeek: 'monday' } : rep === 'fortnightly' ? { type: 'weekly', interval: 2, daysOfWeek: [day], firstDayOfWeek: 'monday' }
+          : rep === 'monthly' ? { type: 'absoluteMonthly', interval: 1, dayOfMonth: s.getDate() } : rep === 'yearly' ? { type: 'absoluteYearly', interval: 1, dayOfMonth: s.getDate(), month: s.getMonth() + 1 } : null;
+        if (pattern) body.recurrence = { pattern, range: f('until').value ? { type: 'endDate', startDate: calYmd(s), endDate: f('until').value } : { type: 'noEnd', startDate: calYmd(s) } };
+        else if (inst && rec) body.recurrence = null;
+      }
+      e.target.disabled = true; e.target.textContent = 'Saving…';
+      let r;
+      if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
+      else { const [a, c] = f('cal').value.split('\n'); calState.lastCal = f('cal').value; calSave(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); }
+      if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save'; return toast(`It was not saved: ${r.error || 'try again'}`); }
+      toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
+      shut(); calClosePop(); calGReload();
+    });
+    document.body.appendChild(d); d.showModal(); f('title').focus();
+  }
 
   // ----- Mail (your Microsoft accounts, signed in once and kept in the Keychain) -----
   // Sidebar: the accounts that belong to the profile you are in (every account under All Profiles), each with its
