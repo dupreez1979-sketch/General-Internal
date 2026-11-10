@@ -672,6 +672,9 @@
   .cal-gut span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); background: var(--win); padding: 0 2px; }
   .cal-col { position: relative; border-left: 1px solid var(--line); }
   .cal-col.today { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .cal-ev.tm.can { cursor: grab; }
+  .cal-ev.tm.can::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
+  .cal-ev.tm.dragging { z-index: 5; opacity: .88; cursor: grabbing; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
   .cal-ev.tm { position: absolute; padding: 3px 6px; display: flex; flex-direction: column; gap: 1px; box-shadow: 0 0 0 1px var(--win); }
   .cal-ev.tm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cal-ev.tm span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -9731,6 +9734,7 @@ body { width: max-content !important; min-width: 0 !important; }
         c.querySelector('b').textContent = x.i.ev.title || '(No title)';
         if (ht > 34 && x.i.ev.location) c.querySelector('span').appendChild(document.createTextNode(x.i.ev.location));
         if (ht < 34) c.classList.add('short');
+        if (x.i.g && x.i.g.canEdit && x.i.g.organiser && x.a === x.i.start && x.b === x.i.end) calDragWire(c, x.i, H);
         col.appendChild(c);
       }
       col.addEventListener('dblclick', ev2 => { if (ev2.target !== col) return; const mins = Math.floor((ev2.offsetY / H) * 2) * 30; calGEdit(null, false, new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(mins / 60), mins % 60)); });
@@ -9742,6 +9746,70 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!calUi.scrolled) { calUi.scrolled = true; setTimeout(() => { sc.scrollTop = 7 * H; }, 0); }
     return wrap;
   }
+  // Drag a meeting of yours to another time or day; drag its bottom edge to make it longer or shorter (quarter hours).
+  function calDragWire(c, inst, H) {
+    c.classList.add('can');
+    c.addEventListener('click', e => { if (c._dragged) { c._dragged = false; e.stopImmediatePropagation(); e.stopPropagation(); } }, true);
+    c.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      const r0 = c.getBoundingClientRect(), resize = e.clientY > r0.bottom - 7, y0 = e.clientY, x0 = e.clientX;
+      const top0 = parseFloat(c.style.top), h0 = parseFloat(c.style.height), col0 = c.parentNode, cols = [...col0.parentNode.querySelectorAll('.cal-col')];
+      let moved = false, mins = 0, days = 0;
+      const move = ev => {
+        if (!moved && Math.abs(ev.clientY - y0) < 5 && Math.abs(ev.clientX - x0) < 5) return;
+        if (!moved) { moved = true; c.classList.add('dragging'); document.body.classList.add('resizing'); Object.assign(c.style, { left: '2px', width: 'calc(100% - 4px)' }); }
+        mins = Math.round((ev.clientY - y0) / H * 4) * 15;
+        if (resize) { mins = Math.max(mins, 15 - Math.round((inst.end - inst.start) / 60e3)); c.style.height = Math.max(10, h0 + mins / 60 * H) + 'px'; }
+        else {
+          const over = cols.find(k => { const r = k.getBoundingClientRect(); return ev.clientX >= r.left && ev.clientX < r.right; });
+          if (over && over !== c.parentNode) over.appendChild(c);
+          days = cols.indexOf(c.parentNode) - cols.indexOf(col0);
+          c.style.top = (top0 + mins / 60 * H) + 'px';
+        }
+        const ns = new Date(inst.start + (resize ? 0 : mins * 60e3 + days * 86400e3)), ne = new Date(inst.end + mins * 60e3 + (resize ? 0 : days * 86400e3));
+        const sp = c.querySelector('span'); if (sp) sp.textContent = `${calFmtTime(ns.getTime())} – ${calFmtTime(ne.getTime())}`;
+      };
+      const stop = async () => {
+        removeEventListener('mousemove', move); removeEventListener('mouseup', stop);
+        document.body.classList.remove('resizing');
+        if (!moved) return;
+        c._dragged = true; setTimeout(() => { c._dragged = false; }, 300);
+        if (!mins && !days) return calRender();
+        const was = [inst.start, inst.end];
+        // (Days are moved by the calendar, so a meeting keeps its clock time across a daylight saving change.)
+        const shift = (t, m, d) => { const x = new Date(t); x.setDate(x.getDate() + d); return x.getTime() + m * 60e3; };
+        const set = async (a, b) => {
+          inst.start = a; inst.end = b; calRender();
+          const iso = t => ({ dateTime: new Date(t).toISOString().slice(0, 19), timeZone: 'UTC' });
+          return mailApi(inst.g.acc, { method: 'PATCH', path: `/me/events/${inst.g.id}`, body: { start: iso(a), end: iso(b) } });
+        };
+        const r = await set(resize ? was[0] : shift(was[0], mins, days), shift(was[1], mins, resize ? 0 : days));
+        if (!r.ok) { inst.start = was[0]; inst.end = was[1]; calRender(); return toast(`Could not move it: ${r.error || 'try again'}`); }
+        toast(`${inst.ev.title || 'Meeting'}: ${new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(inst.start)} – ${calFmtTime(inst.end)}${inst.ev.attendees && inst.ev.attendees.length ? '. The people invited are told.' : ''}`,
+          { label: 'Undo', run: async () => { const u = await set(was[0], was[1]); if (!u.ok) toast('Could not undo that. Move it back by hand.'); } });
+      };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+  }
+  // Reminders: a notification before a meeting starts, at the time set on the meeting in Outlook (often 15 minutes).
+  const calReminded = new Set();
+  async function calRemind() {
+    if (!isApp || !window.navigatorApp.acctList) return;
+    try {
+      if (!calG.loading && (!calG.at || Date.now() - calG.at > 10 * 60e3)) { if (!(await window.navigatorApp.acctList()).length) return; await calGReload(); }
+      const now = Date.now();
+      for (const i of calG.inst || []) {
+        if (i.allDay || i.g.remind == null || i.g.response === 'declined') continue;
+        const at = i.start - i.g.remind * 60e3, k = i.key + '|' + i.start;
+        if (now < at || now >= i.start + 60e3 || calReminded.has(k)) continue;
+        calReminded.add(k);
+        if (now - at > 5 * 60e3 && i.g.remind > 5) continue;         // the app was opened well after the reminder was due
+        const left = Math.max(0, Math.round((i.start - now) / 60e3));
+        try { const n = new Notification(i.ev.title || 'Meeting', { body: `${left ? `In ${left} ${left === 1 ? 'minute' : 'minutes'}` : 'Starting now'} · ${calFmtTime(i.start)}${i.ev.location ? '\n' + i.ev.location : ''}` }); n.onclick = () => { window.focus(); calUi.date = calDayStart(new Date(i.start)); setApp('cal'); }; } catch (e) { /* notifications are off */ }
+      }
+    } catch (e) { /* offline: try again next minute */ }
+  }
+  setInterval(calRemind, 60e3); setTimeout(calRemind, 9000);
   function calMonth(from, list) {
     const wrap = document.createElement('div'); wrap.className = 'cal-month';
     for (const n of ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']) wrap.appendChild(Object.assign(document.createElement('div'), { className: 'cal-mh', textContent: n }));
@@ -9997,7 +10065,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const uid = 'g:' + (e.seriesMasterId || e.id);
     return {
       key: 'g:' + e.id, uid, recurring: !!e.seriesMasterId || e.type === 'seriesMaster', start, end: Math.max(end, start + (e.isAllDay ? 0 : 15 * 60e3)), allDay: !!e.isAllDay,
-      g: { acc: acc.id, email: acc.email, cal: cal.id, calName: cal.name, id: e.id, master: e.seriesMasterId || '', organiser: !!e.isOrganizer, response: (e.responseStatus && e.responseStatus.response) || '', canEdit: cal.canEdit !== false, web: e.webLink || '' },
+      g: { acc: acc.id, email: acc.email, cal: cal.id, calName: cal.name, id: e.id, master: e.seriesMasterId || '', organiser: !!e.isOrganizer, response: (e.responseStatus && e.responseStatus.response) || '', canEdit: cal.canEdit !== false, web: e.webLink || '', remind: e.isReminderOn && e.reminderMinutesBeforeStart != null ? +e.reminderMinutesBeforeStart : null },
       ev: { title: e.subject || '', location: (e.location && e.location.displayName) || '', desc: e.bodyPreview || '', organizer: (e.organizer && e.organizer.emailAddress && (e.organizer.emailAddress.name || e.organizer.emailAddress.address)) || '',
         attendees: (e.attendees || []).map(a => a.emailAddress && (a.emailAddress.name || a.emailAddress.address)).filter(Boolean), feedId: calGKey(acc.id, cal.id),
         transp: e.showAs === 'free' ? 'TRANSPARENT' : '', meetUrl: (e.onlineMeeting && e.onlineMeeting.joinUrl) || e.onlineMeetingUrl || '', status: e.isCancelled ? 'CANCELLED' : '' },
@@ -10020,7 +10088,7 @@ body { width: max-content !important; min-width: 0 !important; }
           calG.cals[acc.id] = r.data.value || [];
         }
         await Promise.all(calG.cals[acc.id].filter(c => !calState.hideFeeds.includes(calGKey(acc.id, c.id))).map(async cal => {
-          let path = `/me/calendars/${cal.id}/calendarView?startDateTime=${encodeURIComponent(pf.toISOString())}&endDateTime=${encodeURIComponent(pt.toISOString())}&$top=250&$select=id,subject,start,end,isAllDay,location,organizer,attendees,bodyPreview,onlineMeeting,onlineMeetingUrl,seriesMasterId,type,showAs,responseStatus,isCancelled,isOrganizer,webLink`;
+          let path = `/me/calendars/${cal.id}/calendarView?startDateTime=${encodeURIComponent(pf.toISOString())}&endDateTime=${encodeURIComponent(pt.toISOString())}&$top=250&$select=id,subject,start,end,isAllDay,location,organizer,attendees,bodyPreview,onlineMeeting,onlineMeetingUrl,seriesMasterId,type,showAs,responseStatus,isCancelled,isOrganizer,webLink,isReminderOn,reminderMinutesBeforeStart`;
           for (let page = 0; path && page < 8; page++) {
             const r = await mailApi(acc.id, { path });
             if (!r.ok) { calG.err = `${acc.email}: ${r.error}`; break; }
@@ -10034,6 +10102,7 @@ body { width: max-content !important; min-width: 0 !important; }
     calG.loading = false;
     if (calG.want) { const w = calG.want; calG.want = null; calGLoad(w[0], w[1], false); }
     calRender();
+    if (calG.at && Date.now() - calG.at < 5000) calRemind();     // anything due to start soon
   }
   const calGReload = () => { const [f, t] = calRange(); return calGLoad(f, t, true); };
   // The default profile of an account's meetings: the one profile the account belongs to (if just one).
