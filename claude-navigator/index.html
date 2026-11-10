@@ -441,7 +441,7 @@
   #sidePanel .mail-compose { left: 0; top: 0; z-index: 6; }
   #sidePanel .cal-dh { flex-direction: column; align-items: center; gap: 0; padding: 4px 2px; font-size: 11px; }
   #sidePanel .cal-dh b { font-size: 14px; }
-  #sidePanel .cal-dh.today b { width: 22px; height: 22px; font-size: 12.5px; }
+  #sidePanel .cal-dh { border-left: 0; }
   #sidePanel .cal-wk-head, #sidePanel .cal-allday, #sidePanel .cal-grid { grid-template-columns: 44px repeat(var(--cols), minmax(0, 1fr)); }
   #sidePanel .cal-adl { font-size: 9.5px; padding: 6px 2px; }
   #sidePanel .cal-pop { width: min(380px, calc(100% - 16px)); }
@@ -587,10 +587,26 @@
   #calSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.cal-mode #calSide { display: block; }
   .calnav .cos-side-h { padding: 10px 8px 6px; }
-  .calnav .cal-tg { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
+  .calnav > .cal-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 10px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
+  .cal-mini { padding: 0 4px 8px; }
+  .cal-mini .mh { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 4px; }
+  .cal-mini .mh b { font-size: 12.5px; }
+  .cal-mini .mg { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 1px; justify-items: center; }
+  .cal-mini .dn { font-size: 10.5px; font-weight: 700; color: var(--muted); padding: 3px 0; }
+  .cal-mini .d { width: 26px; height: 26px; border: 0; background: none; border-radius: 50%; font: inherit; font-size: 11.5px; color: var(--text); padding: 0; }
+  .cal-mini .d:hover { background: var(--hover); }
+  .cal-mini .d.other { color: var(--muted); opacity: .7; }
+  .cal-mini .d.in { background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 6px; }
+  .cal-mini .d.today { background: var(--accent); color: var(--accent-text, #fff); font-weight: 700; border-radius: 50%; }
+  .calnav .cal-acc { display: grid; padding: 12px 8px 0; }
+  .calnav .cal-acc b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .calnav .cal-acc span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .calnav .cal-tg { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 14px; border-radius: 7px; font-size: 13px; cursor: default; position: relative; }
   .calnav .cal-tg:hover { background: var(--hover); }
-  .calnav .cal-tg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-  .calnav .cal-tg input { margin: 0; }
+  .calnav .cal-tg input { position: absolute; left: 14px; width: 16px; height: 16px; margin: 0; opacity: 0; }
+  .calnav .cal-tg i { --c: #8a9bb0; width: 15px; height: 15px; border-radius: 50%; flex: none; box-sizing: border-box; border: 2px solid var(--c); display: grid; place-items: center; }
+  .calnav .cal-tg input:checked + i { background: var(--c); }
+  .calnav .cal-tg input:checked + i::after { content: ''; width: 7px; height: 4px; border-left: 1.6px solid #fff; border-bottom: 1.6px solid #fff; transform: rotate(-45deg) translate(0, -1px); }
   .calnav button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
   .calnav button.add:hover { background: var(--hover); }
   #calPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
@@ -610,10 +626,11 @@
   .cal-ev.free { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ev) 12%, var(--win)) 0 6px, var(--win) 6px 10px); }
   .cal-week { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .cal-wk-head, .cal-allday { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--line); }
-  .cal-dh { padding: 6px 8px; display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
-  .cal-dh b { font-size: 18px; color: var(--text); font-weight: 600; }
+  .cal-dh { padding: 6px 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; font-size: 12px; color: var(--muted); cursor: pointer; border-left: 1px solid var(--line); }
+  .cal-dh b { font-size: 19px; color: var(--text); font-weight: 600; line-height: 1.15; }
+  .cal-dh.today span { color: var(--accent); font-weight: 600; }
   .cal-dh b, .cal-dh span { flex: none; }
-  .cal-dh.today b { background: var(--accent); color: var(--accent-text, #fff); border-radius: 50%; width: 28px; height: 28px; display: inline-grid; place-items: center; font-size: 15px; }
+  .cal-dh.today b { color: var(--accent); }
   .cal-adl { font-size: 10.5px; color: var(--muted); padding: 6px 6px; text-align: right; }
   .cal-adc { padding: 3px; display: grid; gap: 2px; align-content: start; border-left: 1px solid var(--line); min-height: 26px; }
   .cal-ev.ad, .cal-ev.mc { padding: 2px 6px; white-space: nowrap; text-overflow: ellipsis; }
@@ -629,8 +646,8 @@
   .cal-ev.tm.short { flex-direction: row; gap: 6px; align-items: center; padding-top: 1px; }
   .cal-ev.tm.short span { order: -1; flex: none; }
   .cal-ev.tm.short b { min-width: 0; }
-  .cal-now { position: absolute; left: 0; right: 0; border-top: 2px solid #D9534F; z-index: 2; pointer-events: none; }
-  .cal-now::before { content: ''; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: #D9534F; }
+  .cal-now { position: absolute; left: 0; right: 0; border-top: 2px solid var(--accent); z-index: 2; pointer-events: none; }
+  .cal-now::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   .cal-month { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto repeat(6, minmax(96px, 1fr)); }
   .cal-mh { font-size: 11.5px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); }
   .cal-md { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 4px; display: grid; gap: 2px; align-content: start; min-width: 0; }
@@ -9606,9 +9623,11 @@ body { width: max-content !important; min-width: 0 !important; }
     head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.scrolled = false; calRender(); }),
       tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), upd,
       tb(UI.reload, 'Read your calendars again', () => { calRefresh(true); calGReload(); }), seg);
-    const nm = document.createElement('button'); nm.className = 'btn-primary mail-new'; nm.textContent = 'New Meeting'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
-    nm.addEventListener('click', () => calGEdit(null));
-    head.insertBefore(nm, head.firstChild);
+    if (currentApp !== 'cal') {
+      const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Event'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
+      nm.addEventListener('click', () => calGEdit(null));
+      head.insertBefore(nm, head.firstChild);
+    }
     calGLoad(from, to, false);
     P.appendChild(head);
     const errs = Object.entries(calUi.errors).map(([id, m]) => `${(calState.feeds.find(f => f.id === id) || {}).name || 'Calendar'}: ${m}`);
@@ -9660,7 +9679,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const sc = document.createElement('div'); sc.className = 'cal-scroll';
     const grid = document.createElement('div'); grid.className = 'cal-grid'; grid.style.height = (24 * H) + 'px';
     const gut = document.createElement('div'); gut.className = 'cal-gut';
-    for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
+    for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => ' ' + x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
     grid.appendChild(gut);
     for (const d of days) {
       const col = document.createElement('div'); col.className = 'cal-col' + (d.getTime() === today ? ' today' : '');
@@ -9849,14 +9868,47 @@ body { width: max-content !important; min-width: 0 !important; }
     const toggle = (label, colour, on, flip, extra) => {
       const b = document.createElement('label'); b.className = 'cal-tg';
       b.innerHTML = '<input type="checkbox"><i></i><span></span>';
-      b.querySelector('input').checked = on; b.querySelector('i').style.background = colour; b.querySelector('span').textContent = label;
+      b.querySelector('input').checked = on; b.querySelector('i').style.setProperty('--c', colour); b.querySelector('span').textContent = label;
       b.querySelector('input').addEventListener('change', flip);
       if (extra) b.addEventListener('contextmenu', extra);
       sd.appendChild(b);
     };
+    if (currentApp === 'cal') {
+      const nw = document.createElement('button'); nw.className = 'btn-primary mail-new cal-new';
+      nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>New Event</span>';
+      nw.title = `Make a meeting (${K.mod}N)`;
+      nw.addEventListener('click', () => calGEdit(null));
+      sd.appendChild(nw);
+    }
+    // A small month to move about with, as in Outlook.
+    {
+      const sel = calDayStart(calUi.date), today = calDayStart(new Date()).getTime();
+      const mm = calUi.mini && calUi.miniFor === sel.getTime() ? calUi.mini : new Date(sel.getFullYear(), sel.getMonth(), 1);
+      calUi.mini = mm; calUi.miniFor = sel.getTime();
+      const box = document.createElement('div'); box.className = 'cal-mini';
+      box.innerHTML = '<div class="mh"><button class="tb" data-m="-1"></button><b></b><button class="tb" data-m="1"></button></div><div class="mg"></div>';
+      box.querySelector('[data-m="-1"]').innerHTML = UI.back; box.querySelector('[data-m="1"]').innerHTML = UI.fwd;
+      box.querySelector('b').textContent = mm.toLocaleDateString('en-AU', { month: 'long', year: 'numeric' });
+      box.querySelectorAll('[data-m]').forEach(b => b.addEventListener('click', () => { calUi.mini = new Date(mm.getFullYear(), mm.getMonth() + (+b.dataset.m), 1); calSideRender(); }));
+      const g = box.querySelector('.mg');
+      for (const n of ['M', 'T', 'W', 'T', 'F', 'S', 'S']) g.appendChild(Object.assign(document.createElement('span'), { className: 'dn', textContent: n }));
+      const first = calAddDays(mm, -((mm.getDay() + 6) % 7));
+      const [rf, rt] = calRange();
+      for (let k = 0; k < 42; k++) {
+        const d = calAddDays(first, k), t = d.getTime();
+        const b = document.createElement('button');
+        b.className = 'd' + (d.getMonth() !== mm.getMonth() ? ' other' : '') + (t === today ? ' today' : '') + (t >= rf.getTime() && t < rt.getTime() && calState.view !== 'list' ? ' in' : '');
+        b.textContent = d.getDate();
+        b.addEventListener('click', () => { calUi.date = d; calUi.mini = null; calUi.scrolled = false; calRender(); });
+        g.appendChild(b);
+      }
+      sd.appendChild(box);
+    }
     for (const a of calG.accounts || []) {
-      h(a.email);
-      for (const c of calG.cals[a.id] || []) { const k = calGKey(a.id, c.id); toggle(c.name, '#8a9bb0', !calState.hideFeeds.includes(k), () => { calState.hideFeeds = calState.hideFeeds.includes(k) ? calState.hideFeeds.filter(x => x !== k) : calState.hideFeeds.concat(k); calSave(); calGReload(); }); }
+      const ah = document.createElement('div'); ah.className = 'cal-acc'; ah.innerHTML = '<b></b><span></span>';
+      ah.querySelector('b').textContent = a.name || a.email; ah.querySelector('span').textContent = a.email; sd.appendChild(ah);
+      h('My Calendars');
+      for (const c of calG.cals[a.id] || []) { const k = calGKey(a.id, c.id); toggle(c.name, calAccColour(a.id), !calState.hideFeeds.includes(k), () => { calState.hideFeeds = calState.hideFeeds.includes(k) ? calState.hideFeeds.filter(x => x !== k) : calState.hideFeeds.concat(k); calSave(); calGReload(); }); }
     }
     h(calG.accounts && calG.accounts.length ? 'From a link (view only)' : 'Calendars');
     for (const f of calState.feeds) toggle(f.name + (calUi.loading[f.id] ? ' …' : ''), '#8a9bb0', !calState.hideFeeds.includes(f.id),
@@ -9952,6 +10004,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   const calGReload = () => { const [f, t] = calRange(); return calGLoad(f, t, true); };
   // The default profile of an account's meetings: the one profile the account belongs to (if just one).
+  const calAccColour = accId => { try { const ps = (mailState.profiles[accId] || []).map(p => calProfiles().find(x => x.id === p)).filter(Boolean); return ps.length === 1 && ps[0].color ? ps[0].color : CAL_COLOUR; } catch (e) { return CAL_COLOUR; } };
   const calGProfile = inst => { try { const ps = (mailState.profiles[inst.g.acc] || []).filter(p => calProfiles().some(x => x.id === p)); return ps.length === 1 ? ps[0] : ''; } catch (e) { return ''; } };
   async function calGRespond(inst, how) {
     const r = await mailApi(inst.g.acc, { method: 'POST', path: `/me/events/${inst.g.id}/${how}`, body: { sendResponse: true } });
