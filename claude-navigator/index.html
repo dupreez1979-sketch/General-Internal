@@ -736,6 +736,11 @@
   dialog.cal-evdlg .row .dt input, dialog.cal-evdlg .row .dt select { width: auto; flex: 0 1 auto; }
   dialog.cal-evdlg .until { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
   dialog.cal-evdlg .until[hidden] { display: none; }
+  dialog.cal-evdlg .fr { display: flex; align-items: center; gap: 10px; }
+  dialog.cal-evdlg .fr-out { flex: 1; min-width: 0; font-size: 12px; color: var(--muted); }
+  dialog.cal-evdlg .fr-out.bad { color: #99351E; }
+  dialog.cal-evdlg .fr-out.ok { color: #328276; }
+  dialog.cal-evdlg .fr .btn { flex: none; font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
   dialog.cal-evdlg .hint:empty { display: none; }
   #notesSide .cos-side-h { padding: 8px 8px 6px; }
@@ -10157,6 +10162,7 @@ body { width: max-content !important; min-width: 0 !important; }
       <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
       <label class="row"><span>Where</span><input name="loc"></label>
       <label class="row"><span>Invite</span><input name="att" placeholder="Email addresses, separated by commas" spellcheck="false"></label>
+      <div class="row free" hidden><span></span><span class="fr"><span class="fr-out"></span><button type="button" class="btn" data-x="find">Find a Free Time</button></span></div>
       <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
       <label class="row"><span>Show as</span><select name="show"><option value="busy">Busy</option><option value="free">Free</option><option value="tentative">Tentative</option><option value="oof">Away</option></select></label>
       <label class="row top"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
@@ -10191,9 +10197,57 @@ body { width: max-content !important; min-width: 0 !important; }
     const readDt = (dn, tn) => { const [y, m, dd] = f(dn).value.split('-').map(Number); const [h, mi] = (f(tn).value || '00:00').split(':').map(Number); return new Date(y, m - 1, dd, f('allday').checked ? 0 : h, f('allday').checked ? 0 : mi); };
     for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = calYmd(e); f('et').value = calHm(e); });
     for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
+    // Are the people you are inviting free then? (Outlook's free and busy times, for people whose calendars it can see.)
+    const frRow = d.querySelector('.row.free'), frOut = d.querySelector('.fr-out');
+    const frAcc = () => inst ? inst.g.acc : (f('cal').value || '').split('\n')[0];
+    const frAsk = async (from, to) => {
+      const who = mailParse(f('att').value).filter(p => !p.bad).map(p => p.emailAddress.address);
+      if (!who.length || !frAcc()) return null;
+      const iso = t => ({ dateTime: new Date(t).toISOString().slice(0, 19), timeZone: 'UTC' });
+      const r = await mailApi(frAcc(), { method: 'POST', path: '/me/calendar/getSchedule', prefer: 'outlook.timezone="UTC"', body: { schedules: who, startTime: iso(from), endTime: iso(to), availabilityViewInterval: 15 } });
+      if (!r.ok) return null;
+      return (r.data.value || []).map(v => ({ who: v.scheduleId, unknown: !!v.error, busy: (v.scheduleItems || []).filter(i => i.status && i.status !== 'free').map(i => [new Date(String(i.start.dateTime).slice(0, 19) + 'Z').getTime(), new Date(String(i.end.dateTime).slice(0, 19) + 'Z').getTime()]) }));
+    };
+    let frSeq = 0, frT = 0;
+    const frCheck = () => { clearTimeout(frT); frT = setTimeout(async () => {
+      const seq = ++frSeq, s = readDt('sd', 'st'), en = readDt('ed', 'et');
+      const any = mailParse(f('att').value).some(p => !p.bad);
+      frRow.hidden = !any || f('allday').checked; frOut.className = 'fr-out';
+      if (frRow.hidden || isNaN(s) || isNaN(en) || en <= s) return;
+      frOut.textContent = 'Checking who is free…';
+      const got = await frAsk(s, en);
+      if (seq !== frSeq) return;
+      if (!got) { frRow.hidden = true; return; }
+      const busy = got.filter(g => g.busy.some(([a, b]) => a < en.getTime() && b > s.getTime())).map(g => g.who), unk = got.filter(g => g.unknown).map(g => g.who);
+      frOut.textContent = (busy.length ? `Busy then: ${busy.join(', ')}` : got.length === unk.length ? '' : got.length - unk.length === 1 ? `${got.find(g => !g.unknown).who} is free then` : 'Everyone is free then') + (unk.length ? `${busy.length || got.length !== unk.length ? '. ' : ''}Cannot see the calendar of ${unk.join(', ')}` : '');
+      frOut.classList.toggle('bad', !!busy.length); frOut.classList.toggle('ok', !busy.length && !unk.length);
+    }, 500); };
+    for (const n of ['att', 'sd', 'st', 'ed', 'et', 'allday', 'cal']) f(n).addEventListener('change', frCheck);
+    frCheck();
+    const frFind = async btn => {
+      const s = readDt('sd', 'st'), len = Math.max(15 * 60e3, readDt('ed', 'et') - s);
+      if (isNaN(s)) return;
+      btn.disabled = true; frOut.className = 'fr-out'; frOut.textContent = 'Looking for a time that suits everyone…';
+      const from = Math.max(s.getTime(), Date.now()), got = await frAsk(from, from + 14 * 86400e3);
+      btn.disabled = false;
+      if (!got) { frOut.textContent = 'Could not read the free and busy times.'; return; }
+      // Your own meetings count too. Working hours: weekdays, 8 am to 6 pm.
+      const mine = (calG.inst || []).filter(i => i.g.acc === frAcc() && !i.allDay && i.g.response !== 'declined' && !(inst && i.key === inst.key)).map(i => [i.start, i.end]);
+      const taken = got.flatMap(g => g.busy).concat(mine);
+      let t = new Date(Math.ceil(from / (30 * 60e3)) * 30 * 60e3);
+      for (let n = 0; n < 14 * 48; n++, t = new Date(t.getTime() + 30 * 60e3)) {
+        const e2 = new Date(t.getTime() + len), wd = t.getDay();
+        if (wd === 0 || wd === 6 || t.getHours() < 8 || e2.getHours() + e2.getMinutes() / 60 > 18 || e2.getDate() !== t.getDate()) continue;
+        if (taken.some(([a, b]) => a < e2.getTime() && b > t.getTime())) continue;
+        f('sd').value = calYmd(t); f('st').value = calHm(t); f('ed').value = calYmd(e2); f('et').value = calHm(e2); gap = len;
+        frCheck(); return toast(`${t.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(t.getTime())} suits everyone whose calendar can be seen.`);
+      }
+      frOut.textContent = 'No time in working hours over the next two weeks suits everyone.';
+    };
     const shut = () => { d.close(); d.remove(); };
     d.addEventListener('click', async e => {
       const x = e.target.dataset && e.target.dataset.x;
+      if (x === 'find') return frFind(e.target);
       if (x === 'cancel') return shut();
       if (x !== 'ok') return;
       const ad = f('allday').checked, s = readDt('sd', 'st'), en = readDt('ed', 'et');
