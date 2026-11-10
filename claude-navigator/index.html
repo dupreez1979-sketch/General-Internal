@@ -250,6 +250,7 @@
   .app-ic { width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center; color: #fff; }
   .app-ic.notes { background: #E0A800; }
   .app-ic.cal { background: #D9534F; }
+  .app-ic.mail { background: #2F7DD1; }
   .app-ic.nav { background: #3D8BE6; }
   .app-ic.cos { background: #1B5A68; }
   .app-ic svg { width: 20px; height: 20px; }
@@ -385,6 +386,51 @@
   #notesSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.notes-mode #notesSide { display: block; }
   body.notes-mode #tree, body.notes-mode #sNewFolder { display: none !important; }
+  /* Mail app */
+  body.mail-mode #main > :not(#mailPanel) { display: none !important; }
+  body.mail-mode #tree, body.mail-mode #sNewFolder { display: none !important; }
+  #mailSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
+  body.mail-mode #mailSide { display: block; }
+  #mailSide .mail-acc { display: flex; align-items: baseline; gap: 6px; padding: 12px 8px 5px; font-size: 11.5px; color: var(--muted); cursor: default; }
+  #mailSide .mail-acc b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mailSide .mail-acc.warn span { color: #B36E24; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  #mailSide .mail-f { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; color: var(--text); }
+  #mailSide .mail-f:hover { background: var(--hover); }
+  #mailSide .mail-f.on { background: var(--sel); }
+  #mailSide .mail-f.unread .nm { font-weight: 650; }
+  #mailSide .mail-f .tw { width: 10px; font-size: 9px; color: var(--muted); flex: none; }
+  #mailSide .mail-f svg { flex: none; color: var(--muted); }
+  #mailSide .mail-f .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mailSide .mail-f .n { font-size: 11.5px; color: var(--accent); font-weight: 650; }
+  #mailSide button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; margin-top: 10px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
+  #mailSide button.add:hover { background: var(--hover); }
+  .mail-note { font-size: 12px; color: var(--muted); padding: 8px 10px; line-height: 1.45; }
+  .mail-note.big { margin: auto; font-size: 13px; }
+  #mailPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
+  #mailPanel[hidden] { display: none; }
+  .mail-sub { font-size: 12px; color: var(--muted); margin-left: 10px; }
+  .mail-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); }
+  .mail-list { overflow: auto; border-right: 1px solid var(--line); min-height: 0; }
+  .mail-m { padding: 9px 14px 10px; border-bottom: 1px solid var(--line); cursor: default; display: grid; gap: 2px; border-left: 3px solid transparent; }
+  .mail-m:hover { background: var(--hover); }
+  .mail-m.on { background: var(--sel); }
+  .mail-m.unread { border-left-color: var(--accent); }
+  .mail-m .l1 { display: flex; gap: 6px; align-items: baseline; }
+  .mail-m .l1 b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+  .mail-m.unread .l1 b, .mail-m.unread .sj { font-weight: 700; }
+  .mail-m .fl { font-size: 11px; color: #B36E24; flex: none; }
+  .mail-m .dt { font-size: 11.5px; color: var(--muted); flex: none; }
+  .mail-m .sj { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-m.unread .sj { color: var(--accent); }
+  .mail-m .pv { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-list .more { margin: 12px auto; display: block; }
+  .mail-read { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .mail-rh { flex: none; padding: 14px 20px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+  .mail-rh h2 { margin: 0; font-size: 17px; line-height: 1.3; }
+  .mail-rh .who { display: flex; gap: 10px; align-items: baseline; font-size: 13px; }
+  .mail-rh .who b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rh .dt, .mail-rh .to { font-size: 12px; color: var(--muted); }
+  .mail-read iframe { flex: 1; border: 0; width: 100%; background: #fff; }
   /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
   body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
   body.cal-mode #profileBtn { visibility: hidden; }
@@ -1041,6 +1087,7 @@
   <div id="cosSide" hidden aria-label="Team"></div>
   <div id="notesSide" aria-label="Notes"></div>
   <div id="calSide" aria-label="Calendars"></div>
+  <div id="mailSide" aria-label="Mail accounts and folders"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
@@ -1116,6 +1163,7 @@
   <div id="claraHost" hidden></div>
   <div id="notesPanel" hidden aria-label="Notes"></div>
   <div id="calPanel" hidden aria-label="Calendar"></div>
+  <div id="mailPanel" hidden aria-label="Mail"></div>
   <div id="cosMain" hidden></div>
   <div id="cosSrcRs" class="col-rs" title="Drag to resize; double-click to reset"></div>
   <div id="cosSrcHead"></div>
@@ -1123,7 +1171,8 @@
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="cos" title="Your AI team: who does what, their work, skills and routines"><span class="app-ic cos"></span><b>Chief of Staff</b></button>
   <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and artifacts, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
-  <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
+  <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
+  <button class="app-tile" data-app="cal" title=""Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
   <button class="app-tile" data-app="notes" title=""Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
 </div>
 
@@ -6503,7 +6552,7 @@
 
   // ---------- Apps: Navigator and Chief of Staff ----------
   // The nine-dot button switches between the apps. Each keeps its own place.
-  var currentApp = ['cos', 'notes', 'cal'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
+  var currentApp = ['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
@@ -6517,11 +6566,13 @@
       // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
       tidyTree(null); tidyFresh = true;
     }
-    currentApp = ['cos', 'notes', 'cal'].includes(a) ? a : 'navigator';
+    currentApp = ['cos', 'notes', 'cal', 'mail'].includes(a) ? a : 'navigator';
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
     document.body.classList.toggle('notes-mode', currentApp === 'notes');
     document.body.classList.toggle('cal-mode', currentApp === 'cal');
+    document.body.classList.toggle('mail-mode', currentApp === 'mail');
+    try { $('mailPanel').hidden = currentApp !== 'mail'; if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
     try { notesRender(); } catch (e) { /* starting up */ }
     try { $('calPanel').hidden = currentApp !== 'cal'; if (currentApp === 'cal') { calRender(); calRefresh(false); } } catch (e) { /* starting up */ }
     $('cosSide').hidden = currentApp !== 'cos';
@@ -6535,6 +6586,7 @@
   $('appPop').querySelector('.app-ic.nav').innerHTML = small('folder', '#fff', 20);
   $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
   $('appPop').querySelector('.app-ic.cal').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  $('appPop').querySelector('.app-ic.mail').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2.5 4.5L8 8.8l5.5-4.3" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('appPop').querySelector('.app-ic.notes').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
   $('appBtn').addEventListener('click', e => {
     e.stopPropagation();
@@ -9575,6 +9627,251 @@ body { width: max-content !important; min-width: 0 !important; }
   document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
   setInterval(() => { if (currentApp === 'cal') calRefresh(false); }, 5 * 60e3);
 
+  // ----- Mail (your Microsoft accounts, signed in once and kept in the Keychain) -----
+  // Sidebar: the accounts that belong to the profile you are in (every account under All Profiles), each with its
+  // folders. Main: the messages in the folder, and the one you click beside them. Accounts are signed in with
+  // Microsoft's own page in your browser; which profiles an account belongs to is set here (right-click it).
+  const MAIL_KEY = 'claudeNavigator.mail.v1';
+  const mailState = (() => { const d = { profiles: {}, sel: null, open: {} }; try { return Object.assign(d, JSON.parse(ls.get(MAIL_KEY) || '{}')); } catch (e) { return d; } })();
+  const mailSave = () => ls.set(MAIL_KEY, JSON.stringify(mailState));
+  const mailUi = { accounts: null, folders: {}, kids: {}, msgs: null, msgsFor: '', next: null, loading: false, msg: null, msgBody: null, err: '', adding: false };
+  const mailApi = (id, req) => window.navigatorApp.acctGraph(id, req);
+  const MAIL_ORDER = ['inbox', 'drafts', 'sentitems', 'archive', 'deleteditems', 'junkemail', 'outbox'];
+  const MAIL_HIDE = /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures)$/i;
+  async function mailLoadAccounts() {
+    if (!isApp || !window.navigatorApp.acctList) { mailUi.accounts = []; return; }
+    mailUi.accounts = await window.navigatorApp.acctList();
+    // An account new to this list belongs to the profile you are in.
+    for (const a of mailUi.accounts) if (!mailState.profiles[a.id]) { mailState.profiles[a.id] = state.profileId ? [state.profileId] : []; mailSave(); }
+  }
+  const mailVisible = () => (mailUi.accounts || []).filter(a => !state.profileId || (mailState.profiles[a.id] || []).includes(state.profileId));
+  async function mailLoadFolders(acc) {
+    const wk = {};
+    // Which folder is the Inbox, Sent and so on (their names differ by language).
+    const names = await Promise.all(MAIL_ORDER.map(n => mailApi(acc.id, { path: `/me/mailFolders/${n}?$select=id` }).then(r => [n, r.ok && r.data && r.data.id]).catch(() => [n, null])));
+    for (const [n, id] of names) if (id) wk[id] = n;
+    const r = await mailApi(acc.id, { path: '/me/mailFolders?$top=100&$select=id,displayName,unreadItemCount,totalItemCount,childFolderCount' });
+    if (!r.ok) { mailUi.folders[acc.id] = { error: r.needsSignIn ? 'Sign in again' : r.error }; if (r.needsSignIn) acc.needsSignIn = true; return; }
+    const list = (r.data.value || []).filter(f => !MAIL_HIDE.test(f.displayName)).map(f => Object.assign(f, { wk: wk[f.id] || '' }));
+    list.sort((a, b) => { const x = MAIL_ORDER.indexOf(a.wk), y = MAIL_ORDER.indexOf(b.wk); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y) || a.displayName.localeCompare(b.displayName); });
+    mailUi.folders[acc.id] = { list };
+  }
+  async function mailLoadKids(acc, f) {
+    const r = await mailApi(acc.id, { path: `/me/mailFolders/${f.id}/childFolders?$top=100&$select=id,displayName,unreadItemCount,totalItemCount,childFolderCount` });
+    mailUi.kids[f.id] = r.ok ? (r.data.value || []).sort((a, b) => a.displayName.localeCompare(b.displayName)) : [];
+  }
+  async function mailStart(force) {
+    if (mailUi.accounts === null || force) await mailLoadAccounts();
+    mailRender();
+    await Promise.all(mailVisible().filter(a => force || !mailUi.folders[a.id]).map(a => mailLoadFolders(a)));
+    // Start in the first account's Inbox.
+    const vis = mailVisible();
+    if ((!mailState.sel || !vis.some(a => a.id === mailState.sel.acc)) && vis.length) {
+      const fs0 = (mailUi.folders[vis[0].id] || {}).list || [];
+      const inbox = fs0.find(f => f.wk === 'inbox') || fs0[0];
+      mailState.sel = inbox ? { acc: vis[0].id, folder: inbox.id, name: inbox.displayName } : null;
+      mailSave();
+    }
+    mailRender();
+    mailLoadMessages(true);
+  }
+  async function mailLoadMessages(fresh) {
+    const s = mailState.sel;
+    if (!s || mailUi.loading) return;
+    const key = s.acc + '|' + s.folder;
+    if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
+    mailUi.loading = true; mailUi.err = ''; mailRenderMain();
+    const path = mailUi.next && !fresh ? mailUi.next
+      : `/me/mailFolders/${s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft`;
+    const r = await mailApi(s.acc, { path });
+    mailUi.loading = false;
+    if (mailUi.msgsFor !== key) return;                    // moved to another folder meanwhile
+    if (!r.ok) mailUi.err = r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder';
+    else { mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(r.data.value || []); mailUi.next = r.data['@odata.nextLink'] || null; }
+    mailRenderMain();
+  }
+  async function mailOpen(m) {
+    const s = mailState.sel;
+    mailUi.msg = m; mailUi.msgBody = null; mailRenderMain();
+    const r = await mailApi(s.acc, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
+    if (mailUi.msg !== m) return;
+    mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
+    mailRenderMain();
+    if (r.ok && !m.isRead) {                               // opening it marks it read, here and in Outlook
+      m.isRead = true;
+      mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === s.acc); if (acc) mailLoadFolders(acc).then(mailSideRender); });
+      mailRenderMain();
+    }
+  }
+  async function mailAddAccount() {
+    if (mailUi.adding) return toast('Finish signing in with Microsoft in your web browser, then come back here.');
+    mailUi.adding = true; mailRender();
+    toast('Microsoft’s sign-in page is opening in your web browser. Sign in there, then come back here.');
+    const r = await window.navigatorApp.acctAdd('');
+    mailUi.adding = false;
+    if (!r || !r.ok) { mailRender(); return toast(`Could not sign in: ${(r && r.status) || 'try again'}`); }
+    const a = r.account;
+    const have = mailState.profiles[a.id] || [];
+    if (state.profileId && !have.includes(state.profileId)) mailState.profiles[a.id] = have.concat(state.profileId);
+    mailSave();
+    delete mailUi.folders[a.id];
+    toast(r.again ? `${a.email} is signed in again` : `${a.email} is added${activeProfile() ? ` to ${activeProfile().name}` : ''}. Right-click it to choose its profiles.`);
+    mailStart(true);
+  }
+  function mailAccountMenu(a, x, y) {
+    const mine = mailState.profiles[a.id] || [];
+    showMenu(x, y, [
+      { label: 'Belongs to', disabled: true, run: () => {} },
+      ...profiles().map(p => ({ label: p.name, dot: p.color, checked: mine.includes(p.id), run: () => {
+        mailState.profiles[a.id] = mine.includes(p.id) ? mine.filter(z => z !== p.id) : mine.concat(p.id); mailSave(); mailStart(false);
+      } })),
+      '-',
+      a.needsSignIn && { label: 'Sign In Again…', run: () => mailAddAccount() },
+      { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
+      '-',
+      { label: 'Remove This Account from the App…', run: async () => {
+        if (!confirm(`Remove ${a.email} from Claude Navigator? Your mail stays in Outlook; the app just signs out of this account.`)) return;
+        await window.navigatorApp.acctRemove(a.id);
+        delete mailState.profiles[a.id]; if (mailState.sel && mailState.sel.acc === a.id) mailState.sel = null; mailSave();
+        mailStart(true);
+      } },
+    ].filter(Boolean));
+  }
+  const MAIL_ICON = { inbox: 'M2 9.5l1.6-5.6a1 1 0 011-.7h6.8a1 1 0 011 .7L14 9.5v2.7a1 1 0 01-1 1H3a1 1 0 01-1-1zM2 9.5h3.5l.8 1.5h3.4l.8-1.5H14', drafts: 'M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2', sentitems: 'M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3',
+    archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
+  const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  function mailSideRender() {
+    const sd = $('mailSide');
+    if (!sd || currentApp !== 'mail') return;
+    sd.replaceChildren();
+    const vis = mailVisible();
+    for (const a of vis) {
+      const h = document.createElement('div'); h.className = 'mail-acc';
+      h.innerHTML = '<b></b><span></span>';
+      h.querySelector('b').textContent = a.email || a.name;
+      if (a.needsSignIn) { h.querySelector('span').textContent = 'Sign in again'; h.classList.add('warn'); }
+      h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nRight-click: which profiles it belongs to, sign in again, remove.`;
+      h.addEventListener('contextmenu', e => { e.preventDefault(); mailAccountMenu(a, e.clientX, e.clientY); });
+      if (a.needsSignIn) h.addEventListener('click', () => mailAddAccount());
+      sd.appendChild(h);
+      const F = mailUi.folders[a.id];
+      if (!F) { sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading folders…' })); continue; }
+      if (F.error) { sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: F.error })); continue; }
+      const row = (f, depth) => {
+        const b = document.createElement('div');
+        const on = mailState.sel && mailState.sel.acc === a.id && mailState.sel.folder === f.id;
+        b.className = 'mail-f' + (on ? ' on' : '') + (f.unreadItemCount ? ' unread' : '');
+        b.style.paddingLeft = (8 + depth * 14) + 'px';
+        const open = !!mailState.open[f.id];
+        b.innerHTML = `<span class="tw">${f.childFolderCount ? (open ? '▾' : '▸') : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
+        b.querySelector('.nm').textContent = f.displayName;
+        const count = f.wk === 'drafts' ? f.totalItemCount : f.unreadItemCount;
+        b.querySelector('.n').textContent = count || '';
+        b.querySelector('.tw').addEventListener('click', async e => {
+          e.stopPropagation();
+          if (!f.childFolderCount) return;
+          mailState.open[f.id] = !open; mailSave();
+          if (!open && !mailUi.kids[f.id]) await mailLoadKids(a, f);
+          mailSideRender();
+        });
+        b.addEventListener('click', () => { mailState.sel = { acc: a.id, folder: f.id, name: f.displayName }; mailSave(); mailSideRender(); mailLoadMessages(true); });
+        sd.appendChild(b);
+        if (open && f.childFolderCount) {
+          if (!mailUi.kids[f.id]) mailLoadKids(a, f).then(mailSideRender);
+          else for (const k of mailUi.kids[f.id]) row(k, depth + 1);
+        }
+      };
+      for (const f of F.list) row(f, 0);
+    }
+    const add = document.createElement('button'); add.className = 'add';
+    add.innerHTML = `${UI.plus}<span>${mailUi.adding ? 'Waiting for you to sign in…' : 'Add an Account…'}</span>`;
+    add.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom + 4, [
+      { label: 'Microsoft 365, Outlook.com or Hotmail', run: () => mailAddAccount() },
+      { label: 'Gmail (coming next)', disabled: true, run: () => {} },
+    ]); });
+    sd.appendChild(add);
+    const hidden = (mailUi.accounts || []).length - vis.length;
+    if (hidden > 0) sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: `${hidden} more ${hidden === 1 ? 'account is' : 'accounts are'} in other profiles. Choose All Profiles to see ${hidden === 1 ? 'it' : 'them'}.` }));
+  }
+  const mailWho = p => (p && p.emailAddress && (p.emailAddress.name || p.emailAddress.address)) || '';
+  const mailWhen = iso => {
+    const d = new Date(iso), now = new Date();
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+    if (now - d < 6 * 86400e3) return d.toLocaleDateString('en-AU', { weekday: 'short' });
+    return d.toLocaleDateString('en-AU', d.getFullYear() === now.getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
+  };
+  function mailRender() { if (currentApp !== 'mail') return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
+  function mailRenderMain() {
+    const P = $('mailPanel');
+    if (currentApp !== 'mail') return;
+    const keepScroll = (P.querySelector('.mail-list') || {}).scrollTop || 0;
+    P.replaceChildren();
+    const vis = mailVisible();
+    if (mailUi.accounts !== null && !vis.length) {
+      const e = document.createElement('div'); e.className = 'cal-empty';
+      const other = (mailUi.accounts || []).length;
+      e.innerHTML = `<b>Your mail, here</b><span>${other ? 'No account belongs to this profile yet. Add one, or choose All Profiles to see the accounts you have already added (right-click one to say which profiles it belongs to).' : 'Add your Microsoft 365, Outlook.com or Hotmail account. You sign in on Microsoft’s own page in your web browser, once: the app keeps you signed in after that, through restarts and updates. Your password is never seen by the app.'}</span>`;
+      const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add an Account…'; b.addEventListener('click', () => mailAddAccount());
+      e.appendChild(b); P.appendChild(e); return;
+    }
+    const s = mailState.sel;
+    const acc = s && (mailUi.accounts || []).find(a => a.id === s.acc);
+    const head = document.createElement('div'); head.className = 'cal-head';
+    head.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
+    head.querySelector('b').textContent = s ? s.name : 'Mail';
+    head.querySelector('.mail-sub').textContent = acc ? acc.email : '';
+    const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = UI.reload; rf.title = 'Check for new mail';
+    rf.addEventListener('click', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true); });
+    head.appendChild(rf);
+    P.appendChild(head);
+    const body = document.createElement('div'); body.className = 'mail-body';
+    const list = document.createElement('div'); list.className = 'mail-list';
+    if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
+    const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
+    for (const m of mailUi.msgs || []) {
+      const r = document.createElement('div');
+      r.className = 'mail-m' + (m.isRead ? '' : ' unread') + (mailUi.msg && mailUi.msg.id === m.id ? ' on' : '');
+      r.innerHTML = '<div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
+      r.querySelector('b').textContent = sent ? (m.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(m.from) || '(No sender)';
+      r.querySelector('.fl').textContent = `${m.importance === 'high' ? '! ' : ''}${m.hasAttachments ? '📎 ' : ''}${m.flag && m.flag.flagStatus === 'flagged' ? '⚑' : ''}`;
+      r.querySelector('.dt').textContent = mailWhen(m.receivedDateTime);
+      r.querySelector('.sj').textContent = m.subject || '(No subject)';
+      r.querySelector('.pv').textContent = (m.bodyPreview || '').replace(/\s+/g, ' ');
+      r.addEventListener('click', () => mailOpen(m));
+      list.appendChild(r);
+    }
+    if (mailUi.loading) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading…' }));
+    else if (mailUi.msgs && !mailUi.msgs.length && !mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Nothing in this folder.' }));
+    else if (mailUi.next) { const more = document.createElement('button'); more.className = 'btn more'; more.textContent = 'Show Older Messages'; more.addEventListener('click', () => mailLoadMessages(false)); list.appendChild(more); }
+    const read = document.createElement('div'); read.className = 'mail-read';
+    const m = mailUi.msg, d = mailUi.msgBody;
+    if (!m) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' }));
+    else {
+      const hd = document.createElement('div'); hd.className = 'mail-rh';
+      hd.innerHTML = '<h2></h2><div class="who"><b></b><span class="dt"></span></div><div class="to"></div>';
+      hd.querySelector('h2').textContent = m.subject || '(No subject)';
+      hd.querySelector('b').textContent = m.from && m.from.emailAddress ? `${m.from.emailAddress.name || ''} <${m.from.emailAddress.address || ''}>` : '';
+      hd.querySelector('.dt').textContent = new Date(m.receivedDateTime).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const to = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
+      hd.querySelector('.to').textContent = to;
+      read.appendChild(hd);
+      if (!d) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Opening…' }));
+      else if (d.error) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: d.error }));
+      else {
+        // The message is shown in a sealed frame: it cannot run scripts or reach the app. Links open in your browser.
+        const fr0 = document.createElement('iframe');
+        fr0.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+        fr0.setAttribute('referrerpolicy', 'no-referrer');
+        const html = d.body && d.body.contentType === 'html' ? d.body.content : `<pre style="white-space:pre-wrap;font:inherit">${(d.body && d.body.content || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</pre>`;
+        fr0.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; form-action 'none'"><base target="_blank"><style>body{font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f;margin:14px 18px;word-wrap:break-word}img{max-width:100%;height:auto}</style>${html}`;
+        read.appendChild(fr0);
+      }
+    }
+    body.append(list, read);
+    P.appendChild(body);
+    list.scrollTop = keepScroll;
+  }
+
   let claraView = null;
   function claraViewEnsure() {
     if (!isApp) return null;
@@ -11070,6 +11367,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!quiet) { tidyTree(null); tidyFresh = true; }
     renderAll();
     if (currentApp === 'cos') renderCos();
+    try { if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
   }
   // Profiles keep the order you give them: in the sidebar, the switcher and the shortcuts.

@@ -10,6 +10,7 @@ const path = require('path');
 const fs = require('fs');
 const { FolderSync } = require('./fsync');
 const monday = require('./monday');
+const accounts = require('./accounts');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -1196,6 +1197,12 @@ const CLARA_SCRIPT = `on run argv
   end tell
   return "ok"
 end run`;
+// Mail and calendar accounts: sign-ins are kept in this process (see accounts.js); the window only gets names.
+ipcMain.handle('acct-list', () => accounts.list());
+ipcMain.handle('acct-add', (_e, hint) => accounts.add(typeof hint === 'string' ? hint : ''));
+ipcMain.handle('acct-remove', (_e, id) => accounts.remove(String(id)));
+ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
+
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
 ipcMain.handle('cal-fetch', async (_e, url) => {
   if (typeof url !== 'string') return { ok: false, status: 'no link' };
