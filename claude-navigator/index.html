@@ -431,6 +431,36 @@
   .mail-rh .who b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mail-rh .dt, .mail-rh .to { font-size: 12px; color: var(--muted); }
   .mail-read iframe { flex: 1; border: 0; width: 100%; background: #fff; }
+  .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
+  .mail-search { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 6px 10px; width: 220px; color: var(--text); margin-left: 6px; }
+  .mail-acts { display: flex; flex-wrap: wrap; gap: 2px; margin: 6px 0 0 -6px; }
+  .mail-acts .tb { color: var(--text); }
+  .mail-files, .mc-files { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mail-files { margin-top: 6px; }
+  .mail-att { background: var(--field); border: 0; border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--text); }
+  button.mail-att:hover { background: var(--sel); }
+  .mail-compose { position: absolute; top: 53px; bottom: 0; right: 0; left: min(380px, 45%); z-index: 5; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .mail-compose .mc-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .mail-compose .mc-bar .sp { flex: 1; }
+  .mail-compose .mc-from { font-size: 12px; color: var(--muted); margin-left: 6px; }
+  .mail-compose label { flex: none; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .mail-compose label input { font: inherit; font-size: 13px; border: 0; background: none; padding: 8px 0; color: var(--text); outline: none; }
+  .mail-compose .mc-files:not(:empty) { padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .mail-compose .mc-sug { margin: 0 14px 0 76px; border: 1px solid var(--line); border-radius: 8px; display: grid; background: var(--win); box-shadow: 0 6px 18px rgba(0,0,0,.12); position: relative; z-index: 2; }
+  .mail-compose .mc-sug[hidden] { display: none; }
+  .mail-compose .mc-sug button { background: none; border: 0; text-align: left; font: inherit; font-size: 12.5px; padding: 6px 10px; color: var(--text); }
+  .mail-compose .mc-sug button:hover { background: var(--hover); }
+  .mail-compose .mc-scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+  .mail-compose .mc-ed { flex: none; min-height: 150px; padding: 14px 18px; font-size: 14px; line-height: 1.45; outline: none; color: #1d1d1f; background: #fff; }
+  .mail-compose .mc-ed img { max-width: 100%; }
+  .mail-compose .mc-quote { flex: 1; display: flex; min-height: 0; border-top: 1px dashed var(--line); background: #fff; }
+  .mail-compose .mc-quote:empty { border: 0; }
+  .mail-compose .mc-quote iframe { flex: 1; border: 0; min-height: 260px; padding: 0 18px; box-sizing: border-box; width: 100%; }
+  dialog.mail-sigdlg { border: 0; border-radius: 14px; padding: 18px 20px; width: 520px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  dialog.mail-sigdlg h2 { margin: 0 0 6px; font-size: 16px; }
+  dialog.mail-sigdlg .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
+  dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
+  dialog.mail-sigdlg .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
   body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
   body.cal-mode #profileBtn { visibility: hidden; }
@@ -9652,7 +9682,8 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const [n, id] of names) if (id) wk[id] = n;
     const r = await mailApi(acc.id, { path: '/me/mailFolders?$top=100&$select=id,displayName,unreadItemCount,totalItemCount,childFolderCount' });
     if (!r.ok) { mailUi.folders[acc.id] = { error: r.needsSignIn ? 'Sign in again' : r.error }; if (r.needsSignIn) acc.needsSignIn = true; return; }
-    const list = (r.data.value || []).filter(f => !MAIL_HIDE.test(f.displayName)).map(f => Object.assign(f, { wk: wk[f.id] || '' }));
+    const byName = n => ({ 'inbox': 'inbox', 'drafts': 'drafts', 'sent items': 'sentitems', 'sent': 'sentitems', 'archive': 'archive', 'deleted items': 'deleteditems', 'junk email': 'junkemail', 'junk e-mail': 'junkemail', 'outbox': 'outbox' }[n.toLowerCase()] || '');
+    const list = (r.data.value || []).filter(f => !MAIL_HIDE.test(f.displayName)).map(f => Object.assign(f, { wk: wk[f.id] || (Object.values(wk).includes(byName(f.displayName)) ? '' : byName(f.displayName)) }));
     list.sort((a, b) => { const x = MAIL_ORDER.indexOf(a.wk), y = MAIL_ORDER.indexOf(b.wk); return (x < 0 ? 99 : x) - (y < 0 ? 99 : y) || a.displayName.localeCompare(b.displayName); });
     mailUi.folders[acc.id] = { list };
   }
@@ -9692,11 +9723,13 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   async function mailOpen(m) {
     const s = mailState.sel;
+    if (m.isDraft) return mailCompose('draft', m);
     mailUi.msg = m; mailUi.msgBody = null; mailRenderMain();
     const r = await mailApi(s.acc, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
     if (mailUi.msg !== m) return;
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
     mailRenderMain();
+    if (r.ok) mailLoadAttachments(s.acc, m, mailUi.msgBody);
     if (r.ok && !m.isRead) {                               // opening it marks it read, here and in Outlook
       m.isRead = true;
       mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }).then(() => { const acc = (mailUi.accounts || []).find(a => a.id === s.acc); if (acc) mailLoadFolders(acc).then(mailSideRender); });
@@ -9726,7 +9759,8 @@ body { width: max-content !important; min-width: 0 !important; }
         mailState.profiles[a.id] = mine.includes(p.id) ? mine.filter(z => z !== p.id) : mine.concat(p.id); mailSave(); mailStart(false);
       } })),
       '-',
-      a.needsSignIn && { label: 'Sign In Again…', run: () => mailAddAccount() },
+      { label: activeProfile() ? `Signature in ${activeProfile().name}\u2026` : 'Signature\u2026', run: () => mailEditSignature(a) },
+      a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount() },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
       '-',
       { label: 'Remove This Account from the App…', run: async () => {
@@ -9774,7 +9808,8 @@ body { width: max-content !important; min-width: 0 !important; }
           if (!open && !mailUi.kids[f.id]) await mailLoadKids(a, f);
           mailSideRender();
         });
-        b.addEventListener('click', () => { mailState.sel = { acc: a.id, folder: f.id, name: f.displayName }; mailSave(); mailSideRender(); mailLoadMessages(true); });
+        b.addEventListener('click', () => { mailState.sel = { acc: a.id, folder: f.id, name: f.displayName }; mailUi.search = ''; mailSave(); mailSideRender(); mailLoadMessages(true); });
+        b.addEventListener('contextmenu', e => { e.preventDefault(); mailFolderMenu(a, f, e.clientX, e.clientY); });
         sd.appendChild(b);
         if (open && f.childFolderCount) {
           if (!mailUi.kids[f.id]) mailLoadKids(a, f).then(mailSideRender);
@@ -9818,8 +9853,15 @@ body { width: max-content !important; min-width: 0 !important; }
     const acc = s && (mailUi.accounts || []).find(a => a.id === s.acc);
     const head = document.createElement('div'); head.className = 'cal-head';
     head.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
-    head.querySelector('b').textContent = s ? s.name : 'Mail';
+    head.querySelector('b').textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
     head.querySelector('.mail-sub').textContent = acc ? acc.email : '';
+    const nw = document.createElement('button'); nw.className = 'btn-primary mail-new'; nw.textContent = 'New Message'; nw.title = acc ? `Write a new message from ${acc.email}` : '';
+    nw.addEventListener('click', () => mailCompose('new'));
+    head.insertBefore(nw, head.firstChild);
+    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = acc ? `Search ${acc.email}` : 'Search'; sr.value = mailUi.search || '';
+    sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
+    sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
+    head.appendChild(sr);
     const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = UI.reload; rf.title = 'Check for new mail';
     rf.addEventListener('click', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true); });
     head.appendChild(rf);
@@ -9838,6 +9880,7 @@ body { width: max-content !important; min-width: 0 !important; }
       r.querySelector('.sj').textContent = m.subject || '(No subject)';
       r.querySelector('.pv').textContent = (m.bodyPreview || '').replace(/\s+/g, ' ');
       r.addEventListener('click', () => mailOpen(m));
+      r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(m, e.clientX, e.clientY); });
       list.appendChild(r);
     }
     if (mailUi.loading) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading…' }));
@@ -9854,6 +9897,21 @@ body { width: max-content !important; min-width: 0 !important; }
       hd.querySelector('.dt').textContent = new Date(m.receivedDateTime).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
       const to = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
       hd.querySelector('.to').textContent = to;
+      const bar = document.createElement('div'); bar.className = 'mail-acts';
+      const flagged = m.flag && m.flag.flagStatus === 'flagged';
+      for (const [l, t, run] of [['Reply', 'Reply to the sender', () => mailCompose('reply', m)], ['Reply All', 'Reply to everyone', () => mailCompose('replyAll', m)], ['Forward', 'Forward this message', () => mailCompose('forward', m)],
+        ['Archive', 'Move to Archive', () => mailAct(m, 'archive')], ['Delete', 'Move to Deleted Items', () => mailAct(m, 'delete')], [flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag')], ['Unread', 'Mark as unread', () => mailAct(m, 'read', false)]]) {
+        const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = l; b.title = t; b.addEventListener('click', run); bar.appendChild(b);
+      }
+      const mv = document.createElement('button'); mv.className = 'tb'; mv.innerHTML = '<span class="t">Move\u2026</span>'; mv.title = 'Move to another folder';
+      mv.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: '\u2003'.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); });
+      bar.appendChild(mv);
+      hd.appendChild(bar);
+      if (d && d.files && d.files.length) {
+        const fl = document.createElement('div'); fl.className = 'mail-files';
+        for (const a of d.files) { const c = document.createElement('button'); c.className = 'mail-att'; c.textContent = `\uD83D\uDCCE ${a.name}${a.size ? ` (${a.size > 1e6 ? (a.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1e3)) + ' KB'})` : ''}`; c.title = 'Open it (it is saved in Downloads)'; c.addEventListener('click', () => mailOpenAttachment(a)); fl.appendChild(c); }
+        hd.appendChild(fl);
+      }
       read.appendChild(hd);
       if (!d) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Opening…' }));
       else if (d.error) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: d.error }));
@@ -9869,7 +9927,239 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     body.append(list, read);
     P.appendChild(body);
+    if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
+  }
+
+  // ----- Mail: attachments, actions, folders, search, and writing -----
+  const mailEsc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // A message's attachments: files to open, and the pictures placed inside it (cid: links become the pictures).
+  async function mailLoadAttachments(accId, m, d) {
+    const html = (d.body && d.body.content) || '';
+    if (!m.hasAttachments && !/cid:/i.test(html)) return;
+    const r = await mailApi(accId, { path: `/me/messages/${m.id}/attachments?$select=id,name,contentType,size,isInline` });
+    if (!r.ok || mailUi.msg !== m) return;
+    const all = r.data.value || [];
+    const inline = all.filter(a => a.isInline && /^image\//i.test(a.contentType || '') && a.size < 3e6).slice(0, 12);
+    const cids = {};
+    await Promise.all(inline.map(async a => {
+      const x = await mailApi(accId, { path: `/me/messages/${m.id}/attachments/${a.id}` });
+      if (x.ok && x.data && x.data.contentBytes) { cids[(x.data.contentId || a.name || '').replace(/^<|>$/g, '')] = `data:${a.contentType};base64,${x.data.contentBytes}`; a.shown = true; }
+    }));
+    if (mailUi.msg !== m) return;
+    let body = html, used = new Set();
+    body = body.replace(/cid:([^"'\s>)]+)/gi, (all0, id) => { const k = decodeURIComponent(id); if (cids[k]) { used.add(k); return cids[k]; } return all0; });
+    d.body = Object.assign({}, d.body, { content: body });
+    // Files: everything not shown inside the message.
+    d.files = all.filter(a => !(a.isInline && a.shown));
+    mailRenderMain();
+  }
+  async function mailOpenAttachment(a) {
+    const s = mailState.sel, m = mailUi.msg;
+    toast(`Opening “${a.name}”…`);
+    const r = await window.navigatorApp.acctAttachment(s.acc, m.id, a.id, a.name);
+    if (!r || !r.ok) return toast(`Could not open “${a.name}”: ${(r && r.error) || 'try again'}`);
+    toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
+  }
+  const mailAccOf = () => (mailUi.accounts || []).find(a => mailState.sel && a.id === mailState.sel.acc);
+  const mailRefreshFolders = () => { const a = mailAccOf(); if (a) mailLoadFolders(a).then(mailSideRender); };
+  // Take a message out of the list at once (the change is then made in Outlook); it comes back if that fails.
+  async function mailAct(m, what, arg) {
+    const s = mailState.sel;
+    const drop = () => { mailUi.msgs = (mailUi.msgs || []).filter(x => x !== m); if (mailUi.msg === m) { mailUi.msg = null; mailUi.msgBody = null; } mailRenderMain(); };
+    let r;
+    if (what === 'delete') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
+    else if (what === 'archive') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
+    else if (what === 'move') { drop(); r = await mailApi(s.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok) toast(`Moved to ${arg.displayName}`); }
+    else if (what === 'read') { m.isRead = arg; mailRenderMain(); r = await mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: arg } }); }
+    else if (what === 'flag') { const on = !(m.flag && m.flag.flagStatus === 'flagged'); m.flag = { flagStatus: on ? 'flagged' : 'notFlagged' }; mailRenderMain(); r = await mailApi(s.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: m.flag } }); }
+    if (r && !r.ok) { toast(`That did not work: ${r.error || 'try again'}`); mailLoadMessages(true); }
+    mailRefreshFolders();
+  }
+  function mailAllFolders(accId) {
+    const out = [];
+    const walkF = (list, depth) => { for (const f of list || []) { out.push({ f, depth }); if (mailUi.kids[f.id]) walkF(mailUi.kids[f.id], depth + 1); } };
+    walkF((mailUi.folders[accId] || {}).list, 0);
+    return out;
+  }
+  function mailMsgMenu(m, x, y) {
+    const s = mailState.sel;
+    const flagged = m.flag && m.flag.flagStatus === 'flagged';
+    showMenu(x, y, [
+      { label: 'Reply', run: () => mailCompose('reply', m) },
+      { label: 'Reply All', run: () => mailCompose('replyAll', m) },
+      { label: 'Forward', run: () => mailCompose('forward', m) },
+      '-',
+      { label: m.isRead ? 'Mark as Unread' : 'Mark as Read', run: () => mailAct(m, 'read', !m.isRead) },
+      { label: flagged ? 'Clear Flag' : 'Flag', run: () => mailAct(m, 'flag') },
+      '-',
+      { label: 'Archive', run: () => mailAct(m, 'archive') },
+      { label: 'Move to', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, mailAllFolders(s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))) },
+      { label: 'Delete', run: () => mailAct(m, 'delete') },
+    ]);
+  }
+  function mailFolderMenu(a, f, x, y) {
+    const sys = !!f.wk;
+    const ask = (title, name, done) => {
+      const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
+      d.innerHTML = '<h2></h2><input class="ask" style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>';
+      d.querySelector('h2').textContent = title; const inp = d.querySelector('input'); inp.value = name;
+      const fin = ok => { const v = inp.value.trim(); d.close(); d.remove(); if (ok && v) done(v); };
+      d.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x) fin(x === 'ok'); });
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fin(true); } });
+      document.body.appendChild(d); d.showModal(); inp.focus(); inp.select();
+    };
+    const after = r => { if (!r.ok) toast(`That did not work: ${r.error || 'try again'}`); mailUi.kids = {}; delete mailUi.folders[a.id]; mailStart(true); };
+    showMenu(x, y, [
+      { label: 'New Folder Inside…', run: () => ask('New Folder', '', async n => { mailState.open[f.id] = true; mailSave(); after(await mailApi(a.id, { method: 'POST', path: `/me/mailFolders/${f.id}/childFolders`, body: { displayName: n } })); }) },
+      { label: 'New Folder at the Top Level…', run: () => ask('New Folder', '', async n => after(await mailApi(a.id, { method: 'POST', path: '/me/mailFolders', body: { displayName: n } }))) },
+      '-',
+      { label: 'Rename…', disabled: sys, run: () => ask('Rename Folder', f.displayName, async n => after(await mailApi(a.id, { method: 'PATCH', path: `/me/mailFolders/${f.id}`, body: { displayName: n } }))) },
+      { label: 'Delete Folder…', disabled: sys, run: async () => {
+        if (!confirm(`Delete the folder “${f.displayName}” and everything in it? It goes to Deleted Items in Outlook.`)) return;
+        if (mailState.sel && mailState.sel.folder === f.id) mailState.sel = null;
+        after(await mailApi(a.id, { method: 'DELETE', path: `/me/mailFolders/${f.id}` }));
+      } },
+      '-',
+      { label: 'Mark All as Read', run: async () => {
+        const un = (mailUi.msgs || []).filter(m => !m.isRead);
+        if (!mailState.sel || mailState.sel.folder !== f.id) return toast('Open the folder first, then mark all as read.');
+        for (const m of un) { m.isRead = true; mailApi(a.id, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: true } }); }
+        mailRenderMain(); setTimeout(mailRefreshFolders, 1500);
+      } },
+    ]);
+  }
+  async function mailSearch(q) {
+    const s = mailState.sel;
+    if (!s) return;
+    if (!q) { mailUi.search = ''; return mailLoadMessages(true); }
+    mailUi.search = q; mailUi.loading = true; mailUi.msgs = null; mailUi.next = null; mailUi.msg = null; mailUi.msgBody = null; mailUi.err = ''; mailRenderMain();
+    const r = await mailApi(s.acc, { path: `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft` });
+    mailUi.loading = false;
+    if (mailUi.search !== q) return;
+    if (!r.ok) mailUi.err = r.error || 'Search did not work'; else { mailUi.msgs = r.data.value || []; mailUi.next = r.data['@odata.nextLink'] || null; }
+    mailRenderMain();
+  }
+  // Signatures: one per account, and a different one per profile if you set it (Consulting and Personal can differ).
+  const mailSigKey = accId => `${accId}|${state.profileId || ''}`;
+  const mailSigOf = accId => { const g = mailState.sigs || {}; return g[mailSigKey(accId)] !== undefined ? g[mailSigKey(accId)] : g[`${accId}|`] || ''; };
+  function mailEditSignature(a) {
+    const p = activeProfile();
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
+    d.innerHTML = `<h2></h2><p class="hint"></p><div class="sig-ed" contenteditable="true"></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
+    d.querySelector('h2').textContent = `Signature for ${a.email}`;
+    d.querySelector('.hint').textContent = p ? `Used when you write from this account in ${p.name}. Type it, or copy your signature from an Outlook email and paste it here (pictures and links come too).` : 'Used when you write from this account in any profile that has no signature of its own. Type it, or paste it from an Outlook email.';
+    d.querySelector('.sig-ed').innerHTML = mailSigOf(a.id);
+    d.addEventListener('click', e => {
+      const x = e.target.dataset && e.target.dataset.x;
+      if (x === 'ok') { mailState.sigs = mailState.sigs || {}; mailState.sigs[mailSigKey(a.id)] = d.querySelector('.sig-ed').innerHTML.trim(); mailSave(); toast('Signature saved'); }
+      if (x) { d.close(); d.remove(); }
+    });
+    document.body.appendChild(d); d.showModal(); d.querySelector('.sig-ed').focus();
+  }
+  // Writing: a new message, a reply or a forward opens over the reading side. Outlook holds it as a draft from the
+  // start, so closing keeps it in Drafts; Send sends it from the account, with your signature.
+  const mailAddrs = p => (p || []).map(x => x.emailAddress).filter(Boolean).map(e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address).join(', ');
+  const mailParse = t => String(t || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean).map(x => {
+    const m = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>$/.exec(x);
+    const address = m ? m[2] : x, name = m ? m[1].trim().replace(/^"|"$/g, '') : '';
+    return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? { emailAddress: name ? { address, name } : { address } } : { bad: x };
+  });
+  async function mailCompose(mode, m) {
+    const s = mailState.sel, acc = mailAccOf();
+    if (!acc) return toast('Choose an account first');
+    if (mailUi.compose) return toast('Finish or close the message you are writing first.');
+    mailUi.compose = { busy: true };
+    let r;
+    if (mode === 'new') r = await mailApi(acc.id, { method: 'POST', path: '/me/messages', body: { subject: '', body: { contentType: 'html', content: '' } } });
+    else if (mode === 'draft') r = await mailApi(acc.id, { path: `/me/messages/${m.id}?$select=id,subject,toRecipients,ccRecipients,bccRecipients,body`, prefer: 'outlook.body-content-type="html"' });
+    else r = await mailApi(acc.id, { method: 'POST', path: `/me/messages/${m.id}/${mode === 'reply' ? 'createReply' : mode === 'replyAll' ? 'createReplyAll' : 'createForward'}`, prefer: 'outlook.body-content-type="html"' });
+    if (!r.ok) { mailUi.compose = null; return toast(`Could not start the message: ${r.error || 'try again'}`); }
+    const d = r.data;
+    const C = mailUi.compose = { acc: acc.id, id: d.id, mode, quoted: mode === 'new' ? '' : (d.body && d.body.content) || '', files: [] };
+    const el = document.createElement('div'); el.className = 'mail-compose';
+    el.innerHTML = `<div class="mc-bar"><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach</span></button><span class="mc-from"></span><span class="sp"></span><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="close" title="Close and keep it in Drafts">✕</button></div>
+      <label><span>To</span><input name="to" autocomplete="off" spellcheck="false"></label><div class="mc-sug" hidden></div>
+      <label><span>Cc</span><input name="cc" autocomplete="off" spellcheck="false"></label>
+      <label><span>Bcc</span><input name="bcc" autocomplete="off" spellcheck="false"></label>
+      <label><span>Subject</span><input name="subject"></label>
+      <div class="mc-files"></div>
+      <div class="mc-scroll"><div class="mc-ed" contenteditable="true"></div><div class="mc-quote"></div></div><input type="file" multiple hidden>`;
+    const f = n => el.querySelector(`[name="${n}"]`);
+    f('to').value = mailAddrs(d.toRecipients); f('cc').value = mailAddrs(d.ccRecipients); f('bcc').value = mailAddrs(d.bccRecipients); f('subject').value = d.subject || '';
+    el.querySelector('.mc-from').textContent = `From ${acc.email}`;
+    const ed = el.querySelector('.mc-ed');
+    const sig = mailSigOf(acc.id);
+    if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
+    else ed.innerHTML = `<div><br></div>${sig ? `<div><br></div><div class="mc-sig">${sig}</div>` : ''}`;
+    // What you are replying to or forwarding (or the draft so far) shows below, sealed, and is sent with the message.
+    const under = C.quoted || C.draftBody;
+    if (under) {
+      const q = document.createElement('iframe'); q.setAttribute('sandbox', '');
+      q.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'"><style>body{font:13px -apple-system,sans-serif;color:#444;margin:8px 0}img{max-width:100%}</style>${under}`;
+      el.querySelector('.mc-quote').appendChild(q);
+    }
+    // Suggestions as you type a name (people you write to).
+    let sugT = null;
+    const sug = el.querySelector('.mc-sug');
+    for (const n of ['to', 'cc', 'bcc']) f(n).addEventListener('input', e => {
+      clearTimeout(sugT);
+      const inp = e.target, last = inp.value.split(/[,;]/).pop().trim();
+      if (last.length < 2) { sug.hidden = true; return; }
+      sugT = setTimeout(async () => {
+        const pr = await mailApi(acc.id, { path: `/me/people?$search=${encodeURIComponent('"' + last.replace(/"/g, '') + '"')}&$top=6&$select=displayName,scoredEmailAddresses` });
+        const ppl = pr.ok ? (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).filter(x => x.address) : [];
+        sug.replaceChildren(); sug.hidden = !ppl.length;
+        inp.parentNode.after(sug);
+        for (const p of ppl) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${p.name} <${p.address}>`; b.addEventListener('mousedown', ev => { ev.preventDefault(); const parts = inp.value.split(/([,;])/); parts[parts.length - 1] = ` ${p.name} <${p.address}>`; inp.value = parts.join('').trim() + ', '; sug.hidden = true; inp.focus(); }); sug.appendChild(b); }
+      }, 250);
+    });
+    el.addEventListener('focusout', () => setTimeout(() => { sug.hidden = true; }, 150));
+    const paintFiles = () => {
+      const box = el.querySelector('.mc-files'); box.replaceChildren();
+      for (const fl of C.files) { const c = document.createElement('span'); c.className = 'mail-att'; c.textContent = `📎 ${fl.name}${fl.sent ? '' : ' …'}`; box.appendChild(c); }
+    };
+    const fileIn = el.querySelector('input[type="file"]');
+    fileIn.addEventListener('change', async () => {
+      for (const file of fileIn.files) {
+        if (file.size > 3e6) { toast(`“${file.name}” is over 3 MB, which is the most the app can attach for now. Attach it from Outlook.`); continue; }
+        const rec = { name: file.name }; C.files.push(rec); paintFiles();
+        const b64 = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1]); rd.readAsDataURL(file); });
+        const up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: file.name, contentType: file.type || 'application/octet-stream', contentBytes: b64 } });
+        if (up.ok) rec.sent = true; else { C.files = C.files.filter(x => x !== rec); toast(`Could not attach “${file.name}”: ${up.error || 'try again'}`); }
+        paintFiles();
+      }
+      fileIn.value = '';
+    });
+    const fields = () => {
+      const lists = { to: mailParse(f('to').value), cc: mailParse(f('cc').value), bcc: mailParse(f('bcc').value) };
+      const bad = [...lists.to, ...lists.cc, ...lists.bcc].find(x => x.bad);
+      const mine = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:11pt">${ed.innerHTML}</div>`;
+      return { bad, lists, body: { subject: f('subject').value, toRecipients: lists.to, ccRecipients: lists.cc, bccRecipients: lists.bcc, body: { contentType: 'html', content: mine + (C.quoted || C.draftBody || '') } } };
+    };
+    const shut = () => { el.remove(); mailUi.compose = null; mailUi.composeEl = null; mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); };
+    el.addEventListener('click', async e => {
+      const x = e.target.closest('[data-x]'); if (!x || C.sending) return;
+      const what = x.dataset.x;
+      if (what === 'attach') return fileIn.click();
+      if (what === 'discard') { if (!confirm('Delete this draft?')) return; await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}` }); toast('Draft deleted'); return shut(); }
+      const v = fields();
+      if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? 'Kept in Drafts' : `Could not save the draft: ${sv.error || ''}`); return shut(); }
+      if (what === 'send') {
+        if (v.bad) return toast(`“${v.bad.bad}” is not an email address.`);
+        if (!v.lists.to.length && !v.lists.cc.length && !v.lists.bcc.length) return toast('Add someone to send it to.');
+        if (C.files.some(fl => !fl.sent)) return toast('Wait a moment: a file is still being attached.');
+        if (!v.body.subject && !confirm('Send without a subject?')) return;
+        C.sending = true; x.textContent = 'Sending…';
+        const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: v.body });
+        const sn = sv.ok ? await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/send` }) : sv;
+        if (!sn.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${sn.error || 'try again'}. It is still here.`); }
+        toast('Sent'); shut();
+      }
+    });
+    mailUi.composeEl = el;
+    $('mailPanel').appendChild(el);
+    setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
   }
 
   let claraView = null;

@@ -160,4 +160,23 @@ async function graph(id, req) {
   }
 }
 
-module.exports = { list, add, remove, graph };
+// Save one attachment into Downloads (never over a file already there) and say where it went.
+async function saveAttachment(id, msgId, attId, name) {
+  try {
+    const send = async token => net.fetch(`${MS_GRAPH}/me/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
+    let res = await send(await tokenFor(id));
+    if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
+    if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };
+    const buf = Buffer.from(await res.arrayBuffer());
+    const clean = (path.basename(String(name || 'attachment')).replace(/[\/\\:\0]/g, '_').replace(/^\.+/, '') || 'attachment').slice(0, 180);
+    const dir = app.getPath('downloads'), ext = path.extname(clean), stem = clean.slice(0, clean.length - ext.length);
+    let file2 = path.join(dir, clean);
+    for (let i = 2; fs.existsSync(file2) && i < 500; i++) file2 = path.join(dir, `${stem} ${i}${ext}`);
+    fs.writeFileSync(file2, buf, { flag: 'wx' });
+    return { ok: true, path: file2, name: path.basename(file2) };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
+module.exports = { list, add, remove, graph, saveAttachment };

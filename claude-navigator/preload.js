@@ -12,6 +12,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   acctAdd: (hint) => ipcRenderer.invoke('acct-add', hint),
   acctRemove: (id) => ipcRenderer.invoke('acct-remove', id),
   acctGraph: (id, req) => ipcRenderer.invoke('acct-graph', id, req),
+  acctAttachment: (id, msgId, attId, name) => ipcRenderer.invoke('acct-attachment', id, msgId, attId, name),
   openWindow: (url) => ipcRenderer.invoke('open-window', url),
   showInFolder: (file) => ipcRenderer.invoke('show-in-folder', file),
   openFile: (file) => ipcRenderer.invoke('open-file', file),
