@@ -251,6 +251,9 @@
   .app-ic.notes { background: #E0A800; }
   .app-ic.cal { background: #D9534F; }
   .app-ic.mail { background: #2F7DD1; }
+  .app-ic.claude { background: #D97757; }
+  .app-ic.monday { background: #fff; box-shadow: inset 0 0 0 1px var(--line); }
+  body[data-face="claude"] #sNewFolder, body[data-face="monday"] #sNewFolder { visibility: hidden; }
   .app-ic.nav { background: #3D8BE6; }
   .app-ic.cos { background: #1B5A68; }
   .app-ic svg { width: 20px; height: 20px; }
@@ -289,7 +292,7 @@
   .cos-step .found { display: flex; align-items: center; gap: 8px; background: color-mix(in srgb, #E3A452 12%, var(--win)); border-radius: 8px; padding: 6px 8px; }
   .cos-step .found span { flex: 1; }
   /* ---------- Chief of Staff helper (bottom right, in Chief of Staff only) ---------- */
-  #cosBot { position: fixed; right: 18px; bottom: 18px; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
+  #cosBot { position: fixed; right: calc(18px + var(--dock-w, 0px) + var(--sp-now, 0px)); bottom: 18px; z-index: 45; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; pointer-events: none; }
   #cosBot[hidden] { display: none; }
   #cosBot > * { pointer-events: auto; }
   .bot-btn { width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-text, #fff); box-shadow: 0 6px 18px rgba(0,0,0,.18); position: relative; display: grid; place-items: center; cursor: pointer; }
@@ -386,24 +389,75 @@
   #notesSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.notes-mode #notesSide { display: block; }
   body.notes-mode #tree, body.notes-mode #sNewFolder { display: none !important; }
+  /* The dock (small app icons down the edge) and the side panel it opens */
+  body.has-dock { --dock-w: 46px; }
+  body.sp-open { --sp-now: var(--sp-w, min(38vw, 480px)); }
+  body.has-dock #main { margin-right: calc(var(--dock-w, 0px) + var(--sp-now, 0px)); }
+  #dock { display: none; }
+  body.has-dock #dock { position: fixed; top: 0; bottom: 0; right: 0; width: var(--dock-w); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 58px;
+    background: color-mix(in srgb, var(--tint, #8a8f98) 9%, var(--win)); border-left: 1px solid var(--line); -webkit-app-region: no-drag; }
+  .dock-b { position: relative; background: none; border: 0; padding: 3px; border-radius: 10px; display: grid; place-items: center; opacity: .78; }
+  .dock-b:hover { opacity: 1; background: var(--hover); }
+  .dock-b.on { opacity: 1; background: var(--sel); }
+  .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
+  .dock-sep { width: 22px; height: 1px; background: var(--line); margin: 2px 0; }
+  .app-ic.mini { width: 30px; height: 30px; border-radius: 8px; }
+  .app-ic.mini svg { width: 16px; height: 16px; }
+  .app-ic.act { background: #6B7C93; }
+  #sidePanel { position: fixed; top: 0; bottom: 0; right: var(--dock-w, 0px); width: var(--sp-w, min(38vw, 480px)); min-width: 300px; max-width: calc(100vw - 420px); z-index: 40; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  #sidePanel[hidden] { display: none; }
+  #spRs { position: absolute; left: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 8; }
+  #spRs:hover, #spRs.rs-on { background: linear-gradient(90deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
+  #spHead { flex: none; height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  #spHead .sp { flex: 1; }
+  #spHead .app-ic.mini { width: 22px; height: 22px; border-radius: 6px; }
+  #spHead .app-ic.mini svg { width: 13px; height: 13px; }
+  #spHead .tb.on { background: var(--sel); color: var(--text); }
+  #spMain { flex: 1; min-height: 0; display: flex; }
+  #spNav { flex: 0 0 210px; overflow: auto; border-right: 1px solid var(--line); padding: 4px 6px; background: color-mix(in srgb, var(--tint, #8a8f98) 5%, var(--win)); }
+  #spNav[hidden] { display: none; }
+  #spBody { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  #spBody > webview { flex: 1; border: 0; }
+  #spBody > webview[hidden] { display: none; }
+  #spBody > #mailPanel, #spBody > #calPanel, #spBody > #notesPanel { position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; flex: 1; min-height: 0; border: 0; border-radius: 0; box-shadow: none; resize: none; }
+  #spBody > [hidden] { display: none !important; }
+  #spBody #notesPanel .fhead { display: none; }
+  #spBody > #splitLeft { display: flex !important; flex: 1; max-width: none; min-width: 0; border: 0; order: 0; }
+  #spBody .sl-foot { display: none; }
+  #sidePanel .mail-sub, #sidePanel .cal-upd, #sidePanel .mail-pane-btn { display: none; }
+  #sidePanel .cal-head { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 10px; row-gap: 4px; }
+  #sidePanel .mail-search { width: 110px; flex: 1 1 110px; }
+  #sidePanel .mail-read.pop { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; box-shadow: none; }
+  #sidePanel .mail-compose { left: 0; top: 0; z-index: 6; }
+  #sidePanel .cal-dh { flex-direction: column; align-items: center; gap: 0; padding: 4px 2px; font-size: 11px; }
+  #sidePanel .cal-dh b { font-size: 14px; }
+  #sidePanel .cal-dh.today b { width: 22px; height: 22px; font-size: 12.5px; }
+  #sidePanel .cal-wk-head, #sidePanel .cal-allday, #sidePanel .cal-grid { grid-template-columns: 44px repeat(var(--cols), minmax(0, 1fr)); }
+  #sidePanel .cal-adl { font-size: 9.5px; padding: 6px 2px; }
+  #sidePanel .cal-pop { width: min(380px, calc(100% - 16px)); }
+  body.side-right.has-dock #main { margin-right: 0; margin-left: calc(var(--dock-w, 0px) + var(--sp-now, 0px)); }
+  body.side-right.has-dock #dock { right: auto; left: 0; border-left: 0; border-right: 1px solid var(--line); }
+  body.side-right #sidePanel { right: auto; left: var(--dock-w, 0px); border-left: 0; border-right: 1px solid var(--line); }
+  body.side-right #spRs { left: auto; right: -5px; }
+  .sl-src { display: none !important; }
   /* Mail app */
   body.mail-mode #main > :not(#mailPanel) { display: none !important; }
   body.mail-mode #tree, body.mail-mode #sNewFolder { display: none !important; }
   #mailSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.mail-mode #mailSide { display: block; }
-  #mailSide .mail-acc { display: flex; align-items: baseline; gap: 6px; padding: 12px 8px 5px; font-size: 11.5px; color: var(--muted); cursor: default; }
-  #mailSide .mail-acc b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #mailSide .mail-acc.warn span { color: #B36E24; font-weight: 600; white-space: nowrap; cursor: pointer; }
-  #mailSide .mail-f { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; color: var(--text); }
-  #mailSide .mail-f:hover { background: var(--hover); }
-  #mailSide .mail-f.on { background: var(--sel); }
-  #mailSide .mail-f.unread .nm { font-weight: 650; }
-  #mailSide .mail-f .tw { width: 10px; font-size: 9px; color: var(--muted); flex: none; }
-  #mailSide .mail-f svg { flex: none; color: var(--muted); }
-  #mailSide .mail-f .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #mailSide .mail-f .n { font-size: 11.5px; color: var(--accent); font-weight: 650; }
-  #mailSide button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; margin-top: 10px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
-  #mailSide button.add:hover { background: var(--hover); }
+  .mailnav .mail-acc { display: flex; align-items: baseline; gap: 6px; padding: 12px 8px 5px; font-size: 11.5px; color: var(--muted); cursor: default; }
+  .mailnav .mail-acc b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mailnav .mail-acc.warn span { color: #B36E24; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  .mailnav .mail-f { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; color: var(--text); }
+  .mailnav .mail-f:hover { background: var(--hover); }
+  .mailnav .mail-f.on { background: var(--sel); }
+  .mailnav .mail-f.unread .nm { font-weight: 650; }
+  .mailnav .mail-f .tw { width: 10px; font-size: 9px; color: var(--muted); flex: none; }
+  .mailnav .mail-f svg { flex: none; color: var(--muted); }
+  .mailnav .mail-f .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mailnav .mail-f .n { font-size: 11.5px; color: var(--accent); font-weight: 650; }
+  .mailnav button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; margin-top: 10px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
+  .mailnav button.add:hover { background: var(--hover); }
   .mail-note { font-size: 12px; color: var(--muted); padding: 8px 10px; line-height: 1.45; }
   .mail-note.big { margin: auto; font-size: 13px; }
   #mailPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
@@ -477,13 +531,13 @@
   body.cal-mode #tree, body.cal-mode #sNewFolder { display: none !important; }
   #calSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.cal-mode #calSide { display: block; }
-  #calSide .cos-side-h { padding: 10px 8px 6px; }
-  #calSide .cal-tg { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
-  #calSide .cal-tg:hover { background: var(--hover); }
-  #calSide .cal-tg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-  #calSide .cal-tg input { margin: 0; }
-  #calSide button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
-  #calSide button.add:hover { background: var(--hover); }
+  .calnav .cos-side-h { padding: 10px 8px 6px; }
+  .calnav .cal-tg { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; }
+  .calnav .cal-tg:hover { background: var(--hover); }
+  .calnav .cal-tg i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .calnav .cal-tg input { margin: 0; }
+  .calnav button.add { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--muted); text-align: left; }
+  .calnav button.add:hover { background: var(--hover); }
   #calPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
   #calPanel[hidden] { display: none; }
   .cal-head { flex: none; display: flex; align-items: center; gap: 4px; padding: 0 12px; height: 52px; border-bottom: 1px solid var(--line); }
@@ -503,6 +557,7 @@
   .cal-wk-head, .cal-allday { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--line); }
   .cal-dh { padding: 6px 8px; display: flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
   .cal-dh b { font-size: 18px; color: var(--text); font-weight: 600; }
+  .cal-dh b, .cal-dh span { flex: none; }
   .cal-dh.today b { background: var(--accent); color: var(--accent-text, #fff); border-radius: 50%; width: 28px; height: 28px; display: inline-grid; place-items: center; font-size: 15px; }
   .cal-adl { font-size: 10.5px; color: var(--muted); padding: 6px 6px; text-align: right; }
   .cal-adc { padding: 3px; display: grid; gap: 2px; align-content: start; border-left: 1px solid var(--line); min-height: 26px; }
@@ -1150,13 +1205,13 @@
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
   <div id="cosSide" hidden aria-label="Team"></div>
   <div id="notesSide" aria-label="Notes"></div>
-  <div id="calSide" aria-label="Calendars"></div>
-  <div id="mailSide" aria-label="Mail accounts and folders"></div>
+  <div id="calSide" class="calnav" aria-label="Calendars"></div>
+  <div id="mailSide" class="mailnav" aria-label="Mail accounts and folders"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span style="flex:1"></span>
     <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
-    <button class="tb" id="sAccount" title=""Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
+    <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
     <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
   </div>
 </aside>
@@ -1235,9 +1290,11 @@
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="cos" title="Your AI team: who does what, their work, skills and routines"><span class="app-ic cos"></span><b>Chief of Staff</b></button>
   <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and artifacts, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
+ <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, artifacts and more"><span class="app-ic claude"></span><b>Claude</b></button>
   <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
-  <button class="app-tile" data-app="cal" title=""Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
-  <button class="app-tile" data-app="notes" title=""Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
+  <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
+  <button class="app-tile" data-app="notes" title="Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
+  <button class="app-tile" data-app="monday" title="Your monday.com workspaces and boards"><span class="app-ic monday"></span><b>monday.com</b></button>
 </div>
 
 <div id="menu" role="menu"></div>
@@ -1250,6 +1307,8 @@
   </div>
   <button class="bot-btn" title="Chief of Staff: suggestions and a chat on the side"><span class="av">CS</span><span class="badge" hidden></span></button>
 </div>
+ <div id="dock" aria-label="Open beside"></div>
+<div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead"></div><div id="spMain"><div id="spNav" hidden></div><div id="spBody"></div></div></div>
 <div id="edgeSide" class="edge-tab at-left" data-label="Sidebar" title="Show the sidebar"></div>
 <div id="edgeDetail" class="edge-tab at-right second" data-label="Details" title="Show the details panel"></div>
 
@@ -2066,14 +2125,18 @@
         if (open) addChildren(archiveFirst(n.children), depth + 1, n);
       }
     };
-    if (isApp) {
-      // Systems: Claude and monday.com, each closed until you open it (remembered).
+    // File Navigator shows your folders; Claude and monday.com are their own apps, each showing its own lists here.
+    const face = isApp ? navFace : 'files';
+    if (isApp && face !== 'files') {
       const h = document.createElement('div');
       h.className = 'row section open lib-head sys-head';
-      h.innerHTML = '<span class="label">Systems</span>';
-      h.title = 'The systems your folders draw from. Drag anything from here into your folders.';
+      h.innerHTML = '<span class="label"></span>';
+      h.querySelector('.label').textContent = face === 'claude' ? 'Claude' : 'monday.com';
+      h.title = 'Drag anything from here into your folders (open Folders from the dock on the right).';
       frag.appendChild(h);
       const sysRow = (key, label, icon, tip, extra = '') => {
+        if (key === face) return true;                // this app's own lists: always showing, no row to open them
+        if (key) return false;
         const open = sysOpen(key);
         const r = document.createElement('div');
         r.className = 'row lib-action sys-row' + extra;
@@ -2151,6 +2214,7 @@
       r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
       frag.appendChild(r);
     };
+    if (face !== 'files') { treeEl.replaceChildren(frag); applySideSel(false); return; }
     const ap = activeProfile();
     if (ap) {
       // One profile: its folders first, then its Other group (Code, Schedules) as its own section.
@@ -6392,12 +6456,13 @@
     const sp = fr('split'), es = $('edgeSplit');
     const listShowing = !browseEl.hidden;
     const splitWanted = !splitOn && isApp !== undefined && listShowing && (cos ? document.body.classList.contains('cos-work') : true);
-    es.className = `edge-tab at-${sp.at} mid` + (splitWanted ? ' show' : '');
+    es.className = `edge-tab at-${sp.at} mid` + (splitWanted && !isApp ? ' show' : '');      // (in the app, the dock does this)
     es.title = cos ? 'Show the company folders beside this list (split view)' : 'Show your folders beside this list (split view), so you can drag across';
     const ea = $('edgeActions');
-    if (ea) { const af = cos ? fr('actions') : null; ea.className = `edge-tab at-${af ? af.at : 'right'} low` + (cos && af.hidden && document.body.classList.contains('cos-work') && cosUi.tab === 'work' ? ' show' : ''); }
+    if (ea) { const af = cos ? fr('actions') : null; ea.className = `edge-tab at-${af ? af.at : 'right'} low` + (!isApp && cos && af.hidden && document.body.classList.contains('cos-work') && cosUi.tab === 'work' ? ' show' : ''); }
     const cl = fr('claude'), ec = $('edgeClaude');
-    ec.className = `edge-tab at-${cl.at} low` + (isApp && !cos && pane.hidden && !state.query ? ' show' : '');
+    ec.className = `edge-tab at-${cl.at} low`;
+    try { dockRender(); } catch (e) { /* starting up */ }
   }
   $('edgeSplit').addEventListener('click', () => showFrame('split'));
   $('edgeActions').addEventListener('click', () => showFrame('actions'));
@@ -6483,8 +6548,9 @@
   function renderSplit() {
     const panel = $('splitLeft');
     if (!panel) return;
-    const show = splitOn && isApp !== undefined && (state.loc.kind !== 'page' || (currentApp !== 'cos' && !fr('claude').wide));
-    $('splitRs').hidden = !show;
+    const inSide = sideApp() === 'folders';             // your folders, beside Mail, Calendar or Notes
+    const show = inSide || (splitOn && isApp !== undefined && (currentApp === 'navigator' || currentApp === 'cos') && (state.loc.kind !== 'page' || (currentApp !== 'cos' && !fr('claude').wide)));
+    $('splitRs').hidden = !show || inSide;
     try { paintEdges(); } catch (e) { /* starting up */ }
     const sh = panel.querySelector('.sl-head');
     if (sh && !sh.querySelector('.fctl')) sh.appendChild(frameCtl('split'));
@@ -6492,7 +6558,7 @@
     panel.hidden = !show;
     $('splitBtn').classList.toggle('on', splitOn);
     // The split shows your folders or your Notes: chosen at its top.
-    const src = show && fr('split').src === 'notes' ? 'notes' : 'folders';
+    const src = 'folders';
     panel.dataset.src = src;
     let seg = panel.querySelector('.sl-src');
     if (!seg) {
@@ -6620,6 +6686,8 @@
 
   // ---------- Apps: Navigator and Chief of Staff ----------
   // The nine-dot button switches between the apps. Each keeps its own place.
+  var navFace = ['claude', 'monday'].includes(ls.get('claudeNavigator.navFace')) ? ls.get('claudeNavigator.navFace') : 'files';
+  const appKey = () => currentApp === 'navigator' ? (navFace === 'files' ? 'navigator' : navFace) : currentApp;     // which tile is on
   var currentApp = ['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
@@ -6635,14 +6703,29 @@
       tidyTree(null); tidyFresh = true;
     }
     currentApp = ['cos', 'notes', 'cal', 'mail'].includes(a) ? a : 'navigator';
+    if (currentApp === 'navigator') {
+      const was = navFace;
+      navFace = a === 'claude' || a === 'monday' ? a : 'files';
+      ls.set('claudeNavigator.navFace', navFace);
+      document.body.dataset.face = navFace;
+      // Each starts on its own list: Claude on All Chats, monday.com on All Workspaces, File Navigator on your folders.
+      try {
+        const L = state.loc;
+        if (navFace === 'claude' && !(L.kind === 'library' && L.which !== 'monday') && L.kind !== 'page') go({ kind: 'library', which: 'chats' });
+        else if (navFace === 'monday' && !(L.kind === 'library' && L.which === 'monday')) go({ kind: 'library', which: 'monday', mkey: 'all' });
+        else if (navFace === 'files' && was !== 'files' && L.kind === 'library') go({ kind: 'folder', id: null });
+      } catch (e) { /* starting up */ }
+    }
     ls.set('claudeNavigator.app', currentApp);
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
     document.body.classList.toggle('notes-mode', currentApp === 'notes');
     document.body.classList.toggle('cal-mode', currentApp === 'cal');
     document.body.classList.toggle('mail-mode', currentApp === 'mail');
-    try { $('mailPanel').hidden = currentApp !== 'mail'; if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
+    try { sideMount(); } catch (e) { /* starting up */ }
+    try { $('mailPanel').hidden = !mailOn(); if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
     try { notesRender(); } catch (e) { /* starting up */ }
-    try { $('calPanel').hidden = currentApp !== 'cal'; if (currentApp === 'cal') { calRender(); calRefresh(false); } } catch (e) { /* starting up */ }
+    try { $('calPanel').hidden = !calOn(); if (currentApp === 'cal') { calRender(); calRefresh(false); } } catch (e) { /* starting up */ }
+    try { dockRender(); } catch (e) { /* starting up */ }
     $('cosSide').hidden = currentApp !== 'cos';
     $('cosMain').hidden = currentApp !== 'cos';
     $('appPop').hidden = true;
@@ -6655,6 +6738,8 @@
   $('appPop').querySelector('.app-ic.cos').innerHTML = UI.team;
   $('appPop').querySelector('.app-ic.cal').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>';
   $('appPop').querySelector('.app-ic.mail').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2.5 4.5L8 8.8l5.5-4.3" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  $('appPop').querySelector('.app-ic.claude').innerHTML = small('claude', '#fff', 22);
+  $('appPop').querySelector('.app-ic.monday').innerHTML = small('monday', undefined, 24);
   $('appPop').querySelector('.app-ic.notes').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
   $('appBtn').addEventListener('click', e => {
     e.stopPropagation();
@@ -6663,7 +6748,7 @@
     const r = e.currentTarget.getBoundingClientRect();
     pop.style.left = Math.max(8, r.left) + 'px';
     pop.style.top = (r.bottom + 6) + 'px';
-    pop.querySelectorAll('.app-tile').forEach(t => t.classList.toggle('on', t.dataset.app === currentApp));
+    pop.querySelectorAll('.app-tile').forEach(t => t.classList.toggle('on', t.dataset.app === appKey()));
     pop.hidden = false;
   });
   $('appPop').addEventListener('click', e => { const t = e.target.closest('.app-tile'); if (t) setApp(t.dataset.app); });
@@ -9083,7 +9168,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function notesToggle(on = !notesState.open) { notesState.open = on; notesSave(); notesRender(); }
   function notesRender() {
     const p = $('notesPanel');
-    const app = currentApp === 'notes', inSplit = p.parentNode === $('splitLeft');
+    const app = currentApp === 'notes', inSplit = p.parentNode === $('spBody');
     notesState.open = false;                         // (no floating window any more: an app, or one side of the split)
     p.hidden = !(app || inSplit);
     notesSideRender();
@@ -9115,7 +9200,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (currentApp === 'notes') { notesState.open = true; notesSave(); setApp(notesState.from || 'navigator'); }
         else { notesState.open = false; notesSave(); setApp('notes'); }
       });
-      b(FICON.hide, 'Close (the note stays signed in; open Notes again from the apps button at the top)', () => { if (currentApp === 'notes') setApp(notesState.from || 'navigator'); else notesToggle(false); });
+      b(FICON.hide, 'Close (the note stays signed in; open Notes again from the apps button at the top)', () => { if (currentApp === 'notes') setApp(notesState.from || 'navigator'); else sideClose(); });
     }
     const fl = p.querySelector('.nfloat');
     if (fl) fl.title = app ? 'Keep it open in a floating window while you use the other apps' : 'Show Notes full size, as an app';
@@ -9442,7 +9527,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return all.filter(i => !calState.hideProfiles.includes(calProfileOf(i) || 'none'));
   }
   function calRender() {
-    if (currentApp !== 'cal') return;
+    if (!calOn()) return;
     calSideRender();
     const P = $('calPanel');
     P.hidden = false;
@@ -9700,8 +9785,9 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // The sidebar: your calendars, and the profiles (tick to show or hide; all shown to start).
   function calSideRender() {
-    const sd = $('calSide');
-    if (!sd || currentApp !== 'cal') return;
+    const sd = currentApp === 'cal' ? $('calSide') : sideApp() === 'cal' ? $('spNav') : null;
+    if (!sd) return;
+    sd.classList.add('calnav'); sd.classList.remove('mailnav');
     sd.replaceChildren();
     const h = (t) => { const x = document.createElement('div'); x.className = 'cos-side-h'; x.textContent = t; sd.appendChild(x); };
     const toggle = (label, colour, on, flip, extra) => {
@@ -9733,8 +9819,8 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
-  document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && currentApp === 'mail' && mailState.pane === false && mailUi.msg && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); } } catch (er) { /* not ready */ } });
-  setInterval(() => { if (currentApp === 'cal') { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
+  document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && mailOn() && mailPopped() && mailUi.msg && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); } } catch (er) { /* not ready */ } });
+  setInterval(() => { if (calOn()) { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
 
   // ----- Calendar: the calendars of your signed-in accounts (read and write) -----
   // Each account's calendars are listed in the sidebar. Their meetings can be made, changed and deleted here, with
@@ -9920,6 +10006,9 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailSave = () => ls.set(MAIL_KEY, JSON.stringify(mailState));
   const mailUi = { accounts: null, folders: {}, kids: {}, msgs: null, msgsFor: '', next: null, loading: false, msg: null, msgBody: null, err: '', adding: false };
   const mailApi = (id, req) => window.navigatorApp.acctGraph(id, req);
+  const mailOn = () => currentApp === 'mail' || sideApp() === 'mail';          // showing as the app, or beside another one
+  const mailPopped = () => mailState.pane === false || sideApp() === 'mail';   // no reading pane: messages pop up
+  const calOn = () => currentApp === 'cal' || sideApp() === 'cal';
   const MAIL_ORDER = ['inbox', 'drafts', 'sentitems', 'archive', 'deleteditems', 'junkemail', 'outbox'];
   const MAIL_HIDE = /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures)$/i;
   async function mailLoadAccounts() {
@@ -10014,7 +10103,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const pn = pid && nodeOf(pid) ? nodeOf(pid).name : '';
     toast(r.again ? `${a.email} is signed in again` : `${a.email} is added${pn ? ` to ${pn}` : ''}. Its profiles and signature are in the profile\u2019s settings.`);
     await mailLoadAccounts();
-    if (currentApp === 'mail') mailStart(true);
+    if (mailOn()) mailStart(true);
   }
   function mailAccountMenu(a, x, y) {
     const mine = mailState.profiles[a.id] || [];
@@ -10041,8 +10130,9 @@ body { width: max-content !important; min-width: 0 !important; }
     archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
   const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   function mailSideRender() {
-    const sd = $('mailSide');
-    if (!sd || currentApp !== 'mail') return;
+    const sd = currentApp === 'mail' ? $('mailSide') : sideApp() === 'mail' ? $('spNav') : null;
+    if (!sd) return;
+    sd.classList.add('mailnav'); sd.classList.remove('calnav');
     sd.replaceChildren();
     const vis = mailVisible();
     for (const a of vis) {
@@ -10101,10 +10191,10 @@ body { width: max-content !important; min-width: 0 !important; }
     if (now - d < 6 * 86400e3) return d.toLocaleDateString('en-AU', { weekday: 'short' });
     return d.toLocaleDateString('en-AU', d.getFullYear() === now.getFullYear() ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: '2-digit' });
   };
-  function mailRender() { if (currentApp !== 'mail') return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
+  function mailRender() { if (!mailOn()) return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
   function mailRenderMain() {
     const P = $('mailPanel');
-    if (currentApp !== 'mail') return;
+    if (!mailOn()) return;
     const keepScroll = (P.querySelector('.mail-list') || {}).scrollTop || 0;
     P.replaceChildren();
     const vis = mailVisible();
@@ -10129,7 +10219,7 @@ body { width: max-content !important; min-width: 0 !important; }
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
     const paneOn = mailState.pane !== false;
-    const pn = document.createElement('button'); pn.className = 'tb' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 3v10" stroke="currentColor" stroke-width="1.3"/></svg><span class="t">Reading Pane</span>';
+    const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 3v10" stroke="currentColor" stroke-width="1.3"/></svg><span class="t">Reading Pane</span>';
     pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
     pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
     head.appendChild(pn);
@@ -10137,7 +10227,7 @@ body { width: max-content !important; min-width: 0 !important; }
     rf.addEventListener('click', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); mailLoadMessages(true); });
     head.appendChild(rf);
     P.appendChild(head);
-    const body = document.createElement('div'); body.className = 'mail-body' + (mailState.pane === false ? ' nopane' : '');
+    const body = document.createElement('div'); body.className = 'mail-body' + (mailPopped() ? ' nopane' : '');
     const list = document.createElement('div'); list.className = 'mail-list';
     if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
     const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
@@ -10159,7 +10249,7 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (mailUi.next) { const more = document.createElement('button'); more.className = 'btn more'; more.textContent = 'Show Older Messages'; more.addEventListener('click', () => mailLoadMessages(false)); list.appendChild(more); }
     const read = document.createElement('div'); read.className = 'mail-read';
     const m = mailUi.msg, d = mailUi.msgBody;
-    const popped = mailState.pane === false;
+    const popped = mailPopped();
     if (popped) {
       read.classList.add('pop'); read.hidden = !m;
       const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '\u2715'; x.title = 'Close (Esc)';
@@ -10338,7 +10428,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const cb = r.querySelector('input'), mine = () => mailState.profiles[a.id] || [];
       cb.checked = mine().includes(p.id);
       r.querySelector('span').textContent = a.email; r.querySelector('label').title = `${a.email} belongs to ${p.name}: its mail and calendar show in this profile`;
-      cb.addEventListener('change', () => { mailState.profiles[a.id] = cb.checked ? mine().filter(x => x !== p.id).concat(p.id) : mine().filter(x => x !== p.id); mailSave(); sg.disabled = !cb.checked; try { if (currentApp === 'mail') mailStart(false); } catch (e) { /* not open */ } });
+      cb.addEventListener('change', () => { mailState.profiles[a.id] = cb.checked ? mine().filter(x => x !== p.id).concat(p.id) : mine().filter(x => x !== p.id); mailSave(); sg.disabled = !cb.checked; try { if (mailOn()) mailStart(false); } catch (e) { /* not open */ } });
       const sg = r.querySelector('button'); sg.disabled = !cb.checked;
       sg.title = `The signature for ${a.email} when you write in ${p.name}`;
       sg.addEventListener('click', () => mailEditSignature(a, p.id));
@@ -10469,6 +10559,129 @@ body { width: max-content !important; min-width: 0 !important; }
     $('mailPanel').appendChild(el);
     setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
   }
+
+  // ----- The dock, and the side panel it opens -----
+  // One strip of small app icons down the edge of the window, the same everywhere. An icon opens that app beside
+  // what you are doing: Mail, Calendar, Notes, Claude, monday.com and your folders. (In File Navigator, Claude and
+  // Chief of Staff, the Claude and Folders icons open the panels those apps already had, which you can drag between.)
+  // A side app opens without its own sidebar; the button at its top left brings that back.
+  var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
+  function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }
+  const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
+  const sideViews = {};
+  const DOCK = [['claude', 'Claude', 'claude'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
+  const dockIcon = cls => `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
+  const dockNative = k => (k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos'))
+    || (k === 'folders' && (currentApp === 'navigator' || (currentApp === 'cos' && document.body.classList.contains('cos-work'))));
+  const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
+  function dockRender() {
+    const d = $('dock');
+    if (!d || !isApp) return;
+    d.replaceChildren();
+    const mk = (k, label, html, on, tip) => {
+      const b = document.createElement('button');
+      b.className = 'dock-b' + (on ? ' on' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
+      b.addEventListener('click', () => dockClick(k));
+      d.appendChild(b);
+    };
+    for (const [k, label, cls] of DOCK) {
+      if (k === currentApp) continue;                     // the app you are in is not offered beside itself
+      const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideApp() === k;
+      mk(k, label, dockIcon(cls), on, on ? `Close ${label} beside this` : `Open ${label} beside this`);
+    }
+    if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
+      d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
+      const on = !fr('actions').hidden;
+      mk('actions', 'Open actions', '<span class="app-ic mini act"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5l1.2 1.2L6.4 3.4M3 9l1.2 1.2L6.4 7.9M3 13.2h.01M8.5 4.5h4.5M8.5 9h4.5M8.5 13h4.5" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>', on, on ? 'Close the list of open actions' : 'Show all of this person’s open actions');
+    }
+  }
+  function dockClick(k) {
+    if (k === 'actions') { setFrame('actions', { hidden: !fr('actions').hidden }); return dockRender(); }
+    if (k === 'claude' && dockNative(k)) {
+      if (dockClaudeShowing()) closeClaude();
+      else if (currentApp === 'cos') { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: state.pageUrl || HOME }); }
+      else showFrame('claude');
+      return dockRender();
+    }
+    if (k === 'folders' && dockNative(k)) { setSplit(!(splitOn && !$('splitLeft').hidden)); return dockRender(); }
+    if (sideApp() === k) sideClose(); else sideOpen(k);
+  }
+  function sideOpen(k) {
+    if (k === currentApp) return;
+    sideState.app = k; sideState.nav = false; sideSave();     // its own sidebar starts hidden
+    sideMount(); sideStart();
+  }
+  function sideClose() { sideState.app = null; sideSave(); sideMount(); }
+  // Put the side app's own screen into the side panel, and everything else back where it lives.
+  function sideMount() {
+    const P = $('sidePanel'), body = $('spBody'), main = $('main');
+    if (!P) return;
+    let k = sideApp();
+    if (k && (k === currentApp || !isApp || (k === 'folders' && dockNative('folders')) || (k === 'claude' && dockNative('claude')))) { sideState.app = k = null; sideSave(); }
+    const home = (el, inSide) => { if (inSide) { if (el.parentNode !== body) body.appendChild(el); } else if (el.parentNode === body) main.insertBefore(el, $('cosMain')); };
+    home($('mailPanel'), k === 'mail'); home($('calPanel'), k === 'cal'); home($('notesPanel'), k === 'notes');
+    if (k !== 'mail' && currentApp !== 'mail') $('mailPanel').hidden = true;
+    if (k !== 'cal' && currentApp !== 'cal') $('calPanel').hidden = true;
+    const sl = $('splitLeft');
+    if (k === 'folders') { if (sl.parentNode !== body) body.appendChild(sl); }
+    else if (sl.parentNode === body) $('splitRs').before(sl);
+    for (const w of ['claude', 'monday']) {
+      if (k === w && !sideViews[w]) {
+        const v = document.createElement('webview');
+        v.setAttribute('partition', 'persist:claude'); v.setAttribute('allowpopups', '');
+        let url = HOME;
+        if (w === 'monday') { url = 'https://monday.com/'; try { const b0 = (mondayData.boards || [])[0]; if (b0 && b0.url) url = new URL(b0.url).origin + '/'; } catch (e) { /* not connected */ } }
+        v.setAttribute('src', url);
+        sideViews[w] = v; body.appendChild(v);
+      }
+      if (sideViews[w]) sideViews[w].hidden = k !== w;
+    }
+    P.hidden = !k;
+    document.body.classList.toggle('sp-open', !!k);
+    if (sideState.w) document.documentElement.style.setProperty('--sp-w', sideState.w + 'px'); else document.documentElement.style.removeProperty('--sp-w');
+    const hasNav = k === 'mail' || k === 'cal';
+    $('spNav').hidden = !(hasNav && sideState.nav);
+    if (!hasNav) $('spNav').replaceChildren();
+    const head = $('spHead'); head.replaceChildren();
+    if (k) {
+      const item = DOCK.find(x => x[0] === k);
+      const tb = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); head.appendChild(b); return b; };
+      if (hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.3"/></svg>',
+        sideState.nav ? `Hide ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}` : `Show ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}`, () => { sideState.nav = !sideState.nav; sideSave(); sideMount(); sideStart(true); }, sideState.nav);
+      head.insertAdjacentHTML('beforeend', `${dockIcon(item[2])}<b></b><span class="sp"></span>`);
+      head.querySelector('b').textContent = item[1];
+      if (['mail', 'cal', 'notes'].includes(k)) tb('<span class="t">Open Full</span>', `Open ${item[1]} as the main app`, () => setApp(k));
+      if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
+      tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideClose());
+    }
+    try { renderSplit(); } catch (e) { /* starting up */ }
+    dockRender();
+  }
+  // Fill the side app (its own code draws it wherever its screen now is).
+  function sideStart(light) {
+    const k = sideApp();
+    try {
+      if (k === 'mail') { if (light) mailRender(); else mailStart(false); }
+      else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
+      else if (k === 'notes') notesRender();
+    } catch (e) { /* that app is not ready yet */ }
+  }
+  (() => {
+    const rs = $('spRs');
+    if (!rs) return;
+    rs.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const P = $('sidePanel'), r0 = P.getBoundingClientRect(), leftSide = document.body.classList.contains('side-right');
+      document.body.classList.add('resizing');
+      const width = ev => Math.max(300, Math.min(innerWidth - 420, Math.round(leftSide ? ev.clientX - r0.left : r0.right - ev.clientX)));
+      const move = ev => document.documentElement.style.setProperty('--sp-w', width(ev) + 'px');
+      const stop = ev => { document.body.classList.remove('resizing'); removeEventListener('mousemove', move); removeEventListener('mouseup', stop); sideState.w = width(ev); sideSave(); };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+    rs.addEventListener('dblclick', () => { sideState.w = 0; sideSave(); sideMount(); });
+  })();
+  document.body.classList.toggle('has-dock', !!isApp);
 
   let claraView = null;
   function claraViewEnsure() {
@@ -11965,7 +12178,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!quiet) { tidyTree(null); tidyFresh = true; }
     renderAll();
     if (currentApp === 'cos') renderCos();
-    try { if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
+    try { if (mailOn()) mailStart(false); } catch (e) { /* starting up */ }
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
   }
   // Profiles keep the order you give them: in the sidebar, the switcher and the shortcuts.
@@ -12354,7 +12567,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   // For every divider: mark it while dragging, keep Claude's pages from taking the mouse, and if the button is let go
   // outside the window (so the app never hears it), end the drag on the next move instead of leaving it stuck.
   document.addEventListener('mousedown', e => {
-    const h = e.button === 0 && e.target.closest && e.target.closest('#splitter, #paneRs, #splitRs, #actRs, #cosSrcRs, .col-rs, .lhead .rz');
+    const h = e.button === 0 && e.target.closest && e.target.closest('#splitter, #paneRs, #splitRs, #actRs, #cosSrcRs, #spRs, .col-rs, .lhead .rz');
     if (!h) return;
     h.classList.add('rs-on'); document.body.classList.add('dragging-any');
     const end = () => { h.classList.remove('rs-on'); document.body.classList.remove('dragging-any'); removeEventListener('mouseup', end, true); removeEventListener('mousemove', check, true); removeEventListener('blur', lost); };
@@ -12423,7 +12636,9 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
   renderSide();
   state.lastFolderId = startFolder;
   go(start);
+  document.body.dataset.face = navFace;
   if (currentApp !== 'navigator') setApp(currentApp);
+  try { sideMount(); sideStart(); } catch (e) { /* the side panel starts closed */ }
   if (isApp) {
     setTimeout(() => refreshLibrary(false), 4000);
     setInterval(() => refreshLibrary(false), 10 * 60e3);
