@@ -1106,6 +1106,12 @@
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
   .swatch.on { outline: 2.5px solid var(--text); outline-offset: 2px; }
   .swatches input[type=color] { width: 30px; height: 28px; border: 0; padding: 0; background: none; }
+  .pmail { display: grid; gap: 6px; }
+  .pmail .pm { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .pmail .pm label { display: flex; align-items: center; gap: 7px; flex: 1; min-width: 0; grid-template-columns: none; text-align: left; }
+  .pmail .pm label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pmail .pm .btn { padding: 3px 10px; font-size: 12px; flex: none; }
+  .pmail .ds-note { margin: 0; }
   .prow { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: 13px; }
   .prow > span:first-child { text-align: right; }
   .preview { border-radius: 8px; overflow: hidden; border: .5px solid var(--line); display: grid; grid-template-columns: 90px 1fr; height: 54px; font-size: 11px; }
@@ -1292,6 +1298,7 @@
         <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Navigator and Chief of Staff</label>
       </div>
     </div></div>
+    <div class="prow" id="profileMailRow" hidden><span>Mail:</span><div class="pmail" id="profileMail"></div></div>
     <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
     <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     <div class="dlg-actions">
@@ -9972,7 +9979,8 @@ body { width: max-content !important; min-width: 0 !important; }
       mailRenderMain();
     }
   }
-  async function mailAddAccount() {
+  async function mailAddAccount(forProfile) {
+    const pid = forProfile || state.profileId;
     if (mailUi.adding) return toast('Finish signing in with Microsoft in your web browser, then come back here.');
     mailUi.adding = true; mailRender();
     toast('Microsoft’s sign-in page is opening in your web browser. Sign in there, then come back here.');
@@ -9981,11 +9989,14 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!r || !r.ok) { mailRender(); return toast(`Could not sign in: ${(r && r.status) || 'try again'}`); }
     const a = r.account;
     const have = mailState.profiles[a.id] || [];
-    if (state.profileId && !have.includes(state.profileId)) mailState.profiles[a.id] = have.concat(state.profileId);
+    if (pid && !have.includes(pid)) mailState.profiles[a.id] = have.concat(pid);
+    else if (!mailState.profiles[a.id]) mailState.profiles[a.id] = [];
     mailSave();
     delete mailUi.folders[a.id];
-    toast(r.again ? `${a.email} is signed in again` : `${a.email} is added${activeProfile() ? ` to ${activeProfile().name}` : ''}. Right-click it to choose its profiles.`);
-    mailStart(true);
+    const pn = pid && nodeOf(pid) ? nodeOf(pid).name : '';
+    toast(r.again ? `${a.email} is signed in again` : `${a.email} is added${pn ? ` to ${pn}` : ''}. Its profiles and signature are in the profile\u2019s settings.`);
+    await mailLoadAccounts();
+    if (currentApp === 'mail') mailStart(true);
   }
   function mailAccountMenu(a, x, y) {
     const mine = mailState.profiles[a.id] || [];
@@ -9996,6 +10007,7 @@ body { width: max-content !important; min-width: 0 !important; }
       } })),
       '-',
       { label: activeProfile() ? `Signature in ${activeProfile().name}\u2026` : 'Signature\u2026', run: () => mailEditSignature(a) },
+      activeProfile() && { label: `${activeProfile().name} Settings\u2026`, run: () => openProfileDialog(activeProfile()) },
       a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount() },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
       '-',
@@ -10277,18 +10289,45 @@ body { width: max-content !important; min-width: 0 !important; }
     mailRenderMain();
   }
   // Signatures: one per account, and a different one per profile if you set it (Consulting and Personal can differ).
-  const mailSigKey = accId => `${accId}|${state.profileId || ''}`;
-  const mailSigOf = accId => { const g = mailState.sigs || {}; return g[mailSigKey(accId)] !== undefined ? g[mailSigKey(accId)] : g[`${accId}|`] || ''; };
-  function mailEditSignature(a) {
-    const p = activeProfile();
+  const mailSigKey = (accId, pid = state.profileId) => `${accId}|${pid || ''}`;
+  const mailSigOf = (accId, pid = state.profileId) => { const g = mailState.sigs || {}; return g[mailSigKey(accId, pid)] !== undefined ? g[mailSigKey(accId, pid)] : g[`${accId}|`] || ''; };
+  // The Mail part of a profile's settings: which accounts belong to it, each one's signature there, and adding one.
+  // (These take effect at once; they do not wait for Save.)
+  async function mailProfileRows(p) {
+    const row = $('profileMailRow'), box = $('profileMail');
+    row.hidden = !p || !isApp || !window.navigatorApp.acctList;
+    if (row.hidden) return;
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    box.replaceChildren();
+    for (const a of mailUi.accounts || []) {
+      const r = document.createElement('div'); r.className = 'pm';
+      r.innerHTML = '<label><input type="checkbox"><span></span></label><button type="button" class="btn">Signature\u2026</button>';
+      const cb = r.querySelector('input'), mine = () => mailState.profiles[a.id] || [];
+      cb.checked = mine().includes(p.id);
+      r.querySelector('span').textContent = a.email; r.querySelector('label').title = `${a.email} belongs to ${p.name}: its mail and calendar show in this profile`;
+      cb.addEventListener('change', () => { mailState.profiles[a.id] = cb.checked ? mine().filter(x => x !== p.id).concat(p.id) : mine().filter(x => x !== p.id); mailSave(); sg.disabled = !cb.checked; try { if (currentApp === 'mail') mailStart(false); } catch (e) { /* not open */ } });
+      const sg = r.querySelector('button'); sg.disabled = !cb.checked;
+      sg.title = `The signature for ${a.email} when you write in ${p.name}`;
+      sg.addEventListener('click', () => mailEditSignature(a, p.id));
+      box.appendChild(r);
+    }
+    const add = document.createElement('div'); add.className = 'pm';
+    add.innerHTML = '<button type="button" class="btn"></button><span class="ds-note"></span>';
+    add.querySelector('button').textContent = mailUi.adding ? 'Waiting for you to sign in\u2026' : 'Add an Account\u2026';
+    add.querySelector('.ds-note').textContent = (mailUi.accounts || []).length ? '' : 'Microsoft 365, Outlook.com or Hotmail. You sign in once, in your web browser.';
+    add.querySelector('button').addEventListener('click', async () => { const done = mailAddAccount(p.id); mailProfileRows(p); await done; if (pf.editing === p && $('profileDlg').open) mailProfileRows(p); });
+    box.appendChild(add);
+  }
+  function mailEditSignature(a, pid = state.profileId) {
+    const p = pid ? nodeOf(pid) : null;
     const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
     d.innerHTML = `<h2></h2><p class="hint"></p><div class="sig-ed" contenteditable="true"></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
     d.querySelector('h2').textContent = `Signature for ${a.email}`;
     d.querySelector('.hint').textContent = p ? `Used when you write from this account in ${p.name}. Type it, or copy your signature from an Outlook email and paste it here (pictures and links come too).` : 'Used when you write from this account in any profile that has no signature of its own. Type it, or paste it from an Outlook email.';
-    d.querySelector('.sig-ed').innerHTML = mailSigOf(a.id);
+    d.querySelector('.sig-ed').innerHTML = mailSigOf(a.id, pid);
     d.addEventListener('click', e => {
       const x = e.target.dataset && e.target.dataset.x;
-      if (x === 'ok') { mailState.sigs = mailState.sigs || {}; mailState.sigs[mailSigKey(a.id)] = d.querySelector('.sig-ed').innerHTML.trim(); mailSave(); toast('Signature saved'); }
+      if (x === 'ok') { mailState.sigs = mailState.sigs || {}; mailState.sigs[mailSigKey(a.id, pid)] = d.querySelector('.sig-ed').innerHTML.trim(); mailSave(); toast('Signature saved'); }
       if (x) { d.close(); d.remove(); }
     });
     document.body.appendChild(d); d.showModal(); d.querySelector('.sig-ed').focus();
@@ -12138,6 +12177,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     $('profileDelete').hidden = !p;
     $('profileOk').textContent = p ? 'Save' : 'Create Profile';
     fillDesignSystems(p);
+    try { mailProfileRows(p); } catch (e) { /* mail not ready */ }
     pf.look = p && p.look ? JSON.parse(JSON.stringify(p.look)) : null;
     pf.lookBusy = false; pf.lookError = ''; pf.lookReq = null; pf.lookPending = null;
     paintLook();
