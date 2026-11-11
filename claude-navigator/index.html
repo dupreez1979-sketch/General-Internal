@@ -424,8 +424,13 @@
   #spHead .app-ic.mini svg { width: 13px; height: 13px; }
   #spHead .tb.on { background: var(--sel); color: var(--text); }
   #spMain { flex: 1; min-height: 0; display: flex; }
-  #spNav { flex: 0 0 210px; overflow: auto; border-right: 1px solid var(--line); padding: 4px 6px; background: color-mix(in srgb, var(--tint, #8a8f98) 5%, var(--win)); }
+  #spNav { flex: 0 0 var(--sp-nav-w, 210px); overflow: auto; border-right: 1px solid var(--line); padding: 4px 6px; background: color-mix(in srgb, var(--tint, #8a8f98) 5%, var(--win)); }
   #spNav[hidden] { display: none; }
+  #spNavRs { flex: none; width: 0; position: relative; }
+  #spNavRs::after { content: ""; position: absolute; top: 0; bottom: 0; left: -5px; width: 10px; cursor: col-resize; z-index: 6; }
+  #spNavRs::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: transparent; transition: background .12s .06s; z-index: 6; }
+  #spNavRs:hover::before { background: var(--accent); }
+  #spNav[hidden] + #spNavRs { display: none; }
   #spBody { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
   #spBody > webview { flex: 1; border: 0; }
   #spBody > webview[hidden] { display: none; }
@@ -478,13 +483,19 @@
   #mailPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
   #mailPanel[hidden] { display: none; }
   .mail-sub { font-size: 12px; color: var(--muted); margin-left: 10px; }
-  .mail-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); }
+  .mail-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(260px, var(--mail-list-w, 400px)) minmax(0, 1fr); }
+  .mail-col { position: relative; }
+  .drag-w { position: absolute; top: 0; bottom: 0; right: -5px; width: 10px; z-index: 6; cursor: col-resize; }
+  .drag-w::after { content: ""; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; background: transparent; transition: background .12s .06s; }
+  .drag-w:hover::after, .drag-w.on::after { background: var(--accent); }
+  .mail-cols span { position: relative; }
+  #spNav { position: relative; }
   .mail-col { display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--line); }
   .mail-fhead { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px 8px 16px; }
   .mail-fhead .cal-title { font-size: 16px; margin: 0; }
   .mail-fhead .sp { flex: 1; }
   .mail-fhead .tb.on { background: var(--sel); color: var(--text); }
-  .mail-cols { flex: none; display: grid; grid-template-columns: 62px 250px minmax(0, 1fr) 104px; padding: 4px 16px 6px 0; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .mail-cols { flex: none; display: grid; grid-template-columns: 62px var(--mail-from-w, 250px) minmax(0, 1fr) 104px; padding: 4px 16px 6px 0; font-size: 11.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
   .mail-list { flex: 1; overflow: auto; min-height: 0; }
   .mail-g { padding: 8px 16px 6px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); cursor: default; white-space: pre; }
   .mail-g:hover { color: var(--text); }
@@ -507,7 +518,7 @@
   .mail-m .pv { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; grid-column: 3; }
   .mail-list .more { margin: 12px auto; display: block; }
   /* Reading pane off: one line a message in columns, as in Outlook (From, Subject with the first words, Date). */
-  .mail-body.wide .mail-m { grid-template-columns: 18px 38px 250px 34px minmax(0, 1fr) 104px; row-gap: 0; padding: 8px 16px 8px 0; }
+  .mail-body.wide .mail-m { grid-template-columns: 18px 38px calc(var(--mail-from-w, 250px) - 40px) 34px minmax(0, 1fr) 104px; row-gap: 0; padding: 8px 16px 8px 0; }
   .mail-body.wide .mail-m .dot, .mail-body.wide .mail-m .avs { grid-row: auto; align-self: center; }
   .mail-body.wide .mail-m .sjw { display: flex; gap: 8px; min-width: 0; align-items: baseline; }
   .mail-body.wide .mail-m .sj { flex: 0 1 auto; font-size: 13px; }
@@ -1452,7 +1463,7 @@
   <button class="bot-btn" title="Chief of Staff: suggestions and a chat on the side"><span class="av">CS</span><span class="badge" hidden></span></button>
 </div>
  <div id="dock" aria-label="Open beside"></div>
-<div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead"></div><div id="spMain"><div id="spNav" hidden></div><div id="spBody"></div></div></div>
+<div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead"></div><div id="spMain"><div id="spNav" hidden></div><div id="spNavRs" title="Drag to resize. Double-click to reset."></div><div id="spBody"></div></div></div>
 <div id="edgeSide" class="edge-tab at-left" data-label="Sidebar" title="Show the sidebar"></div>
 <div id="edgeDetail" class="edge-tab at-right second" data-label="Details" title="Show the details panel"></div>
 
@@ -10896,6 +10907,41 @@ body { width: max-content !important; min-width: 0 !important; }
     unread: 'M2 4.5h9.5M2 4.5v7.5h12V7M2 4.5l6 4.5 3-2.2M13.2 2.6a1.6 1.6 0 110 3.2 1.6 1.6 0 010-3.2', flag: 'M4 14V2.5M4 3h8l-1.6 2.8L12 8.6H4', archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', filter: 'M2.5 4h11M4.5 8h7M6.5 12h3',
   };
   const mailToolIcon = k => `<svg width="16" height="16" viewBox="0 0 16 16"><path d="${MAIL_TOOL[k]}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // A thin handle on the right edge of a column: drag to set its width, double-click to go back to the usual width.
+  // Widths are remembered (mailState.w), and are the same everywhere that column appears.
+  function dragWidth(host, key, cssVar, min, max) {
+    const h = document.createElement('div'); h.className = 'drag-w'; h.title = 'Drag to resize. Double-click to reset.';
+    h.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); e.stopPropagation();
+      const x0 = e.clientX, w0 = host.getBoundingClientRect().width, top = typeof max === 'function' ? max() : max;
+      h.classList.add('on'); document.body.classList.add('resizing');
+      const width = ev => Math.max(min, Math.min(top, Math.round(w0 + ev.clientX - x0)));
+      const move = ev => document.documentElement.style.setProperty(cssVar, width(ev) + 'px');
+      const stop = ev => { removeEventListener('mousemove', move); removeEventListener('mouseup', stop); h.classList.remove('on'); document.body.classList.remove('resizing'); (mailState.w = mailState.w || {})[key] = width(ev); mailSave(); };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+    h.addEventListener('dblclick', e => { e.stopPropagation(); if (mailState.w) delete mailState.w[key]; mailSave(); document.documentElement.style.removeProperty(cssVar); });
+    h.addEventListener('click', e => e.stopPropagation());
+    host.appendChild(h);
+    return h;
+  }
+  (() => {
+    const rs = $('spNavRs'); if (!rs) return;
+    rs.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const nv = $('spNav'), x0 = e.clientX, w0 = nv.getBoundingClientRect().width, top = Math.max(200, $('spMain').getBoundingClientRect().width - 240);
+      document.body.classList.add('resizing');
+      const width = ev => Math.max(150, Math.min(top, Math.round(w0 + ev.clientX - x0)));
+      const move = ev => document.documentElement.style.setProperty('--sp-nav-w', width(ev) + 'px');
+      const stop = ev => { removeEventListener('mousemove', move); removeEventListener('mouseup', stop); document.body.classList.remove('resizing'); (mailState.w = mailState.w || {}).nav = width(ev); mailSave(); };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+    rs.addEventListener('dblclick', () => { if (mailState.w) delete mailState.w.nav; mailSave(); document.documentElement.style.removeProperty('--sp-nav-w'); });
+  })();
+  const DRAG_VARS = { list: '--mail-list-w', from: '--mail-from-w', nav: '--sp-nav-w' };
+  for (const [k, v] of Object.entries(DRAG_VARS)) if (mailState.w && mailState.w[k]) document.documentElement.style.setProperty(v, mailState.w[k] + 'px');
   function mailRender() { if (!mailOn()) return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
   function mailRenderMain() {
     const P = $('mailPanel');
@@ -10964,7 +11010,8 @@ body { width: max-content !important; min-width: 0 !important; }
     fh.appendChild(thb);
     col.appendChild(fh);
     const wide = popped && !inSide;
-    if (wide) { const ch = document.createElement('div'); ch.className = 'mail-cols'; ch.innerHTML = '<span></span><span>From</span><span>Subject</span><span>Date</span>'; col.appendChild(ch); }
+    if (wide) { const ch = document.createElement('div'); ch.className = 'mail-cols'; ch.innerHTML = '<span></span><span>From</span><span>Subject</span><span>Date</span>'; col.appendChild(ch); dragWidth(ch.children[1], 'from', '--mail-from-w', 120, 520); }
+    else if (!popped) dragWidth(col, 'list', '--mail-list-w', 260, () => Math.max(300, body.getBoundingClientRect().width - 320));
     const list = document.createElement('div'); list.className = 'mail-list';
     if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
     const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
