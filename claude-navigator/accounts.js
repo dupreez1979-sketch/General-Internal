@@ -160,7 +160,18 @@ function inLane(id, work) {
 const pause = ms => new Promise(r => setTimeout(r, ms));
 
 // One request to Microsoft Graph for an account. Only Graph paths; the token is added here.
-function graph(id, req) { return inLane(id, () => graphNow(id, req)); }
+// THE SEND LOCK. Nothing that asks through graph() can send, reply to or forward mail: those requests are refused
+// here. An email leaves only through send() below, which main.js lets through only straight after a real click on
+// the Send button in the app's own window. Drafting helpers, Claude's pages and anything automatic have no way past.
+const SENDS = /\/(send|sendmail|reply|replyall|forward)\/?(\?.*)?$/i;
+function graph(id, req) {
+  if (req && SENDS.test(String(req.path || '').split('#')[0])) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
+  return inLane(id, () => graphNow(id, req));
+}
+function send(id, msgId, box) {
+  const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
+  return inLane(id, () => graphNow(id, { method: 'POST', path: `${who}/messages/${encodeURIComponent(String(msgId))}/send` }));
+}
 async function graphNow(id, req) {
   const r = req || {};
   const method = String(r.method || 'GET').toUpperCase();
@@ -226,4 +237,4 @@ async function uploadPiece(url, bytes, start, total) {
   }
 }
 
-module.exports = { list, add, remove, graph, saveAttachment, uploadPiece };
+module.exports = { list, add, remove, graph, send, saveAttachment, uploadPiece };

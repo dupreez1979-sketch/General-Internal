@@ -11445,13 +11445,18 @@ body { width: max-content !important; min-width: 0 !important; }
       const v = fields();
       if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? 'Kept in Drafts' : `Could not save the draft: ${sv.error || ''}`); return shut(); }
       if (what === 'send') {
+        // Only a real press of this button by you sends. (The app's main process checks that again; see THE SEND LOCK.)
+        if (!e.isTrusted) return toast('An email is only sent when you press Send yourself.');
         if (v.bad) return toast(`“${v.bad.bad}” is not an email address.`);
         if (!v.lists.to.length && !v.lists.cc.length && !v.lists.bcc.length) return toast('Add someone to send it to.');
         if (C.files.some(fl => !fl.sent)) return toast('Wait a moment: a file is still being attached.');
         if (!v.body.subject && !confirm('Send without a subject?')) return;
         C.sending = true; x.textContent = 'Sending…';
+        const [own, box] = C.acc.split('>');
+        const armed = await window.navigatorApp.acctSendArm(own, C.id);
+        if (!armed || !armed.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${(armed && armed.error) || 'press Send again'}. It is still here.`); }
         const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: v.body });
-        const sn = sv.ok ? await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/send` }) : sv;
+        const sn = sv.ok ? await window.navigatorApp.acctSend(own, C.id, box || '') : sv;
         if (!sn.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${sn.error || 'try again'}. It is still here.`); }
         toast('Sent'); shut();
       }

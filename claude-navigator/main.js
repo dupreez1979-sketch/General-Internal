@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -75,6 +75,7 @@ function createWindow() {
       spellcheck: true,
     },
   });
+  watchRealClicks(mainWindow);
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.on('closed', () => { mainWindow = null; });
 
@@ -1202,6 +1203,47 @@ ipcMain.handle('acct-list', () => accounts.list());
 ipcMain.handle('acct-add', (_e, hint, more) => accounts.add(typeof hint === 'string' ? hint : '', more === true));
 ipcMain.handle('acct-remove', (_e, id) => accounts.remove(String(id)));
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
+// Sending an email takes two steps, and both must come from the app's own window (never a web page inside it):
+// 1. "arm": asked the instant Send is clicked. It is accepted only while the window reports a real click or key
+//    press by a person in the last moments (a script cannot fake that), and it names the one draft to send.
+// 2. "send": sends that one draft, once, within two minutes of the click.
+let sendArmed = null;
+let lastClick = null;                      // the last real mouse release in the app's window: { x, y, at }
+function watchRealClicks(win) {
+  // The event says a mouse button was let go in this window; where the pointer really is comes from the system.
+  win.webContents.on('input-event', (_e, ev) => {
+    if (!ev || ev.type !== 'mouseUp' || win.isDestroyed()) return;
+    const pt = screen.getCursorScreenPoint(), cb = win.getContentBounds();
+    lastClick = { x: pt.x - cb.x, y: pt.y - cb.y, at: Date.now() };
+  });
+}
+const fromOwnWindow = e => !!mainWindow && !mainWindow.isDestroyed() && e.sender === mainWindow.webContents && e.senderFrame === e.sender.mainFrame;
+ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
+  sendArmed = null;
+  if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
+  // A real mouse click, seen here (not reported by the page), in the last two seconds, that landed on the Send button.
+  const c = lastClick; lastClick = null;
+  let onSend = false;
+  try {
+    const z = e.sender.getZoomFactor() || 1;
+    const q = await e.sender.executeJavaScript(`(() => { const b = document.querySelector('.mail-compose [data-x="send"]'); if (!b) return null; const r = b.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; })()`, false);
+    const r = q && { l: q.l * z, t: q.t * z, r: q.r * z, b: q.b * z };
+    onSend = !!(c && r && Date.now() - c.at < 2000 && c.x >= r.l - 2 && c.x <= r.r + 2 && c.y >= r.t - 2 && c.y <= r.b + 2);
+  } catch (err) { onSend = false; }
+  // (Automated tests of the app run from source against a stand-in mail server, never Microsoft. Their clicks have no
+  // system pointer, so there, and only there, a click the page vouches for is accepted.)
+  if (!onSend && !app.isPackaged && process.env.NAV_TEST_MS && !process.env.NAV_LOCK_STRICT) {
+    try { onSend = await e.sender.executeJavaScript('!!(navigator.userActivation && navigator.userActivation.isActive)', false); } catch (err) { onSend = false; }
+  }
+  if (!onSend) return { ok: false, error: 'An email is only sent when you press Send yourself' };
+  sendArmed = { id: String(id), msgId: String(msgId), until: Date.now() + 120e3 };
+  return { ok: true };
+});
+ipcMain.handle('acct-send', async (e, id, msgId, box) => {
+  const a = sendArmed; sendArmed = null;
+  if (!fromOwnWindow(e) || !a || a.id !== String(id) || a.msgId !== String(msgId) || Date.now() > a.until) return { ok: false, error: 'An email is only sent when you press Send yourself' };
+  return accounts.send(String(id), String(msgId), typeof box === 'string' ? box : '');
+});
 ipcMain.handle('acct-upload', (_e, url, bytes, start, total) => accounts.uploadPiece(url, bytes, start, total));
 // An attachment is saved to Downloads; documents and pictures then open, anything else is shown in Finder.
 ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name, box) => {
