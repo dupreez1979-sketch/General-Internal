@@ -579,6 +579,34 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  #spCos { flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; background: var(--win); }
+  #spCos[hidden] { display: none; }
+  #spCos .sc-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+  #spCos .sc-head > b { font-size: 15px; }
+  #spCos .sc-head div { min-width: 0; }
+  #spCos .sc-head div b { display: block; font-size: 15px; }
+  #spCos .sc-head div span, #spCos .sc-row div span { display: block; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #spCos .av { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 700; }
+  #spCos .sc-list { padding: 2px 8px 14px; }
+  #spCos .sc-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 8px; }
+  #spCos .sc-row.staff { cursor: pointer; }
+  #spCos .sc-row.staff:hover, #spCos .sc-act:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+  #spCos .sc-row.dept .av { width: 14px; height: 14px; border-radius: 4px; }
+  #spCos .sc-row.dept b { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #spCos .sc-row div { flex: 1; min-width: 0; }
+  #spCos .sc-row b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #spCos .sc-row i { flex: none; font-style: normal; font-size: 11px; font-weight: 700; min-width: 18px; text-align: center; padding: 1px 5px; border-radius: 9px; background: var(--accent); color: #fff; }
+  #spCos .sc-row i:empty { display: none; }
+  #spCos .sc-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 14px 10px; }
+  #spCos .sc-acts .btn { font-size: 12px; }
+  #spCos .sc-sec { padding: 8px 16px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  #spCos .sc-act { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  #spCos .sc-act span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #spCos .sc-act .chk { flex: none; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--muted); background: none; padding: 0; cursor: pointer; }
+  #spCos .sc-act .chk:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  #spCos .sc-note, #spCos .sc-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+  #spCos .sc-empty { display: grid; gap: 8px; justify-items: start; padding: 18px 16px; }
+  #spCos .sc-empty b { color: var(--text); font-size: 14px; }
   .mail-cnt { flex: none; border: 0; border-radius: 9px; min-width: 20px; padding: 1px 6px; margin: 0 4px; background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
   .mail-cnt:hover, .mail-cnt.on { background: var(--accent); color: #fff; }
   .mail-m.sub { padding-left: 34px; background: color-mix(in srgb, var(--text) 3%, transparent); }
@@ -11429,7 +11457,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
-  const DOCK = [['claude', 'Claude', 'claude'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
+  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
   const dockIcon = cls => `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   const dockNative = k => (k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos'))
     || (k === 'folders' && (currentApp === 'navigator' || (currentApp === 'cos' && document.body.classList.contains('cos-work'))));
@@ -11487,6 +11515,9 @@ body { width: max-content !important; min-width: 0 !important; }
     home($('mailPanel'), k === 'mail'); home($('calPanel'), k === 'cal'); home($('notesPanel'), k === 'notes');
     if (k !== 'mail' && currentApp !== 'mail') $('mailPanel').hidden = true;
     if (k !== 'cal' && currentApp !== 'cal') $('calPanel').hidden = true;
+    let sc = $('spCos');
+    if (k === 'cos' && !sc) { sc = document.createElement('div'); sc.id = 'spCos'; body.appendChild(sc); }
+    if (sc) sc.hidden = k !== 'cos';
     const sl = $('splitLeft');
     if (k === 'folders') { if (sl.parentNode !== body) body.appendChild(sl); }
     else if (sl.parentNode === body) $('splitRs').before(sl);
@@ -11515,7 +11546,7 @@ body { width: max-content !important; min-width: 0 !important; }
         sideState.nav ? `Hide ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}` : `Show ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}`, () => { sideState.nav = !sideState.nav; sideSave(); sideMount(); sideStart(true); }, sideState.nav);
       head.insertAdjacentHTML('beforeend', `${dockIcon(item[2])}<b></b><span class="sp"></span>`);
       head.querySelector('b').textContent = item[1];
-      if (['mail', 'cal', 'notes'].includes(k)) tb('<span class="t">Open Full</span>', `Open ${item[1]} as the main app`, () => setApp(k));
+      if (['mail', 'cal', 'notes', 'cos'].includes(k)) tb('<span class="t">Open Full</span>', `Open ${item[1]} as the main app`, () => setApp(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
       tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideClose());
     }
@@ -11529,7 +11560,69 @@ body { width: max-content !important; min-width: 0 !important; }
       if (k === 'mail') { if (light) mailRender(); else mailStart(false); }
       else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
       else if (k === 'notes') notesRender();
+      else if (k === 'cos') sideCosRender();
     } catch (e) { /* that app is not ready yet */ }
+  }
+  // Chief of Staff beside another app: the team at a glance, and each person's open actions. (Building the team,
+  // skills, routines and dashboards stay in the full app, which Open Full or a person's "Open Their Page" takes you to.)
+  const sideCos = { staff: null };
+  function sideCosRender() {
+    const el = $('spCos');
+    if (!el || sideApp() !== 'cos') return;
+    const p = activeProfile(), t = p && cosTeam(p);
+    el.replaceChildren();
+    if (!p) {
+      const e = document.createElement('div'); e.className = 'sc-empty'; e.innerHTML = '<b>Choose a profile</b><span>Each profile has its own team.</span>';
+      for (const pr of profiles()) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = pr.name; b.addEventListener('click', () => { setProfile(pr.id); sideCosRender(); }); e.appendChild(b); }
+      return el.appendChild(e);
+    }
+    const openOf = n => { const f = n.folderId && nodeOf(n.folderId); return f ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)) : []; };
+    const n = sideCos.staff && cosNode(t, sideCos.staff);
+    if (!n) {
+      sideCos.staff = null;
+      const hd = document.createElement('div'); hd.className = 'sc-head'; hd.innerHTML = '<b></b>'; hd.querySelector('b').textContent = `${p.name} team`;
+      el.appendChild(hd);
+      const list = document.createElement('div'); list.className = 'sc-list';
+      const walk = (x, d) => {
+        const r = document.createElement('div'); r.className = 'sc-row ' + x.kind; r.style.paddingLeft = (10 + d * 16) + 'px';
+        r.innerHTML = '<span class="av"></span><div><b></b><span></span></div><i></i>';
+        const av = r.querySelector('.av'); av.style.background = x.color || '#888'; av.textContent = x.kind === 'dept' ? '' : cosInitials(x);
+        r.querySelector('b').textContent = x.name; r.querySelector(':scope > div > span').textContent = x.kind === 'dept' ? '' : x.role || '';
+        if (x.kind === 'staff') {
+          const c = openOf(x).length; r.querySelector('i').textContent = c || ''; r.title = `${x.name}${x.role ? '\n' + x.role : ''}\n${c ? `${c} open ${c === 1 ? 'action' : 'actions'}` : 'Nothing open'}`;
+          r.addEventListener('click', () => { sideCos.staff = x.id; sideCosRender(); });
+        }
+        list.appendChild(r);
+        for (const k of cosKids(t, x.id)) walk(k, d + 1);
+      };
+      for (const r of t.nodes.filter(x => !x.parent)) walk(r, 0);
+      return el.appendChild(list);
+    }
+    const hd = document.createElement('div'); hd.className = 'sc-head';
+    hd.innerHTML = `<button class="tb" data-x="back" title="Back to the team">${UI.back}</button><span class="av"></span><div><b></b><span></span></div>`;
+    const av = hd.querySelector('.av'); av.style.background = n.color || '#888'; av.textContent = cosInitials(n);
+    hd.querySelector('b').textContent = n.name; hd.querySelector(':scope > div > span').textContent = n.role || '';
+    hd.querySelector('[data-x="back"]').addEventListener('click', () => { sideCos.staff = null; sideCosRender(); });
+    el.appendChild(hd);
+    const acts = document.createElement('div'); acts.className = 'sc-acts';
+    const btn = (label, title, run) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = label; b.title = title; b.addEventListener('click', run); acts.appendChild(b); };
+    btn('Open Their Page', `Work, skills and routines for ${n.name}, in Chief of Staff`, () => { setApp('cos'); openStaff(n.id); });
+    if (n.claudeProject && n.claudeProject.url) btn('Their Claude Project', `Open ${n.name}’s Claude Project in Claude`, () => { setApp('claude'); go({ kind: 'page', url: n.claudeProject.url }); });
+    el.appendChild(acts);
+    const items = openOf(n).sort((a, b) => (b.added || 0) - (a.added || 0));
+    el.appendChild(Object.assign(document.createElement('div'), { className: 'sc-sec', textContent: `Open actions · ${items.length}` }));
+    const list = document.createElement('div'); list.className = 'sc-list';
+    for (const x of items) {
+      const r = document.createElement('div'); r.className = 'sc-act';
+      r.innerHTML = `<button class="chk" title="Mark done (it moves to their Archive)"></button>${x.type === 'file' ? colourIcon('file') : colourIcon(kindOf(x))}<span></span>`;
+      r.querySelector('span').textContent = x.name;
+      r.title = `${x.name}\nClick to open it${x.type === 'file' ? '' : ' in Claude'}.`;
+      r.querySelector('.chk').addEventListener('click', e => { e.stopPropagation(); toggleDone(x.id); sideCosRender(); });
+      r.addEventListener('click', () => { if (x.type !== 'file' && x.type !== 'folder' && currentApp !== 'navigator') setApp('claude'); openNode(x); });
+      list.appendChild(r);
+    }
+    if (!items.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'sc-note', textContent: `Nothing open for ${n.name}.` }));
+    el.appendChild(list);
   }
   (() => {
     const rs = $('spRs');
@@ -13041,6 +13134,7 @@ body { width: max-content !important; min-width: 0 !important; }
     state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
     ls.set('claudeNavigator.activeProfile', state.profileId || '');
     applyProfileTheme();
+    try { sideCos.staff = null; setTimeout(sideCosRender, 0); } catch (e) { /* starting up */ }
     // Stay where you are if it belongs to this profile; otherwise go to the profile's top level.
     if (state.loc.kind === 'folder' && state.loc.id && state.profileId && profileOf(state.loc.id) !== activeProfile()) {
       state.loc = { kind: 'folder', id: null };
