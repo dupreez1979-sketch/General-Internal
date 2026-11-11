@@ -600,6 +600,25 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  .mail-rel { margin-top: 8px; border-radius: 9px; background: color-mix(in srgb, var(--tint, #8a8f98) 7%, transparent); font-size: 12.5px; overflow: hidden; }
+  .mail-rel .rel-top { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 12px; color: var(--muted); padding: 6px 11px; cursor: pointer; }
+  .mail-rel .rel-top:hover { color: var(--text); }
+  .mail-rel.open { padding-bottom: 5px; max-height: 240px; overflow: auto; }
+  .mail-rel .rel-row { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 12.5px; color: var(--text); padding: 4px 11px; cursor: pointer; }
+  .mail-rel .rel-row:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+  .mail-rel .rel-row i { flex: none; width: 14px; font-style: normal; color: var(--muted); text-align: center; }
+  .mail-rel .rel-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rel .rel-row .s { flex: none; color: var(--muted); font-size: 11.5px; }
+  dialog.mail-monday { width: 540px; height: fit-content; background: var(--win); color: var(--text); }
+  dialog.mail-monday .row { grid-template-columns: 110px minmax(0, 1fr); }
+  dialog.mail-monday .row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog.mail-monday .mo-cols textarea { margin: 0; }
+  #mailAi .ai-note { font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+  #mailAi .ai-fields .fl { display: grid; grid-template-columns: 105px minmax(0, 1fr) auto; gap: 5px; margin-bottom: 5px; }
+  #mailAi .ai-fields input { font: inherit; font-size: 12.5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--win); color: var(--text); min-width: 0; }
+  #mailAi .ai-fields .k { font-weight: 600; }
+  #mailAi .ai-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  #mailAi .ai-acts .btn, #mailAi .ai-acts .btn-primary { font-size: 11.5px; padding: 3px 9px; }
   #mailPanel { --mail-ai-w: 430px; }
   #mailAi { position: absolute; top: 53px; bottom: 0; right: 0; width: min(var(--mail-ai-w), 100%); z-index: 7; display: flex; flex-direction: column; min-height: 0; background: var(--win); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.08); }
   #mailPanel.ai-on .mail-compose { right: min(var(--mail-ai-w), 60%); left: min(300px, 28%); }
@@ -10227,7 +10246,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   const CAL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   // New meeting, or change one (this one, or the whole series).
-  async function calGEdit(inst, series, when) {
+  async function calGEdit(inst, series, when, seed) {
     await (calG.accounts ? Promise.resolve() : calGReload());
     const accounts = calG.accounts || [];
     if (!inst && !accounts.length) return toast('Add an account in Mail first: its calendars then show here, and you can make meetings.');
@@ -10276,6 +10295,7 @@ body { width: max-content !important; min-width: 0 !important; }
     f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
     f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
     if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
+    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
     if (inst) d.querySelector('[data-new]').hidden = true;
@@ -10284,6 +10304,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const last = calState.lastCal && [...f('cal').options].find(o => o.value === calState.lastCal);
       const def = last || [...f('cal').options].find(o => o.dataset.def);
       if (def) f('cal').value = def.value;
+      if (seed && seed.acc) { const own = [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n') && o.dataset.def) || [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n')); if (own) f('cal').value = own.value; }
     }
     const sync = () => { const ad = f('allday').checked; f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
@@ -10367,7 +10388,7 @@ body { width: max-content !important; min-width: 0 !important; }
       e.target.disabled = true; e.target.textContent = 'Saving…';
       let r;
       if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
-      else { const [a, c] = f('cal').value.split('\n'); calState.lastCal = f('cal').value; calSave(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); }
+      else { const [a, c] = f('cal').value.split('\n'); calState.lastCal = f('cal').value; calSave(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
       if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save'; return toast(`It was not saved: ${r.error || 'try again'}`); }
       toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
@@ -11053,7 +11074,7 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
-    tool('hand', 'Hand to Staff', 'Give this email to a staff member: a new action, or onto one that is open, with its attachments', () => mailHandover(m), { off: none });
+    tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none });
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
     tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
     tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
@@ -11214,6 +11235,7 @@ body { width: max-content !important; min-width: 0 !important; }
         }
         hd.appendChild(bar);
       }
+      try { mailRelatedPaint(m, hd); } catch (e) { /* related is a bonus */ }
       read.appendChild(hd);
       if (!d) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Opening…' }));
       else if (d.error) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: d.error }));
@@ -11300,7 +11322,7 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Move to', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, mailAllFolders(m._acc || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))) },
       { label: 'Delete', run: () => mailAct(m, 'delete') },
       '-',
-      { label: 'Hand to Staff\u2026', run: async () => { if (mailUi.msg !== m) await mailOpen(m); mailHandover(m); } },
+      { label: 'Send To', key: '▸', run: () => mailSendTo(m, lastMenuX, lastMenuY) },
       !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && '-',
       !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && { label: `Make a Rule for Mail from ${mailWho(m.from)}\u2026`, run: () => mailRules(mailAccById(m._acc || s.acc), { fromAddresses: [m.from] }) },
     ].filter(Boolean));
@@ -11633,6 +11655,267 @@ body { width: max-content !important; min-width: 0 !important; }
     setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
   }
 
+  // ===== Joining the apps up: Send To, links, and Related =====
+  // One menu, Send To, puts what you are looking at somewhere else: a staff member, a folder, the calendar,
+  // monday.com, a Word document. Whatever it makes remembers where it came from (a link, kept on this Mac), and the
+  // Related strip on an email shows those links beside the other mail and meetings with the same person.
+  // Nothing is written anywhere (monday.com, a document, the calendar) until you have seen it and confirmed.
+  const LINKS_KEY = 'claudeNavigator.links.v1';
+  const linkStore = (() => { try { const l = JSON.parse(ls.get(LINKS_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } })();
+  function linkAdd(a, b) { if (!a || !b || !a.key || !b.key) return; linkStore.push({ a, b, at: Date.now() }); if (linkStore.length > 800) linkStore.splice(0, linkStore.length - 800); ls.set(LINKS_KEY, JSON.stringify(linkStore)); mailUi.rel = null; }
+  const linksOf = key => linkStore.filter(l => l.a.key === key || l.b.key === key).map(l => (l.a.key === key ? l.b : l.a)).reverse();
+  const mailRef = m => ({ t: 'mail', key: `mail:${m.conversationId || m.id}`, acc: m._acc || (mailState.sel || {}).acc, id: m.id, name: m.subject || '(No subject)', from: m.from || null, at: m.receivedDateTime || '' });
+  const LINK_WORD = { mail: 'Email', file: 'File', folder: 'Folder', cal: 'Meeting', monday: 'monday.com', action: 'Action' };
+  function linkOpen(r) {
+    if (r.t === 'mail') { if (!mailOn()) setApp('mail'); return mailOpen({ id: r.id, _acc: r.acc, subject: r.name, from: r.from, receivedDateTime: r.at || new Date().toISOString(), isRead: true }); }
+    if (r.t === 'file') return window.navigatorApp.fsOpen(r.rel).then(err => { if (err) toast(`Could not open “${r.name}”: ${err}`); });
+    if (r.t === 'folder' || r.t === 'action') { const n = nodeOf(r.id); if (!n) return toast('That is no longer in your folders.'); if (n.type === 'folder') setApp('navigator'); else if (currentApp !== 'navigator') setApp('claude'); return openNode(n); }
+    if (r.t === 'cal') { calUi.date = calDayStart(new Date(r.at || Date.now())); if (!calOn()) setApp('cal'); else calRender(); return; }
+    if (r.t === 'monday' && r.url) { setApp('monday'); return go({ kind: 'page', url: r.url }); }
+  }
+  // Details that can be read straight off an email without asking anyone.
+  function mailQuickDetails(m, T) {
+    const f = (m.from && m.from.emailAddress) || {}, text = (T && T.text) || '';
+    const cut = text.split(/\n(?:On .{5,80} wrote:|From: .+|-{3,} ?Original Message)/i)[0];        // their words, not the quoted history
+    const out = {};
+    if (f.name && f.name !== f.address) out.Name = f.name;
+    if (f.address) out.Email = f.address;
+    const dom = (f.address || '').split('@')[1] || '';
+    if (dom && !/^(gmail|outlook|hotmail|yahoo|icloud|live|me|bigpond|optusnet)\./i.test(dom)) out.Website = dom;
+    const ph = /(?:\+?61|\(0\d\)|0\d)[\d\s().-]{7,14}\d/.exec(cut); if (ph) out.Phone = ph[0].replace(/\s+/g, ' ').trim();
+    return out;
+  }
+
+  function mailSendTo(m, x, y) {
+    if (!m) return;
+    const connected = !!(mondayData && mondayData.connected && (mondayData.boards || []).length);
+    showMenu(x, y, [
+      { label: 'A Staff Member…', run: async () => { if (mailUi.msg !== m) await mailOpen(m); mailHandover(m); } },
+      { label: 'A Folder…', run: () => mailToFolder(m) },
+      { label: 'The Calendar, as a New Meeting…', run: () => mailToMeeting(m) },
+      { label: connected ? 'monday.com, as a New Item…' : 'monday.com (connect it in File Navigator first)', disabled: !connected, run: () => mailToMonday(m) },
+      { label: 'A New Word Document…', run: () => mailToDoc(m) },
+      '-',
+      { label: 'Pull Out the Details…', run: () => mailDetails(m) },
+    ]);
+  }
+  const mailNeedFolders = then => {
+    if (fsState.enabled) return then();
+    toast('For this, your folders need to be real folders on your Mac (Documents › Claude Navigator).', { label: 'Turn On', run: async () => { await enableFolderSync(); if (fsState.enabled) then(); } });
+  };
+  const mailPickFolder = (title, okLabel, then) => {
+    const p = activeProfile();
+    const start = mailState.lastFolder && nodeOf(mailState.lastFolder) ? mailState.lastFolder : state.lastFolderId && nodeOf(state.lastFolderId) ? state.lastFolderId : p ? p.id : null;
+    openDialog({ title, folderOnly: true, folderId: start, okLabel, onSave: ({ folderId }) => { const f = folderId && nodeOf(folderId); if (!f || !f.path) return toast('Choose a folder that is on your Mac.'); mailState.lastFolder = f.id; mailSave(); then(f); } });
+  };
+  // The email itself (as a file that opens in Outlook) and its attachments, into one of your folders.
+  function mailToFolder(m) {
+    mailNeedFolders(() => mailPickFolder('Save This Email In', 'Save Here', async f => {
+      const A = m._acc || mailState.sel.acc, [own, box] = A.split('>');
+      toast('Saving the email…');
+      const paths = [];
+      const e1 = await window.navigatorApp.acctMessageSave(own, m.id, m.subject || 'Email', box || '', 'temp');
+      if (e1 && e1.ok) paths.push(e1.path);
+      const list = await mailApi(A, { path: `/me/messages/${m.id}/attachments?$select=id,name,isInline` });
+      for (const a of (list.ok ? list.data.value || [] : []).filter(z => !z.isInline)) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', 'temp'); if (r && r.ok) paths.push(r.path); }
+      if (!paths.length) return toast('Could not save the email. Try again.');
+      const done = await window.navigatorApp.fsImport(paths, f.path);
+      await pullFromDisk();
+      linkAdd(mailRef(m), { t: 'folder', key: `node:${f.id}`, id: f.id, name: f.name });
+      toast(`Saved in ${f.name}: the email${done.length > 1 ? ` and ${done.length - 1} ${done.length === 2 ? 'attachment' : 'attachments'}` : ''}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(f.path) });
+    }));
+  }
+  // A meeting from an email: the people on it are invited, its subject is the title, its words go in the notes.
+  async function mailToMeeting(m) {
+    const A = m._acc || mailState.sel.acc, me = new Set((mailUi.accounts || []).map(a => String(a.email).toLowerCase()));
+    toast('Reading the email…');
+    const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=from,toRecipients,ccRecipients` });
+    const T = await mailTextOf(A, m);
+    const who = r.ok ? [r.data.from].concat(r.data.toRecipients || [], r.data.ccRecipients || []).filter(Boolean).map(z => z.emailAddress && z.emailAddress.address).filter(z => z && !me.has(z.toLowerCase())) : [];
+    calGEdit(null, false, null, {
+      title: (m.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim(), att: [...new Set(who)].join(', '), acc: A.split('>')[0],
+      notes: T ? `From the email “${m.subject || ''}” (${mailWho(m.from)}, ${new Date(m.receivedDateTime).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}):\n\n${T.text.slice(0, 1500)}` : '',
+      onSaved: (ev, acc) => linkAdd(mailRef(m), { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || m.subject || 'Meeting', at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }),
+    });
+  }
+  // A Word document that starts with the email (or with details pulled from it).
+  function mailToDoc(m, fields) {
+    mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
+      const A = m._acc || mailState.sel.acc;
+      const T = await mailTextOf(A, m);
+      if (!T) return toast('Could not read the email. Try again.');
+      const title = (m.subject || 'Email').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() || 'Email';
+      const paras = [{ text: title, head: true }, { text: T.head, grey: true }];
+      if (fields && Object.keys(fields).length) { paras.push({ text: 'Details', bold: true }); for (const [k, v] of Object.entries(fields)) paras.push({ text: `${k}: ${v}` }); paras.push({ text: 'The email', bold: true }); }
+      for (const par of T.text.split(/\n{2,}/)) paras.push({ text: par });
+      const r = await window.navigatorApp.fsNewDocx(f.path, title, paras);
+      if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
+      await pullFromDisk();
+      linkAdd(mailRef(m), { t: 'file', key: `file:${r.rel}`, rel: r.rel, name: r.name });
+      toast(`“${r.name}” is in ${f.name} and opening in Word`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(r.rel) });
+    }));
+  }
+  // A new item on a monday.com board, filled in from the email. You see every value and can change it before it is added.
+  async function mailToMonday(m, fields) {
+    const boards = (mondayData.boards || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (!boards.length) return toast('Connect monday.com in File Navigator first.');
+    const A = m._acc || mailState.sel.acc;
+    const T = await mailTextOf(A, m);
+    const F = Object.assign(mailQuickDetails(m, T), fields || {});
+    const d = mailDlg('mail-monday', `<h2>Add to monday.com</h2><p class="hint"></p>
+      <div class="row"><span>Board</span><select name="board"></select></div>
+      <div class="row"><span>Group</span><select name="group"></select></div>
+      <div class="row"><span>Item name</span><input name="name"></div>
+      <div class="sec">Columns (leave one empty to skip it)</div><div class="mo-cols"><div class="mail-note">Choose a board…</div></div>
+      <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok" disabled>Add the Item</button></div>`);
+    d.querySelector('.hint').textContent = `From “${m.subject || '(No subject)'}”. Nothing is added until you click Add the Item.`;
+    const f = n => d.querySelector(`[name="${n}"]`);
+    for (const b of boards) f('board').appendChild(Object.assign(document.createElement('option'), { value: b.id, textContent: b.name }));
+    if (mailState.lastBoard && boards.some(b => String(b.id) === String(mailState.lastBoard))) f('board').value = mailState.lastBoard;
+    f('name').value = F.Name || F.Organisation || (m.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim();
+    let info = null;
+    const FILL = ['text', 'long_text', 'numbers', 'numeric', 'email', 'phone', 'link', 'date', 'status', 'color', 'dropdown'];
+    // Which detail suits which column: by the column's kind first, then by its title.
+    const guess = c => {
+      const t = c.title.toLowerCase(), has = k => Object.keys(F).find(z => z.toLowerCase() === k);
+      const by = k => { const key = has(k); return key ? F[key] : ''; };
+      if (c.type === 'email') return by('email');
+      if (c.type === 'phone') return by('mobile') || by('phone');
+      if (c.type === 'link') return by('website');
+      if (c.type === 'date') return by('date') || by('deadline');
+      if (c.type === 'numbers' || c.type === 'numeric') return /amount|value|budget|\$|cost|price|total/.test(t) ? by('amount') : '';
+      for (const k of Object.keys(F)) { const kk = k.toLowerCase(); if (t === kk || t.includes(kk) || kk.includes(t)) return F[k]; }
+      if (/compan|organi[sz]ation|business|employer/.test(t)) return by('organisation') || by('company');
+      if (/role|title|position/.test(t)) return by('role') || by('position');
+      if (/note|comment|detail|description|summary/.test(t) && c.type === 'long_text') return T ? T.text.slice(0, 1500) : '';
+      return '';
+    };
+    const load = async () => {
+      const box = d.querySelector('.mo-cols'); box.innerHTML = '<div class="mail-note">Reading the board…</div>'; d.querySelector('[data-x="ok"]').disabled = true; info = null;
+      const r = await window.navigatorApp.mondayBoardInfo(f('board').value);
+      if (!r || r.error) { box.innerHTML = '<div class="mail-note"></div>'; box.firstChild.textContent = `Could not read the board: ${(r && r.error) || 'try again'}`; return; }
+      info = r.board;
+      f('group').replaceChildren(...info.groups.map(g => Object.assign(document.createElement('option'), { value: g.id, textContent: g.title })));
+      box.replaceChildren();
+      const cols = info.columns.filter(c => FILL.includes(c.type));
+      for (const c of cols) {
+        const row = document.createElement('div'); row.className = 'row';
+        row.innerHTML = `<span></span>${c.type === 'long_text' ? '<textarea rows="3"></textarea>' : '<input>'}`;
+        row.querySelector('span').textContent = c.title; row.querySelector('span').title = `${c.title} (${c.type.replace('_', ' ')})`;
+        const inp = row.querySelector('input, textarea'); inp.dataset.col = c.id; inp.dataset.type = c.type; inp.value = guess(c);
+        if (c.type === 'date') inp.placeholder = 'For example 2026-11-30';
+        box.appendChild(row);
+      }
+      const skipped = info.columns.length - cols.length;
+      if (skipped) box.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: `${skipped} ${skipped === 1 ? 'column is' : 'columns are'} of a kind to fill in on monday.com itself (people, files, formulas and the like).` }));
+      d.querySelector('[data-x="ok"]').disabled = false;
+    };
+    f('board').addEventListener('change', load); load();
+    d.addEventListener('click', async e => {
+      const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+      if (x !== 'ok') return d.close();
+      if (!info) return;
+      if (!f('name').value.trim()) { f('name').focus(); return toast('Give the item a name.'); }
+      const values = {}, types = {};
+      for (const inp of d.querySelectorAll('.mo-cols [data-col]')) if (inp.value.trim()) { values[inp.dataset.col] = inp.value.trim(); types[inp.dataset.col] = inp.dataset.type; }
+      e.target.disabled = true; e.target.textContent = 'Adding…';
+      const r = await window.navigatorApp.mondayCreateItem({ board: info.id, group: f('group').value, name: f('name').value.trim(), values, types });
+      if (!r || r.error) { e.target.disabled = false; e.target.textContent = 'Add the Item'; return toast(`monday.com did not add it: ${(r && r.error) || 'try again'}`); }
+      mailState.lastBoard = info.id; mailSave();
+      linkAdd(mailRef(m), { t: 'monday', key: `monday:${r.item.id}`, url: r.item.url, name: r.item.name, board: info.name });
+      d.close();
+      toast(`Added “${r.item.name}” to ${info.name}`, r.item.url ? { label: 'Open It', run: () => { setApp('monday'); go({ kind: 'page', url: r.item.url }); } } : null);
+    });
+  }
+  // Pull out the details: the Chief of Staff reads the email and lists what it states (names, numbers, dates, tasks).
+  // You correct the list, then send it to monday.com or a document, or copy it.
+  async function mailDetails(m) {
+    const A = m._acc || mailState.sel.acc, chief = mailChief();
+    toast('Reading the email…');
+    const T = await mailTextOf(A, m);
+    if (!T) return toast('Could not read the email. Try again.');
+    const quick = mailQuickDetails(m, T);
+    const prompt = ['Pull out the details stated in the email below, one per line, as Label: value.',
+      'Use these labels where they apply: Name, Organisation, Role, Email, Phone, Mobile, Address, Website, Date, Time, Deadline, Amount, Task. Add another label only if something important does not fit. For more than one of a kind, number them (Task 1, Task 2).',
+      'Only what the email actually says: leave out anything you would have to guess. Details of the person who wrote it come from their words and signature, not from quoted earlier messages.',
+      'Format your answer exactly like this:\n[[ANSWER]]\nLabel: value\nLabel: value\n[[END]]\n[[DONE]]', `${MAIL_GUARD}\n\n--- EMAIL ---\n${T.head}\n\n${T.text}\n--- END OF EMAIL ---`].join('\n\n');
+    const parse = text => { const o = {}; for (const line of String(text).split('\n')) { const mm = /^\s*[-*•]?\s*([^:\n]{2,32}):\s*(.+?)\s*$/.exec(line); if (mm) o[mm[1].trim()] = mm[2].trim(); } return o; };
+    const form = (host, fields, note) => {
+      const c = document.createElement('div'); c.className = 'ai-card';
+      c.innerHTML = '<div class="h"><b>Details in this email</b><span class="sp"></span></div><div class="ai-note"></div><div class="ai-fields"></div><div class="ai-acts"></div>';
+      c.querySelector('.ai-note').textContent = note;
+      const box = c.querySelector('.ai-fields');
+      const add = (k, v) => { const r = document.createElement('div'); r.className = 'fl'; r.innerHTML = '<input class="k"><input class="v"><button class="tb" title="Leave this one out">✕</button>'; r.querySelector('.k').value = k; r.querySelector('.v').value = v; r.querySelector('button').addEventListener('click', () => r.remove()); box.appendChild(r); };
+      for (const [k, v] of Object.entries(fields)) add(k, v);
+      const now = () => { const o = {}; for (const r of box.querySelectorAll('.fl')) { const k = r.querySelector('.k').value.trim(), v = r.querySelector('.v').value.trim(); if (k && v) o[k] = v; } return o; };
+      const acts = c.querySelector('.ai-acts');
+      const btn = (label, tip, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'btn'; b.textContent = label; b.title = tip; b.addEventListener('click', run); acts.appendChild(b); };
+      btn('Add a Line', 'Add a detail yourself', () => add('', ''));
+      btn('Copy', 'Copy the details as text', () => { navigator.clipboard.writeText(Object.entries(now()).map(([k, v]) => `${k}: ${v}`).join('\n')).catch(() => {}); toast('Copied'); });
+      btn('Document…', 'A new Word document with these details and the email', () => mailToDoc(m, now()));
+      btn('monday.com…', 'A new item on a monday.com board, filled in from these', () => mailToMonday(m, now()), true);
+      host.appendChild(c);
+    };
+    mailAiOpen({ key: 'details', tab: 'Details', staff: chief, title: 'Details in this email', prompt,
+      cards: (host, V) => {
+        const got = V.parts.find(x => x.kind === 'ANSWER');
+        if (got) form(host, Object.assign({}, quick, parse(got.text)), V.done ? 'Check these, change what is wrong, then choose where they go.' : 'Still reading…');
+        else form(host, quick, 'These come straight from the sender’s address. More will appear when the email has been read.');
+      },
+    });
+  }
+
+  // ----- Related: what else you have with this person, and what this email has been sent on to -----
+  async function mailRelatedLoad(m) {
+    const key = `${m._acc || ''}|${m.id}`;
+    if (mailUi.rel && mailUi.rel.key === key) return;
+    const R = mailUi.rel = { key, open: !!(mailUi.rel && mailUi.rel.openAll), openAll: !!(mailUi.rel && mailUi.rel.openAll), mail: [], cal: [], links: linksOf(mailRef(m).key), who: '' };
+    const me = new Set((mailUi.accounts || []).map(a => String(a.email).toLowerCase()));
+    let p = m.from && m.from.emailAddress;
+    if (p && me.has(String(p.address).toLowerCase())) p = ((m.toRecipients || [])[0] || {}).emailAddress || p;      // mail you sent: the person you sent it to
+    if (!p || !p.address) return;
+    R.who = p.name && p.name !== p.address ? p.name : p.address;
+    const adr = String(p.address).toLowerCase();
+    try {
+      if (isApp && window.navigatorApp.mailIndexSearch) {
+        const accs = mailVisible().filter(a => !a.needsSignIn).map(a => a.id);
+        const [a, b] = await Promise.all([window.navigatorApp.mailIndexSearch(`from:${adr}`, { accs, sort: 'date', limit: 8 }), window.navigatorApp.mailIndexSearch(`to:${adr}`, { accs, sort: 'date', limit: 6 })]);
+        const all = [...((a && a.results) || []), ...((b && b.results) || [])].filter(x => x.id !== m.id);
+        const seen = new Set(); R.mail = all.filter(x => { const k = x._acc + '|' + x.id; if (seen.has(k)) return false; seen.add(k); return true; }).sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime))).slice(0, 8);
+        R.mailTotal = ((a && a.total) || 0) + ((b && b.total) || 0);
+      }
+    } catch (e) { /* search is not ready */ }
+    try {
+      const nm = (p.name || '').toLowerCase(), now = Date.now();
+      const hit = i => { const ev = i.ev || {}; const pool = [ev.organizer || ''].concat(ev.attendees || []).join(' | ').toLowerCase(); return pool.includes(adr) || (nm.length > 3 && pool.includes(nm)); };
+      const mine = (calG.inst || []).filter(i => i.g && hit(i));
+      R.cal = mine.filter(i => i.end >= now).sort((x, y) => x.start - y.start).slice(0, 3).concat(mine.filter(i => i.end < now).sort((x, y) => y.start - x.start).slice(0, 2));
+    } catch (e) { /* calendar not loaded */ }
+    if (mailUi.rel === R && mailUi.msg === m) mailRenderMain();
+  }
+  function mailRelatedPaint(m, hd) {
+    const key = `${m._acc || ''}|${m.id}`, R = mailUi.rel && mailUi.rel.key === key ? mailUi.rel : null;
+    if (!R) { mailRelatedLoad(m); return; }
+    R.links = linksOf(mailRef(m).key);
+    const n = R.mail.length + R.cal.length + R.links.length;
+    if (!n) return;
+    const box = document.createElement('div'); box.className = 'mail-rel' + (R.open ? ' open' : '');
+    const bits = [R.links.length ? `${R.links.length} sent on` : '', R.mail.length ? `${R.mail.length} other ${R.mail.length === 1 ? 'email' : 'emails'} with ${R.who}` : '', R.cal.length ? `${R.cal.length} ${R.cal.length === 1 ? 'meeting' : 'meetings'}` : ''].filter(Boolean);
+    const top = document.createElement('button'); top.className = 'rel-top'; top.textContent = `${R.open ? '▾' : '▸'}  Related: ${bits.join('  ·  ')}`;
+    top.title = 'What this email has been sent on to, and your other mail and meetings with this person';
+    top.addEventListener('click', () => { R.open = !R.open; R.openAll = R.open; mailRenderMain(); });
+    box.appendChild(top);
+    if (R.open) {
+      const row = (icon, text, sub, run) => { const b = document.createElement('button'); b.className = 'rel-row'; b.innerHTML = '<i></i><span class="t"></span><span class="s"></span>'; b.querySelector('i').textContent = icon; b.querySelector('.t').textContent = text; b.querySelector('.s').textContent = sub; b.addEventListener('click', run); box.appendChild(b); };
+      const day = t => new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
+      for (const l of R.links) row('→', l.name, `${LINK_WORD[l.t] || ''}${l.board ? ' · ' + l.board : ''}`, () => linkOpen(l));
+      for (const i of R.cal) row(i.end >= Date.now() ? '◷' : '○', i.ev.title || '(No title)', `${i.end >= Date.now() ? 'Coming up' : 'Was'} ${day(i.start)}, ${calFmtTime(i.start)}`, () => linkOpen({ t: 'cal', at: i.start }));
+      for (const x of R.mail) row('✉', x.subject || '(No subject)', `${x._folderName && !/^inbox$/i.test(x._folderName) ? x._folderName + ' · ' : ''}${day(x.receivedDateTime)}`, () => mailOpen(x));
+      if (R.mail.length >= 8) row('…', `All mail with ${R.who}`, 'Search', () => { const a2 = (m.from && m.from.emailAddress && m.from.emailAddress.address) || ''; mailUi.sOpt.scope = 'all'; mailSearch(`from:${a2}`); });
+    }
+    hd.appendChild(box);
+  }
+
   // ===== Working with your staff from Mail =====
   // Three things, all through the Claude Projects your staff already work in:
   //   1. Hand an email to a staff member: as a new action or onto one that is open, with its attachments saved in
@@ -11724,6 +12007,7 @@ body { width: max-content !important; min-width: 0 !important; }
       setApp('cos'); cosUi.tab = 'work'; openStaff(n.id);
       cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos();
       if (act) go({ kind: 'page', url: act.url }); else newInFolder('chat', folder ? folder.id : null);
+      if (act) linkAdd(mailRef(m), { t: 'action', key: `node:${act.id}`, id: act.id, name: act.name });
       let tries = 0;
       const send = () => viewExec(SEND_PROMPT(prompt)).then(r => { if (r === 'none' && ++tries < 8) setTimeout(send, 1500); }).catch(() => { if (++tries < 8) setTimeout(send, 1500); });
       setTimeout(send, act ? 3500 : 1500);

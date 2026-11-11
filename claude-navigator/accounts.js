@@ -220,6 +220,26 @@ async function saveAttachment(id, msgId, attId, name, box, toDir) {
   }
 }
 
+// Save a whole email as a file (.eml: it opens in Outlook or Mail with everything in it) and say where it went.
+async function saveMime(id, msgId, name, box, toDir) {
+  try {
+    const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
+    const send = async token => net.fetch(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
+    let res = await send(await tokenFor(id));
+    if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
+    if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };
+    const buf = Buffer.from(await res.arrayBuffer());
+    const stem = (String(name || 'Email').replace(/[\/\\:*?"<>|\0\r\n]/g, ' ').replace(/\s+/g, ' ').replace(/^\.+/, '').trim() || 'Email').slice(0, 120);
+    const dir = toDir || app.getPath('downloads');
+    let file2 = path.join(dir, stem + '.eml');
+    for (let i = 2; fs.existsSync(file2) && i < 500; i++) file2 = path.join(dir, `${stem} ${i}.eml`);
+    fs.writeFileSync(file2, buf, { flag: 'wx' });
+    return { ok: true, path: file2, name: path.basename(file2) };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message || e) };
+  }
+}
+
 // One piece of a large attachment. Microsoft hands out a one-off upload address for the file (it needs no token);
 // only Microsoft's own mail servers are accepted here.
 async function uploadPiece(url, bytes, start, total) {
@@ -237,4 +257,4 @@ async function uploadPiece(url, bytes, start, total) {
   }
 }
 
-module.exports = { list, add, remove, graph, send, saveAttachment, uploadPiece };
+module.exports = { list, add, remove, graph, send, saveAttachment, saveMime, uploadPiece };

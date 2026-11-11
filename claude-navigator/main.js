@@ -1268,6 +1268,59 @@ ipcMain.handle('acct-attachment-save', async (_e, id, msgId, attId, name, box, w
   if (where === 'temp') { dir = path.join(app.getPath('temp'), 'claude-navigator-mail', String(Date.now())); fs.mkdirSync(dir, { recursive: true }); }
   return accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''), typeof box === 'string' ? box : '', dir);
 });
+ipcMain.handle('acct-message-save', async (_e, id, msgId, name, box, where) => {
+  let dir = '';
+  if (where === 'temp') { dir = path.join(app.getPath('temp'), 'claude-navigator-mail', String(Date.now())); fs.mkdirSync(dir, { recursive: true }); }
+  return accounts.saveMime(String(id), String(msgId), String(name || ''), typeof box === 'string' ? box : '', dir);
+});
+ipcMain.handle('monday-board-info', async (_e, id) => { try { return { board: await monday.boardInfo(id) }; } catch (e) { return { error: e.code === 'token' ? 'monday.com no longer accepts your token; reconnect it' : e.message }; } });
+ipcMain.handle('monday-create-item', async (_e, opts) => {
+  if (!opts || !opts.board || !String(opts.name || '').trim()) return { error: 'Give the item a name' };
+  try { return { item: await monday.createItem(opts) }; } catch (e) { return { error: e.code === 'token' ? 'monday.com no longer accepts your token; reconnect it' : e.message }; }
+});
+// A new Word document with words already in it (from an email, say), in one of your folders; then it opens in Word.
+// (A .docx is a zip of a few small XML files; this writes the smallest valid one.)
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return buf => { let c = 0xFFFFFFFF; for (const b of buf) c = t[(c ^ b) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }; })();
+function zipStore(files) {
+  const parts = [], central = []; let at = 0;
+  for (const [name, text] of files) {
+    const nm = Buffer.from(name), data = Buffer.from(text), crc = CRC(data);
+    const head = Buffer.alloc(30); head.writeUInt32LE(0x04034b50, 0); head.writeUInt16LE(20, 4); head.writeUInt16LE(0x0800, 6); head.writeUInt32LE(crc, 14); head.writeUInt32LE(data.length, 18); head.writeUInt32LE(data.length, 22); head.writeUInt16LE(nm.length, 26);
+    parts.push(head, nm, data);
+    const c = Buffer.alloc(46); c.writeUInt32LE(0x02014b50, 0); c.writeUInt16LE(20, 4); c.writeUInt16LE(20, 6); c.writeUInt16LE(0x0800, 8); c.writeUInt32LE(crc, 16); c.writeUInt32LE(data.length, 20); c.writeUInt32LE(data.length, 24); c.writeUInt16LE(nm.length, 28); c.writeUInt32LE(at, 42);
+    central.push(c, nm);
+    at += 30 + nm.length + data.length;
+  }
+  const cd = Buffer.concat(central), end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(at, 16);
+  return Buffer.concat([...parts, cd, end]);
+}
+ipcMain.handle('fs-new-docx', async (_e, destRel, name, paras) => {
+  if (!folderSync) return { error: 'Folders on this Mac are not turned on' };
+  const esc = t => String(t).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const body = (Array.isArray(paras) ? paras : []).slice(0, 2000).map(p0 => {
+    const o = p0 && typeof p0 === 'object' ? p0 : { text: String(p0 == null ? '' : p0) };
+    const runs = String(o.text || '').split('\n').map((line, i) => `${i ? '<w:br/>' : ''}<w:t xml:space="preserve">${esc(line)}</w:t>`).join('');
+    const rpr = o.head ? '<w:rPr><w:b/><w:sz w:val="32"/></w:rPr>' : o.bold ? '<w:rPr><w:b/></w:rPr>' : o.grey ? '<w:rPr><w:color w:val="666666"/></w:rPr>' : '';
+    return `<w:p><w:pPr><w:spacing w:after="${o.head ? 160 : 120}"/></w:pPr><w:r>${rpr}${runs}</w:r></w:p>`;
+  }).join('');
+  const doc = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+  const zip = zipStore([
+    ['[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'],
+    ['_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
+    ['word/document.xml', doc],
+  ]);
+  try {
+    const dir = folderSync.abs(destRel || '');
+    fs.mkdirSync(dir, { recursive: true });
+    const stem = String(name || 'Untitled').replace(/[\/\\:*?"<>|\r\n]/g, '-').replace(/\.docx$/i, '').trim().slice(0, 120) || 'Untitled';
+    let target = path.join(dir, `${stem}.docx`);
+    for (let i = 2; fs.existsSync(target); i++) target = path.join(dir, `${stem} ${i}.docx`);
+    fs.writeFileSync(target, zip);
+    if (!process.env.NAV_TEST_MS) shell.openPath(target);
+    return { ok: true, rel: folderSync.rel(target), name: path.basename(target) };
+  } catch (e) { return { error: String(e && e.message || e) }; }
+});
 // (Tests point the drafting panel at a stand-in page instead of Claude. Never in the app you install.)
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));

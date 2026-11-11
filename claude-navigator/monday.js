@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const { app, safeStorage, net } = require('electron');
 
-const API = 'https://api.monday.com/v2';
+// (Tests of the app run from source can point this at a stand-in. Never in the app you install.)
+const API = (!app.isPackaged && process.env.NAV_TEST_MONDAY) || 'https://api.monday.com/v2';
 const tokenFile = () => path.join(app.getPath('userData'), 'monday-token.bin');
 
 function saveToken(token) {
@@ -113,4 +114,42 @@ async function deleteBoard(id) {
   return { ok: true };
 }
 
-module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll, createBoard, renameBoard, deleteBoard };
+// A board's groups and columns, so an item can be filled in before it is added.
+async function boardInfo(id) {
+  const token = readToken();
+  if (!token) throw Object.assign(new Error('monday.com is not connected'), { code: 'token' });
+  const d = await gql(token, 'query ($id: [ID!]) { boards(ids: $id) { id name url groups { id title } columns { id title type } } }', { id: [String(id)] });
+  const b = (d.boards || [])[0];
+  if (!b) throw new Error('That board is no longer there');
+  return { id: b.id, name: b.name, url: b.url, groups: b.groups || [], columns: (b.columns || []).filter(c => c.type !== 'name') };
+}
+// Add one item. values: { column id: what you typed }. Each is put in the form that kind of column expects; kinds the
+// app cannot fill safely (people, files, formulas and the like) are left alone.
+const ymd = v => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(v).trim()); if (m) return m[0]; const d = new Date(v); if (isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+function columnValue(type, v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return undefined;
+  if (type === 'text') return s;
+  if (type === 'long_text') return { text: s };
+  if (type === 'numbers' || type === 'numeric') { const n = s.replace(/[^0-9.\-]/g, ''); return n && !isNaN(+n) ? n : undefined; }
+  if (type === 'email') return { email: s, text: s };
+  if (type === 'phone') return { phone: s.replace(/[^0-9+]/g, '') };
+  if (type === 'link') return { url: /^https?:\/\//i.test(s) ? s : 'https://' + s, text: s };
+  if (type === 'date') { const d = ymd(s); return d ? { date: d } : undefined; }
+  if (type === 'status' || type === 'color') return { label: s };
+  if (type === 'dropdown') return { labels: s.split(/\s*,\s*/).filter(Boolean) };
+  return undefined;
+}
+async function createItem({ board, group, name, values, types }) {
+  const token = readToken();
+  if (!token) throw Object.assign(new Error('monday.com is not connected'), { code: 'token' });
+  const cv = {};
+  for (const [id, v] of Object.entries(values || {})) { const x = columnValue((types || {})[id], v); if (x !== undefined) cv[id] = x; }
+  const d = await gql(token, 'mutation ($b: ID!, $g: String, $n: String!, $v: JSON) { create_item(board_id: $b, group_id: $g, item_name: $n, column_values: $v, create_labels_if_missing: true) { id name board { id url } } }',
+    { b: String(board), g: group ? String(group) : null, n: String(name).slice(0, 250), v: JSON.stringify(cv) });
+  const it = d.create_item;
+  if (!it) throw new Error('monday.com did not add the item');
+  return { id: it.id, name: it.name, url: it.board && it.board.url ? `${it.board.url.replace(/\/+$/, '')}/pulses/${it.id}` : '' };
+}
+
+module.exports = { saveToken, readToken, clearToken, hasToken, check, fetchAll, createBoard, renameBoard, deleteBoard, boardInfo, createItem };
