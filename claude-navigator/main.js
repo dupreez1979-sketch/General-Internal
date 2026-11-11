@@ -1261,6 +1261,16 @@ ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name, box) => {
   return r;
 });
 
+// Hand an email to staff: an attachment is saved (not opened) to Downloads, or to a holding folder from which the
+// window copies it into the staff member's folder.
+ipcMain.handle('acct-attachment-save', async (_e, id, msgId, attId, name, box, where) => {
+  let dir = '';
+  if (where === 'temp') { dir = path.join(app.getPath('temp'), 'claude-navigator-mail', String(Date.now())); fs.mkdirSync(dir, { recursive: true }); }
+  return accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''), typeof box === 'string' ? box : '', dir);
+});
+// (Tests point the drafting panel at a stand-in page instead of Claude. Never in the app you install.)
+ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
+ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
 ipcMain.handle('cal-fetch', async (_e, url) => {
   if (typeof url !== 'string') return { ok: false, status: 'no link' };

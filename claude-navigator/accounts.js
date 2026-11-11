@@ -201,7 +201,7 @@ async function graphNow(id, req) {
 }
 
 // Save one attachment into Downloads (never over a file already there) and say where it went.
-async function saveAttachment(id, msgId, attId, name, box) {
+async function saveAttachment(id, msgId, attId, name, box, toDir) {
   try {
     const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';   // a shared mailbox, or your own
     const send = async token => net.fetch(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
@@ -210,7 +210,7 @@ async function saveAttachment(id, msgId, attId, name, box) {
     if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };
     const buf = Buffer.from(await res.arrayBuffer());
     const clean = (path.basename(String(name || 'attachment')).replace(/[\/\\:\0]/g, '_').replace(/^\.+/, '') || 'attachment').slice(0, 180);
-    const dir = app.getPath('downloads'), ext = path.extname(clean), stem = clean.slice(0, clean.length - ext.length);
+    const dir = toDir || app.getPath('downloads'), ext = path.extname(clean), stem = clean.slice(0, clean.length - ext.length);
     let file2 = path.join(dir, clean);
     for (let i = 2; fs.existsSync(file2) && i < 500; i++) file2 = path.join(dir, `${stem} ${i}${ext}`);
     fs.writeFileSync(file2, buf, { flag: 'wx' });

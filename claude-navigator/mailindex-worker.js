@@ -191,6 +191,7 @@ process.parentPort.on('message', async e => {
     if (m.op === 'remove') { remove(m.acc, m.keys || []); return reply({ ok: true }); }
     if (m.op === 'drop') { drop(m.acc); return reply({ ok: true }); }
     if (m.op === 'counts') return reply({ ok: true, counts: counts() });
+    if (m.op === 'texts') { const out = {}; for (const k of m.keys || []) { const d = docs.get(k); if (d) out[k] = d.x || d.p || ''; } return reply({ ok: true, texts: out }); }
     if (m.op === 'parse') return reply({ ok: true, parsed: parse(m.q, m.skip || []) });
     if (m.op === 'search') return reply(Object.assign({ ok: true }, search(m.q, m.opt || {})));
     reply({ ok: false, error: 'Unknown' });

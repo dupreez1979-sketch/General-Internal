@@ -175,4 +175,6 @@ async function reset(key) {
 }
 function stop() { stopping = true; try { if (worker) worker.kill(); } catch (e) { /* gone */ } }
 
-module.exports = { setBoxes, status, search, reset, syncNow: () => { syncAll(); return { ok: true }; }, stop };
+async function texts(keys) { await start(); const r = await ask({ op: 'texts', keys }); return (r && r.texts) || {}; }
+
+module.exports = { texts, setBoxes, status, search, reset, syncNow: () => { syncAll(); return { ok: true }; }, stop };
