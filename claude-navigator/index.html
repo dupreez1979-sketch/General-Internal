@@ -540,6 +540,7 @@
   .mail-read.pop { position: absolute; z-index: 4; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.3), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
   .mail-read.pop[hidden] { display: none; }
   .mail-read.pop .mail-rh { padding-right: 46px; }
+  .mail-popbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 8px 52px 8px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint, #8a8f98) 6%, var(--win)); }
   .mail-popx { position: absolute; top: 10px; right: 10px; z-index: 2; }
   .mail-shade { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.14); }
   .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
@@ -10965,21 +10966,26 @@ body { width: max-content !important; min-width: 0 !important; }
     const head = document.createElement('div'); head.className = 'cal-head mail-tools';
     const tool = (icon, label, title, run, opts = {}) => {
       const b = document.createElement('button'); b.className = 'tb' + (opts.on ? ' on' : ''); b.innerHTML = `${mailToolIcon(icon)}<span class="t"></span>`; b.querySelector('.t').textContent = label;
-      b.title = title; b.disabled = !!opts.off; b.addEventListener('click', run); acts.appendChild(b); return b;
+      b.title = title; b.disabled = !!opts.off; b.addEventListener('click', run); into.appendChild(b); return b;
     };
     if (inSide) { const nw = document.createElement('button'); nw.className = 'btn-primary mail-new'; nw.textContent = 'New Email'; nw.addEventListener('click', () => mailCompose('new')); head.appendChild(nw); }
     const acts = document.createElement('div'); acts.className = 'mail-acts';
+    let into = acts;
     const none = !m;
     const flagged = m && m.flag && m.flag.flagStatus === 'flagged';
+    // What you can do with the open message. (With the reading pane off, the same buttons also sit on the pop-up itself.)
+    const msgTools = () => {
     tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
     tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
-    tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
+    if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
     tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
     tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
     tool('flag', flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged });
+    };
+    msgTools();
     head.appendChild(acts);
     head.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
     const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search'; sr.title = acc ? `Search ${acc.email} (${K.mod}F)` : everyone ? `Search every account (${K.mod}F)` : 'Search'; sr.value = mailUi.search || '';
@@ -11071,6 +11077,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '✕'; x.title = 'Close (Esc)';
       x.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); });
       read.appendChild(x);
+      if (m) { const bar = document.createElement('div'); bar.className = 'mail-acts mail-popbar'; into = bar; msgTools(); read.appendChild(bar); }
     }
     if (!m) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
     else {
