@@ -418,12 +418,20 @@
   #sidePanel[hidden] { display: none; }
   #spRs { position: absolute; left: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 8; }
   #spRs:hover, #spRs.rs-on { background: linear-gradient(90deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
-  #spHead { flex: none; height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
-  #spHead .sp { flex: 1; }
-  #spHead .app-ic.mini { width: 22px; height: 22px; border-radius: 6px; }
-  #spHead .app-ic.mini svg { width: 13px; height: 13px; }
-  #spHead .tb.on { background: var(--sel); color: var(--text); }
-  #spMain { flex: 1; min-height: 0; display: flex; }
+  .sp-head { flex: none; height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .sp-head .sp { flex: 1; }
+  .sp-head .app-ic.mini { width: 22px; height: 22px; border-radius: 6px; }
+  .sp-head .app-ic.mini svg { width: 13px; height: 13px; }
+  .sp-head .tb.on { background: var(--sel); color: var(--text); }
+  #spMain { flex: 1 1 0; min-height: 80px; display: flex; overflow: hidden; }
+  #spBody2 { overflow: hidden; }
+  #spBody2 { flex: 0 0 var(--sp-h2, 46%); min-height: 80px; max-height: calc(100% - 170px); }
+  #spBody2[hidden], #spHead2[hidden], #spSplit[hidden] { display: none !important; }
+  #spHead2 { border-top: 1px solid var(--line); }
+  #spSplit { flex: none; height: 0; position: relative; z-index: 7; }
+  #spSplit::after { content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 10px; cursor: row-resize; }
+  #spSplit:hover::after { background: linear-gradient(0deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
+  .dock-lay { margin-top: auto; }
   #spNav { flex: 0 0 var(--sp-nav-w, 210px); overflow: auto; border-right: 1px solid var(--line); padding: 4px 6px; background: color-mix(in srgb, var(--tint, #8a8f98) 5%, var(--win)); }
   #spNav[hidden] { display: none; }
   #spNavRs { flex: none; width: 0; position: relative; }
@@ -431,14 +439,14 @@
   #spNavRs::before { content: ""; position: absolute; top: 0; bottom: 0; left: -1px; width: 2px; background: transparent; transition: background .12s .06s; z-index: 6; }
   #spNavRs:hover::before { background: var(--accent); }
   #spNav[hidden] + #spNavRs { display: none; }
-  #spBody { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
-  #spBody > webview { flex: 1; border: 0; }
-  #spBody > webview[hidden] { display: none; }
-  #spBody > #mailPanel, #spBody > #calPanel, #spBody > #notesPanel { position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; flex: 1; min-height: 0; border: 0; border-radius: 0; box-shadow: none; resize: none; }
-  #spBody > [hidden] { display: none !important; }
-  #spBody #notesPanel .fhead { display: none; }
-  #spBody > #splitLeft { display: flex !important; flex: 1; max-width: none; min-width: 0; border: 0; order: 0; }
-  #spBody .sl-foot { display: none; }
+  .sp-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+  .sp-body > webview { flex: 1; border: 0; }
+  .sp-body > webview[hidden] { display: none; }
+  .sp-body > #mailPanel, .sp-body > #calPanel, .sp-body > #notesPanel { position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; flex: 1; min-height: 0; border: 0; border-radius: 0; box-shadow: none; resize: none; }
+  .sp-body > [hidden] { display: none !important; }
+  .sp-body #notesPanel .fhead { display: none; }
+  .sp-body > #splitLeft { display: flex !important; flex: 1; max-width: none; min-width: 0; border: 0; order: 0; }
+  .sp-body .sl-foot { display: none; }
   #sidePanel .mail-sub, #sidePanel .cal-upd, #sidePanel .mail-pane-btn { display: none; }
   #sidePanel .cal-head { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 10px; row-gap: 4px; }
   #sidePanel .mail-search { width: 110px; flex: 1 1 110px; }
@@ -1511,7 +1519,7 @@
   <button class="bot-btn" title="Chief of Staff: suggestions and a chat on the side"><span class="av">CS</span><span class="badge" hidden></span></button>
 </div>
  <div id="dock" aria-label="Open beside"></div>
-<div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead"></div><div id="spMain"><div id="spNav" hidden></div><div id="spNavRs" title="Drag to resize. Double-click to reset."></div><div id="spBody"></div></div></div>
+<div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead" class="sp-head"></div><div id="spMain"><div id="spNav" hidden></div><div id="spNavRs" title="Drag to resize. Double-click to reset."></div><div id="spBody" class="sp-body"></div></div><div id="spSplit" title="Drag to share the space between the two. Double-click to split evenly." hidden></div><div id="spHead2" class="sp-head" hidden></div><div id="spBody2" class="sp-body" hidden></div></div>
 <div id="edgeSide" class="edge-tab at-left" data-label="Sidebar" title="Show the sidebar"></div>
 <div id="edgeDetail" class="edge-tab at-right second" data-label="Details" title="Show the details panel"></div>
 
@@ -6751,7 +6759,7 @@
   function renderSplit() {
     const panel = $('splitLeft');
     if (!panel) return;
-    const inSide = sideApp() === 'folders';             // your folders, beside Mail, Calendar or Notes
+    const inSide = sideHas('folders');             // your folders, beside Mail, Calendar or Notes
     const show = inSide || (splitOn && isApp !== undefined && (currentApp === 'navigator' || currentApp === 'cos') && (state.loc.kind !== 'page' || (currentApp !== 'cos' && !fr('claude').wide)));
     $('splitRs').hidden = !show || inSide;
     try { paintEdges(); } catch (e) { /* starting up */ }
@@ -9372,7 +9380,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function notesToggle(on = !notesState.open) { notesState.open = on; notesSave(); notesRender(); }
   function notesRender() {
     const p = $('notesPanel');
-    const app = currentApp === 'notes', inSplit = p.parentNode === $('spBody');
+    const app = currentApp === 'notes', inSplit = p.parentNode === $('spBody') || p.parentNode === $('spBody2');
     notesState.open = false;                         // (no floating window any more: an app, or one side of the split)
     p.hidden = !(app || inSplit);
     notesSideRender();
@@ -9404,7 +9412,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (currentApp === 'notes') { notesState.open = true; notesSave(); setApp(notesState.from || 'navigator'); }
         else { notesState.open = false; notesSave(); setApp('notes'); }
       });
-      b(FICON.hide, 'Close (the note stays signed in; open Notes again from the apps button at the top)', () => { if (currentApp === 'notes') setApp(notesState.from || 'navigator'); else sideClose(); });
+      b(FICON.hide, 'Close (the note stays signed in; open Notes again from the apps button at the top)', () => { if (currentApp === 'notes') setApp(notesState.from || 'navigator'); else sideCloseApp('notes'); });
     }
     const fl = p.querySelector('.nfloat');
     if (fl) fl.title = app ? 'Keep it open in a floating window while you use the other apps' : 'Show Notes full size, as an app';
@@ -10385,9 +10393,9 @@ body { width: max-content !important; min-width: 0 !important; }
   };
   const mailProf = id => mailState.profiles[String(id).split('>')[0]] || [];
   const mailWithShared = list => (list || []).flatMap(a => [a].concat(((mailState.shared || {})[a.id] || []).map(b => ({ id: `${a.id}>${b.address}`, email: b.address, name: b.name || b.address, shared: true, via: a.id, provider: a.provider, needsSignIn: a.needsSignIn, more: a.more }))));
-  const mailOn = () => currentApp === 'mail' || sideApp() === 'mail';          // showing as the app, or beside another one
-  const mailPopped = () => mailState.pane === false || sideApp() === 'mail';   // no reading pane: messages pop up
-  const calOn = () => currentApp === 'cal' || sideApp() === 'cal';
+  const mailOn = () => currentApp === 'mail' || sideHas('mail');          // showing as the app, or beside another one
+  const mailPopped = () => mailState.pane === false || sideHas('mail');   // no reading pane: messages pop up
+  const calOn = () => currentApp === 'cal' || sideHas('cal');
   const MAIL_ORDER = ['inbox', 'drafts', 'sentitems', 'archive', 'deleteditems', 'junkemail', 'outbox'];
   const MAIL_HIDE = /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures)$/i;
   async function mailLoadAccounts() {
@@ -10603,6 +10611,15 @@ body { width: max-content !important; min-width: 0 !important; }
   } catch (e) { return ''; } };
   const mailHtml = text => mailEsc(String(text || '').trim()).replace(/\r?\n/g, '<br>');
   const mailDlg = (cls, html) => { const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg ' + cls; d.innerHTML = html; document.body.appendChild(d); d.addEventListener('close', () => d.remove()); d.showModal(); return d; };
+  function askText(title, start, done, okLabel = 'Save') {
+    const d = mailDlg('mail-askstaff', '<h2></h2><input class="ask" style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok"></button></div>');
+    d.querySelector('h2').textContent = title; d.querySelector('[data-x="ok"]').textContent = okLabel;
+    const inp = d.querySelector('input'); inp.value = start || '';
+    const fin = ok => { const v = inp.value.trim(); d.close(); if (ok && v) done(v); };
+    d.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (x) fin(x === 'ok'); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fin(true); } });
+    inp.focus(); inp.select();
+  }
   function mailNeedMore(a, what, then) {
     const real = (mailUi.accounts || []).find(x => x.id === (a.via || a.id)) || a;
     if (real.more) return then(real);
@@ -11017,7 +11034,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const everyone = !!s && s.acc === '*';
     const acc = s && !everyone && (mailUi.accounts || []).find(a => a.id === s.acc);
     const m = mailUi.msg, d = mailUi.msgBody;
-    const popped = mailPopped(), inSide = sideApp() === 'mail' && currentApp !== 'mail';
+    const popped = mailPopped(), inSide = sideHas('mail') && currentApp !== 'mail';
     // The toolbar across the top, as in Outlook: what you can do with the message you have chosen.
     const head = document.createElement('div'); head.className = 'cal-head mail-tools';
     const tool = (icon, label, title, run, opts = {}) => {
@@ -11576,7 +11593,7 @@ body { width: max-content !important; min-width: 0 !important; }
         return showMenu(r0.left, r0.bottom + 4, [
           ...L.snippets.map(sn => ({ label: sn.name, run: () => C.insert(sn.text, true) })),
           L.snippets.length ? '-' : null,
-          { label: 'Keep the Selected Words as a Snippet\u2026', disabled: !inEd, run: () => { const nm = prompt('A name for this snippet', picked.slice(0, 30)); if (nm === null) return; L.snippets.push({ name: nm.trim() || picked.slice(0, 24), text: picked }); mailSave(); toast('Kept as a snippet'); } },
+          { label: 'Keep the Selected Words as a Snippet\u2026', disabled: !inEd, run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { L.snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
           { label: 'Notes, Snippets and Quick Changes\u2026', run: () => mailDraftPrefs() },
         ].filter(Boolean));
       }
@@ -12018,7 +12035,8 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   $('appPop').querySelectorAll('.app-tile').forEach(t => appDragWire(t, t.dataset.app, 'x'));
   var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
-  function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }
+  function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }                 // the upper (or only) one
+  function sideHas(k) { return typeof sideState === 'object' && !!sideState && !!k && (sideState.app === k || sideState.app2 === k); }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
   const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
@@ -12033,7 +12051,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const mk = (k, label, html, on, tip) => {
       const b = document.createElement('button');
       b.className = 'dock-b' + (on ? ' on' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
-      b.addEventListener('click', () => dockClick(k));
+      b.addEventListener('click', e => dockClick(k, e));
       if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
@@ -12042,17 +12060,21 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
       if (k === currentApp) continue;                     // the app you are in is not offered beside itself
       if (hid.includes(k === 'folders' ? 'navigator' : k)) continue;
-      const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideApp() === k;
+      const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, (on ? `Close ${label} beside this` : `Open ${label} beside this`) + (badge ? ` (${mailUi.unread} unread)` : ''));
+      mk(k, label, dockIcon(cls) + badge, on, (on ? `Close ${label} beside this` : `Open ${label} beside this${sideState.app && !dockNative(k) ? ' (hold Option to open it underneath what is there)' : ''}`) + (badge ? ` (${mailUi.unread} unread)` : ''));
     }
+    { const lb = document.createElement('button'); lb.className = 'dock-b dock-lay'; lb.dataset.k = 'layouts'; lb.title = 'Layouts: bring back a set of apps side by side, or keep the set you have open now';
+      lb.innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9 3v10M9 8h5" stroke="currentColor" stroke-width="1.3"/></svg>';
+      lb.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); layMenu(r0.left - 250, r0.top); });
+      d.appendChild(lb); }
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
       const on = !fr('actions').hidden;
       mk('actions', 'Open actions', '<span class="app-ic mini act"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5l1.2 1.2L6.4 3.4M3 9l1.2 1.2L6.4 7.9M3 13.2h.01M8.5 4.5h4.5M8.5 9h4.5M8.5 13h4.5" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>', on, on ? 'Close the list of open actions' : 'Show all of this person’s open actions');
     }
   }
-  function dockClick(k) {
+  function dockClick(k, e) {
     if (k === 'actions') { setFrame('actions', { hidden: !fr('actions').hidden }); return dockRender(); }
     if (k === 'claude' && dockNative(k)) {
       if (dockClaudeShowing()) closeClaude();
@@ -12061,78 +12083,140 @@ body { width: max-content !important; min-width: 0 !important; }
       return dockRender();
     }
     if (k === 'folders' && dockNative(k)) { setSplit(!(splitOn && !$('splitLeft').hidden)); return dockRender(); }
-    if (sideApp() === k) sideClose(); else sideOpen(k);
+    if (sideHas(k)) sideCloseApp(k); else sideOpen(k, !!(e && e.altKey));
   }
-  function sideOpen(k) {
+  // The side panel holds one app, or two with one above the other. Each app has one screen, so it shows in one
+  // place at a time: as the main app, or in one of the two places here.
+  function sideOpen(k, below) {
     if (k === currentApp) return;
-    sideState.app = k; sideState.nav = false; sideSave();     // its own sidebar starts hidden
-    sideMount(); sideStart();
+    if (below && sideState.app && sideState.app !== k) sideState.app2 = k;
+    else { if (sideState.app2 === k) sideState.app2 = null; sideState.app = k; sideState.nav = false; }     // its own sidebar starts hidden
+    sideSave(); sideMount(); sideStart();
   }
-  function sideClose() { sideState.app = null; sideSave(); sideMount(); }
-  // Put the side app's own screen into the side panel, and everything else back where it lives.
+  function sideCloseApp(k) {
+    if (sideState.app === k) { sideState.app = sideState.app2 || null; sideState.app2 = null; sideState.nav = false; }
+    else if (sideState.app2 === k) sideState.app2 = null;
+    sideSave(); sideMount(); sideStart(true);
+  }
+  function sideClose() { sideCloseApp(sideState.app); }
+  const sideCan = k => k && k !== currentApp && isApp && !(k === 'folders' && dockNative('folders')) && !(k === 'claude' && dockNative('claude'));
+  // Put each side app's own screen into its place in the side panel, and everything else back where it lives.
   function sideMount() {
-    const P = $('sidePanel'), body = $('spBody'), main = $('main');
+    const P = $('sidePanel'), B1 = $('spBody'), B2 = $('spBody2'), main = $('main');
     if (!P) return;
-    let k = sideApp();
-    if (k && (k === currentApp || !isApp || (k === 'folders' && dockNative('folders')) || (k === 'claude' && dockNative('claude')))) { sideState.app = k = null; sideSave(); }
-    const home = (el, inSide) => { if (inSide) { if (el.parentNode !== body) body.appendChild(el); } else if (el.parentNode === body) main.insertBefore(el, $('cosMain')); };
-    home($('mailPanel'), k === 'mail'); home($('calPanel'), k === 'cal'); home($('notesPanel'), k === 'notes');
-    if (k !== 'mail' && currentApp !== 'mail') $('mailPanel').hidden = true;
-    if (k !== 'cal' && currentApp !== 'cal') $('calPanel').hidden = true;
+    let a = sideState.app || null, b = sideState.app2 || null;
+    if (!sideCan(b) || b === a) b = null;
+    if (!sideCan(a)) { a = b; b = null; }
+    if (a !== (sideState.app || null) || b !== (sideState.app2 || null)) { sideState.app = a; sideState.app2 = b; sideSave(); }
+    const slotOf = k => (a === k ? B1 : b === k ? B2 : null);
+    const inSide = el => el.parentNode === B1 || el.parentNode === B2;
+    const place = (el, k, back) => { const to = slotOf(k); if (to) { if (el.parentNode !== to) to.appendChild(el); } else if (inSide(el)) back(el); };
+    const toMain = el => main.insertBefore(el, $('cosMain'));
+    place($('mailPanel'), 'mail', toMain); place($('calPanel'), 'cal', toMain); place($('notesPanel'), 'notes', toMain);
+    if (!slotOf('mail') && currentApp !== 'mail') $('mailPanel').hidden = true;
+    if (!slotOf('cal') && currentApp !== 'cal') $('calPanel').hidden = true;
     let sc = $('spCos');
-    if (k === 'cos' && !sc) { sc = document.createElement('div'); sc.id = 'spCos'; body.appendChild(sc); }
-    if (sc) sc.hidden = k !== 'cos';
-    const sl = $('splitLeft');
-    if (k === 'folders') { if (sl.parentNode !== body) body.appendChild(sl); }
-    else if (sl.parentNode === body) $('splitRs').before(sl);
+    if (slotOf('cos') && !sc) { sc = document.createElement('div'); sc.id = 'spCos'; }
+    if (sc) { if (slotOf('cos') && sc.parentNode !== slotOf('cos')) slotOf('cos').appendChild(sc); sc.hidden = !slotOf('cos'); }
+    place($('splitLeft'), 'folders', el => $('splitRs').before(el));
     for (const w of ['claude', 'monday']) {
-      if (k === w && !sideViews[w]) {
+      const to = slotOf(w);
+      if (to && !sideViews[w]) {
         const v = document.createElement('webview');
         v.setAttribute('partition', 'persist:claude'); v.setAttribute('allowpopups', '');
         let url = HOME;
         if (w === 'monday') { url = 'https://monday.com/'; try { const b0 = (mondayData.boards || [])[0]; if (b0 && b0.url) url = new URL(b0.url).origin + '/'; } catch (e) { /* not connected */ } }
         v.setAttribute('src', url);
-        sideViews[w] = v; body.appendChild(v);
-      }
-      if (sideViews[w]) sideViews[w].hidden = k !== w;
+        sideViews[w] = v; to.appendChild(v);
+      } else if (to && sideViews[w].parentNode !== to) to.appendChild(sideViews[w]);
+      if (sideViews[w]) sideViews[w].hidden = !to;
     }
-    P.hidden = !k;
-    document.body.classList.toggle('sp-open', !!k);
+    P.hidden = !a;
+    document.body.classList.toggle('sp-open', !!a);
+    for (const id of ['spSplit', 'spHead2', 'spBody2']) $(id).hidden = !b;
     if (sideState.w) document.documentElement.style.setProperty('--sp-w', sideState.w + 'px'); else document.documentElement.style.removeProperty('--sp-w');
-    const hasNav = k === 'mail' || k === 'cal';
+    if (sideState.h2) document.documentElement.style.setProperty('--sp-h2', sideState.h2 + 'px'); else document.documentElement.style.removeProperty('--sp-h2');
+    const hasNav = a === 'mail' || a === 'cal';
     $('spNav').hidden = !(hasNav && sideState.nav);
     if (!hasNav) $('spNav').replaceChildren();
-    const head = $('spHead'); head.replaceChildren();
-    if (k) {
+    const paint = (head, k, upper) => {
+      head.replaceChildren();
+      if (!k) return;
       const item = DOCK.find(x => x[0] === k);
-      const tb = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); head.appendChild(b); return b; };
-      if (hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.3"/></svg>',
+      const tb = (html, title, run, on) => { const bt = document.createElement('button'); bt.className = 'tb' + (on ? ' on' : ''); bt.innerHTML = html; bt.title = title; bt.addEventListener('click', run); head.appendChild(bt); return bt; };
+      if (upper && hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.3"/></svg>',
         sideState.nav ? `Hide ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}` : `Show ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}`, () => { sideState.nav = !sideState.nav; sideSave(); sideMount(); sideStart(true); }, sideState.nav);
       head.insertAdjacentHTML('beforeend', `${dockIcon(item[2])}<b></b><span class="sp"></span>`);
       head.querySelector('b').textContent = item[1];
+      if (upper && !b) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 8h12" stroke="currentColor" stroke-width="1.3"/></svg>', 'Open a second app underneath this one', e => {
+        const r0 = e.currentTarget.getBoundingClientRect(), hid = appHidden();
+        showMenu(r0.left - 120, r0.bottom + 4, DOCK.filter(x => sideCan(x[0]) && x[0] !== a && !hid.includes(x[0] === 'folders' ? 'navigator' : x[0])).map(x => ({ label: `${x[1]} Underneath`, run: () => sideOpen(x[0], true) })));
+      });
+      if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
       if (['mail', 'cal', 'notes', 'cos'].includes(k)) tb('<span class="t">Open Full</span>', `Open ${item[1]} as the main app`, () => setApp(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
-      tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideClose());
-    }
+      tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideCloseApp(k));
+    };
+    paint($('spHead'), a, true); paint($('spHead2'), b, false);
     try { renderSplit(); } catch (e) { /* starting up */ }
     dockRender();
   }
-  // Fill the side app (its own code draws it wherever its screen now is).
+  // Fill the side apps (each one's own code draws it wherever its screen now is).
   function sideStart(light) {
-    const k = sideApp();
-    try {
-      if (k === 'mail') { if (light) mailRender(); else mailStart(false); }
-      else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
-      else if (k === 'notes') notesRender();
-      else if (k === 'cos') sideCosRender();
-    } catch (e) { /* that app is not ready yet */ }
+    for (const k of [sideState.app, sideState.app2]) {
+      try {
+        if (k === 'mail') { if (light) mailRender(); else mailStart(false); }
+        else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
+        else if (k === 'notes') notesRender();
+        else if (k === 'cos') sideCosRender();
+      } catch (e) { /* that app is not ready yet */ }
+    }
+  }
+  (() => {
+    const sp = $('spSplit'); if (!sp) return;
+    sp.addEventListener('mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const P = $('sidePanel').getBoundingClientRect(); document.body.classList.add('resizing');
+      const height = ev => Math.max(90, Math.min(P.height - 190, Math.round(P.bottom - ev.clientY - 40)));
+      const move = ev => document.documentElement.style.setProperty('--sp-h2', height(ev) + 'px');
+      const stop = ev => { removeEventListener('mousemove', move); removeEventListener('mouseup', stop); document.body.classList.remove('resizing'); sideState.h2 = height(ev); sideSave(); };
+      addEventListener('mousemove', move); addEventListener('mouseup', stop);
+    });
+    sp.addEventListener('dblclick', () => { sideState.h2 = 0; sideSave(); sideMount(); });
+  })();
+  // Layouts: which app is in the middle and which are beside it, saved under a name and brought back in one click.
+  const LAY_KEY = 'claudeNavigator.layouts.v1';
+  const layList = () => { try { const l = JSON.parse(ls.get(LAY_KEY) || 'null'); if (Array.isArray(l)) return l; } catch (e) { /* the starters */ }
+    return [{ name: 'Inbox', main: 'mail', a: 'cal', b: 'cos' }, { name: 'Planning', main: 'cal', a: 'mail', b: 'notes' }, { name: 'Writing with Claude', main: 'claude', a: 'mail', b: 'cal' }]; };
+  const laySave = l => ls.set(LAY_KEY, JSON.stringify(l));
+  function layApply(L) {
+    setApp(L.main);
+    sideState.app = L.a || null; sideState.app2 = L.b || null; sideState.nav = false;
+    if (L.w) sideState.w = L.w; if (L.h2 !== undefined) sideState.h2 = L.h2 || 0;
+    sideSave(); sideMount(); sideStart();
+    toast(`${L.name}: ${[L.main, L.a, L.b].filter(Boolean).map(k => APP_NAMES[k === 'folders' ? 'navigator' : k] || k).join(', ')}`);
+  }
+  function layMenu(x, y) {
+    const l = layList();
+    showMenu(x, y, [
+      ...l.map(L => ({ label: L.name, key: [L.main, L.a, L.b].filter(Boolean).map(k => (APP_NAMES[k === 'folders' ? 'navigator' : k] || k).split(' ')[0]).join(' + '), run: () => layApply(L) })),
+      l.length ? '-' : null,
+      { label: 'Keep What Is Open Now as a Layout…', run: () => {
+        askText('A name for this layout', '', nm => {
+          const L = { name: nm.slice(0, 40), main: appKey(), a: sideState.app || null, b: sideState.app2 || null, w: sideState.w || 0, h2: sideState.h2 || 0 };
+          laySave(l.filter(z => z.name.toLowerCase() !== L.name.toLowerCase()).concat(L)); toast(`Kept as “${L.name}”`);
+        }, 'Keep');
+      } },
+      l.length ? { label: 'Remove a Layout', key: '▸', run: () => showMenu(x, y, l.map(L => ({ label: L.name, run: () => { laySave(l.filter(z => z !== L)); toast(`Removed “${L.name}”`); } }))) } : null,
+    ].filter(Boolean), { above: true });
   }
   // Chief of Staff beside another app: the team at a glance, and each person's open actions. (Building the team,
   // skills, routines and dashboards stay in the full app, which Open Full or a person's "Open Their Page" takes you to.)
   const sideCos = { staff: null };
   function sideCosRender() {
     const el = $('spCos');
-    if (!el || sideApp() !== 'cos') return;
+    if (!el || !sideHas('cos')) return;
     const p = activeProfile(), t = p && cosTeam(p);
     el.replaceChildren();
     if (!p) {
