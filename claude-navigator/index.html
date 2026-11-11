@@ -591,6 +591,13 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  .mail-sbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .mail-sbar .tx { color: var(--muted); }
+  .mail-sbar .sp { flex: 1; }
+  .mail-sbar .chip { border: 0; border-radius: 11px; padding: 3px 10px; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
+  .mail-sbar .chip:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .mail-sbar .tb .t { font-size: 11.5px; }
+  .mail-snote { flex: none; padding: 5px 14px; font-size: 11.5px; color: var(--muted); background: color-mix(in srgb, #ECEB00 22%, transparent); }
   #spCos { flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; background: var(--win); }
   #spCos[hidden] { display: none; }
   #spCos .sc-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
@@ -10347,6 +10354,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!isApp || !window.navigatorApp.acctList) { mailUi.accounts = []; return; }
     const own = await window.navigatorApp.acctList();
     mailUi.accounts = mailWithShared(own);
+    setTimeout(mailIndexTell, 0);
     // An account new to this list belongs to the profile you are in.
     for (const a of own) if (!mailState.profiles[a.id]) { mailState.profiles[a.id] = state.profileId ? [state.profileId] : []; mailSave(); }
   }
@@ -10529,6 +10537,9 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Rules\u2026', run: () => mailRules(a) },
       { label: 'Automatic Replies\u2026', checked: !!(mailUi.oof && mailUi.oof[a.id]), run: () => mailAutoReplies(a) },
       { label: 'Add a Shared Mailbox\u2026', run: () => mailAddShared(a) },
+      '-',
+      (() => { const b = mailUi.ix && mailUi.ix.boxes.find(x => x.key === a.id); return { label: !b ? 'Search: getting ready' : b.error ? `Search: ${b.error}` : b.complete ? `Search: ${b.count.toLocaleString()} emails ready` : `Search: reading mail in (${b.count.toLocaleString()} so far)`, disabled: true, run: () => {} }; })(),
+      { label: 'Read All Mail In for Search Again', run: async () => { if (!confirm(`Build the search index for ${a.email} again from the start? Search keeps working while it does, using Microsoft\u2019s search for what is missing.`)) return; await window.navigatorApp.mailIndexReset(a.id); toast('Reading mail in again for search'); setTimeout(mailIndexTell, 3000); } },
       '-',
       a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount(null, a.more) },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
@@ -10988,7 +10999,7 @@ body { width: max-content !important; min-width: 0 !important; }
     msgTools();
     head.appendChild(acts);
     head.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
-    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search'; sr.title = acc ? `Search ${acc.email} (${K.mod}F)` : everyone ? `Search every account (${K.mod}F)` : 'Search'; sr.value = mailUi.search || '';
+    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search all mail'; sr.title = `Search every account (${K.mod}F). Type words, or say who and when: “from peter last month with a pdf”. Put “exact words” in quotes.`; sr.value = mailUi.search || '';
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
@@ -11004,7 +11015,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const fh = document.createElement('div'); fh.className = 'mail-fhead';
     fh.innerHTML = '<b class="cal-title"></b><span class="mail-sub"></span><span class="sp"></span>';
     fh.querySelector('b').textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
-    fh.querySelector('.mail-sub').textContent = acc ? acc.email : everyone ? `${mailSelAccs().length} accounts` : '';
+    fh.querySelector('.mail-sub').textContent = mailUi.search ? (mailUi.sOpt.scope === 'here' && acc ? acc.email : mailVisible().length > 1 ? 'All accounts' : 'All folders') : acc ? acc.email : everyone ? `${mailSelAccs().length} accounts` : '';
     const flt = document.createElement('button'); flt.className = 'tb' + (mailUi.onlyUnread ? ' on' : ''); flt.innerHTML = `${mailToolIcon('filter')}<span class="t">${mailUi.onlyUnread ? 'Unread' : 'All'}</span>`;
     flt.title = mailUi.onlyUnread ? 'Showing unread messages only. Click to show all.' : 'Showing all messages. Click to show only unread.';
     flt.addEventListener('click', () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); });
@@ -11015,6 +11026,26 @@ body { width: max-content !important; min-width: 0 !important; }
     thb.addEventListener('click', () => { mailState.threads = !threads; mailSave(); mailRenderMain(); });
     fh.appendChild(thb);
     col.appendChild(fh);
+    if (mailUi.search && mailUi.sInfo) {
+      const I = mailUi.sInfo, O = mailUi.sOpt, bar = document.createElement('div'); bar.className = 'mail-sbar';
+      const again = () => mailSearch(mailUi.search, true);
+      for (const c of I.chips || []) {
+        const ch = document.createElement('button'); ch.className = 'chip'; ch.textContent = c.label + '  \u00d7'; ch.title = 'The search understood this from what you typed. Click to search for those words as plain words instead.';
+        ch.addEventListener('click', () => { if (!O.skip.includes(c.k)) O.skip.push(c.k); again(); });
+        bar.appendChild(ch);
+      }
+      const n = (mailUi.msgs || []).length;
+      const tx = document.createElement('span'); tx.className = 'tx';
+      tx.textContent = mailUi.loading ? 'Searching\u2026' : `${I.total > n ? `Best ${n} of ${I.total.toLocaleString()}` : `${n} found`}${I.loose ? ' (no email has every word, so these have some of them)' : ''}${I.asking ? ' \u00b7 asking Microsoft too\u2026' : I.server ? ` \u00b7 ${I.server} from Microsoft\u2019s search` : ''}`;
+      bar.appendChild(tx);
+      const opt = (label, title, on, run) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', run); bar.appendChild(b); };
+      bar.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
+      if (s && s.acc !== '*' && mailVisible().length > 1) opt(O.scope === 'here' ? 'This Account' : 'All Accounts', 'Search every account, or only the one you are in', O.scope === 'here', () => { O.scope = O.scope === 'here' ? 'all' : 'here'; again(); });
+      opt(O.sort === 'date' ? 'Newest First' : 'Best Match', 'Put the best matches first, or the newest', O.sort === 'date', () => { O.sort = O.sort === 'date' ? 'best' : 'date'; again(); });
+      if (I.indexed) opt('Inside Attachments', 'Also ask Microsoft\u2019s search, which reads the text inside attached documents', O.deep, () => { O.deep = !O.deep; again(); });
+      col.appendChild(bar);
+      if (I.unfinished) col.appendChild(Object.assign(document.createElement('div'), { className: 'mail-snote', textContent: I.indexed ? `Older mail is still being read in for search (${I.reading.toLocaleString()} so far). Until it finishes, Microsoft\u2019s search fills the gaps.` : 'Using Microsoft\u2019s search for now.' }));
+    }
     const wide = popped && !inSide;
     if (wide) { const ch = document.createElement('div'); ch.className = 'mail-cols'; ch.innerHTML = '<span></span><span>From</span><span>Subject</span><span>Date</span>'; col.appendChild(ch); dragWidth(ch.children[1], 'from', '--mail-from-w', 120, 520); }
     else if (!popped) dragWidth(col, 'list', '--mail-list-w', 260, () => Math.max(300, body.getBoundingClientRect().width - 320));
@@ -11055,7 +11086,8 @@ body { width: max-content !important; min-width: 0 !important; }
       r.querySelector('.fl').textContent = `${x.importance === 'high' ? '! ' : ''}${x.hasAttachments ? '📎 ' : ''}${x.flag && x.flag.flagStatus === 'flagged' ? '⚑' : ''}`;
       r.querySelector('.dt').textContent = wide ? mailWhenWide(x.receivedDateTime) : mailWhen(x.receivedDateTime);
       r.querySelector('.sj').textContent = x.subject || '(No subject)';
-      r.querySelector('.pv').textContent = (x.bodyPreview || '').replace(/\s+/g, ' ');
+      r.querySelector('.pv').textContent = (mailUi.search && x._folderName && !/^inbox$/i.test(x._folderName) ? `${x._folderName} \u00b7 ` : '') + (x.bodyPreview || '').replace(/\s+/g, ' ');
+      if (mailUi.search && x._acc && mailVisible().length > 1) { const o = mailAccById(x._acc); if (o) { r.title = `In ${x._folderName ? x._folderName + ', ' : ''}${o.email}`; r.style.setProperty('--acc', calAccColour(x._acc)); r.classList.add('tagged'); } }
       if (everyone && x._acc) { const o = mailAccById(x._acc); if (o) { r.title = `In ${o.email}`; r.style.setProperty('--acc', calAccColour(x._acc)); r.classList.add('tagged'); } }
       if (more && more.length) {
         const cn = document.createElement('button'); cn.className = 'mail-cnt' + (mailUi.openThreads[tk] ? ' on' : ''); cn.textContent = more.length + 1;
@@ -11234,17 +11266,61 @@ body { width: max-content !important; min-width: 0 !important; }
       } },
     ]);
   }
-  async function mailSearch(q) {
+  // ----- Search -----
+  // Search looks through every account at once, in an index of your mail that the app keeps on this Mac (who, subject,
+  // date and text), so it is instant, forgives a typo, and puts the best match first. It understands ordinary words
+  // too: "from peter last month with a pdf". While an account's older mail is still being read in, and whenever you
+  // ask it to look inside attachments, Microsoft's own search is asked as well and its finds are added.
+  mailUi.sOpt = { scope: 'all', sort: 'best', skip: [], deep: false };
+  const mailKql = P => {
+    const day = t => { const d = new Date(t), p2 = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`; };
+    const w = v => String(v).replace(/["\\]/g, ' ').trim();
+    return [w(P.text || ''), ...(P.phrases || []).map(w), ...(P.from || []).map(v => `from:${w(v)}`), ...(P.to || []).map(v => `to:${w(v)}`), ...(P.subject || []).map(v => `subject:${w(v)}`),
+      P.has ? 'hasattachment:true' : '', P.after ? `received>=${day(P.after)}` : '', P.before ? `received<${day(P.before)}` : ''].filter(Boolean).join(' ');
+  };
+  async function mailIndexTell() {            // which mailboxes to keep searchable, and how far along each is
+    if (!isApp || !window.navigatorApp.mailIndexBoxes) return;
+    try { await window.navigatorApp.mailIndexBoxes((mailUi.accounts || []).filter(a => !a.needsSignIn).map(a => ({ acc: a.via || a.id, box: a.shared ? a.email : '' }))); mailUi.ix = await window.navigatorApp.mailIndexStatus(); } catch (e) { /* search falls back to Microsoft's */ }
+  }
+  async function mailSearch(q, same) {
     const s = mailState.sel;
     if (!s) return;
-    if (!q) { mailUi.search = ''; return mailLoadMessages(true); }
+    if (!q) { mailUi.search = ''; mailUi.sInfo = null; return mailLoadMessages(true); }
+    const O = mailUi.sOpt;
+    if (!same) { O.skip = []; O.deep = false; }
     const seq = mailUi.seq = (mailUi.seq || 0) + 1;
     mailUi.search = q; mailUi.loading = true; mailUi.msgs = null; mailUi.next = null; mailUi.msg = null; mailUi.msgBody = null; mailUi.err = ''; mailRenderMain();
-    const path = `/me/messages?$search=${encodeURIComponent('"' + q.replace(/"/g, '') + '"')}&$top=40&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId`;
-    const r = await mailReadLists(Object.fromEntries(mailSelAccs().map(id => [id, path])));
+    const accs = O.scope === 'here' && s.acc !== '*' ? [s.acc] : mailVisible().filter(a => !a.needsSignIn).map(a => a.id);
+    let local = null, st = null;
+    if (isApp && window.navigatorApp.mailIndexSearch) {
+      try { local = await window.navigatorApp.mailIndexSearch(q, { accs, sort: O.sort === 'date' ? 'date' : '', skip: O.skip, limit: 150 }); st = mailUi.ix = await window.navigatorApp.mailIndexStatus(); } catch (e) { local = null; }
+    }
     if (mailUi.seq !== seq) return;
-    mailUi.loading = false;
-    if (r.err) mailUi.err = r.err || 'Search did not work'; else { mailUi.msgs = r.got; mailUi.next = r.next; if (s.acc === '*') mailUi.msgs.sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime))); }
+    const have = !!(local && local.ok);
+    const unfinished = accs.filter(id => { const b = st && st.boxes.find(x => x.key === id); return !b || !b.complete; });
+    let got = have ? local.results : [];
+    const info = mailUi.sInfo = { chips: have ? local.chips : [], total: have ? local.total : 0, loose: have && local.loose, indexed: have, unfinished: unfinished.length, reading: unfinished.reduce((n, id) => n + (((st && st.boxes.find(x => x.key === id)) || {}).count || 0), 0), server: 0 };
+    if (have) { mailUi.msgs = got; mailUi.loading = false; mailRenderMain(); }
+    const ask = !have ? accs : O.deep ? accs : unfinished;
+    if (ask.length) {
+      const kql = have ? mailKql(local.parsed) : q.replace(/["\\]/g, ' ');
+      if (kql.trim()) {
+        info.asking = true; if (have) mailRenderMain();
+        const path = `/me/messages?$search=${encodeURIComponent('"' + kql + '"')}&$top=50&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId`;
+        const r = await mailReadLists(Object.fromEntries(ask.map(id => [id, path])));
+        if (mailUi.seq !== seq) return;
+        info.asking = false;
+        if (r.err && !have) mailUi.err = r.err || 'Search did not work';
+        else if (!r.err) {
+          const seen = new Set(got.map(x => `${x._acc}|${x.id}`));
+          const more = r.got.filter(x => !seen.has(`${x._acc}|${x.id}`));
+          info.server = more.length;
+          got = got.concat(more);
+          if (!have || O.sort === 'date') got.sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime)));
+        }
+      }
+    }
+    mailUi.loading = false; mailUi.msgs = got; if (!have) info.total = got.length;
     mailRenderMain();
   }
   // Signatures: one per account, and a different one per profile if you set it (Consulting and Personal can differ).

@@ -11,6 +11,7 @@ const fs = require('fs');
 const { FolderSync } = require('./fsync');
 const monday = require('./monday');
 const accounts = require('./accounts');
+const mailindex = require('./mailindex');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -1082,6 +1083,7 @@ function keepSignIns() {
   ses.cookies.on('changed', (_e, cookie, _cause, removed) => { if (!removed) keep(cookie); });
   ses.cookies.get({}).then(all => all.forEach(keep)).catch(() => {});
   let flushed = false;
+  app.on('before-quit', () => { try { mailindex.stop(); } catch (err) { /* not started */ } });
   app.on('before-quit', e => {
     if (flushed) return;
     e.preventDefault();
@@ -1202,6 +1204,12 @@ end run`;
 ipcMain.handle('acct-list', () => accounts.list());
 ipcMain.handle('acct-add', (_e, hint, more) => accounts.add(typeof hint === 'string' ? hint : '', more === true));
 ipcMain.handle('acct-remove', (_e, id) => accounts.remove(String(id)));
+// Mail search: the index is kept by mailindex.js, in a process of its own.
+ipcMain.handle('mailindex-boxes', (_e, list) => mailindex.setBoxes(list));
+ipcMain.handle('mailindex-status', () => mailindex.status());
+ipcMain.handle('mailindex-search', (_e, q, opt) => mailindex.search(q, opt && typeof opt === 'object' ? opt : {}));
+ipcMain.handle('mailindex-reset', (_e, key) => mailindex.reset(String(key)));
+ipcMain.handle('mailindex-sync', () => mailindex.syncNow());
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
 // Sending an email takes two steps, and both must come from the app's own window (never a web page inside it):
 // 1. "arm": asked the instant Send is clicked. It is accepted only while the window reports a real click or key
