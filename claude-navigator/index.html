@@ -399,6 +399,8 @@
   .dock-b { position: relative; background: none; border: 0; padding: 3px; border-radius: 10px; display: grid; place-items: center; opacity: .78; }
   .dock-b:hover { opacity: 1; background: var(--hover); }
   .dock-b.on { opacity: 1; background: var(--sel); }
+  .dock-b.main { opacity: 1; background: color-mix(in srgb, var(--accent) 20%, transparent); box-shadow: 0 0 0 2px var(--accent); }
+  #appBtn { display: none !important; }
   .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
   body #menu { z-index: 300; }            /* above the app switcher, the dock and the side panel */
   .app-dragging { opacity: .4; }
@@ -12524,6 +12526,7 @@ body { width: max-content !important; min-width: 0 !important; }
       e.preventDefault(); e.stopPropagation();
       const o = appOrder(), i = o.indexOf(k), hid = appHidden(), vert = axis === 'y';
       showMenu(e.clientX, e.clientY, [
+        ...(vert ? [{ label: `Make ${APP_NAMES[k]} the Main App`, disabled: appKey() === k, run: () => dockMain(k === 'navigator' ? 'folders' : k) }, '-'] : []),
         { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
         { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
         '-',
@@ -12545,25 +12548,41 @@ body { width: max-content !important; min-width: 0 !important; }
   const dockNative = k => (k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos'))
     || (k === 'folders' && (currentApp === 'navigator' || (currentApp === 'cos' && document.body.classList.contains('cos-work'))));
   const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
+  let dockTimer = 0;
+  const dockMainKey = () => (appKey() === 'navigator' ? 'folders' : appKey());
+  // Make an app the main one (on the left). If it was open beside, the app that was main takes its place there.
+  function dockMain(k) {
+    const prev = dockMainKey();
+    if (prev === k) return;
+    const wasBeside = sideHas(k) || (dockNative(k) && (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden));
+    setApp(k === 'folders' ? 'navigator' : k);
+    if (wasBeside && sideCan(prev) && !sideHas(prev)) sideOpen(prev, !!sideState.app);
+  }
   function dockRender() {
     const d = $('dock');
     if (!d || !isApp) return;
     d.replaceChildren();
-    const mk = (k, label, html, on, tip) => {
+    const mk = (k, label, html, on, tip, isMain) => {
       const b = document.createElement('button');
-      b.className = 'dock-b' + (on ? ' on' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
-      b.addEventListener('click', e => dockClick(k, e));
+      b.className = 'dock-b' + (on ? ' on' : '') + (isMain ? ' main' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
+      // One click opens an app beside the main one (or closes it); a double click makes it the main app.
+      b.addEventListener('click', e => {
+        if (k === 'actions' || k === 'chats') return dockClick(k, e);
+        clearTimeout(dockTimer);
+        if (e.detail >= 2) return dockMain(k);
+        dockTimer = setTimeout(() => { if (dockMainKey() === k) toast(`${label} is the main app. Double-click another app to make that the main one.`); else dockClick(k, e); }, 240);
+      });
       if (k !== 'actions' && k !== 'chats') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
     const hid = appHidden();
     const order = appOrder().map(a => a === 'navigator' ? 'folders' : a);
     for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
-      if (k === currentApp) continue;                     // the app you are in is not offered beside itself
-      if (hid.includes(k === 'folders' ? 'navigator' : k)) continue;
-      const on = dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideHas(k);
+      const isMain = k === dockMainKey();
+      if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
+      const on = isMain ? false : dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, (on ? `Close ${label} beside this` : `Open ${label} beside this${sideState.app && !dockNative(k) ? ' (hold Option to open it underneath what is there)' : ''}`) + (badge ? ` (${mailUi.unread} unread)` : ''));
+      mk(k, label, dockIcon(cls) + badge, on, (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
     if (currentApp === 'navigator' && navFace === 'files') mk('chats', 'Chats to File', '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>', false, 'Chats to file: your Claude chats listed beside your folders, to drag them in');
     { const lb = document.createElement('button'); lb.className = 'dock-b dock-lay'; lb.dataset.k = 'layouts'; lb.title = 'Layouts: bring back a set of apps side by side, or keep the set you have open now';
@@ -12586,7 +12605,7 @@ body { width: max-content !important; min-width: 0 !important; }
       return dockRender();
     }
     if (k === 'folders' && dockNative(k)) { setSplit(!(splitOn && !$('splitLeft').hidden)); return dockRender(); }
-    if (sideHas(k)) sideCloseApp(k); else sideOpen(k, !!(e && e.altKey));
+    if (sideHas(k)) sideCloseApp(k); else sideOpen(k, !!sideState.app);       // the first goes on top, the next underneath (replacing what was there)
   }
   // The side panel holds one app, or two with one above the other. Each app has one screen, so it shows in one
   // place at a time: as the main app, or in one of the two places here.
@@ -12656,7 +12675,7 @@ body { width: max-content !important; min-width: 0 !important; }
         showMenu(r0.left - 120, r0.bottom + 4, DOCK.filter(x => sideCan(x[0]) && x[0] !== a && !hid.includes(x[0] === 'folders' ? 'navigator' : x[0])).map(x => ({ label: `${x[1]} Underneath`, run: () => sideOpen(x[0], true) })));
       });
       if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
-      if (['mail', 'cal', 'notes', 'cos'].includes(k)) tb('<span class="t">Open Full</span>', `Open ${item[1]} as the main app`, () => setApp(k));
+      tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
       tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideCloseApp(k));
     };
@@ -12795,6 +12814,7 @@ body { width: max-content !important; min-width: 0 !important; }
     rs.addEventListener('dblclick', () => { sideState.w = 0; sideSave(); sideMount(); });
   })();
   document.body.classList.toggle('has-dock', !!isApp);
+  if (isApp && !ls.get('claudeNavigator.dockTip')) setTimeout(() => { ls.set('claudeNavigator.dockTip', '1'); toast('All your apps are now in the strip on the right. Click one to open it beside; double-click to make it the main app.'); }, 4000);
   appApplyOrder();
 
   let claraView = null;
