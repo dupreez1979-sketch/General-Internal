@@ -609,6 +609,11 @@
   .mail-rel .rel-row i { flex: none; width: 14px; font-style: normal; color: var(--muted); text-align: center; }
   .mail-rel .rel-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mail-rel .rel-row .s { flex: none; color: var(--muted); font-size: 11.5px; }
+  dialog.mail-meets { height: fit-content; background: var(--win); color: var(--text); }
+  dialog.mail-meets .mt { display: flex; align-items: center; gap: 12px; padding: 8px 2px; border-bottom: 1px solid var(--line); }
+  dialog.mail-meets .mt div { flex: 1; min-width: 0; }
+  dialog.mail-meets .mt b { display: block; font-size: 13px; }
+  dialog.mail-meets .mt span { font-size: 12px; color: var(--muted); }
   dialog.mail-monday { width: 540px; height: fit-content; background: var(--win); color: var(--text); }
   dialog.mail-monday .row { grid-template-columns: 110px minmax(0, 1fr); }
   dialog.mail-monday .row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1469,6 +1474,7 @@
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
+    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: turn what you have worked out in this chat into an email or a meeting, for you to check and send or save yourself"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
     <div class="search" data-tb="search">
@@ -3882,6 +3888,7 @@
     $('bReload').hidden = !page;
     $('bExternal').hidden = !page;
     $('bFolderRef').hidden = !page;
+    $('bSendTo').hidden = !page;
     $('bSave').hidden = !page;
     $('bSaveMore').hidden = !page;
     if (page) {
@@ -10295,7 +10302,7 @@ body { width: max-content !important; min-width: 0 !important; }
     f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
     f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
     if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
-    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; }
+    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = calYmd(seed.end); f('et').value = calHm(seed.end); } }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
     if (inst) d.querySelector('[data-new]').hidden = true;
@@ -10309,7 +10316,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const sync = () => { const ad = f('allday').checked; f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
     // Moving the start moves the end with it.
-    let gap = e0.getTime() - s0.getTime();
+    let gap = (seed && !inst && seed.end && seed.end > s0 ? seed.end : e0).getTime() - s0.getTime();
     const readDt = (dn, tn) => { const [y, m, dd] = f(dn).value.split('-').map(Number); const [h, mi] = (f(tn).value || '00:00').split(':').map(Number); return new Date(y, m - 1, dd, f('allday').checked ? 0 : h, f('allday').checked ? 0 : mi); };
     for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = calYmd(e); f('et').value = calHm(e); });
     for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
@@ -11477,8 +11484,8 @@ body { width: max-content !important; min-width: 0 !important; }
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fin(true); } });
     document.body.appendChild(d); d.showModal(); inp.focus();
   }
-  async function mailCompose(mode, m) {
-    const s = mailState.sel, acc = (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
+  async function mailCompose(mode, m, seed) {
+    const s = mailState.sel, acc = (seed && seed.acc && mailAccById(seed.acc)) || (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
     if (!acc) return toast('Choose an account first');
     if (mailUi.compose) return toast('Finish or close the message you are writing first.');
     mailUi.compose = { busy: true };
@@ -11529,6 +11536,7 @@ body { width: max-content !important; min-width: 0 !important; }
       ed.focus();
     };
     const sig = mailSigOf(acc.id);
+    C.conv = d.conversationId || ''; C.fromRef = (seed && seed.from) || null;
     if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
     else ed.innerHTML = `<div><br></div>${sig ? `<div><br></div><div class="mc-sig">${sig}</div>` : ''}`;
     // What you are replying to or forwarding (or the draft so far) shows below and is sent with the message. You can
@@ -11647,9 +11655,11 @@ body { width: max-content !important; min-width: 0 !important; }
         const sn = sv.ok ? await window.navigatorApp.acctSend(own, C.id, box || '') : sv;
         if (!sn.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${sn.error || 'try again'}. It is still here.`); }
         mailLearnFromSent(C, v);
+        if (C.fromRef && C.conv) linkAdd({ t: 'mail', key: `mail:${C.conv}`, acc: C.acc, id: C.id, name: v.body.subject || '(No subject)', from: null, at: new Date().toISOString() }, C.fromRef);
         toast('Sent'); shut();
       }
     });
+    if (seed) { if (seed.to) f('to').value = seed.to; if (seed.cc) { f('cc').value = seed.cc; showRow('cc'); } if (seed.subject) f('subject').value = seed.subject; if (seed.text) C.insert(seed.text); }
     mailUi.composeEl = el;
     $('mailPanel').appendChild(el);
     setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
@@ -11918,6 +11928,101 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     hd.appendChild(box);
   }
+
+  // ===== From a chat, the other way: Send To an email or the calendar =====
+  // When you have worked something out with Claude in a chat (an email to send, dates for a meeting), Send To in the
+  // chat's toolbar asks Claude, in that same chat, to lay it out plainly; the app reads that and opens the email or
+  // meeting filled in, for you to check. Nothing is sent or saved until you do it. If Claude's answer cannot be
+  // read, select the words in the chat and use "the selected words" instead.
+  const chatHere = () => {
+    let url = ''; try { url = view.getURL(); } catch (e) { url = state.pageUrl || ''; }
+    let node = null;
+    try { const k = normUrl(url); walk(state.tree, n => { if (!node && n.type === 'link' && n.url && normUrl(n.url) === k) node = n; }); } catch (e) { /* not saved */ }
+    return { url, ref: node ? { t: 'action', key: `node:${node.id}`, id: node.id, name: node.name } : null, name: node ? node.name : '' };
+  };
+  const chatSelection = async () => { try { return String(await viewExec('String(window.getSelection() || "")') || '').trim(); } catch (e) { return ''; } };
+  // Ask in the chat on screen, and wait for an answer wrapped in [[KIND]] ... [[END]].
+  function chatAsk(prompt, kind, what) {
+    return new Promise(resolve => {
+      const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      let tries = 0, ticks = 0, last = '', stable = 0;
+      toast(`Asking Claude to lay out the ${what}…`);
+      const send = () => viewExec(SEND_PROMPT(`${prompt}\n\nDo not repeat this line in your answer: ${nonce}`)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
+      send();
+      const re = new RegExp(`\\[\\[\\s*${kind}\\s*\\]\\]([\\s\\S]*?)\\[\\[\\s*END\\s*\\]\\]`, 'gi');
+      const timer = setInterval(async () => {
+        if (++ticks > 80) { clearInterval(timer); return resolve(null); }                 // two minutes
+        let page = ''; try { page = String(await viewExec('document.body ? document.body.innerText : ""') || ''); } catch (e) { return; }
+        const at = page.lastIndexOf(nonce); if (at < 0) return;
+        const text = page.slice(at + nonce.length), found = []; let mm; re.lastIndex = 0;
+        while ((mm = re.exec(text))) if (mm[1].trim()) found.push(mm[1].replace(/^\n+|\s+$/g, ''));
+        if (!found.length) return;
+        const sig = found.join('\u0001');
+        stable = sig === last ? stable + 1 : 0; last = sig;
+        if (/\[\[\s*DONE\s*\]\]/i.test(text) || stable >= 3) { clearInterval(timer); resolve(found); }
+      }, 1500);
+    });
+  }
+  const chatHeads = block => { const o = {}, lines = block.split('\n'); let i = 0; for (; i < lines.length; i++) { const mm = /^\s*([A-Za-z ]{2,14}):\s*(.*)$/.exec(lines[i]); if (!mm) break; o[mm[1].trim().toLowerCase()] = mm[2].trim(); } return { heads: o, rest: lines.slice(i).join('\n').trim() }; };
+  // Open Mail beside the chat (or use it where it already is) and start a message with these words in it.
+  async function chatToEmail(seed) {
+    if (!isApp) return;
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    const acc = mailVisible().find(a => !a.needsSignIn && !a.shared) || mailVisible()[0];
+    if (!acc) return toast(activeProfile() ? `No mail account belongs to ${activeProfile().name} yet. Add one in Mail.` : 'Add a mail account in Mail first.');
+    if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
+    await mailCompose('new', null, Object.assign({ acc: acc.id }, seed));
+  }
+  async function chatSendTo(x, y) {
+    const here = chatHere(), picked = await chatSelection();
+    const email = async () => {
+      const got = await chatAsk(['Lay out the email we have been working on in this chat, so it can go into my mail app for me to check and send myself. If there is more than one version, use the latest one I was happy with.',
+        'Do not send anything and do not use any email or calendar tools: only write it out here. No signature (my mail app adds it). Never use em dashes.',
+        'Format your answer exactly like this, with nothing outside it:\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]\n[[DONE]]'].join('\n\n'), 'EMAIL', 'email');
+      if (!got) return toast('Could not read Claude’s answer. Select the email in the chat, then use Send To and choose the selected words.');
+      const { heads, rest } = chatHeads(got[got.length - 1]);
+      chatToEmail({ to: heads.to || '', cc: heads.cc || '', subject: heads.subject || '', text: rest, from: here.ref });
+    };
+    const meeting = async () => {
+      const got = await chatAsk(['Lay out the meeting (or meetings) we have been working out in this chat, so they can go into my calendar app for me to check and save myself. One block for each date we settled on or are holding as an option.',
+        'Do not create anything and do not use any calendar or email tools: only write it out here.',
+        'Format your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nInvite: email addresses, separated by commas (leave empty if not known)\nNotes: one or two lines\n[[END]]\n[[DONE]]'].join('\n\n'), 'MEETING', 'meeting');
+      if (!got) return toast('Could not read Claude’s answer. Select the details in the chat, then use Send To and choose the selected words.');
+      const list = got.map(b => chatHeads(b).heads).map(h => {
+        const d0 = /^(\d{4})-(\d\d)-(\d\d)/.exec(h.date || ''), t = v => { const mm = /^(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm ? [+mm[1], +mm[2]] : null; };
+        const s0 = t(h.start), e0 = t(h.end);
+        const start = d0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], s0 ? s0[0] : 9, s0 ? s0[1] : 0) : null;
+        return { title: h.title || here.name || 'Meeting', start, end: start && e0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], e0[0], e0[1]) : null, loc: h.where || '', att: (h.invite || '').split(/[,;]/).map(z => z.trim()).filter(z => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(z)).join(', '), notes: h.notes || '' };
+      });
+      const open = M => calGEdit(null, false, M.start, { title: M.title, att: M.att, notes: M.notes, loc: M.loc, end: M.end,
+        onSaved: (ev, acc) => { if (here.ref) linkAdd(here.ref, { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || M.title, at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }); } });
+      if (list.length === 1) return open(list[0]);
+      const d = mailDlg('mail-meets', '<h2>Meetings from this chat</h2><p class="hint">Open each one you want, check it, and save it. Nothing is in your calendar until you save.</p><div class="mt-list"></div><div class="dlg-actions"><button class="btn" data-x="close">Done</button></div>');
+      for (const M of list) {
+        const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open…</button>';
+        r.querySelector('b').textContent = M.title;
+        r.querySelector('span').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' – ' + calFmtTime(M.end.getTime()) : ''}` : 'No date given';
+        r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; open(M); });
+        d.querySelector('.mt-list').appendChild(r);
+      }
+      d.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.x === 'close') d.close(); });
+    };
+    showMenu(x, y, [
+      { label: 'An Email, Laid Out by Claude', run: email },
+      { label: 'A Meeting, Laid Out by Claude', run: meeting },
+      '-',
+      { label: picked ? 'The Selected Words' : 'The Selected Words (select some in the chat first)', disabled: true, run: () => {} },
+      { label: 'As a New Email', disabled: !picked, run: () => chatToEmail({ text: picked, subject: here.name || '', from: here.ref }) },
+      { label: 'As the Notes of a New Meeting…', disabled: !picked, run: () => calGEdit(null, false, null, { title: here.name || '', notes: picked }) },
+      { label: 'As a New Word Document…', disabled: !picked, run: () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
+        const r = await window.navigatorApp.fsNewDocx(f.path, here.name || picked.slice(0, 40), [{ text: here.name || 'From a chat', head: true }, ...picked.split(/\n{2,}/).map(t => ({ text: t }))]);
+        if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
+        await pullFromDisk(); toast(`“${r.name}” is in ${f.name} and opening in Word`);
+      })) },
+      { label: 'As a Snippet…', disabled: !picked, run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { mailLearnOf().snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
+    ]);
+  }
+  $('bSendTo').addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); chatSendTo(r0.left, r0.bottom + 4); });
 
   // ===== Working with your staff from Mail =====
   // Three things, all through the Claude Projects your staff already work in:
@@ -13547,7 +13652,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const TB_ITEMS = {
     nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
     libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
-    save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
+    save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bSendTo: 'Send To (Email or Meeting)', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
   };
   const TB_DEFAULT = Object.keys(TB_ITEMS);
   const isGap = id => /^(flex|space)-\w+$/.test(id);
