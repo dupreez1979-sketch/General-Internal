@@ -11699,6 +11699,8 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Pull Out the Details…', run: () => mailDetails(m) },
     ]);
   }
+  // A folder name made from an email's subject, so what came from one email stays together and is easy to move or bin.
+  const mailFolderName = m => ((m.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').replace(/[\/\\:*?"<>|\r\n]/g, ' ').replace(/\s+/g, ' ').replace(/^\.+/, '').trim().slice(0, 70).trim() || `Email from ${mailWho(m.from) || 'someone'}`);
   const mailNeedFolders = then => {
     if (fsState.enabled) return then();
     toast('For this, your folders need to be real folders on your Mac (Documents › Claude Navigator).', { label: 'Turn On', run: async () => { await enableFolderSync(); if (fsState.enabled) then(); } });
@@ -11719,10 +11721,11 @@ body { width: max-content !important; min-width: 0 !important; }
       const list = await mailApi(A, { path: `/me/messages/${m.id}/attachments?$select=id,name,isInline` });
       for (const a of (list.ok ? list.data.value || [] : []).filter(z => !z.isInline)) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', 'temp'); if (r && r.ok) paths.push(r.path); }
       if (!paths.length) return toast('Could not save the email. Try again.');
-      const done = await window.navigatorApp.fsImport(paths, f.path);
+      const sub = paths.length > 1 ? mailFolderName(m) : '';
+      const done = await window.navigatorApp.fsImport(paths, sub ? `${f.path}/${sub}` : f.path);
       await pullFromDisk();
       linkAdd(mailRef(m), { t: 'folder', key: `node:${f.id}`, id: f.id, name: f.name });
-      toast(`Saved in ${f.name}: the email${done.length > 1 ? ` and ${done.length - 1} ${done.length === 2 ? 'attachment' : 'attachments'}` : ''}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(f.path) });
+      toast(`Saved in ${f.name}${sub ? `, in a folder called “${sub}”` : ''}: the email${done.length > 1 ? ` and ${done.length - 1} ${done.length === 2 ? 'attachment' : 'attachments'}` : ''}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(sub ? `${f.path}/${sub}` : f.path) });
     }));
   }
   // A meeting from an email: the people on it are invited, its subject is the title, its words go in the notes.
@@ -11948,12 +11951,16 @@ body { width: max-content !important; min-width: 0 !important; }
   // ----- 1. Hand an email to a staff member -----
   async function mailHandover(m) {
     if (!m) return;
-    const p = activeProfile(), staff = mailTeamStaff();
-    if (!p) return toast('Choose a profile first: each profile has its own staff.');
-    if (!staff.length) return toast(`${p.name} has no staff yet. Add some in Chief of Staff first.`);
+    // The team starts as the profile you are in; you can hand to another profile's staff from here (some mail
+    // belongs to more than one company), and the app moves to that profile as it hands over.
+    const all = profiles();
+    if (!all.length) return toast('Make a profile first: each profile has its own staff.');
+    const staffIn = pr => { try { const t = cosTeam(pr); return t ? t.nodes.filter(n => n.kind === 'staff') : []; } catch (e) { return []; } };
+    let p = activeProfile() || all.find(pr => pr.id === mailState.lastHandProfile) || all[0], staff = staffIn(p);
     const A = m._acc || mailState.sel.acc;
     const files = ((mailUi.msg === m && mailUi.msgBody && mailUi.msgBody.files) || []).filter(a => !a.isInline);
     const d = mailDlg('mail-hand', `<h2>Hand to Staff</h2><p class="hint"></p>
+      <div class="row team"><span>Team</span><select name="team"></select></div>
       <div class="row"><span>Who</span><select name="who"></select></div>
       <label class="pick"><input type="radio" name="how" value="new" checked><span>Start a new action with this email</span></label>
       <label class="pick"><input type="radio" name="how" value="old"><span>Add it to an action that is open</span></label>
@@ -11964,14 +11971,22 @@ body { width: max-content !important; min-width: 0 !important; }
       <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Hand Over</button></div>`);
     d.querySelector('.hint').textContent = `“${m.subject || '(No subject)'}” from ${mailWho(m.from) || 'unknown'}. The email goes into a Claude chat in their project, where it shows as one of their open actions.`;
     const f = n => d.querySelector(`[name="${n}"]`);
-    for (const n of staff) { const o = document.createElement('option'); o.value = n.id; o.textContent = `${n.name}${n.role ? ' · ' + n.role : ''}`; f('who').appendChild(o); }
-    f('who').value = (mailState.lastStaff && staff.some(n => n.id === mailState.lastStaff) ? mailState.lastStaff : (mailChief() || staff[0]).id);
+    for (const pr of all) f('team').appendChild(Object.assign(document.createElement('option'), { value: pr.id, textContent: pr.name }));
+    f('team').value = p.id; d.querySelector('.row.team').hidden = all.length < 2;
+    const fillWho = () => {
+      f('who').replaceChildren(...staff.map(n => Object.assign(document.createElement('option'), { value: n.id, textContent: `${n.name}${n.role ? ' · ' + n.role : ''}` })));
+      const last = (mailState.lastStaffBy || {})[p.id];
+      if (staff.length) f('who').value = (last && staff.some(n => n.id === last) ? last : (staff.find(n => n.chief) || staff[0]).id);
+    };
+    fillWho();
+    f('team').addEventListener('change', () => { p = all.find(pr => pr.id === f('team').value) || p; staff = staffIn(p); fillWho(); });
     const openOf = n => { const fo = n.folderId && nodeOf(n.folderId); return fo ? workItems(fo).filter(x => !x.done && x.type === 'link' && x.url && !inSkills(x.id) && !inArchive(x.id)) : []; };
     const sync = () => {
-      const n = staff.find(x => x.id === f('who').value), list = openOf(n);
+      const n = staff.find(x => x.id === f('who').value), list = n ? openOf(n) : [];
+      d.querySelector('[data-x="ok"]').disabled = !n;
       f('act').replaceChildren(...list.map(x => Object.assign(document.createElement('option'), { value: x.id, textContent: x.name })));
       const old = d.querySelector('[name="how"][value="old"]'); old.disabled = !list.length; if (!list.length) d.querySelector('[name="how"][value="new"]').checked = true;
-      old.parentNode.querySelector('span').textContent = list.length ? 'Add it to an action that is open' : `Add it to an action that is open (${n.name} has none)`;
+      old.parentNode.querySelector('span').textContent = list.length ? 'Add it to an action that is open' : n ? `Add it to an action that is open (${n.name} has none)` : `${p.name} has no staff yet: add some in Chief of Staff`;
       d.querySelector('.row.old').hidden = d.querySelector('[name="how"]:checked').value !== 'old';
     };
     d.addEventListener('change', sync); sync();
@@ -11994,16 +12009,19 @@ body { width: max-content !important; min-width: 0 !important; }
         const [own, box] = A.split('>');
         const toFolder = !!(fsState.enabled && folder && folder.path);
         const paths = [];
-        for (const a of want) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', toFolder ? 'temp' : 'downloads'); if (r && r.ok) { paths.push(r.path); saved.push(r.name); } }
-        if (toFolder && paths.length) { try { await window.navigatorApp.fsImport(paths, folder.path); await pullFromDisk(); where = `${n.name}’s folder`; } catch (err) { where = 'a temporary folder'; } }
-        else if (paths.length) where = 'Downloads';
+        const sub = mailFolderName(m);
+        for (const a of want) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', toFolder ? 'temp' : 'downloads/' + sub); if (r && r.ok) { paths.push(r.path); saved.push(r.name); } }
+        if (toFolder && paths.length) { try { await window.navigatorApp.fsImport(paths, `${folder.path}/${sub}`); await pullFromDisk(); where = `the folder “${sub}” in ${n.name}’s folder`; } catch (err) { where = 'a temporary folder'; } }
+        else if (paths.length) where = `the folder “${sub}” in Downloads`;
       }
-      mailState.lastStaff = n.id; mailSave();
+      (mailState.lastStaffBy = mailState.lastStaffBy || {})[p.id] = n.id; mailState.lastHandProfile = p.id; mailSave();
       const prompt = [`Kevin has handed you this email${act ? ' to add to what you are already working on here' : ' to deal with'}.`, note ? `What he wants: ${note}` : 'He has not said what he wants yet: read it, say in a few lines what it is and what you suggest doing, and wait for his go-ahead.',
-        saved.length ? `Its attachments are saved in ${where}: ${saved.join(', ')}. ${where === 'Downloads' ? 'Kevin can add them to this chat if you need to read them.' : 'Ask Kevin to add one to this chat if you need to read it.'}` : '',
+        saved.length ? `Its attachments are saved in ${where}: ${saved.join(', ')}. ${/Downloads$/.test(where) ? 'Kevin can add them to this chat if you need to read them.' : 'Ask Kevin to add one to this chat if you need to read it.'}` : '',
         'You cannot send email. If a reply is needed, write it out for Kevin to send from Mail.', MAIL_GUARD, `--- EMAIL ---\n${T.head}\n\n${T.text}\n--- END OF EMAIL ---`].filter(Boolean).join('\n\n');
       d.close();
       // Open their page in Chief of Staff with Claude beside it, in the right chat, and put the email in.
+      const moved = !activeProfile() || activeProfile().id !== p.id;
+      if (moved) setProfile(p.id, { quiet: true });
       setApp('cos'); cosUi.tab = 'work'; openStaff(n.id);
       cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos();
       if (act) go({ kind: 'page', url: act.url }); else newInFolder('chat', folder ? folder.id : null);
@@ -12011,7 +12029,7 @@ body { width: max-content !important; min-width: 0 !important; }
       let tries = 0;
       const send = () => viewExec(SEND_PROMPT(prompt)).then(r => { if (r === 'none' && ++tries < 8) setTimeout(send, 1500); }).catch(() => { if (++tries < 8) setTimeout(send, 1500); });
       setTimeout(send, act ? 3500 : 1500);
-      toast(`Handed to ${n.name}${act ? `, on “${act.name}”` : ' as a new action'}${saved.length ? `. ${saved.length} ${saved.length === 1 ? 'file' : 'files'} saved in ${where}` : ''}. Mail is one click away in the dock.`);
+      toast(`Handed to ${n.name}${act ? `, on “${act.name}”` : ' as a new action'}${saved.length ? `. ${saved.length} ${saved.length === 1 ? 'file' : 'files'} saved in ${where}` : ''}.${moved ? ` You are now in ${p.name}.` : ''} Mail is one click away in the dock.`);
     });
   }
 

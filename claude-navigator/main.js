@@ -1266,6 +1266,10 @@ ipcMain.handle('acct-attachment', async (_e, id, msgId, attId, name, box) => {
 ipcMain.handle('acct-attachment-save', async (_e, id, msgId, attId, name, box, where) => {
   let dir = '';
   if (where === 'temp') { dir = path.join(app.getPath('temp'), 'claude-navigator-mail', String(Date.now())); fs.mkdirSync(dir, { recursive: true }); }
+  else if (typeof where === 'string' && where.startsWith('downloads/')) {      // a folder of its own inside Downloads
+    const sub = path.basename(where.slice(10)).replace(/[\/\\:*?"<>|\0]/g, ' ').replace(/^\.+/, '').trim().slice(0, 80);
+    if (sub) { dir = path.join(app.getPath('downloads'), sub); fs.mkdirSync(dir, { recursive: true }); }
+  }
   return accounts.saveAttachment(String(id), String(msgId), String(attId), String(name || ''), typeof box === 'string' ? box : '', dir);
 });
 ipcMain.handle('acct-message-save', async (_e, id, msgId, name, box, where) => {
