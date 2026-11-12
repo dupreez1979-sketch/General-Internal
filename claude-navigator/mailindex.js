@@ -12,6 +12,7 @@ const { app, utilityProcess } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const accounts = require('./accounts');
+const maillog = require('./maillog');
 
 const dir = () => path.join(app.getPath('userData'), 'mailindex');
 const stateFile = () => path.join(dir(), 'state.json');
@@ -65,12 +66,14 @@ function toDoc(key, folderId, m) {
 async function listFolders(b) {
   const who = b.box ? `/users/${encodeURIComponent(b.box)}` : '/me';
   const out = [];
-  const junk = await accounts.graph(b.acc, { path: `${who}/mailFolders/junkemail?$select=id` });
-  const skip = new Set([junk.ok && junk.data && junk.data.id].filter(Boolean));
+  const junk = await accounts.graphBg(b.acc, { path: `${who}/mailFolders/junkemail?$select=id` });
+  // Deleted Items is left out as well: it is often the biggest folder by far, and rarely what you are looking for.
+  const bin = await accounts.graphBg(b.acc, { path: `${who}/mailFolders/deleteditems?$select=id` });
+  const skip = new Set([junk.ok && junk.data && junk.data.id, bin.ok && bin.data && bin.data.id].filter(Boolean));
   const walk = async (path0, depth) => {
     let p = `${path0}?$top=100&$select=id,displayName,childFolderCount,totalItemCount`;
     for (let page = 0; p && page < 20; page++) {
-      const r = await accounts.graph(b.acc, { path: p });
+      const r = await accounts.graphBg(b.acc, { path: p });
       if (!r.ok) { if (!depth) throw Object.assign(new Error(r.error || 'Could not read the folders'), { needsSignIn: r.needsSignIn }); return; }
       for (const f of r.data.value || []) {
         if (skip.has(f.id) || /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures|outbox)$/i.test(f.displayName || '')) continue;
@@ -84,23 +87,35 @@ async function listFolders(b) {
   return out;
 }
 
+// Microsoft asked the app to slow down: stop reading this mailbox in for a good while (longer each time it happens
+// in a row), so your own mail is never held up by it. It carries on from where it stopped.
+function rest(st, seconds) {
+  st.rests = Math.min(6, (st.rests || 0) + 1);
+  const mins = Math.max(Math.ceil((seconds || 0) / 60), Math.min(60, 5 * Math.pow(2, st.rests - 1)));
+  st.restUntil = Date.now() + mins * 60e3; st.error = '';
+  maillog.add({ kind: 'index', error: `Search indexing is resting for ${mins} minutes because Microsoft asked the app to slow down` });
+  saveState();
+}
 async function syncBox(b) {
   const key = keyOf(b), who = b.box ? `/users/${encodeURIComponent(b.box)}` : '/me';
   const S = loadState();
   const st = S.boxes[key] = S.boxes[key] || { folders: {} };
   st.error = '';
+  if (st.restUntil && st.restUntil > Date.now()) return;      // resting, as Microsoft asked
   let folders;
   try { folders = await listFolders(b); } catch (e) { st.error = e.needsSignIn ? 'Sign in again' : String(e.message || e); saveState(); return; }
   // Folders that have gone: forget their mail.
   const live = new Set(folders.map(f => f.id));
-  for (const id of Object.keys(st.folders)) if (!live.has(id)) delete st.folders[id];
+  for (const id of Object.keys(st.folders)) if (!live.has(id)) { delete st.folders[id]; await ask({ op: 'dropFolder', acc: key, folder: id }); }
   for (const f of folders) {
     if (stopping) break;
     const fs0 = st.folders[f.id] = Object.assign(st.folders[f.id] || {}, { name: f.name, total: f.total });
     let noBody = !!fs0.noBody;
     let link = fs0.link || `${who}/mailFolders/${f.id}/messages/delta?$select=${SELECT}${noBody ? '' : ',body'}`;
     for (let page = 0; link && page < 4000 && !stopping; page++) {
-      const r = await accounts.graph(b.acc, { path: link, prefer: 'outlook.body-content-type="text", odata.maxpagesize=50' });
+      await new Promise(res => setTimeout(res, 700));                 // unhurried: your own mail comes first
+      const r = await accounts.graphBg(b.acc, { path: link, prefer: 'outlook.body-content-type="text", odata.maxpagesize=25' });
+      if (!r.ok && (r.status === 429 || r.status === 503)) return rest(st, r.retryAfter);
       if (!r.ok) {
         // Some mailboxes will not give the text this way: carry on with the short preview Microsoft always gives.
         if (!noBody && !fs0.link && (r.status === 400 || r.status === 501)) { noBody = fs0.noBody = true; link = `${who}/mailFolders/${f.id}/messages/delta?$select=${SELECT}`; continue; }
@@ -120,12 +135,12 @@ async function syncBox(b) {
       link = next || null;
     }
   }
-  st.at = Date.now();
+  st.at = Date.now(); st.rests = 0;
   saveState();
 }
 
 async function syncAll() {
-  if (running || !boxes.length) return;
+  if (running || !boxes.length || loadState().paused) return;
   running = true; stopping = false;
   try {
     await start();
@@ -151,10 +166,11 @@ function setBoxes(list) {
 function status() {
   const S = loadState();
   return {
+    paused: !!S.paused,
     running,
     boxes: boxes.map(b => {
       const k = keyOf(b), st = S.boxes[k] || { folders: {} }, fl = Object.values(st.folders);
-      return { key: k, count: counts[k] || 0, about: fl.reduce((n, f) => n + (f.total || 0), 0), folders: fl.length, done: fl.filter(f => f.done).length, complete: fl.length > 0 && fl.every(f => f.done), error: st.error || '', at: st.at || 0 };
+      return { restUntil: st.restUntil && st.restUntil > Date.now() ? st.restUntil : 0, key: k, count: counts[k] || 0, about: fl.reduce((n, f) => n + (f.total || 0), 0), folders: fl.length, done: fl.filter(f => f.done).length, complete: fl.length > 0 && fl.every(f => f.done), error: st.error || '', at: st.at || 0 };
     }),
   };
 }
@@ -177,4 +193,6 @@ function stop() { stopping = true; try { if (worker) worker.kill(); } catch (e) 
 
 async function texts(keys) { await start(); const r = await ask({ op: 'texts', keys }); return (r && r.texts) || {}; }
 
-module.exports = { texts, setBoxes, status, search, reset, syncNow: () => { syncAll(); return { ok: true }; }, stop };
+function setPaused(on) { const S = loadState(); S.paused = !!on; saveState(); if (on) stopping = true; else setTimeout(syncAll, 500); maillog.add({ kind: 'index', error: on ? 'Search indexing paused by you' : 'Search indexing switched back on' }); return { ok: true, paused: S.paused }; }
+
+module.exports = { setPaused, texts, setBoxes, status, search, reset, syncNow: () => { syncAll(); return { ok: true }; }, stop };

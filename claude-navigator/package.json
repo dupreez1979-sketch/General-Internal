@@ -27,6 +27,7 @@
       "monday.js",
       "accounts.js",
       "mailindex.js",
+      "maillog.js",
       "mailindex-worker.js",
       "vendor/**",
       "look.js",

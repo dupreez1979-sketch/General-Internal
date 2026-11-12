@@ -600,6 +600,16 @@
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
+  .mail-warn { display: block; width: calc(100% - 20px); margin: 0 10px 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: #99351E; color: #fff; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+  dialog.mail-health { width: 640px; height: fit-content; background: var(--win); color: var(--text); }
+  dialog.mail-health .dlg-actions { flex-wrap: wrap; }
+  dialog.mail-health .mh-acc { display: flex; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); }
+  dialog.mail-health .mh-acc i { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--muted); }
+  dialog.mail-health .mh-acc.ok i { background: #328276; } dialog.mail-health .mh-acc.warn i { background: #B36E24; } dialog.mail-health .mh-acc.bad i { background: #99351E; }
+  dialog.mail-health .mh-acc b { display: block; font-size: 13px; }
+  dialog.mail-health .mh-acc .v { display: block; font-size: 12.5px; }
+  dialog.mail-health .mh-acc .n { display: block; font-size: 11.5px; color: var(--muted); }
+  dialog.mail-health .mh-prob { font: 11px ui-monospace, Menlo, monospace; color: var(--muted); max-height: 170px; overflow: auto; user-select: text; line-height: 1.5; }
   .mail-rel { margin-top: 8px; border-radius: 9px; background: color-mix(in srgb, var(--tint, #8a8f98) 7%, transparent); font-size: 12.5px; overflow: hidden; }
   .mail-rel .rel-top { display: block; width: 100%; text-align: left; border: 0; background: none; font: inherit; font-size: 12px; color: var(--muted); padding: 6px 11px; cursor: pointer; }
   .mail-rel .rel-top:hover { color: var(--text); }
@@ -10171,7 +10181,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (run) { e.preventDefault(); run(); }
     } catch (er) { /* mail not ready */ }
   });
-  document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && mailOn() && mailPopped() && mailUi.msg && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); } } catch (er) { /* not ready */ } });
+  document.addEventListener('keydown', e => { try { if (e.key === 'Escape' && mailOn() && mailPopped() && mailUi.msg && mailUi.msgOpen && !mailUi.compose && !document.querySelector('dialog[open]')) { mailUi.msgOpen = false; mailRenderMain(); } } catch (er) { /* not ready */ } });
   setInterval(() => { if (calOn()) { calRefresh(false); if (!document.querySelector('dialog[open]')) calGReload(); } }, 5 * 60e3);
 
   // ----- Calendar: the calendars of your signed-in accounts (read and write) -----
@@ -10422,7 +10432,9 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailProf = id => mailState.profiles[String(id).split('>')[0]] || [];
   const mailWithShared = list => (list || []).flatMap(a => [a].concat(((mailState.shared || {})[a.id] || []).map(b => ({ id: `${a.id}>${b.address}`, email: b.address, name: b.name || b.address, shared: true, via: a.id, provider: a.provider, needsSignIn: a.needsSignIn, more: a.more }))));
   const mailOn = () => currentApp === 'mail' || sideHas('mail');          // showing as the app, or beside another one
-  const mailPopped = () => mailState.pane === false || sideHas('mail');   // no reading pane: messages pop up
+  // One click chooses a message; a double click opens it, in a pop-up. That is the same everywhere Mail shows. (If you
+  // turn the reading pane on, one click shows the message beside the list instead, as Outlook does.)
+  const mailPopped = () => mailState.pane !== true || sideHas('mail');
   const calOn = () => currentApp === 'cal' || sideHas('cal');
   const MAIL_ORDER = ['inbox', 'drafts', 'sentitems', 'archive', 'deleteditems', 'junkemail', 'outbox'];
   const MAIL_HIDE = /^(conversation history|sync issues|rss feeds|rss subscriptions|conflicts|local failures|server failures)$/i;
@@ -10459,19 +10471,93 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   async function mailStart(force) {
     if (mailUi.accounts === null || force) await mailLoadAccounts();
-    mailRender();
-    await Promise.all(mailVisible().filter(a => force || !mailUi.folders[a.id]).map(a => mailLoadFolders(a)));
-    // Start in the first account's Inbox.
     const vis = mailVisible();
-    if ((!mailState.sel || !(vis.some(a => a.id === mailState.sel.acc) || (mailState.sel.acc === '*' && vis.length > 1))) && vis.length) {
-      const fs0 = (mailUi.folders[vis[0].id] || {}).list || [];
-      const inbox = fs0.find(f => f.wk === 'inbox') || fs0[0];
-      mailState.sel = inbox ? { acc: vis[0].id, folder: inbox.id, name: inbox.displayName } : null;
-      mailSave();
-    }
+    const good = () => mailState.sel && (vis.some(a => a.id === mailState.sel.acc) || (mailState.sel.acc === '*' && vis.length > 1));
+    if (mailState.sel && !good()) { mailState.sel = null; mailUi.msgs = null; mailUi.msg = null; mailUi.msgBody = null; mailSave(); }      // it belonged to another profile
     mailRender();
-    mailLoadMessages(true);
-    for (const a of mailVisible()) if (!a.shared && !a.needsSignIn && (force || !mailUi.oof || mailUi.oof[a.id] === undefined)) mailOofCheck(a);
+    // Each account's folders appear as they arrive: one slow account does not hold up the others.
+    const pick = a => {
+      if (good() || !vis.length || a.id !== vis[0].id) return false;
+      const fs0 = (mailUi.folders[a.id] || {}).list || [], inbox = fs0.find(f => f.wk === 'inbox') || fs0[0];
+      if (!inbox) return false;
+      mailState.sel = { acc: a.id, folder: inbox.id, name: inbox.displayName }; mailSave(); return true;
+    };
+    for (const a of vis) {
+      if (!force && mailUi.folders[a.id] && !mailUi.folders[a.id].error) continue;
+      mailLoadFolders(a).then(() => { const chose = pick(a); mailRender(); if (chose) mailLoadMessages(true); }).catch(() => { mailUi.folders[a.id] = { error: 'Could not read the folders. Click Sync to try again.' }; mailSideRender(); });
+    }
+    if (good()) mailLoadMessages(true); else if (vis[0] && mailUi.folders[vis[0].id] && pick(vis[0])) { mailRender(); mailLoadMessages(true); }
+    for (const a of vis) if (!a.shared && !a.needsSignIn && (force || !mailUi.oof || mailUi.oof[a.id] === undefined)) mailOofCheck(a);
+    mailHealthCheck();
+  }
+  // ----- Mail health -----
+  // Every request to Microsoft is timed and written to a log on this Mac. This looks at the last ten minutes and, if
+  // something is wrong (Microsoft slowing the app down, requests failing or timing out, no connection), says so at
+  // the top of the Mail sidebar. The Mail Health screen shows the detail and makes a report to copy.
+  async function mailHealthCheck() {
+    if (!isApp || !window.navigatorApp.mailHealth) return;
+    let h; try { h = await window.navigatorApp.mailHealth(); } catch (e) { return; }
+    mailUi.health = h;
+    const now = Date.now(), mine = new Set((mailUi.accounts || []).map(a => (a.via || a.id)));
+    const acc = h.accounts.filter(a => mine.has(a.acc));
+    const slow = acc.find(a => a.queue && a.queue.slowUntil > now);
+    const failing = acc.find(a => a.n >= 3 && a.errs >= Math.max(3, a.n * 0.5));
+    const warn = !h.online ? 'No internet connection' : slow ? 'Microsoft is asking the app to slow down' : failing ? `Mail is having trouble (${failing.email})` : acc.some(a => a.timeouts >= 2) ? 'Microsoft is answering slowly' : '';
+    if (warn !== (mailUi.warn || '')) { mailUi.warn = warn; if (mailOn()) mailSideRender(); }
+  }
+  setInterval(() => { if (mailOn() || calOn()) mailHealthCheck(); }, 30e3);
+  function mailHealth() {
+    const d = mailDlg('mail-health', '<h2>Mail Health</h2><p class="hint"></p><div class="mh-body"><div class="mail-note">Looking\u2026</div></div><div class="dlg-actions"><button class="btn" data-x="log">Show the Log File</button><button class="btn" data-x="pause"></button><span style="flex:1"></span><button class="btn" data-x="copy">Copy a Report</button><button class="btn" data-x="again">Check Again</button><button class="btn-primary" data-x="close">Done</button></div>');
+    let H = null;
+    const ago = t => { if (!t) return 'never'; const s2 = Math.round((Date.now() - t) / 1000); return s2 < 60 ? `${s2} seconds ago` : s2 < 3600 ? `${Math.round(s2 / 60)} minutes ago` : new Date(t).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); };
+    const verdict = a => { const now = Date.now();
+      if (a.needsSignIn) return ['bad', 'Needs you to sign in again (right-click the account in Mail)'];
+      if (a.queue && a.queue.slowUntil > now) return ['warn', `Microsoft has asked the app to wait ${Math.ceil((a.queue.slowUntil - now) / 1000)} more seconds. Your own mail waits a little; search indexing is resting.`];
+      if (a.n >= 3 && a.errs >= Math.max(3, a.n * 0.5)) return ['bad', `Most requests are failing: ${a.lastErr || 'no reason given'}`];
+      if (a.timeouts) return ['warn', `${a.timeouts} ${a.timeouts === 1 ? 'request' : 'requests'} got no answer in time`];
+      if (a.errs) return ['warn', `${a.errs} of ${a.n} requests failed: ${a.lastErr}`];
+      if (!a.n && !a.lastOk) return ['', 'Nothing asked yet since the app opened'];
+      return ['ok', 'Working'];
+    };
+    const report = () => { if (!H) return ''; const L = [`Claude Navigator ${H.version} \u00b7 Mail Health \u00b7 ${new Date().toLocaleString('en-AU')} \u00b7 ${H.online ? 'online' : 'OFFLINE'}`];
+      for (const a of H.accounts) { const ix = (H.index.boxes || []).find(b => b.key === a.acc) || {}; L.push(`\n${a.email || a.acc}: ${verdict(a)[1]}`, `  last 10 min: ${a.n} requests, ${a.errs} failed, ${a.slow} slow-downs, ${a.timeouts} timed out, average ${a.avg} ms, ${a.bg} for search`, `  last worked: ${ago(a.lastOk)}; last problem: ${a.lastErr ? `${a.lastErr} (${ago(a.lastErrAt)})` : 'none'}`, `  queue: ${a.queue.busy} running, ${a.queue.waiting} waiting, ${a.queue.background} for search`, `  search index: ${ix.count || 0} emails, ${ix.done || 0} of ${ix.folders || 0} folders done${ix.restUntil ? ', resting until ' + new Date(ix.restUntil).toLocaleTimeString('en-AU') : ''}${ix.error ? ', ' + ix.error : ''}`); }
+      L.push(`\nSearch indexing: ${H.index.paused ? 'PAUSED by you' : H.index.running ? 'reading mail in now' : 'idle'}`, '\nLatest problems:');
+      for (const r of H.problems.slice(0, 25)) L.push(`  ${new Date(r.t).toLocaleTimeString('en-AU')} ${r.kind}${r.method ? ' ' + r.method : ''}${r.path ? ' ' + r.path : ''}${r.status ? ' -> ' + r.status : ''}${r.ms ? ' ' + r.ms + 'ms' : ''}${r.bg ? ' (search)' : ''}: ${r.error || ''}`);
+      if (!H.problems.length) L.push('  none');
+      return L.join('\n'); };
+    const paint = async () => {
+      try { H = await window.navigatorApp.mailHealth(); } catch (e) { H = null; }
+      const body = d.querySelector('.mh-body'); body.replaceChildren();
+      if (!H) { body.textContent = 'Could not read the health record.'; return; }
+      d.querySelector('.hint').textContent = `${H.online ? 'This Mac is online.' : 'This Mac is OFFLINE.'} Figures are for the last ten minutes. If something looks wrong, Copy a Report and send it to whoever looks after the app.`;
+      d.querySelector('[data-x="pause"]').textContent = H.index.paused ? 'Switch Search Indexing Back On' : 'Pause Search Indexing';
+      d.querySelector('[data-x="pause"]').title = 'Reading your mail in for search is the heaviest thing the app asks of Microsoft. Pausing it leaves search working on what is already read in, with Microsoft\u2019s own search filling the gaps.';
+      for (const a of H.accounts) {
+        const [cls, text] = verdict(a), ix = (H.index.boxes || []).find(b => b.key === a.acc) || {};
+        const c = document.createElement('div'); c.className = 'mh-acc ' + cls;
+        c.innerHTML = '<i></i><div><b></b><span class="v"></span><span class="n"></span><span class="n"></span></div>';
+        c.querySelector('b').textContent = a.email || a.acc; c.querySelector('.v').textContent = text;
+        const ns = c.querySelectorAll('.n');
+        ns[0].textContent = `${a.n} requests, ${a.errs} failed, average ${(a.avg / 1000).toFixed(1)} s \u00b7 last worked ${ago(a.lastOk)}${a.queue.waiting ? ` \u00b7 ${a.queue.waiting} waiting` : ''}`;
+        ns[1].textContent = `Search: ${(ix.count || 0).toLocaleString()} emails read in, ${ix.done || 0} of ${ix.folders || 0} folders done${H.index.paused ? ' \u00b7 paused' : ix.restUntil ? ` \u00b7 resting until ${new Date(ix.restUntil).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}` : ''}`;
+        body.appendChild(c);
+      }
+      if (!H.accounts.length) body.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'No accounts are signed in.' }));
+      body.appendChild(Object.assign(document.createElement('div'), { className: 'sec', textContent: 'Latest problems' }));
+      const pr = document.createElement('div'); pr.className = 'mh-prob';
+      for (const r of H.problems.slice(0, 14)) { const row = document.createElement('div'); row.textContent = `${new Date(r.t).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', second: '2-digit' })}  ${r.kind === 'req' ? `${r.method} ${r.path}${r.status ? ' \u2192 ' + r.status : ''}` : r.kind === 'slow' ? 'Slow down' : r.kind === 'lock' ? 'Send lock' : 'Search'}${r.bg ? ' (search)' : ''}: ${r.error || ''}`; pr.appendChild(row); }
+      if (!H.problems.length) pr.textContent = 'None since the app opened.';
+      body.appendChild(pr);
+    };
+    paint();
+    d.addEventListener('click', async e => {
+      const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+      if (x === 'close') return d.close();
+      if (x === 'again') return paint();
+      if (x === 'log') return window.navigatorApp.mailLogShow();
+      if (x === 'copy') { navigator.clipboard.writeText(report()).catch(() => {}); return toast('Report copied. Paste it into a message.'); }
+      if (x === 'pause') { await window.navigatorApp.mailIndexPause(!(H && H.index.paused)); toast(H && H.index.paused ? 'Search indexing is back on' : 'Search indexing is paused'); paint(); mailHealthCheck(); }
+    });
   }
   // Which accounts the list on screen is drawn from: the one you chose, or all of them for All Inboxes.
   const mailSelAccs = () => { const s = mailState.sel; return !s ? [] : s.acc === '*' ? mailVisible().filter(a => !a.needsSignIn).map(a => a.id) : [s.acc]; };
@@ -10545,7 +10631,7 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailOpen(m) {
     const s = mailState.sel, A = m._acc || (mailState.sel || {}).acc;
     if (m.isDraft) return mailCompose('draft', m);
-    mailUi.msg = m; mailUi.msgBody = null; mailRenderMain();
+    mailUi.msg = m; mailUi.msgOpen = true; mailUi.msgBody = null; mailRenderMain();
     const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
     if (mailUi.msg !== m) return;
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
@@ -10619,6 +10705,7 @@ body { width: max-content !important; min-width: 0 !important; }
       '-',
       a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount(null, a.more) },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
+      { label: 'Mail Health\u2026', run: () => mailHealth() },
       '-',
       { label: 'Remove This Account from the App…', run: async () => {
         if (!confirm(`Remove ${a.email} from Claude Navigator? Your mail stays in Outlook; the app just signs out of this account.`)) return;
@@ -10907,6 +10994,7 @@ body { width: max-content !important; min-width: 0 !important; }
       b.addEventListener('click', () => { mailState.sel = { acc: '*', folder: 'inbox', name: 'All Inboxes' }; mailUi.search = ''; mailSave(); mailSideRender(); mailLoadMessages(true); });
       sd.appendChild(b);
     }
+    if (mailUi.warn) { const wn = document.createElement('button'); wn.className = 'mail-warn'; wn.textContent = `${mailUi.warn}. See Mail Health\u2026`; wn.title = 'Open Mail Health to see what is happening'; wn.addEventListener('click', mailHealth); sd.appendChild(wn); }
     mailState.shut = mailState.shut || {};
     for (const a of vis) {
       const shut = !!mailState.shut[a.id];
@@ -10964,6 +11052,7 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Gmail (later)', disabled: true, run: () => {} },
     ]); });
     sd.appendChild(add);
+    { const hb = document.createElement('button'); hb.className = 'add mail-hbtn'; hb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M1.5 8.5h3l1.5-4 3 8 1.6-4h3.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mail Health\u2026</span>'; hb.title = 'Is mail working? What the app has asked of Microsoft lately, any problems, and a report to copy'; hb.addEventListener('click', mailHealth); sd.appendChild(hb); }
     const hidden = (mailUi.accounts || []).length - vis.length;
     if (hidden > 0) sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: `${hidden} more ${hidden === 1 ? 'account is' : 'accounts are'} in other profiles. Choose All Profiles to see ${hidden === 1 ? 'it' : 'them'}.` }));
   }
@@ -11094,7 +11183,7 @@ body { width: max-content !important; min-width: 0 !important; }
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
-    const paneOn = mailState.pane !== false;
+    const paneOn = mailState.pane === true;
     const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 3v10" stroke="currentColor" stroke-width="1.3"/></svg>';
     pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up, and the list shows columns).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
     pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
@@ -11191,7 +11280,12 @@ body { width: max-content !important; min-width: 0 !important; }
         cn.addEventListener('click', e => { e.stopPropagation(); mailUi.openThreads[tk] = !mailUi.openThreads[tk]; mailRenderMain(); });
         r.querySelector('.fl').before(cn);
       }
-      r.addEventListener('click', () => mailOpen(x));
+      r.addEventListener('click', e => {
+        if (!mailPopped() || e.detail >= 2 || x.isDraft) return mailOpen(x);
+        if (mailUi.msg === x && !mailUi.msgOpen) return;
+        mailUi.msg = x; mailUi.msgOpen = false; mailUi.msgBody = null; mailRenderMain();          // chosen: the buttons above act on it
+      });
+      r.title = (r.title ? r.title + '\n' : '') + (mailPopped() ? 'Double-click to open' : '');
       r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
     }
@@ -11201,13 +11295,13 @@ body { width: max-content !important; min-width: 0 !important; }
     col.appendChild(list);
     const read = document.createElement('div'); read.className = 'mail-read';
     if (popped) {
-      read.classList.add('pop'); read.hidden = !m;
+      read.classList.add('pop'); read.hidden = !(m && mailUi.msgOpen);
       const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '✕'; x.title = 'Close (Esc)';
-      x.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); });
+      x.addEventListener('click', () => { mailUi.msgOpen = false; mailRenderMain(); });
       read.appendChild(x);
-      if (m) { const bar = document.createElement('div'); bar.className = 'mail-acts mail-popbar'; into = bar; msgTools(); read.appendChild(bar); }
+      if (m && mailUi.msgOpen) { const bar = document.createElement('div'); bar.className = 'mail-acts mail-popbar'; into = bar; msgTools(); read.appendChild(bar); }
     }
-    if (!m) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
+    if (!m || (popped && !mailUi.msgOpen)) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
     else {
       const hd = document.createElement('div'); hd.className = 'mail-rh';
       hd.innerHTML = '<h2></h2><div class="who"><span class="avs"></span><div><b></b><div class="to"></div></div><span class="dt"></span></div>';
@@ -11257,7 +11351,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
     }
     body.append(col, read);
-    if (popped && m) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msg = null; mailUi.msgBody = null; mailRenderMain(); }); body.appendChild(shade); }
+    if (popped && m && mailUi.msgOpen) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msgOpen = false; mailRenderMain(); }); body.appendChild(shade); }
     P.appendChild(body);
     if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
@@ -12459,7 +12553,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const b = document.createElement('button');
       b.className = 'dock-b' + (on ? ' on' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
       b.addEventListener('click', e => dockClick(k, e));
-      if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
+      if (k !== 'actions' && k !== 'chats') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
     const hid = appHidden();
@@ -12471,6 +12565,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
       mk(k, label, dockIcon(cls) + badge, on, (on ? `Close ${label} beside this` : `Open ${label} beside this${sideState.app && !dockNative(k) ? ' (hold Option to open it underneath what is there)' : ''}`) + (badge ? ` (${mailUi.unread} unread)` : ''));
     }
+    if (currentApp === 'navigator' && navFace === 'files') mk('chats', 'Chats to File', '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>', false, 'Chats to file: your Claude chats listed beside your folders, to drag them in');
     { const lb = document.createElement('button'); lb.className = 'dock-b dock-lay'; lb.dataset.k = 'layouts'; lb.title = 'Layouts: bring back a set of apps side by side, or keep the set you have open now';
       lb.innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9 3v10M9 8h5" stroke="currentColor" stroke-width="1.3"/></svg>';
       lb.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); layMenu(r0.left - 250, r0.top); });
@@ -12483,6 +12578,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   function dockClick(k, e) {
     if (k === 'actions') { setFrame('actions', { hidden: !fr('actions').hidden }); return dockRender(); }
+    if (k === 'chats') return layApply({ name: 'Filing Chats', main: 'claude', a: 'folders' });
     if (k === 'claude' && dockNative(k)) {
       if (dockClaudeShowing()) closeClaude();
       else if (currentApp === 'cos') { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: state.pageUrl || HOME }); }
@@ -12595,11 +12691,15 @@ body { width: max-content !important; min-width: 0 !important; }
   // Layouts: which app is in the middle and which are beside it, saved under a name and brought back in one click.
   const LAY_KEY = 'claudeNavigator.layouts.v1';
   const layList = () => { try { const l = JSON.parse(ls.get(LAY_KEY) || 'null'); if (Array.isArray(l)) return l; } catch (e) { /* the starters */ }
-    return [{ name: 'Inbox', main: 'mail', a: 'cal', b: 'cos' }, { name: 'Planning', main: 'cal', a: 'mail', b: 'notes' }, { name: 'Writing with Claude', main: 'claude', a: 'mail', b: 'cal' }]; };
+    return [{ name: 'Filing Chats', main: 'claude', a: 'folders' }, { name: 'Inbox', main: 'mail', a: 'cal', b: 'cos' }, { name: 'Planning', main: 'cal', a: 'mail', b: 'notes' }, { name: 'Writing with Claude', main: 'claude', a: 'mail', b: 'cal' }]; };
   const laySave = l => ls.set(LAY_KEY, JSON.stringify(l));
   function layApply(L) {
     setApp(L.main);
-    sideState.app = L.a || null; sideState.app2 = L.b || null; sideState.nav = false;
+    // (In Claude and File Navigator, your folders open as the app's own left-hand panel, which chats can be dragged into.)
+    const native = [L.a, L.b].includes('folders') && dockNative('folders');
+    if (native) { try { if (L.main === 'claude') go({ kind: 'library', which: 'chats' }); setSplit(true); } catch (e) { /* starting up */ } }
+    const rest = [L.a, L.b].filter(k => k && !(native && k === 'folders'));
+    sideState.app = rest[0] || null; sideState.app2 = rest[1] || null; sideState.nav = false;
     if (L.w) sideState.w = L.w; if (L.h2 !== undefined) sideState.h2 = L.h2 || 0;
     sideSave(); sideMount(); sideStart();
     toast(`${L.name}: ${[L.main, L.a, L.b].filter(Boolean).map(k => APP_NAMES[k === 'folders' ? 'navigator' : k] || k).join(', ')}`);

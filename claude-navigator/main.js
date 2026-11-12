@@ -12,6 +12,7 @@ const { FolderSync } = require('./fsync');
 const monday = require('./monday');
 const accounts = require('./accounts');
 const mailindex = require('./mailindex');
+const maillog = require('./maillog');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -1210,6 +1211,17 @@ ipcMain.handle('mailindex-status', () => mailindex.status());
 ipcMain.handle('mailindex-search', (_e, q, opt) => mailindex.search(q, opt && typeof opt === 'object' ? opt : {}));
 ipcMain.handle('mailindex-reset', (_e, key) => mailindex.reset(String(key)));
 ipcMain.handle('mailindex-sync', () => mailindex.syncNow());
+ipcMain.handle('mailindex-pause', (_e, on) => mailindex.setPaused(on === true));
+// Mail health: what has been asked of Microsoft lately and how it went (see maillog.js), for the Mail Health screen.
+ipcMain.handle('mail-health', () => {
+  const names = {}; for (const a of accounts.list()) names[a.id] = a.email;
+  const h = maillog.health(names);
+  for (const a of accounts.list()) if (!h.accounts.some(z => z.acc === a.id)) h.accounts.push({ acc: a.id, email: a.email, lastOk: 0, lastErr: '', lastErrAt: 0, n: 0, errs: 0, slow: 0, avg: 0, bg: 0, timeouts: 0 });
+  for (const a of h.accounts) { a.queue = accounts.queueOf(a.acc); a.needsSignIn = !!(accounts.list().find(z => z.id === a.acc) || {}).needsSignIn; }
+  h.index = mailindex.status(); h.version = app.getVersion(); h.online = net.isOnline();
+  return h;
+});
+ipcMain.handle('mail-log-show', () => { try { shell.showItemInFolder(maillog.file()); } catch (e) { /* no log yet */ } return true; });
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
 // Sending an email takes two steps, and both must come from the app's own window (never a web page inside it):
 // 1. "arm": asked the instant Send is clicked. It is accepted only while the window reports a real click or key
@@ -1243,7 +1255,7 @@ ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
   if (!onSend && !app.isPackaged && process.env.NAV_TEST_MS && !process.env.NAV_LOCK_STRICT) {
     try { onSend = await e.sender.executeJavaScript('!!(navigator.userActivation && navigator.userActivation.isActive)', false); } catch (err) { onSend = false; }
   }
-  if (!onSend) return { ok: false, error: 'An email is only sent when you press Send yourself' };
+  if (!onSend) { maillog.add({ kind: 'lock', acc: String(id), error: 'Send was refused: no real click on the Send button was seen' }); return { ok: false, error: 'An email is only sent when you press Send yourself' }; }
   sendArmed = { id: String(id), msgId: String(msgId), until: Date.now() + 120e3 };
   return { ok: true };
 });

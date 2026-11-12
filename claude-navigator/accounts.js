@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const crypto = require('crypto');
+const maillog = require('./maillog');
 
 // The app's registration with Microsoft (an identifier, not a secret; there is no client secret).
 const MS_CLIENT_ID = 'dab5446b-4bd7-4764-8d0e-4a5cdc747487';
@@ -45,11 +46,13 @@ const view = a => ({ id: a.id, provider: a.provider, email: a.email, name: a.nam
 function list() { return load().map(view); }
 
 async function tokenRequest(params) {
-  const res = await net.fetch(MS_AUTH + '/token', {
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 25000);
+  const res = await net.fetch(MS_AUTH + '/token', { signal: ctl.signal,
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(Object.assign({ client_id: MS_CLIENT_ID }, params)).toString(),
   });
   const data = await res.json().catch(() => ({}));
+  clearTimeout(tm);
   if (!res.ok || !data.access_token) throw Object.assign(new Error(data.error_description || data.error || `Microsoft answered ${res.status}`), { code: data.error });
   return data;
 }
@@ -145,19 +148,34 @@ async function tokenFor(id) {
 
 // Microsoft allows an app only four requests at a time per mailbox ("MailboxConcurrency"). Requests for an account
 // therefore queue here, three at a time, and one that is told to slow down waits as asked and tries again.
-const lanes = new Map();                  // account id -> { busy, waiting }
-function inLane(id, work) {
-  const lane = lanes.get(id) || { busy: 0, waiting: [] };
-  lanes.set(id, lane);
+// Microsoft allows an app only four requests at a time per mailbox ("MailboxConcurrency"), and slows an app down
+// ("throttling") that asks for too much. So, for each account:
+//   - what you are doing in the window goes first, three at a time;
+//   - background reading (the search index) goes one at a time, and only while nothing of yours is waiting;
+//   - every request has a time limit, so one that never answers cannot hold everything else up;
+//   - when Microsoft says slow down, background reading stops for as long as it asks, and your own requests wait a
+//     few seconds at most before telling you plainly.
+// Each request is written to the log (maillog.js).
+const lanes = new Map();                  // account id -> { busy, waiting, bgBusy, bgWaiting, slowUntil }
+const laneOf = id => { let l = lanes.get(id); if (!l) { l = { busy: 0, waiting: [], bgBusy: 0, bgWaiting: [], slowUntil: 0 }; lanes.set(id, l); } return l; };
+function pump(lane) {
+  while (lane.busy < 3 && lane.waiting.length) lane.waiting.shift()();
+  if (!lane.busy && !lane.waiting.length && !lane.bgBusy && lane.bgWaiting.length) lane.bgWaiting.shift()();
+}
+function inLane(id, work, bg) {
+  const lane = laneOf(id);
   return new Promise((resolve, reject) => {
     const run = () => {
-      lane.busy++;
-      work().then(resolve, reject).finally(() => { lane.busy--; const next = lane.waiting.shift(); if (next) next(); });
+      if (bg) lane.bgBusy++; else lane.busy++;
+      work().then(resolve, reject).finally(() => { if (bg) lane.bgBusy--; else lane.busy--; pump(lane); });
     };
-    if (lane.busy < 3) run(); else lane.waiting.push(run);
+    if (bg) lane.bgWaiting.push(run); else lane.waiting.push(run);
+    pump(lane);
   });
 }
 const pause = ms => new Promise(r => setTimeout(r, ms));
+const slowUntil = id => laneOf(id).slowUntil || 0;
+const queueOf = id => { const l = laneOf(id); return { busy: l.busy, waiting: l.waiting.length, background: l.bgBusy + l.bgWaiting.length, slowUntil: l.slowUntil }; };
 
 // One request to Microsoft Graph for an account. Only Graph paths; the token is added here.
 // THE SEND LOCK. Nothing that asks through graph() can send, reply to or forward mail: those requests are refused
@@ -166,37 +184,62 @@ const pause = ms => new Promise(r => setTimeout(r, ms));
 const SENDS = /\/(send|sendmail|reply|replyall|forward)\/?(\?.*)?$/i;
 function graph(id, req) {
   if (req && SENDS.test(String(req.path || '').split('#')[0])) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
-  return inLane(id, () => graphNow(id, req));
+  return inLane(id, () => graphNow(id, req, false), false);
+}
+// The same, for background reading: lowest priority, and it gives way at once when Microsoft says slow down.
+function graphBg(id, req) {
+  if (req && SENDS.test(String(req.path || '').split('#')[0])) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
+  return inLane(id, () => graphNow(id, req, true), true);
 }
 function send(id, msgId, box) {
   const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
-  return inLane(id, () => graphNow(id, { method: 'POST', path: `${who}/messages/${encodeURIComponent(String(msgId))}/send` }));
+  return inLane(id, () => graphNow(id, { method: 'POST', path: `${who}/messages/${encodeURIComponent(String(msgId))}/send`, timeout: 60 }, false, true), false);
 }
-async function graphNow(id, req) {
+// A request with a time limit (seconds). A request that runs out of time is given up on, not left hanging.
+async function timed(url, init, seconds) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), seconds * 1000);
+  try { return await net.fetch(url, Object.assign({ signal: ctl.signal }, init)); }
+  catch (e) { if (ctl.signal.aborted) throw Object.assign(new Error(`Microsoft did not answer within ${seconds} seconds`), { timeout: true }); throw e; }
+  finally { clearTimeout(timer); }
+}
+async function graphNow(id, req, bg, isSend) {
   const r = req || {};
   const method = String(r.method || 'GET').toUpperCase();
   if (!['GET', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(method)) return { ok: false, status: 0, error: 'Not allowed' };
   let url = String(r.path || '');
   if (url.startsWith(MS_GRAPH + '/')) url = url.slice(MS_GRAPH.length);        // a "next page" link from Graph
   if (!url.startsWith('/') || url.includes('://')) return { ok: false, status: 0, error: 'Not a mail request' };
+  const lane = laneOf(id), began = Date.now(), limit = Math.max(5, Math.min(120, +r.timeout || (bg ? 45 : 30)));
+  let tries = 0;
+  const done = out => { maillog.add({ kind: 'req', acc: id, method, path: url, status: out.status, ok: !!out.ok, ms: Date.now() - began, tries, bg: bg ? 1 : 0, send: isSend ? 1 : 0, timeout: out.timeout ? 1 : 0, error: out.ok ? '' : out.error }); return out; };
   try {
-    const send = async token => net.fetch(MS_GRAPH + url, {
+    const ask = async token => timed(MS_GRAPH + url, {
       method,
       headers: Object.assign({ Authorization: 'Bearer ' + token }, r.body !== undefined ? { 'Content-Type': 'application/json' } : {}, r.prefer ? { Prefer: String(r.prefer) } : {}),
       body: r.body !== undefined ? JSON.stringify(r.body) : undefined,
-    });
-    let res = await send(await tokenFor(id));
-    if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
-    for (let tries = 0; (res.status === 429 || res.status === 503 || res.status === 504) && tries < 4; tries++) {
-      const wait = Math.min(15, Math.max(1, +res.headers.get('retry-after') || 2 * (tries + 1)));
-      await pause(wait * 1000);
-      res = await send(await tokenFor(id));
+    }, limit);
+    // Microsoft asked for a pause a moment ago: background work does not even try; yours waits out a short one.
+    const wait0 = lane.slowUntil - Date.now();
+    if (wait0 > 0) { if (bg) return done({ ok: false, status: 429, retryAfter: Math.ceil(wait0 / 1000), error: 'Waiting, as Microsoft asked' }); if (wait0 <= 8000) await pause(wait0); }
+    let res = await ask(await tokenFor(id));
+    if (res.status === 401) { access.delete(id); res = await ask(await tokenFor(id)); }
+    // 429 and 503 mean "slow down"; 500, 502 and 504 are faults at Microsoft's end that usually clear in a second or two.
+    while ([429, 500, 502, 503, 504].includes(res.status)) {
+      const fault = res.status === 500 || res.status === 502 || res.status === 504;
+      const ra = Math.max(1, Math.min(900, +res.headers.get('retry-after') || (fault ? 2 * (tries + 1) : 5 * (tries + 1))));
+      if (!fault) { lane.slowUntil = Math.max(lane.slowUntil, Date.now() + ra * 1000); maillog.add({ kind: 'slow', acc: id, status: res.status, error: `Microsoft asked the app to wait ${ra} seconds`, bg: bg ? 1 : 0 }); }
+      if (bg || tries >= (fault ? 3 : 2) || ra > 8) { try { await res.text(); } catch (e) { /* nothing to read */ }
+        return done({ ok: false, status: res.status, retryAfter: ra, error: fault ? `Microsoft had a fault at its end (${res.status}). It usually clears quickly: click Sync to try again.` : `Microsoft is asking the app to slow down. Try again in ${ra < 60 ? `about ${ra} seconds` : `about ${Math.ceil(ra / 60)} minutes`}.` }); }
+      tries++;
+      await pause(ra * 1000);
+      res = await ask(await tokenFor(id));
     }
     const text = await res.text();
     let data = null; try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
-    return { ok: res.ok, status: res.status, data, error: res.ok ? undefined : (data && data.error && data.error.message) || `Microsoft answered ${res.status}` };
+    return done({ ok: res.ok, status: res.status, data, error: res.ok ? undefined : (data && data.error && data.error.message) || `Microsoft answered ${res.status}` });
   } catch (e) {
-    return { ok: false, status: 0, needsSignIn: !!e.needsSignIn, error: String(e && e.message || e) };
+    return done({ ok: false, status: 0, timeout: !!e.timeout, needsSignIn: !!e.needsSignIn, error: e.timeout ? e.message : /ERR_INTERNET_DISCONNECTED|ERR_NAME_NOT_RESOLVED|ERR_NETWORK_CHANGED|ERR_CONNECTION/i.test(String(e && e.message)) ? 'No internet connection, or Microsoft could not be reached' : String(e && e.message || e) });
   }
 }
 
@@ -204,7 +247,7 @@ async function graphNow(id, req) {
 async function saveAttachment(id, msgId, attId, name, box, toDir) {
   try {
     const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';   // a shared mailbox, or your own
-    const send = async token => net.fetch(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
+    const send = async token => timed(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/attachments/${encodeURIComponent(attId)}/$value`, { headers: { Authorization: 'Bearer ' + token } }, 120);
     let res = await send(await tokenFor(id));
     if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
     if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };
@@ -224,7 +267,7 @@ async function saveAttachment(id, msgId, attId, name, box, toDir) {
 async function saveMime(id, msgId, name, box, toDir) {
   try {
     const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
-    const send = async token => net.fetch(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/$value`, { headers: { Authorization: 'Bearer ' + token } });
+    const send = async token => timed(`${MS_GRAPH}${who}/messages/${encodeURIComponent(msgId)}/$value`, { headers: { Authorization: 'Bearer ' + token } }, 120);
     let res = await send(await tokenFor(id));
     if (res.status === 401) { access.delete(id); res = await send(await tokenFor(id)); }
     if (!res.ok) return { ok: false, error: `Microsoft answered ${res.status}` };
@@ -249,7 +292,7 @@ async function uploadPiece(url, bytes, start, total) {
     if (!okHost) return { ok: false, error: 'Not an upload address from Microsoft' };
     const buf = Buffer.from(bytes);
     if (!buf.length || buf.length > 4 * 1024 * 1024) return { ok: false, error: 'Piece too large' };
-    const res = await net.fetch(u.toString(), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes ${+start}-${+start + buf.length - 1}/${+total}` }, body: buf });
+    const res = await timed(u.toString(), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream', 'Content-Range': `bytes ${+start}-${+start + buf.length - 1}/${+total}` }, body: buf }, 120);
     if (!res.ok) { const t = await res.text().catch(() => ''); let m = ''; try { m = JSON.parse(t).error.message; } catch (e) { /* plain text */ } return { ok: false, error: m || `Microsoft answered ${res.status}` }; }
     return { ok: true };
   } catch (e) {
@@ -257,4 +300,4 @@ async function uploadPiece(url, bytes, start, total) {
   }
 }
 
-module.exports = { list, add, remove, graph, send, saveAttachment, saveMime, uploadPiece };
+module.exports = { list, add, remove, graph, graphBg, slowUntil, queueOf, send, saveAttachment, saveMime, uploadPiece };
