@@ -401,7 +401,9 @@
   #dock { display: none; }
   body.has-dock #dock { position: fixed; top: 0; bottom: 0; left: 0; width: var(--dock-w); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 58px;
     background: var(--side); border-right: 1px solid color-mix(in srgb, var(--text) 8%, transparent); -webkit-app-region: no-drag; }
-  .mac-app body.has-dock #dock { background: color-mix(in srgb, var(--side) 50%, transparent); padding-top: 58px; }
+  /* On the Mac the strip starts below the window dots. The corner the dots sit in is one clear piece with the sidebar's top, with no edge running through the dots. */
+  .mac-app body.has-dock #dock { background: color-mix(in srgb, var(--side) 50%, transparent); top: 52px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); border-top-right-radius: 8px; }
+  .mac-app body.has-dock #dock::before { content: ''; position: absolute; left: 0; top: -53px; width: calc(var(--dock-w) + 1px); height: 52px; background: inherit; -webkit-app-region: drag; }
   html.profiled.mac-app body.has-dock #dock { background: color-mix(in srgb, var(--tint) var(--tint-side), color-mix(in srgb, var(--side) 50%, transparent)); }
   html body.has-dock.side-off #side { left: var(--dock-w); transform: translateX(calc(-101% - var(--dock-w))); }
   html body.has-dock.side-off.side-peek #side { transform: none; }
