@@ -1394,6 +1394,13 @@ ipcMain.handle('fs-new-docx', async (_e, destRel, name, paras) => {
 // (Tests point the drafting panel at a stand-in page instead of Claude. Never in the app you install.)
 // The Mac's own dictation, started for whatever box has the cursor (the same as Edit > Start Dictation).
 ipcMain.handle('dictation-start', () => { if (!isMac) return false; try { Menu.sendActionToFirstResponder('startDictation:'); return true; } catch (e) { return false; } });
+// A profile's invite design (logo, shapes, fonts, colours) is a file kept on this Mac only, never in the app itself.
+const inviteKitFile = pid => path.join(app.getPath('userData'), 'invite-kits', String(pid).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80) + '.json');
+ipcMain.handle('invite-kit-get', (e, pid) => { if (!fromOwnWindow(e) || !pid) return ''; try { return fs.readFileSync(inviteKitFile(pid), 'utf8'); } catch (er) { return ''; } });
+ipcMain.handle('invite-kit-set', (e, pid, text) => {
+  if (!fromOwnWindow(e) || !pid || typeof text !== 'string' || text.length > 12e6) return false;
+  try { const k = JSON.parse(text); if (!k || k.v !== 1) return false; fs.mkdirSync(path.dirname(inviteKitFile(pid)), { recursive: true }); fs.writeFileSync(inviteKitFile(pid), text); return true; } catch (er) { return false; }
+});
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.

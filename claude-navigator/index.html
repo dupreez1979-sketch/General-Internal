@@ -1007,6 +1007,9 @@
   dialog.cal-evdlg .fr .btn { flex: none; font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
   dialog.cal-evdlg .hint:empty { display: none; }
+  dialog.cal-evdlg .kitrow .fr { gap: 10px; } dialog.cal-evdlg .kit-on { display: inline-flex; align-items: center; gap: 6px; grid-template-columns: none; color: var(--text); font-size: 13px; flex: 1; text-align: left; }
+  dialog.cal-evdlg .kit-on[hidden], dialog.cal-evdlg .kit-none[hidden], dialog.cal-evdlg .row.inv[hidden] { display: none; }
+  dialog.cal-evdlg .row.inv textarea { min-height: 0; }
   #notesSide .cos-side-h { padding: 8px 8px 6px; }
   #notesSide button { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; border-radius: 7px; padding: 6px 8px; font: inherit; font-size: 13px; color: var(--text); text-align: left; }
   #notesSide button:hover { background: var(--hover); }
@@ -10620,6 +10623,98 @@ body { width: max-content !important; min-width: 0 !important; }
     toast(r.ok ? 'Deleted' : `Could not delete it: ${r.error || 'try again'}`);
     calClosePop(); if (r.ok) calViewClose(); calGReload();
   }
+  // ----- Designed invitations. A profile's "invite kit" (its logo, shapes, fonts and colours, from its design system)
+  // is a file kept on this Mac only. The top of the invitation is drawn as one picture, so the brand's own fonts and
+  // artwork arrive intact; the details underneath are real text, so they always show.
+  const INVITE_EXT = 'com.claudenavigator.invite';
+  const inviteKits = {};
+  async function inviteKit(pid) {
+    if (!pid || !isApp || !window.navigatorApp.inviteKitGet) return null;
+    if (!(pid in inviteKits)) { try { const t = await window.navigatorApp.inviteKitGet(pid); const k = t ? JSON.parse(t) : null; inviteKits[pid] = k && k.v === 1 && k.hero && k.mail ? k : null; } catch (e) { inviteKits[pid] = null; } }
+    return inviteKits[pid];
+  }
+  const inviteProfileOf = accId => { try { const ps = mailProf(accId).filter(x => calProfiles().some(y => y.id === x)); return ps.length === 1 ? ps[0] : (ps.includes(state.profileId) ? state.profileId : ps[0] || state.profileId || ''); } catch (e) { return state.profileId || ''; } };
+  const inviteHash = t => { let h = 2166136261; for (const c of String(t)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const inviteImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('picture')); im.src = src; });
+  // The picture at the top: the ground colour and the shapes change from one invitation to the next (chosen from the
+  // title and date, so the same meeting always looks the same).
+  async function inviteHero(kit, title, seedText) {
+    const H = kit.hero, T = H.title, W = H.w || 1200, hash = inviteHash(seedText || title);
+    for (const f of kit.fonts || []) { try { if (![...document.fonts].some(x => x.family.replace(/"/g, '') === f.family && String(x.weight) === String(f.weight || 400))) { const ff = new FontFace(f.family, `url(${f.src})`, { weight: String(f.weight || 400) }); await ff.load(); document.fonts.add(ff); } } catch (e) { /* falls back to a system font */ } }
+    const ground = H.grounds[hash % H.grounds.length];
+    const meas = document.createElement('canvas').getContext('2d');
+    const text = T.upper ? title.toUpperCase() : title;
+    let size = T.size, lines;
+    for (;;) {
+      meas.font = `${T.weight || 400} ${size}px "${T.font}", Arial, sans-serif`; try { meas.letterSpacing = `${(T.track || 0) * size}px`; } catch (e) { /* older engine */ }
+      lines = []; let cur = '';
+      for (const w of text.split(/\s+/)) { const tryL = cur ? cur + ' ' + w : w; if (cur && meas.measureText(tryL).width > W * (T.maxW || 0.62)) { lines.push(cur); cur = w; } else cur = tryL; }
+      if (cur) lines.push(cur);
+      if (lines.length <= 3 || size < T.size * 0.6) break; size = Math.round(size * 0.9);
+    }
+    const lh = size * (T.lh || 0.95), top = T.y || 190, Hh = Math.max(H.h || 420, Math.round(top + lines.length * lh + 44));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; const g = cv.getContext('2d');
+    g.fillStyle = ground; g.fillRect(0, 0, W, Hh);
+    const cols = (H.shapeColours || []).filter(c => c.toLowerCase() !== ground.toLowerCase());
+    const slots = H.slots || [{ r: -70, y: -70, s: 400 }, { r: 320, b: -90, s: 240 }];
+    const n = Math.min(H.shapeCount || 1, slots.length, (H.shapes || []).length);
+    for (let i = 0; i < n; i++) {
+      try {
+        const im = await inviteImg(H.shapes[(hash + i * 7) % H.shapes.length]), sl = slots[i], col = cols.length ? cols[(Math.floor(hash / 13) + i * 3) % cols.length] : '#000';
+        const sc = Math.min(sl.s / im.width, sl.s / im.height), w = im.width * sc, h = im.height * sc;
+        const oc = document.createElement('canvas'); oc.width = Math.ceil(w); oc.height = Math.ceil(h); const og = oc.getContext('2d');
+        og.drawImage(im, 0, 0, w, h); og.globalCompositeOperation = 'source-in'; og.fillStyle = col; og.fillRect(0, 0, w, h);
+        g.drawImage(oc, (sl.r != null ? W - sl.r - sl.s : sl.x) + (sl.s - w) / 2, (sl.b != null ? Hh - sl.b - sl.s : sl.y) + (sl.s - h) / 2);          // (a slot is placed from the right and from the top or the bottom)
+      } catch (e) { /* a shape that will not load is left out */ }
+    }
+    try { const lg = await inviteImg(H.logo), lw = H.logoW || 440; g.drawImage(lg, H.logoX || 52, H.logoY || 44, lw, lw * lg.height / lg.width); } catch (e) { /* no logo */ }
+    g.font = `${T.weight || 400} ${size}px "${T.font}", Arial, sans-serif`; try { g.letterSpacing = `${(T.track || 0) * size}px`; } catch (e) { /* older engine */ }
+    g.textBaseline = 'alphabetic';
+    const words = text.split(/\s+/).length; let seen = 0;
+    lines.forEach((ln, i) => {
+      let x = (H.logoX || 52) + (T.offset && i % 2 ? T.offset * size : 0); const y = top + size * 0.82 + i * lh;
+      for (const w of ln.split(' ')) { seen++; g.fillStyle = T.accent && words > 1 && seen === words ? T.accent : (T.color || '#000'); g.fillText(w, x, y); x += g.measureText(w + ' ').width; }
+    });
+    return { url: cv.toDataURL('image/png'), w: W, h: Hh };
+  }
+  const inviteAgenda = text => String(text || '').split('\n').map(l => l.replace(/^\s*(\d+[.)]|[-•*])\s*/, '').trim()).filter(Boolean).map(l => {
+    const m = /^(.*?)[\s,:;(–-]+(\d+(?:\.\d+)?)\s*(m|min|mins|minutes|h|hr|hrs|hour|hours)\.?\)?$/i.exec(l);
+    return m ? { what: m[1].trim(), time: `${m[2]} ${/^h/i.test(m[3]) ? (+m[2] === 1 ? 'hour' : 'hours') : 'min'}` } : { what: l, time: '' };
+  });
+  // The words under the picture, laid out with tables and plain styles (what every mail program can show).
+  function inviteHtml(kit, M) {
+    const C = kit.mail, e = mailEsc, up = t => C.upper ? e(String(t).toUpperCase()) : e(t);
+    const hf = `font-family:${C.headFont};`, bf = `font-family:${C.bodyFont};`;
+    const label = t => `<td width="78" valign="top" style="${bf}font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:${C.label || C.ink};padding:19px 0 15px;border-bottom:${C.rule}">${e(t)}</td>`;
+    const cell = h => `<td valign="top" style="${bf}font-size:15px;line-height:1.45;color:${C.ink};padding:15px 0;border-bottom:${C.rule}">${h}</td>`;
+    const big = t => `<div style="${hf}font-size:${C.bigSize || 21}px;line-height:1.15;font-weight:${C.headWeight || 700};color:${C.ink};padding-bottom:3px">${up(t)}</div>`;
+    const btn = (t, href, quiet) => { const B = C.button; return quiet
+      ? `<a href="${e(href)}" style="${B.quietCss || `${bf}color:${C.ink};font-weight:600`}">${e(t)}${B.arrow ? ' &rarr;' : ''}</a>`
+      : `<a href="${e(href)}" style="display:inline-block;font-family:${B.font || C.bodyFont};font-size:${B.size || 16}px;line-height:1.2;${B.upper ? 'text-transform:uppercase;' : ''}background:${B.bg};color:${B.color};text-decoration:none;padding:${B.pad || '12px 24px'};border-radius:${B.radius};border:${B.border || '0'}">${e(t)}${B.arrow ? ' &rarr;' : ''}</a>`; };
+    const sub = t => `<span style="font-size:13px;color:${C.muted || C.ink}">${e(t)}</span>`;
+    const h2 = t => `<div style="${hf}font-size:${C.h2Size || 21}px;line-height:1.15;font-weight:${C.headWeight || 700};color:${C.ink};padding:22px 0 8px">${up(t)}</div>`;
+    const where = [];
+    if (M.online) where.push(big('Online, on Teams') + sub('Works on a computer or phone. No account needed.') + `<div style="padding-top:13px">${btn('Join the meeting', M.joinUrl || '#')}</div>`);
+    if (M.loc && !/^microsoft teams/i.test(M.loc)) {
+      const map = /\d|,/.test(M.loc) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(M.loc)}` : '';
+      where.push(`${M.online ? '<div style="padding-top:14px">' : ''}${big(M.loc.split(',')[0])}${M.loc.includes(',') ? e(M.loc.split(',').slice(1).join(',').trim()) : ''}${map ? `<div style="padding-top:13px">${M.online ? btn('Open in Maps', map, true) : btn('Open in Maps', map)}</div>` : ''}${M.online ? '</div>' : ''}`);
+    }
+    const rows = [`<tr>${label('When')}${cell(big(M.day) + e(M.time) + (M.repeats ? '<br>' + sub(M.repeats) : ''))}</tr>`];
+    if (where.length) rows.push(`<tr>${label('Where')}${cell(where.join(''))}</tr>`);
+    if (M.who && M.who.length) rows.push(`<tr>${label('Who')}${cell(M.who.map(e).join('<br>'))}</tr>`);
+    const ag = inviteAgenda(M.agenda), bef = String(M.before || '').split('\n').map(x => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
+    const contact = [`Can't make it, or running late? Reply to this invitation${kit.phone ? ` or call ${e(kit.contactName || 'me')} on ${e(kit.phone)}` : ''}.`];
+    return `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;border-collapse:collapse">` +
+      `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:${M.cid}" width="600" alt="${e((kit.org || '') + ': ' + M.title)}" style="display:block;width:100%;max-width:600px;height:auto;border:0"></td></tr>` +
+      `<tr><td bgcolor="${C.sheet}" style="background:${C.sheet};padding:${C.pad || '6px 26px 24px'}">` +
+      (M.purpose ? `<div style="${bf}font-size:17px;line-height:1.4;font-weight:${C.leadWeight || 600};color:${C.ink};padding:16px 0 6px">${e(M.purpose)}</div>` : '') +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${rows.join('')}</table>` +
+      (ag.length ? h2('Agenda') + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${ag.map((a, i) => `<tr><td width="28" valign="top" style="${hf}font-size:15px;font-weight:700;color:${C.accent || C.ink};padding:5px 0">${i + 1}</td><td valign="top" style="${bf}font-size:15px;line-height:1.4;color:${C.ink};padding:5px 0">${e(a.what)}</td><td width="76" align="right" valign="top" style="${bf}font-size:13px;color:${C.muted || C.ink};padding:6px 0;white-space:nowrap">${e(a.time)}</td></tr>`).join('')}</table>` : '') +
+      (bef.length ? h2('Before we meet') + `<ul style="${bf}font-size:15px;line-height:1.45;color:${C.ink};margin:0;padding-left:20px">${bef.map(x => `<li style="margin:3px 0">${e(x)}</li>`).join('')}</ul>` : '') +
+      (M.notes ? `<div style="${bf}font-size:15px;line-height:1.5;color:${C.ink};padding-top:18px">${e(M.notes).replace(/\n/g, '<br>')}</div>` : '') +
+      `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:22px"><tr><td style="font-family:${C.fineFont || C.bodyFont};font-size:13px;line-height:1.4;color:${C.muted || C.ink};padding-top:13px;border-top:${C.rule}">${contact[0]}</td>${C.strap ? `<td align="right" valign="top" style="${hf}font-size:14px;color:${C.ink};padding-top:13px;border-top:${C.rule};white-space:nowrap;${C.upper ? 'text-transform:uppercase' : ''}">${e(C.strap)}</td>` : ''}</tr></table>` +
+      `</td></tr></table>`;
+  }
   const CAL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   // New meeting, or change one (this one, or the whole series).
   async function calGEdit(inst, series, when, seed) {
@@ -10630,7 +10725,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (inst) {
       accId = inst.g.acc; calId = inst.g.cal;
       const id = series && inst.g.master ? inst.g.master : inst.g.id;
-      const r = await mailApi(accId, { path: `/me/events/${id}?$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type`, prefer: 'outlook.body-content-type="text"' });
+      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type';
+      let r = await mailApi(accId, { path: `/me/events/${id}?${sel}&$expand=extensions($filter=id eq '${INVITE_EXT}')`, prefer: 'outlook.body-content-type="text"' });
+      if (!r.ok) r = await mailApi(accId, { path: `/me/events/${id}?${sel}`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
       ev = r.data;
     }
@@ -10655,6 +10752,10 @@ body { width: max-content !important; min-width: 0 !important; }
       <div class="row free" hidden><span></span><span class="fr"><span class="fr-out"></span><button type="button" class="btn" data-x="find">Find a Free Time</button></span></div>
       <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
       <label class="row"><span>Show as</span><select name="show"><option value="busy">Busy</option><option value="free">Free</option><option value="tentative">Tentative</option><option value="oof">Away</option></select></label>
+      <div class="row kitrow"><span>Invitation</span><span class="fr"><label class="kit-on"><input type="checkbox" name="designed"> <span class="kit-name"></span></label><span class="fr-out kit-none"></span><button type="button" class="btn" data-x="kit"></button><input type="file" class="kit-file" accept=".json,application/json" hidden></span></div>
+      <label class="row inv"><span>Purpose</span><input name="purpose" placeholder="One line on why you are meeting"></label>
+      <label class="row top inv"><span>Agenda</span><textarea name="agenda" rows="3" placeholder="One item on each line. Add the minutes at the end, like: 2027 budget 35 min"></textarea></label>
+      <label class="row top inv"><span>Before</span><textarea name="before" rows="2" placeholder="What to read or bring, one on each line"></textarea></label>
       <label class="row top"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
       <p class="hint"></p>
       <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
@@ -10671,11 +10772,40 @@ body { width: max-content !important; min-width: 0 !important; }
     f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
     f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
     if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
+    // A designed invitation keeps what you typed with the meeting, so the form shows your words and not the layout.
+    const ext0 = ev && (ev.extensions || []).find(x => x && (x.extensionName === INVITE_EXT || /com\.claudenavigator\.invite$/.test(x.id || '')));
+    if (ext0) { f('notes').value = ext0.notes || ''; f('purpose').value = ext0.purpose || ''; f('agenda').value = ext0.agenda || ''; f('before').value = ext0.before || ''; }
+    if (seed && !inst) { f('purpose').value = seed.purpose || ''; f('agenda').value = seed.agenda || ''; f('before').value = seed.before || ''; }
+    let kit = null, kitPid = '';
+    const kitPaint = async () => {
+      kitPid = inviteProfileOf(inst ? accId : (f('cal').value || '').split('\n')[0]);
+      kit = await inviteKit(kitPid);
+      const can = !(inst && online0) && (!inst || !!ext0 || true);
+      const pr = calProfiles().find(x => x.id === kitPid);
+      d.querySelector('.kit-on').hidden = !kit; d.querySelector('.kit-none').hidden = !!kit;
+      d.querySelector('.kit-name').textContent = kit ? `Designed, ${kit.name || 'in this profile\u2019s look'}` : '';
+      d.querySelector('.kit-none').textContent = kit ? '' : pr ? `No invite design for ${pr.name} yet` : 'Choose a profile to use a design';
+      d.querySelector('[data-x="kit"]').textContent = kit ? 'Change\u2026' : 'Add a Design\u2026'; d.querySelector('[data-x="kit"]').hidden = !pr;
+      if (kit && f('designed').dataset.set !== '1') { f('designed').checked = inst ? !!ext0 : true; f('designed').dataset.set = '1'; }
+      if (!can) { f('designed').checked = false; f('designed').disabled = true; }
+      const on = !!kit && f('designed').checked;
+      for (const r0 of d.querySelectorAll('.row.inv')) r0.hidden = !on;
+    };
+    f('designed').addEventListener('change', kitPaint); f('cal').addEventListener('change', kitPaint);
+    d.querySelector('.kit-file').addEventListener('change', async ev3 => {
+      const file = ev3.target.files[0]; ev3.target.value = ''; if (!file || !kitPid) return;
+      const text = await file.text(); let k = null; try { k = JSON.parse(text); } catch (e2) { /* not a kit */ }
+      if (!k || k.v !== 1 || !k.hero || !k.mail) return toast('That is not an invite design file.');
+      const ok = await window.navigatorApp.inviteKitSet(kitPid, text);
+      if (!ok) return toast('Could not keep that design. Try again.');
+      delete inviteKits[kitPid]; f('designed').dataset.set = ''; await kitPaint(); toast(`${k.name || 'The design'} is now used for this profile\u2019s invitations.`);
+    });
     if (seed && !inst && seed.teams) f('teams').checked = true;
     if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = calYmd(seed.end); f('et').value = calHm(seed.end); } }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
+    setTimeout(kitPaint, 0);
     if (inst) d.querySelector('[data-new]').hidden = true;
     else {
       for (const a of accounts) for (const c of (calG.cals[a.id] || []).filter(c => c.canEdit !== false)) { const o = document.createElement('option'); o.value = `${a.id}\n${c.id}`; o.textContent = `${c.name} (${a.email})`; if (c.isDefaultCalendar) o.dataset.def = '1'; f('cal').appendChild(o); }
@@ -10743,6 +10873,7 @@ body { width: max-content !important; min-width: 0 !important; }
     d.addEventListener('click', async e => {
       const x = e.target.dataset && e.target.dataset.x;
       if (x === 'find') return frFind(e.target);
+      if (x === 'kit') return d.querySelector('.kit-file').click();
       if (x === 'cancel') return shut();
       if (x !== 'ok') return;
       const ad = f('allday').checked, s = readDt('sd', 'st'), en = readDt('ed', 'et');
@@ -10766,7 +10897,45 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       e.target.disabled = true; e.target.textContent = 'Saving…';
       let r;
-      if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
+      // A designed invitation: the meeting is made first without the people, the picture is put on it, and only then
+      // are the people added, so they get one invitation and it is the finished one.
+      const designed = !!kit && f('designed').checked && !(inst && online0);
+      if (designed) {
+        try {
+          const A = inst ? accId : f('cal').value.split('\n')[0], cal = inst ? '' : f('cal').value.split('\n')[1];
+          const words = { notes: f('notes').value, purpose: f('purpose').value.trim(), agenda: f('agenda').value, before: f('before').value };
+          const hero = await inviteHero(kit, body.subject, body.subject + '|' + calYmd(s));
+          const cid = 'navhero' + Date.now().toString(36);
+          const online = !!body.isOnlineMeeting, PH = 'https://join.invalid/claude-navigator';
+          const dayT = s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          const mins = Math.round((en - s) / 60e3), len = ad ? '' : mins % 60 === 0 ? `${mins / 60} ${mins === 60 ? 'hour' : 'hours'}` : mins > 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
+          const acc0 = mailAccById(A) || {};
+          const repT = { daily: 'Repeats every day', weekdays: 'Repeats every weekday', weekly: `Repeats every ${s.toLocaleDateString('en-AU', { weekday: 'long' })}`, fortnightly: `Repeats every second ${s.toLocaleDateString('en-AU', { weekday: 'long' })}`, monthly: 'Repeats every month', yearly: 'Repeats every year' }[rep] || '';
+          const htmlOf = join => inviteHtml(kit, Object.assign({ title: body.subject, cid, day: dayT, time: ad ? 'All day' : `${calFmtTime(s.getTime())} to ${calFmtTime(en.getTime())} (${len})`, repeats: canRepeat ? repT : '', online, joinUrl: join, loc: body.location.displayName,
+            who: [`${acc0.name || acc0.email || 'Organiser'} (organiser)`].concat(people.map(p2 => p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address)) }, words));
+          const first = Object.assign({}, body, { attendees: [], body: { contentType: 'html', content: htmlOf(PH) } });
+          const extBody = Object.assign({ '@odata.type': 'microsoft.graph.openTypeExtension', extensionName: INVITE_EXT }, words);
+          if (inst) { delete first.attendees; r = await mailApi(A, { method: 'PATCH', path: `/me/events/${ev.id}`, body: first }); }
+          else { first.extensions = [extBody]; calState.lastCal = f('cal').value; calSave(); r = await mailApi(A, { method: 'POST', path: `/me/calendars/${cal}/events`, body: first }); }
+          if (r.ok) {
+            const id = inst ? ev.id : r.data.id, made = r.data || {};
+            const up = await mailApi(A, { method: 'POST', path: `/me/events/${id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: 'invitation.png', contentType: 'image/png', contentBytes: hero.url.split(',')[1], isInline: true, contentId: cid } });
+            if (inst) { const pe = await mailApi(A, { method: 'PATCH', path: `/me/events/${id}/extensions/${INVITE_EXT}`, body: extBody }); if (!pe.ok) await mailApi(A, { method: 'POST', path: `/me/events/${id}/extensions`, body: extBody }); }
+            const last = {};
+            if (!inst) last.attendees = body.attendees;
+            const join = (made.onlineMeeting && made.onlineMeeting.joinUrl) || made.onlineMeetingUrl || '';
+            if (online && !inst) {      // Teams adds its own joining details under ours: they are kept, and our button gets the real link
+              const cur = await mailApi(A, { path: `/me/events/${id}?$select=body`, prefer: 'outlook.body-content-type="html"' });
+              const html = cur.ok && cur.data.body && cur.data.body.content && cur.data.body.content.includes(PH) ? cur.data.body.content : null;
+              if (html && join) last.body = { contentType: 'html', content: html.split(PH).join(join) };
+            }
+            if (Object.keys(last).length) { const r2 = await mailApi(A, { method: 'PATCH', path: `/me/events/${id}`, body: last }); if (!r2.ok) r = r2; }
+            if (!up.ok) toast('The meeting is made, but the picture at the top could not be added.');
+            if (r.ok && !inst && seed && seed.onSaved) { try { seed.onSaved(made, A); } catch (e2) { /* the meeting is made all the same */ } }
+          }
+        } catch (er) { r = { ok: false, error: String(er && er.message || er) }; }
+      }
+      else if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
       else { const [a, c] = f('cal').value.split('\n'); calState.lastCal = f('cal').value; calSave(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
       if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save'; return toast(`It was not saved: ${r.error || 'try again'}`); }
       toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
@@ -12542,7 +12711,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // How Claude lays a meeting out so the app can read it. People without a known address are given by name: the app
   // looks them up in your contacts.
-  const CAL_MEET_FORMAT = 'For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person\u2019s name exactly, and the app looks it up in the contacts. Never guess an address.\n\nFormat your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: names or email addresses, separated by semicolons (leave empty if none)\nNotes: one or two lines for the invitation (leave empty if nothing was said)\nCheck: anything you assumed or could not work out, in one line (this is shown only to me, it does not go in the invitation; leave empty if nothing)\n[[END]]\n[[DONE]]';
+  const CAL_MEET_FORMAT = 'For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person\u2019s name exactly, and the app looks it up in the contacts. Never guess an address.\n\nFormat your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: names or email addresses, separated by semicolons (leave empty if none)\nPurpose: one line on why the meeting is happening (leave empty if not said)\nAgenda: the items, separated by semicolons, each with its minutes in brackets if said, like: Budget (35 min); Strategy (40 min) (leave empty if none)\nBefore: what to read or bring, separated by semicolons (leave empty if none)\nNotes: anything else for the invitation (leave empty if nothing was said)\nCheck: anything you assumed or could not work out, in one line (this is shown only to me, it does not go in the invitation; leave empty if nothing)\n[[END]]\n[[DONE]]';
   // The account a new meeting belongs in: one that belongs to the profile you are in.
   const calMeetAcc = prof => { const all = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared); return (prof && all.find(a => mailProf(a.id).includes(prof.id))) || mailVisible().find(a => !a.needsSignIn && !a.shared) || all[0] || null; };
   async function calMeetRead(blocks, ctx = {}) {
@@ -12565,7 +12734,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (acc) { try { const pr = await mailApi(acc.id, { path: `/me/people?$search=${encodeURIComponent('"' + raw.replace(/"/g, '') + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); hit = pr.ok && (pr.data.value || []).map(x => ((x.scoredEmailAddresses || [])[0] || {}).address).find(Boolean); } catch (e) { /* not found */ } }
         if (hit) found.push(hit); else missing.push(raw);
       }
-      out.push({ title: h.title || ctx.title || 'Meeting', start, end, loc: /^\(?leave empty/i.test(h.where || '') ? '' : h.where || '', att: [...new Set(found)].join(', '), notes: h.notes || '', teams: /^y/i.test(h.teams || ''), check: h.check || '', missing, acc: acc && acc.id, ref: ctx.ref || null });
+      out.push({ title: h.title || ctx.title || 'Meeting', start, end, loc: /^\(?leave empty/i.test(h.where || '') ? '' : h.where || '', att: [...new Set(found)].join(', '), notes: h.notes || '', purpose: h.purpose || '', agenda: (h.agenda || '').split(';').map(z => z.trim()).filter(Boolean).join('\n'), before: (h.before || '').split(';').map(z => z.trim()).filter(Boolean).join('\n'), teams: /^y/i.test(h.teams || ''), check: h.check || '', missing, acc: acc && acc.id, ref: ctx.ref || null });
     }
     return out;
   }
@@ -12574,7 +12743,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!list || !list.length) return;
     const open = M => {
       const notes = [M.missing.length ? `No address found for ${M.missing.join(', ')}: add ${M.missing.length > 1 ? 'them' : 'it'} in Invite.` : '', M.check, !M.start ? 'No date was given: set the date and time.' : ''].filter(Boolean).join(' ');
-      calGEdit(null, false, M.start, { title: M.title, att: M.att, notes: M.notes, loc: M.loc, end: M.end, acc: M.acc, teams: M.teams, check: notes,
+      calGEdit(null, false, M.start, { title: M.title, att: M.att, notes: M.notes, loc: M.loc, end: M.end, acc: M.acc, teams: M.teams, check: notes, purpose: M.purpose, agenda: M.agenda, before: M.before,
         onSaved: (ev, acc) => { if (M.ref) linkAdd(M.ref, { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || M.title, at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }); } });
     };
     if (list.length === 1) return open(list[0]);
