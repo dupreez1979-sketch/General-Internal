@@ -1,0 +1,24 @@
+# The Xcode project is made from this file by XcodeGen, on GitHub's Mac. Nothing here is secret.
+name: ClaudeNavigatorPhone
+options:
+  bundleIdPrefix: com.dupreez
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  ClaudeNavigatorPhone:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dupreez.claude-navigator-phone
+        PRODUCT_NAME: Chief of Staff
+        MARKETING_VERSION: "0.0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Chief of Staff
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: So you can speak to Claude instead of typing.
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"

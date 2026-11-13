@@ -1,0 +1,30 @@
+# Checks that the phone app builds, on GitHub's Mac, for the iPhone simulator. No signing and no secrets.
+# Sending it to a phone through TestFlight is a later step.
+
+name: Build Chief of Staff (phone)
+
+on:
+  push:
+    branches: ['**']
+    paths: ['claude-navigator-phone/**', '.github/workflows/claude-navigator-phone.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make the Xcode project
+        working-directory: claude-navigator-phone
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build for the iPhone simulator
+        working-directory: claude-navigator-phone
+        run: |
+          xcodebuild -project ClaudeNavigatorPhone.xcodeproj -scheme ClaudeNavigatorPhone \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build | tail -40
