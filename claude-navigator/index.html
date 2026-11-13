@@ -1010,6 +1010,10 @@
   dialog.cal-evdlg .hint:empty { display: none; }
   dialog.cal-evdlg .dict-sec { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .dict-b { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
+  .dict-float[hidden] { display: none; }
+  .dict-float:hover { background: var(--accent); color: #fff; }
+  .dict-float svg { width: 13px; height: 13px; }
   .dict-b:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   dialog.cal-evdlg.with-day { width: min(840px, 96vw); padding-right: 300px; position: fixed; }
   dialog.cal-evdlg .daypane { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; border-left: 1px solid var(--line); display: flex; flex-direction: column; background: color-mix(in srgb, var(--text) 2.5%, var(--win)); }
@@ -13324,6 +13328,38 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
     return b;
   }
+  // Dictate, wherever you write a sentence or more: a small microphone appears at the corner of the box the cursor
+  // is in (an email you are writing, a question for Claude, a meeting's notes, a staff member's role and so on).
+  // Search boxes, names, addresses and links do not get one.
+  const DICT_BOXES = 'textarea, .mc-ed, input[name="purpose"], #mailAi .ai-ask input, input[placeholder^="Ask"]';
+  const DICT_SKIP = '.cal-help, .mail-hand, .no-dict';          // (these have a Dictate button of their own)
+  (() => {
+    if (!isApp) return;
+    const mic = document.createElement('button'); mic.type = 'button'; mic.className = 'dict-float'; mic.innerHTML = CAL_MIC; mic.hidden = true;
+    mic.title = 'Dictate: say it instead of typing. Uses your Mac’s dictation.';
+    let box = null, hideT = 0;
+    const place = () => {
+      if (!box || !box.isConnected) { mic.hidden = true; return; }
+      const host = box.closest('dialog') || document.body; if (mic.parentNode !== host) host.appendChild(mic);
+      const r = box.getBoundingClientRect(), one = box.tagName === 'INPUT';
+      let x = r.right - 28, y = one ? r.top + (r.height - 22) / 2 : r.top + 5;
+      if (host !== document.body) { const h = host.getBoundingClientRect(); x += host.scrollLeft - h.left; y += host.scrollTop - h.top; mic.style.position = 'absolute'; } else mic.style.position = 'fixed';
+      Object.assign(mic.style, { left: Math.round(x) + 'px', top: Math.round(y) + 'px' }); mic.hidden = r.width < 120;
+    };
+    document.addEventListener('focusin', e => {
+      const t = e.target && e.target.closest ? e.target.closest(DICT_BOXES) : null;
+      if (!t || t.closest(DICT_SKIP) || t.disabled || t.readOnly) return;
+      clearTimeout(hideT); box = t; place();
+    });
+    document.addEventListener('focusout', () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!box || document.activeElement !== box) { mic.hidden = true; box = null; } }, 180); });
+    addEventListener('scroll', () => { if (box) place(); }, true); addEventListener('resize', () => { if (box) place(); });
+    mic.addEventListener('mousedown', e => e.preventDefault());          // (the cursor stays in the box)
+    mic.addEventListener('click', async e => {
+      e.preventDefault(); e.stopPropagation(); if (!box) return; box.focus();
+      let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (er) { /* older app */ }
+      if (!ok) toast('Press your Mac’s dictation key (or Fn twice) with the cursor in the box.');
+    });
+  })();
   async function mailHandover(m) {
     if (!m) return;
     if (SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('Hand to Staff works from the main window, where your team is. Open Mail there for this one.'); }
