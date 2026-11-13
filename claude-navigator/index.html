@@ -919,6 +919,7 @@
   .cal-adc { padding: 3px; display: grid; gap: 2px; align-content: start; border-left: 1px solid var(--line); min-height: 26px; }
   .cal-ev.ad, .cal-ev.mc { padding: 2px 6px; white-space: nowrap; text-overflow: ellipsis; }
   .cal-scroll { flex: 1; overflow-y: auto; min-height: 0; }
+  .cal-wk-head, .cal-allday { padding-right: var(--cal-sbw, 0px); }
   .cal-grid { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); position: relative; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 46px); }
   .cal-gut { position: relative; }
   .cal-gut span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); background: var(--win); padding: 0 2px; }
@@ -10306,6 +10307,8 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     wrap.appendChild(ad);
     const sc = document.createElement('div'); sc.className = 'cal-scroll';
+    const sbw = () => { if (sc.parentNode) sc.parentNode.style.setProperty('--cal-sbw', (sc.offsetWidth - sc.clientWidth) + 'px'); };
+    requestAnimationFrame(sbw); setTimeout(sbw, 300);
     const grid = document.createElement('div'); grid.className = 'cal-grid'; grid.style.height = (24 * H) + 'px';
     const gut = document.createElement('div'); gut.className = 'cal-gut';
     for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => ' ' + x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
@@ -10572,6 +10575,7 @@ body { width: max-content !important; min-width: 0 !important; }
   };
   function calViewClose() { if (calUi.view) { calUi.view.el.remove(); calUi.view.shade.remove(); calUi.view = null; } }
   async function calView(inst) {
+    if (inst && inst.saving) return toast('This meeting is still saving. It opens in a moment.');
     calClosePop(); calViewClose();
     Object.assign(MAIL_TOOL, CAL_TOOL);
     const e = inst.ev, g = inst.g;
@@ -11371,6 +11375,19 @@ body { width: max-content !important; min-width: 0 !important; }
         else if (inst && rec) body.recurrence = null;
       }
       e.target.disabled = true; e.target.textContent = 'Saving…';
+      const saveBtn = e.target;
+      // The form closes and the meeting is on the calendar straight away, marked as saving, while Microsoft is told in the background.
+      let ghost = null, before = null;
+      try {
+        const utc = dt => ({ dateTime: ad ? iso(dt) : new Date(dt.getTime()).toISOString().slice(0, 19), timeZone: 'UTC' });
+        if (inst && inst.g && !series) { const cur = calG.inst.find(i => i.key === inst.key); if (cur) { before = { cur, start: cur.start, end: cur.end, title: cur.ev.title, location: cur.ev.location }; cur.start = calGTime(utc(s), ad); cur.end = Math.max(calGTime(utc(ad ? endAd : en), ad), cur.start + (ad ? 0 : 15 * 60e3)); cur.allDay = ad; cur.ev.title = body.subject; cur.ev.location = body.location.displayName; } }
+        else if (!inst) {
+          const [a0, c0] = f('cal').value.split('\n'), accO = (calG.accounts || []).find(x => x.id === a0), calO = ((calG.cals || {})[a0] || []).find(x => x.id === c0);
+          if (accO && calO) { ghost = calGInst(accO, calO, { id: 'saving-' + Date.now(), subject: body.subject + ' (saving…)', start: utc(s), end: utc(ad ? endAd : en), isAllDay: ad, location: body.location, attendees: body.attendees, isOrganizer: true, showAs: body.showAs }); ghost.saving = true; calG.inst.push(ghost); }
+        }
+        if (ghost || before) { d.close(); d.remove(); calClosePop(); calRender(); toast(inst ? 'Saving the change…' : 'Saving the meeting…'); }
+      } catch (e0) { ghost = null; before = null; }
+      const unGhost = () => { if (ghost) calG.inst = calG.inst.filter(i => i !== ghost); if (before) { Object.assign(before.cur, { start: before.start, end: before.end }); before.cur.ev.title = before.title; before.cur.ev.location = before.location; } };
       let r;
       // A designed invitation: the meeting is made first without the people, the picture is put on it, and only then
       // are the people added, so they get one invitation and it is the finished one.
@@ -11412,7 +11429,11 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       else if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
       else { const [a, c] = f('cal').value.split('\n'); rememberCal(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
-      if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save'; return toast(`It was not saved: ${r.error || 'try again'}`); }
+      if (!r.ok) {
+        saveBtn.disabled = false; saveBtn.textContent = 'Save';
+        if (ghost || before) { unGhost(); calRender(); if (!d.isConnected) { document.body.appendChild(d); d.showModal(); } }      // back comes the form, with everything you typed
+        return toast(`It was not saved: ${r.error || 'try again'}`);
+      }
       toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
     });
