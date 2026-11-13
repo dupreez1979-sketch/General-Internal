@@ -686,6 +686,16 @@
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
   .mail-warn { display: block; width: calc(100% - 20px); margin: 0 10px 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: #99351E; color: #fff; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+  dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
+  .outs-list { max-height: 56vh; overflow: auto; margin: 6px 0 12px; }
+  .outs-who { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
+  .outs-row { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; margin-bottom: 7px; }
+  .outs-row > b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .outs-row .ol { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 3px 0; }
+  .outs-row .ol .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .outs-row .ol .stt { color: #B36E24; font-size: 11.5px; white-space: nowrap; }
+  .outs-row .ol .stt.ok { color: #328276; }
+  .outs-row .ol button { font-size: 11.5px; padding: 3px 9px; white-space: nowrap; }
   dialog.mail-health { width: 640px; height: fit-content; background: var(--win); color: var(--text); }
   dialog.mail-health .dlg-actions { flex-wrap: wrap; }
   dialog.mail-health .mh-acc { display: flex; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); }
@@ -8244,15 +8254,84 @@
       { label: usual ? 'File in Another Folder…' : 'File in Company Folders…', run: () => fileToPicker([id]) },
     ].filter(Boolean);
   }
+  // What a piece of work produced. The company folders hold outputs (artifacts, documents, final files); a chat is
+  // the working and stays with the staff member. An item that is not a chat is itself the output.
+  function workOutputs(x) {
+    if (!/\/chat\//.test(x.url || '')) return [{ name: x.name, url: x.url, node: x }];
+    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
+    return ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
+  }
+  function fileWorkOutput(o, folderId, st, p) {
+    if (o.node) return fileIntoCompany([o.node.id], folderId);
+    if (!isCompanyFolder(folderId)) return toast('Choose one of the company folders (outside Team).');
+    if (companyHomes(o.url, p).some(f2 => f2.id === folderId)) return toast('It is already filed there.');
+    snap(); insertInto(folderId, Object.assign(Link(o.name, o.url), st ? { filedBy: st.name, filedById: st.id, filedAt: Date.now() } : {}));
+    try { botLearnFiling([o.name], folderId); } catch (e) { /* not ready */ }
+    if (st && !usualPlace(st)) { st.fileTo = folderId; saveCos(); }
+    commit(); toast(`Filed “${o.name}” in ${nodeOf(folderId).name}.${st ? ` The chat stays with ${st.name}.` : ''}`, true);
+  }
+  const ASK_FINAL = 'Please give me the final version of this work as its own output (an artifact or a document, with a clear title) so it can be filed in the company folders.';
+  const askFinal = x => { navigator.clipboard.writeText(ASK_FINAL).catch(() => {}); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); };
+  // Finished work and where its outputs are: one staff member's, or the whole team's, over the last so many days.
+  function outputsReview(p, days, onlyStaff) {
+    const t = cosTeam(), rows = [], since = Date.now() - days * 864e5;
+    for (const st of ((t && t.nodes) || []).filter(x => x.kind === 'staff' && (!onlyStaff || x.id === onlyStaff))) {
+      const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
+      for (const x of workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && (x.doneAt || 0) >= since)) {
+        const outs = workOutputs(x).filter(o => o.url).map(o => ({ o, homes: companyHomes(o.url, p) }));
+        rows.push({ st, x, outs, chatFiled: companyHomes(x.url, p).length > 0 });
+      }
+    }
+    return rows;
+  }
+  function outputsDlg(days = 7, onlyStaff = null, onlyItem = null) {
+    const p = activeProfile(); if (!p) return;
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg outs-dlg';
+    d.innerHTML = '<h2></h2><p class="hint"></p><div class="outs-list"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>';
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); try { cosBotSoon(); } catch (e) { /* not ready */ } });
+    const paint = () => {
+      const rows = outputsReview(p, days, onlyStaff).filter(r => !onlyItem || r.x.id === onlyItem);
+      d.querySelector('h2').textContent = onlyItem ? 'Outputs of this work' : `Outputs finished in the last ${days} days`;
+      const loose = rows.reduce((n, r) => n + r.outs.filter(z => !z.homes.length).length, 0), none = rows.filter(r => !r.outs.length).length;
+      d.querySelector('.hint').textContent = rows.length ? `${rows.length} piece${rows.length === 1 ? '' : 's'} of work finished. ${loose ? `${loose} output${loose === 1 ? ' is' : 's are'} not filed yet.` : 'Every output is filed.'}${none ? ` ${none} ${none === 1 ? 'has' : 'have'} no output.` : ''} The company folders keep the outputs; the chats stay with the staff.` : 'Nothing was finished in this time.';
+      const list = d.querySelector('.outs-list'); list.replaceChildren(); let who = '';
+      for (const r of rows) {
+        if (r.st.name !== who) { who = r.st.name; list.appendChild(Object.assign(document.createElement('div'), { className: 'outs-who', textContent: who })); }
+        const card = document.createElement('div'); card.className = 'outs-row';
+        card.appendChild(Object.assign(document.createElement('b'), { textContent: r.x.name }));
+        const line = (name, status, btns) => { const l = document.createElement('div'); l.className = 'ol'; l.appendChild(Object.assign(document.createElement('span'), { className: 'nm', textContent: name })); l.appendChild(Object.assign(document.createElement('span'), { className: 'stt' + (status.ok ? ' ok' : ''), textContent: status.t }));
+          for (const [label, run, go] of btns) { const b = document.createElement('button'); b.className = go ? 'btn-primary' : 'btn'; b.textContent = label; b.addEventListener('click', run); l.appendChild(b); } card.appendChild(l); };
+        if (!r.outs.length) line('No finished output', { t: r.chatFiled ? 'The chat is filed' : 'Nothing to file' }, [['Ask for the Final Version', () => { d.close(); d.remove(); askFinal(r.x); }, true]]);
+        for (const { o, homes } of r.outs) {
+          if (homes.length) { line(o.name, { ok: true, t: `Filed in ${homes.map(h => h.name).join(', ')}` }, [['Open', () => { d.close(); d.remove(); go({ kind: 'page', url: o.url }); }]]); continue; }
+          const usual = usualPlace(r.st), best = usual || botBestFolder({ name: o.name }, p);
+          line(o.name, { t: 'Not filed' }, [
+            ...(best ? [[`File in ${best.name}`, () => { fileWorkOutput(o, best.id, r.st, p); paint(); }, true]] : []),
+            [best ? 'Elsewhere…' : 'File…', () => openDialog({ title: `File “${o.name}” in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileWorkOutput(o, folderId, r.st, p); paint(); } }), !best],
+          ]);
+        }
+        list.appendChild(card);
+      }
+    };
+    document.body.appendChild(d); paint(); d.showModal();
+  }
   function offerFiling(id, archived = false) {
     const d = deskItem(id);
     if (!d || !d.n.done) return;
     const done = archived ? `Done and moved to ${d.staff ? d.staff.name + '\u2019s ' : ''}Archive.` : 'Done.';
-    if (d.n.type === 'link' && companyHomes(d.n.url, profileOf(id)).length) return toast(done, true);      // already filed
-    const usual = usualPlace(d.staff);
-    toast(`${done} File \u201c${d.n.name}\u201d in the company folders too?`, usual
-      ? { label: `File in ${usual.name}`, run: () => fileIntoCompany([id], usual.id) }
-      : { label: 'File…', run: () => fileToPicker([id]) });
+    const p = profileOf(id), usual = usualPlace(d.staff);
+    if (d.n.type !== 'link') return toast(done, true);
+    const outs = workOutputs(d.n).filter(o => o.url), loose = outs.filter(o => !companyHomes(o.url, p).length);
+    if (!outs.length) {                                  // a chat with nothing to show for it yet
+      if (companyHomes(d.n.url, p).length) return toast(done, true);
+      return toast(`${done} There is no finished output to file yet.`, { label: 'Ask for the Final Version', run: () => askFinal(d.n) });
+    }
+    if (!loose.length) return toast(`${done} Its output is already in the company folders.`, true);
+    if (loose.length > 1) return toast(`${done} It made ${loose.length} outputs that are not filed yet.`, { label: 'File Them…', run: () => outputsDlg(3650, d.staff ? d.staff.id : null, id) });
+    const o = loose[0], best = usual || (() => { try { return botBestFolder({ name: o.name }, p); } catch (e) { return null; } })();
+    toast(`${done} File its output “${o.name}” in the company folders?`, best
+      ? { label: `File in ${best.name}`, run: () => fileWorkOutput(o, best.id, d.staff, p) }
+      : { label: 'File…', run: () => openDialog({ title: `File “${o.name}” in:`, folderId: p ? p.id : null, folderOnly: true, onSave: ({ folderId }) => fileWorkOutput(o, folderId, d.staff, p) }) });
   }
   // Company folders as choices (for "Usually files in"), with their paths.
   function companyFolderChoices(p) {
@@ -14607,20 +14686,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     // 2. Finished work whose OUTPUT is not in the company folders yet. The company folders hold what the work
     //    produced (artifacts, documents, PDFs, final files); the chat is the working and stays with the staff member.
-    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
-    const outputsOf = x => {
-      if (!/\/chat\//.test(x.url || '')) return [{ name: x.name, url: x.url, node: x }];          // the item is itself an output
-      return ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
-    };
-    const fileOutput = (o, folderId, st) => {
-      if (o.node) return fileIntoCompany([o.node.id], folderId);
-      if (!isCompanyFolder(folderId)) return toast('Choose one of the company folders (outside Team).');
-      if (companyHomes(o.url, p).some(f2 => f2.id === folderId)) return toast('It is already filed there.');
-      snap(); insertInto(folderId, Object.assign(Link(o.name, o.url), { filedBy: st.name, filedById: st.id, filedAt: Date.now() }));
-      try { botLearnFiling([o.name], folderId); } catch (e) { /* not ready */ }
-      if (!usualPlace(st)) { st.fileTo = folderId; saveCos(); }
-      commit(); toast(`Filed “${o.name}” in ${nodeOf(folderId).name}. The chat stays with ${st.name}.`, true);
-    };
+    const outputsOf = workOutputs, fileOutput = (o, folderId, st) => fileWorkOutput(o, folderId, st, p);
     for (const s of t.nodes.filter(x => x.kind === 'staff')) {
       const f = s.folderId && nodeOf(s.folderId);
       if (!f) continue;
@@ -14649,10 +14715,20 @@ body { width: max-content !important; min-width: 0 !important; }
           out.push({ type: 'file', name: x.name, folderId: null, key: 'noout:' + x.id, kind: 'No output yet',
             text: `“${x.name}” is done (${s.name}) but has no finished output to file. The company folders keep outputs; the chat stays with ${s.name}.`,
             actions: [
-              { label: 'Ask for the Final Version', go: true, run: () => { navigator.clipboard.writeText(ask).catch(() => {}); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); } },
+              { label: 'Ask for the Final Version', go: true, run: () => askFinal(x) },
               { label: 'File the Chat Instead…', run: () => fileToPicker([x.id]) },
             ] });
         }
+      }
+    }
+    // 2b. Once a week: what was finished, and whether its outputs are filed.
+    {
+      const rows = outputsReview(p, 7), wk = Math.floor((Date.now() - 4 * 864e5) / (7 * 864e5));
+      if (rows.length) {
+        const all = rows.reduce((n, r) => n + r.outs.length, 0), loose = rows.reduce((n, r) => n + r.outs.filter(z => !z.homes.length).length, 0), none = rows.filter(r => !r.outs.length).length;
+        out.push({ type: 'weekly', key: `weekly:${wk}:${rows.length}:${loose}:${none}`, kind: 'This week’s outputs',
+          text: `${rows.length} piece${rows.length === 1 ? '' : 's'} of work finished this week: ${all - loose} output${all - loose === 1 ? '' : 's'} filed, ${loose} not filed${none ? `, ${none} with no output` : ''}.`,
+          actions: [{ label: 'See the List', go: true, run: () => outputsDlg(7) }] });
       }
     }
     // 3. Two staff members working on the same thing.
@@ -14809,7 +14885,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // - filing teaches it where things go: each word of what you file counts toward that folder, and a
   //   filing suggestion you dismiss counts against it;
   // - what it has learned is shown under Learned (each with Forget), and written for the Chief of Staff chat.
-  const BOT_KINDS = { like: 'Already exists', file: 'Filing suggestions', overlap: 'Same work', unfiled: 'Not filed' };
+  const BOT_KINDS = { like: 'Already exists', file: 'Filing suggestions', weekly: 'Weekly outputs check', overlap: 'Same work', unfiled: 'Not filed' };
   function botMem() {
     const t = cosTeam();
     if (!t) return { kinds: {}, folders: {}, notFolders: {}, since: Date.now() };
