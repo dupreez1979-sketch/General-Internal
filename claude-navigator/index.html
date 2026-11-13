@@ -13381,14 +13381,14 @@ body { width: max-content !important; min-width: 0 !important; }
     el.addEventListener('contextmenu', e => {
       e.preventDefault(); e.stopPropagation();
       const o = appOrder(), i = o.indexOf(k), hid = appHidden(), vert = axis === 'y';
-      const dk = k === 'navigator' ? 'folders' : k, name = APP_NAMES[k], isMain = vert && dockMainKey() === dk;
+      const dk = k === 'navigator' ? 'folders' : k, name = APP_NAMES[k], isMain = vert && dockIsMain(dk);
       const beside = vert && !isMain && (dockNative(dk) ? dockClaudeShowing() : sideHas(dk)), win = appWins.includes(k);
       showMenu(e.clientX, e.clientY, [
         // what you can do with this app, in one place
         ...(vert ? [
           win ? { label: `Bring ${name}\u2019s Window Forward`, run: () => window.navigatorApp.appWindowOpen(k) } : null,
           !win && !isMain ? { label: beside ? `Close ${name}` : `Open ${name} Beside`, run: () => dockClick(dk) } : null,
-          !win && k !== 'chats' ? { label: `Make ${name} the Main App`, disabled: isMain, run: () => dockMain(dk) } : null,
+          !win ? { label: `Make ${name} the Main App`, disabled: isMain, run: () => dockMain(dk) } : null,
           !win && OWN_WINDOW.includes(k) ? { label: `Open ${name} in Its Own Window`, run: () => appOwnWindow(k) } : null,
           k === 'mail' ? { label: 'New Email', run: () => chatToEmail({}) } : null,
           k === 'cal' ? { label: 'New Event', run: () => calGEdit(null, false) } : null,
@@ -13435,11 +13435,14 @@ body { width: max-content !important; min-width: 0 !important; }
   let dockTimer = 0;
   const dockMainKey = () => (appKey() === 'navigator' ? 'folders' : appKey());
   // Make an app the main one (on the left). If it was open beside, the app that was main takes its place there.
+  // (All Chats as the main app is Claude's own face: the list of chats, with a chat opening beside it.)
+  const dockIsMain = k => k === dockMainKey() || (k === 'chats' && dockMainKey() === 'claude');
   function dockMain(k) {
     const prev = dockMainKey();
-    if (prev === k) return;
+    if (dockIsMain(k)) return;
     const wasBeside = sideHas(k) || (dockNative(k) && dockClaudeShowing());
-    setApp(k === 'folders' ? 'navigator' : k);
+    if (k === 'chats' && sideHas('chats')) sideCloseApp('chats');
+    setApp(k === 'folders' ? 'navigator' : k === 'chats' ? 'claude' : k);
     if (wasBeside && sideCan(prev) && !sideHas(prev)) sideOpen(prev, !!sideState.app);
   }
   function dockRender() {
@@ -13454,8 +13457,8 @@ body { width: max-content !important; min-width: 0 !important; }
         if (k === 'actions') return dockClick(k, e);
         if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
-        if (e.detail >= 2 && k !== 'chats') return dockMain(k);
-        dockTimer = setTimeout(() => { if (dockMainKey() === k) toast(`${label} is the main app. Double-click another app to make that the main one.`); else dockClick(k, e); }, 240);
+        if (e.detail >= 2) return dockMain(k);
+        dockTimer = setTimeout(() => { if (dockIsMain(k)) toast(`${label} is the main app. Double-click another app to make that the main one.`); else dockClick(k, e); }, 240);
       });
       if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
@@ -13463,12 +13466,12 @@ body { width: max-content !important; min-width: 0 !important; }
     const hid = appHidden();
     const order = appOrder().map(a => a === 'navigator' ? 'folders' : a);
     for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
-      const isMain = k === dockMainKey();
+      const isMain = dockIsMain(k);
       if (k === 'claude') continue;          // Claude has no icon of its own: a chat opens from a staff member, a folder, or the list of All Chats
       if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = isMain ? false : dockNative(k) ? dockClaudeShowing() : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' ? `All your Claude chats, to drag into folders: click to ${on ? 'close' : 'open beside'}` : (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
+      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' && !isMain ? `All your Claude chats, to drag into folders: click to ${on ? 'close' : 'open beside'}, double-click to make it the main app` : (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
@@ -13567,7 +13570,7 @@ body { width: max-content !important; min-width: 0 !important; }
       });
       if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
       if (OWN_WINDOW.includes(k === 'folders' ? 'navigator' : k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k === 'folders' ? 'navigator' : k));
-      if (k !== 'chats') tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
+      tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
     };
     paint($('spHead'), a, true); paint($('spHead2'), b, false);
