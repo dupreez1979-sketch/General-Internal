@@ -627,6 +627,10 @@
   .ai-head .lights { margin-right: 4px; }
   .mail-shade { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.14); }
   .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
+  #tree > .side-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 10px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
+  #tree > .side-new svg { width: 15px; height: 15px; }
+  html.is-app #sNewFolder { display: none !important; }
+  .mailnav > .cal-newrow { margin: 4px 4px 8px; }
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
   .mail-search { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 6px 10px; width: 220px; color: var(--text); margin-left: 6px; }
   .mail-tools { gap: 6px; }
@@ -1948,6 +1952,7 @@
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   if (isMac) document.documentElement.classList.add('mac');
   if (isApp && isMac) document.documentElement.classList.add('mac-app');
+  if (isApp) document.documentElement.classList.add('is-app');
   const K = isMac
     ? { mod: '⌘', shift: '⇧', del: '⌘⌫', rename: 'Return', open: '⌘↓' }
     : { mod: 'Ctrl+', shift: 'Shift+', del: 'Del', rename: 'F2', open: 'Enter' };
@@ -2654,6 +2659,13 @@
 
   // ---------- Sidebar ----------
   // Top-level folders become Finder-style sections; everything inside is a tree.
+  // The one big button at the top of each app's sidebar: New Chat, New Folder, New Board (as Mail and Calendar have).
+  function sideBigBtn(label, icon, title, run) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-primary mail-new side-new';
+    b.innerHTML = `${icon}<span></span>`; b.querySelector('span').textContent = label; b.title = title;
+    b.addEventListener('click', e => { e.stopPropagation(); run(); });
+    return b;
+  }
   function renderSide() {
     const frag = document.createDocumentFragment();
     const addChildren = (nodes, depth, parent = null) => {
@@ -2688,14 +2700,7 @@
         return open;
       };
       if (sysRow('claude', 'Claude', small('claude', KIND_COLOUR.claude), 'Everything in your Claude account')) {
-      const nc = document.createElement('div');
-      nc.className = 'row lib-action';
-      nc.dataset.action = 'new-chat';
-      nc.style.setProperty('--depth', 1);
-      nc.innerHTML = `<span class="twisty"></span><span class="icon">${UI.compose}</span><span class="label">New Chat</span>`;
-      const here = newHereFolder();
-      nc.title = here ? `New chat, saved in \u201c${nodeOf(here).name}\u201d once you send it (${K.mod}N)` : `New chat (${K.mod}N)`;
-      frag.appendChild(nc);
+      // (New Chat is the big button at the top of the sidebar)
       const idx = filedIndex();
       const libRowFor = (k, depth) => {
         const r = document.createElement('div');
@@ -2753,7 +2758,11 @@
       r.title = `${n.name}: click to ${n.open ? 'hide' : 'show'}, double-click to open`;
       frag.appendChild(r);
     };
-    if (face !== 'files') { treeEl.replaceChildren(frag); applySideSel(false); return; }
+    if (face !== 'files') {
+      if (face === 'claude') frag.prepend(sideBigBtn('New Chat', UI.compose, `New chat (${K.mod}N)`, () => newChat()));
+      else if (mondayData.connected && mondayData.error !== 'token') frag.prepend(sideBigBtn('New Board', UI.plus, 'Make a new monday.com board', () => openNewBoard()));
+      treeEl.replaceChildren(frag); applySideSel(false); return;
+    }
     const ap = activeProfile();
     if (ap) {
       // One profile: its folders first, then its Other group (Code, Schedules) as its own section.
@@ -2787,6 +2796,7 @@
       d.textContent = 'No folders yet. Click New Folder below.';
       frag.appendChild(d);
     }
+    if (isApp) frag.prepend(sideBigBtn('New Folder', UI.plus, `New folder (${K.mod}Shift+N)`, () => newFolder()));
     treeEl.replaceChildren(frag);
     applySideSel(false);
   }
@@ -6677,8 +6687,6 @@
       r.dataset.action = 'monday-connect';
       return;
     }
-    const nb = row('lib-action', 1, `<span class="mi-plus">${UI.plus}</span>`, 'New Board', 'Make a new monday.com board');
-    nb.dataset.action = 'monday-new';
     const all = row('lib-action', 1, small('mondayws', KIND_COLOUR.mondayws), 'All Workspaces',
       mondayData.workspaces ? `${mondayData.workspaces.length} workspaces, ${(mondayData.boards || []).length} boards. Open to browse them and drag boards into your folders.` : (mondayBusy ? 'Loading from monday.com\u2026' : 'Nothing loaded yet'));
     all.dataset.action = 'monday-all';
@@ -12116,7 +12124,16 @@ body { width: max-content !important; min-width: 0 !important; }
       nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.8H4a1.5 1.5 0 00-1.5 1.5V12A1.5 1.5 0 004 13.5h7.7a1.5 1.5 0 001.5-1.5V7M7.2 9.3l.5-2.2 5-5 1.7 1.7-5 5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>New Email</span>';
       nw.title = `Write a new message (${K.mod}N)`;
       nw.addEventListener('click', () => mailCompose('new'));
-      sd.appendChild(nw);
+      const row = document.createElement('div'); row.className = 'cal-newrow';
+      const mic = document.createElement('button'); mic.className = 'btn-primary cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Say a new email: a new message opens and your Mac\u2019s dictation starts in it';
+      mic.addEventListener('click', async () => {
+        await mailCompose('new');
+        await new Promise(r => setTimeout(r, 450));          // (the new message puts the cursor in To first)
+        const ed = mailUi.composeEl && mailUi.composeEl.querySelector('.mc-ed, [contenteditable="true"]'); if (ed) ed.focus();
+        let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (er) { /* older app */ }
+        if (!ok) toast('Click in the message and press your Mac\u2019s dictation key (or Fn twice).');
+      });
+      row.append(nw, mic); sd.appendChild(row);
     }
     if (vis.filter(a => !a.needsSignIn).length > 1) {
       const b = document.createElement('div'), on = mailState.sel && mailState.sel.acc === '*';
