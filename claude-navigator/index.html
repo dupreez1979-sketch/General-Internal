@@ -482,7 +482,7 @@
   #sidePanel .cal-head { flex-wrap: wrap; height: auto; min-height: 48px; padding: 6px 10px; row-gap: 4px; }
   #sidePanel .mail-search { width: 110px; flex: 1 1 110px; }
   #sidePanel .mail-read.pop { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; box-shadow: none; }
-  #sidePanel .mail-compose { left: 0; top: 0; z-index: 6; }
+  #sidePanel .mail-compose { left: 0; top: 0; right: 0; bottom: 0; border-radius: 0; box-shadow: none; z-index: 8; }
   #sidePanel .cal-dh { flex-direction: column; align-items: center; gap: 0; padding: 4px 2px; font-size: 11px; }
   #sidePanel .cal-dh b { font-size: 14px; }
   #sidePanel .cal-dh { border-left: 0; }
@@ -579,8 +579,22 @@
   .mail-read.pop { position: absolute; z-index: 4; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.3), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
   .mail-read.pop[hidden] { display: none; }
   .mail-read.pop .mail-rh { padding-right: 46px; }
-  .mail-popbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 8px 52px 8px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint, #8a8f98) 6%, var(--win)); }
-  .mail-popx { position: absolute; top: 10px; right: 10px; z-index: 2; }
+  .mail-popbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 8px 12px 8px 12px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint, #8a8f98) 6%, var(--win)); }
+  /* Close, minimise and full size, where a Mac has them: top left. */
+  .lights { display: inline-flex; gap: 8px; align-items: center; margin-right: 10px; flex: none; }
+  .lights button.lt { width: 12px; height: 12px; min-width: 0; box-sizing: border-box; border-radius: 50%; border: .5px solid rgba(0,0,0,.2); padding: 0; margin: 0; font: 700 9px/11px -apple-system, Helvetica, Arial, sans-serif; color: transparent; text-align: center; cursor: default; }
+  .lights button.lt.r { background: #FF5F57; } .lights button.lt.y { background: #FEBC2E; } .lights button.lt.g { background: #28C840; }
+  .lights:hover button.lt { color: rgba(0,0,0,.6); }
+  .min-t { display: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; }
+  .mail-read.pop.full, .mail-compose.full { top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 0; }
+  .mail-read.pop.min, .mail-compose.min { top: auto !important; bottom: 0 !important; width: min(340px, 80%); height: 38px; border-radius: 10px 10px 0 0; cursor: pointer; }
+  .mail-read.pop.min { left: 18px !important; right: auto !important; }
+  .mail-compose.min { right: 18px !important; left: auto !important; }
+  .mail-read.pop.min > :not(.mail-popbar), .mail-compose.min > :not(.mc-bar) { display: none !important; }
+  .mail-read.pop.min .mail-popbar, .mail-compose.min .mc-bar { flex-wrap: nowrap; height: 38px; padding: 0 12px; border: 0; }
+  .mail-read.pop.min .mail-popbar > :not(.lights):not(.min-t), .mail-compose.min .mc-bar > :not(.lights):not(.min-t) { display: none !important; }
+  .min .min-t { display: block; }
+  .ai-head .lights { margin-right: 4px; }
   .mail-shade { position: absolute; inset: 0; z-index: 3; background: rgba(0,0,0,.14); }
   .mail-new { margin-right: 6px; padding: 5px 12px; font-size: 12.5px; }
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
@@ -595,9 +609,15 @@
   #sidePanel .mail-acts .tb { padding: 0 5px; }
   .mail-files, .mc-files { display: flex; flex-wrap: wrap; gap: 6px; }
   .mail-files { margin-top: 6px; }
-  .mail-att { background: var(--field); border: 0; border-radius: 8px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--text); }
+  .mail-att { background: var(--field); border: 0; border-radius: 8px; padding: 5px 10px 5px 6px; font: inherit; font-size: 12px; color: var(--text); display: inline-flex; align-items: center; gap: 8px; max-width: 240px; min-width: 0; text-align: left; }
+  .mail-att .att-ic { flex: none; width: 27px; height: 32px; border-radius: 4px 9px 4px 4px; background: var(--c, #7a8088); color: #fff; font: 700 8.5px/1 -apple-system, Helvetica, Arial, sans-serif; letter-spacing: .2px; display: grid; place-items: center; }
+  .mail-att .att-tx { min-width: 0; display: grid; }
+  .mail-att .att-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .mail-att .att-s { font-size: 10.5px; color: var(--muted); }
+  .mail-files { max-height: 96px; overflow-y: auto; }
   button.mail-att:hover { background: var(--sel); }
-  .mail-compose { position: absolute; top: 53px; bottom: 0; right: 0; left: min(400px, 45%); z-index: 5; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .mail-compose { position: absolute; top: 18px; bottom: 18px; left: 7%; right: 7%; z-index: 8; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.32), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .mail-cshade { position: absolute; inset: 0; z-index: 6; background: rgba(0,0,0,.16); }
   .mail-compose .mc-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
   .mail-compose .mc-bar > * { flex: none; white-space: nowrap; }
   .mail-compose .mc-bar .sp { flex: 1; }
@@ -667,7 +687,8 @@
   #mailAi .ai-acts .btn, #mailAi .ai-acts .btn-primary { font-size: 11.5px; padding: 3px 9px; }
   #mailPanel { --mail-ai-w: 430px; }
   #mailAi { position: absolute; top: 53px; bottom: 0; right: 0; width: min(var(--mail-ai-w), 100%); z-index: 7; display: flex; flex-direction: column; min-height: 0; background: var(--win); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.08); }
-  #mailPanel.ai-on .mail-compose { right: min(var(--mail-ai-w), 60%); left: min(300px, 28%); }
+  #mailPanel.ai-on .mail-compose { right: calc(min(var(--mail-ai-w), 60%) + 14px); left: 2%; }
+  #mailAi { z-index: 9 !important; top: 0 !important; }
   #mailAi .ai-rs { position: absolute; left: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 3; }
   #mailAi .ai-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   #mailAi .ai-head b { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -697,6 +718,16 @@
   #mailAi .ai-views { flex: 1 1 0; min-height: 120px; display: flex; border-top: 1px solid var(--line); }
   #mailAi.nochat .ai-views { flex: 0 0 0; min-height: 0; height: 0; overflow: hidden; border: 0; }
   #mailAi .ai-views webview { flex: 1; min-width: 0; }
+  .mail-acts .tb.mail-sendto { margin: 0 6px; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 13px 0 10px; font-weight: 600; }
+  .mail-acts .tb.mail-sendto:hover { filter: brightness(1.08); }
+  .mail-acts .tb.mail-sendto:disabled { background: color-mix(in srgb, var(--accent) 35%, transparent); opacity: 1; }
+  .mail-popbar .tb.mail-sendto { order: 99; margin: 0 0 0 auto; }
+  #sidePanel .mail-acts .tb.mail-sendto .t { display: inline; }
+  .mail-compose .mc-fmt .fa { font-weight: 700; line-height: 1; display: inline-block; }
+  .mail-compose .mc-fmt select[data-cmd="fontName"] { width: 104px; }
+  .mail-compose .mc-ed blockquote { margin: 6px 0 6px 6px; padding-left: 10px; border-left: 3px solid #ccc; color: #555; }
+  .mail-att .att-x { border: 0; background: none; margin-left: 5px; padding: 0 2px; font: inherit; color: var(--muted); cursor: pointer; }
+  .mail-att .att-x:hover { color: #99351E; }
   .mail-compose .mc-ai .t { font-weight: 600; color: var(--accent); }
   dialog.mail-hand, dialog.mail-askstaff, dialog.mail-prefs { height: fit-content; background: var(--win); color: var(--text); }
   dialog.mail-prefs { width: 560px; }
@@ -10055,7 +10086,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const e = inst.ev, pop = document.createElement('div');
     pop.className = 'cal-pop';
     pop.style.setProperty('--ev', calColour(inst));
-    pop.innerHTML = '<div class="bar"></div><div class="hd"><b></b><button class="x" title="Close">✕</button></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
+    pop.innerHTML = '<div class="bar"></div><div class="hd"><span class="lights"><button class="x lt r" title="Close">\u00d7</button></span><b></b></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
     pop.querySelector('b').textContent = e.title || '(No title)';
     pop.querySelector('.x').addEventListener('click', calClosePop);
     const day = new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -10492,6 +10523,15 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailOn = () => currentApp === 'mail' || sideHas('mail');          // showing as the app, or beside another one
   // One click chooses a message; a double click opens it, in a pop-up. That is the same everywhere Mail shows. (If you
   // turn the reading pane on, one click shows the message beside the list instead, as Outlook does.)
+  function macLights(o) {
+    const w = document.createElement('span'); w.className = 'lights';
+    for (const [c, g, k, t] of [['r', '\u00d7', 'close', 'Close'], ['y', '\u2212', 'min', 'Minimise'], ['g', '+', 'zoom', 'Full size']]) {
+      if (!o[k]) continue;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'lt ' + c; b.textContent = g; b.title = (o.titles && o.titles[k]) || t;
+      b.addEventListener('click', e => { e.stopPropagation(); o[k](e); }); w.appendChild(b);
+    }
+    return w;
+  }
   const mailPopped = () => mailState.pane !== true || sideHas('mail');
   const calOn = () => currentApp === 'cal' || sideHas('cal');
   const MAIL_ORDER = ['inbox', 'drafts', 'sentitems', 'archive', 'deleteditems', 'junkemail', 'outbox'];
@@ -10689,7 +10729,7 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailOpen(m) {
     const s = mailState.sel, A = m._acc || (mailState.sel || {}).acc;
     if (m.isDraft) return mailCompose('draft', m);
-    mailUi.msg = m; mailUi.msgOpen = true; mailUi.msgBody = null; mailRenderMain();
+    mailUi.msg = m; mailUi.msgOpen = true; mailUi.popMin = false; mailUi.msgBody = null; mailRenderMain();
     const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
     if (mailUi.msg !== m) return;
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
@@ -11228,7 +11268,7 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
-    tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none });
+    tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none }).classList.add('mail-sendto');
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
     tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
     tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
@@ -11336,7 +11376,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const cn = document.createElement('button'); cn.className = 'mail-cnt' + (mailUi.openThreads[tk] ? ' on' : ''); cn.textContent = more.length + 1;
         cn.title = mailUi.openThreads[tk] ? 'Hide the earlier messages in this conversation' : `${more.length + 1} messages in this conversation. Click to see the earlier ones.`;
         cn.addEventListener('click', e => { e.stopPropagation(); mailUi.openThreads[tk] = !mailUi.openThreads[tk]; mailRenderMain(); });
-        r.querySelector('.fl').before(cn);
+        if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
       r.addEventListener('click', e => {
         if (!mailPopped() || e.detail >= 2 || x.isDraft) return mailOpen(x);
@@ -11354,10 +11394,15 @@ body { width: max-content !important; min-width: 0 !important; }
     const read = document.createElement('div'); read.className = 'mail-read';
     if (popped) {
       read.classList.add('pop'); read.hidden = !(m && mailUi.msgOpen);
-      const x = document.createElement('button'); x.className = 'tb mail-popx'; x.textContent = '✕'; x.title = 'Close (Esc)';
-      x.addEventListener('click', () => { mailUi.msgOpen = false; mailRenderMain(); });
-      read.appendChild(x);
-      if (m && mailUi.msgOpen) { const bar = document.createElement('div'); bar.className = 'mail-acts mail-popbar'; into = bar; msgTools(); read.appendChild(bar); }
+      if (m && mailUi.msgOpen) {
+        const bar = document.createElement('div'); bar.className = 'mail-acts mail-popbar';
+        const lt = macLights({ close: () => { mailUi.msgOpen = false; mailRenderMain(); }, min: () => { mailUi.popMin = !mailUi.popMin; mailRenderMain(); }, zoom: () => { mailUi.popMin = false; mailUi.popFull = !mailUi.popFull; mailRenderMain(); }, titles: { close: 'Close (Esc)', min: 'Minimise: tuck it at the bottom while you look at something else' } });
+        lt.firstChild.classList.add('mail-popx'); bar.appendChild(lt);
+        bar.appendChild(Object.assign(document.createElement('span'), { className: 'min-t', textContent: m.subject || '(no subject)' }));
+        into = bar; msgTools(); read.appendChild(bar);
+        read.classList.toggle('min', !!mailUi.popMin); read.classList.toggle('full', !!mailUi.popFull && !mailUi.popMin);
+        if (mailUi.popMin) read.addEventListener('click', () => { mailUi.popMin = false; mailRenderMain(); });
+      }
     }
     if (!m || (popped && !mailUi.msgOpen)) { if (!popped) read.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note big', textContent: 'Choose a message to read it here.' })); }
     else {
@@ -11371,7 +11416,7 @@ body { width: max-content !important; min-width: 0 !important; }
       hd.querySelector('.to').textContent = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
       if (d && d.files && d.files.length) {
         const fl = document.createElement('div'); fl.className = 'mail-files';
-        for (const a of d.files) { const c = document.createElement('button'); c.className = 'mail-att'; c.textContent = `📎 ${a.name}${a.size ? ` (${a.size > 1e6 ? (a.size / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(a.size / 1e3)) + ' KB'})` : ''}`; c.title = 'Open it (it is saved in Downloads)'; c.addEventListener('click', () => mailOpenAttachment(a)); fl.appendChild(c); }
+        for (const a of d.files) { const c = mailFileTile('button', a.name, mailSize(a.size)); c.title = `${a.name}\nClick to open. Right-click for more.`; c.addEventListener('click', () => mailOpenAttachment(a)); c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); mailFileMenu(a, d.files, e.clientX, e.clientY); }); fl.appendChild(c); }
         hd.appendChild(fl);
       }
       if (d && d.invite) {
@@ -11409,7 +11454,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
     }
     body.append(col, read);
-    if (popped && m && mailUi.msgOpen) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msgOpen = false; mailRenderMain(); }); body.appendChild(shade); }
+    if (popped && m && mailUi.msgOpen && !mailUi.popMin) { const shade = document.createElement('div'); shade.className = 'mail-shade'; shade.addEventListener('click', () => { mailUi.msgOpen = false; mailRenderMain(); }); body.appendChild(shade); }
     P.appendChild(body);
     if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
@@ -11436,6 +11481,47 @@ body { width: max-content !important; min-width: 0 !important; }
     // Files: everything not shown inside the message.
     d.files = all.filter(a => !(a.isInline && a.shown));
     mailRenderMain();
+  }
+  // A file on an email, as a small tile: what kind it is (by colour and label), its name and its size.
+  const MAIL_FILE_KINDS = [[/^pdf$/, 'PDF', '#D93025'], [/^(docx?|rtf|pages|odt)$/, 'DOC', '#2B579A'], [/^(xlsx?|csv|numbers|ods)$/, 'XLS', '#217346'], [/^(pptx?|key|odp)$/, 'PPT', '#D24726'], [/^(png|jpe?g|gif|heic|webp|tiff?|bmp|svg)$/, 'IMG', '#8E44AD'], [/^(mp4|mov|m4v|avi|mkv)$/, 'VID', '#C2185B'], [/^(mp3|wav|m4a|aac|aiff?)$/, 'AUD', '#00897B'], [/^(zip|rar|7z|gz|tar)$/, 'ZIP', '#6D4C41'], [/^(ics|vcs)$/, 'CAL', '#E67E22'], [/^(eml|msg)$/, 'MAIL', '#1B5A68'], [/^(txt|md)$/, 'TXT', '#607D8B'], [/^(html?|json|xml)$/, 'WEB', '#455A64']];
+  function mailFileTile(tag, name, note) {
+    const ext = (/\.([a-z0-9]{1,6})$/i.exec(name || '') || [])[1] || '', k = MAIL_FILE_KINDS.find(x => x[0].test(ext.toLowerCase()));
+    const c = document.createElement(tag); c.className = 'mail-att'; if (tag === 'button') c.type = 'button';
+    c.innerHTML = '<span class="att-ic"></span><span class="att-tx"><span class="att-n"></span><span class="att-s"></span></span>';
+    c.querySelector('.att-ic').textContent = k ? k[1] : (ext || 'FILE').slice(0, 4).toUpperCase(); if (k) c.querySelector('.att-ic').style.setProperty('--c', k[2]);
+    c.querySelector('.att-n').textContent = name || 'File'; c.querySelector('.att-s').textContent = note || '';
+    return c;
+  }
+  const mailSize = n => n ? (n > 1e6 ? (n / 1e6).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1e3)) + ' KB') : '';
+  // Files from an email (one, or all of them) put into one of your folders, or into Downloads without opening.
+  async function mailSaveFiles(list, where) {
+    const m = mailUi.msg, A = m._acc || mailState.sel.acc, [own, box] = A.split('>');
+    const fetchAll = async to => { const out = []; for (const a of list) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', to); if (r && r.ok) out.push(r); } return out; };
+    if (where === 'downloads') {
+      toast(list.length > 1 ? `Saving ${list.length} files…` : `Saving “${list[0].name}”…`);
+      const got = await fetchAll('');
+      if (!got.length) return toast('Could not save. Try again.');
+      return toast(got.length > 1 ? `Saved ${got.length} files in Downloads` : `Saved “${got[0].name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(got[0].path) });
+    }
+    mailNeedFolders(() => mailPickFolder(list.length > 1 ? `Save ${list.length} Files In` : 'Save This File In', 'Save Here', async f => {
+      toast('Saving…');
+      const got = await fetchAll('temp');
+      if (!got.length) return toast('Could not save. Try again.');
+      const done = await window.navigatorApp.fsImport(got.map(x => x.path), f.path);
+      await pullFromDisk();
+      linkAdd(mailRef(m), { t: 'folder', key: `node:${f.id}`, id: f.id, name: f.name });
+      toast(`Saved ${done.length > 1 ? done.length + ' files' : `“${got[0].name}”`} in ${f.name}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(f.path) });
+    }));
+  }
+  function mailFileMenu(a, all, x, y) {
+    const items = [
+      { label: 'Open', run: () => mailOpenAttachment(a) },
+      { label: 'Save in a Folder…', run: () => mailSaveFiles([a]) },
+      { label: 'Save to Downloads', run: () => mailSaveFiles([a], 'downloads') },
+    ];
+    if (all.length > 1) items.push({ label: `Save All ${all.length} in a Folder…`, run: () => mailSaveFiles(all) }, { label: `Save All ${all.length} to Downloads`, run: () => mailSaveFiles(all, 'downloads') });
+    items.push({ label: 'Forward the Email With Its Files', run: () => mailCompose('forward', mailUi.msg) }, { label: 'Send To…', run: () => mailSendTo(mailUi.msg, x, y) }, { label: 'Copy the File Name', run: () => { try { navigator.clipboard.writeText(a.name); } catch (e) { /* no clipboard */ } } });
+    showMenu(x, y, items);
   }
   async function mailOpenAttachment(a) {
     const s = mailState.sel, m = mailUi.msg;
@@ -11650,17 +11736,20 @@ body { width: max-content !important; min-width: 0 !important; }
     const C = mailUi.compose = { acc: acc.id, id: d.id, mode, quoted: mode === 'new' ? '' : (d.body && d.body.content) || '', files: [] };
     const el = document.createElement('div'); el.className = 'mail-compose';
     const fb = (cmd, html, title, arg) => `<button type="button" class="tb" data-cmd="${cmd}"${arg ? ` data-arg="${arg}"` : ''} title="${title}">${html}</button>`;
-    el.innerHTML = `<div class="mc-bar"><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-ai" data-x="ai" title="Have your Chief of Staff read this and write a draft for you to edit. Nothing is sent: only you can press Send."><span class="t">Draft with Staff</span></button><span class="sp"></span><button class="tb" data-x="close" title="Close and keep it in Drafts">\u2715</button></div>
+    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-ai" data-x="ai" title="Have your Chief of Staff read this and write a draft for you to edit. Nothing is sent: only you can press Send."><span class="t">Draft with Staff</span></button></div>
       <label class="from"><span>From:</span><span class="mc-from"></span></label>
       <label><span>To:</span><input name="to" autocomplete="off" spellcheck="false"><span class="mc-ccb"><button type="button" class="tb" data-x="cc">Cc</button><button type="button" class="tb" data-x="bcc">Bcc</button></span></label><div class="mc-sug" hidden></div>
       <label data-row="cc" hidden><span>Cc:</span><input name="cc" autocomplete="off" spellcheck="false"></label>
       <label data-row="bcc" hidden><span>Bcc:</span><input name="bcc" autocomplete="off" spellcheck="false"></label>
       <label><span>Subject:</span><input name="subject"></label>
       <div class="mc-files"></div>
-      <div class="mc-fmt">${fb('bold', '<b>B</b>', 'Bold')}${fb('italic', '<i>I</i>', 'Italic')}${fb('underline', '<u>U</u>', 'Underline')}<span class="fsep"></span>
-        <select data-cmd="fontSize" title="Text size"><option value="2">Small</option><option value="3" selected>Normal</option><option value="5">Large</option><option value="6">Huge</option></select><span class="fsep"></span>
-        ${fb('insertUnorderedList', '\u2022 List', 'Bulleted list')}${fb('insertOrderedList', '1. List', 'Numbered list')}${fb('outdent', '\u21E4', 'Less indent')}${fb('indent', '\u21E5', 'More indent')}<span class="fsep"></span>
-        ${fb('link', 'Link', 'Make the selected words a link')}${fb('removeFormat', 'Clear', 'Remove formatting from the selected words')}</div>
+      <div class="mc-fmt">${fb('undo', '↶', 'Undo')}${fb('redo', '↷', 'Redo')}<span class="fsep"></span>
+        <select data-cmd="fontName" title="Font"><option value="Arial">Arial</option><option value="Calibri, Arial, sans-serif">Calibri</option><option value="Helvetica, Arial, sans-serif">Helvetica</option><option value="Verdana, sans-serif">Verdana</option><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', serif">Times New Roman</option><option value="'Courier New', monospace">Courier New</option></select>
+        <select data-cmd="fontSize" title="Text size"><option value="1">8</option><option value="2">10</option><option value="3" selected>12</option><option value="4">14</option><option value="5">18</option><option value="6">24</option><option value="7">36</option></select>
+        ${fb('removeFormat', 'A<s>a</s>', 'Clear the formatting of the selected words')}<button type="button" class="tb" data-do="color" title="Text colour"><span class="fa" style="border-bottom:3px solid #C00000">A</span></button><button type="button" class="tb" data-do="hilite" title="Highlight"><span class="fa" style="background:#FFF200;padding:0 3px">A</span></button>
+        ${fb('bold', '<b>B</b>', 'Bold')}${fb('italic', '<i>I</i>', 'Italic')}${fb('underline', '<u>U</u>', 'Underline')}<span class="fsep"></span>
+        ${fb('insertUnorderedList', '•≡', 'Bulleted list')}${fb('insertOrderedList', '1≡', 'Numbered list')}${fb('outdent', '⇤', 'Less indent')}${fb('indent', '⇥', 'More indent')}<button type="button" class="tb" data-do="align" title="Align">≡▾</button><button type="button" class="tb" data-do="space" title="Line spacing">↕▾</button><span class="fsep"></span>
+        ${fb('link', '🔗', 'Make the selected words a link')}<button type="button" class="tb" data-do="image" title="Put a picture in the message">🖼</button><button type="button" class="tb" data-do="emoji" title="Emoji">☺</button><button type="button" class="tb" data-do="more" title="More: strikethrough, quote, table, superscript, subscript">⋯</button><input type="file" accept="image/*" class="mc-img" hidden></div>
       <div class="mc-scroll"><div class="mc-ed" contenteditable="true"></div><div class="mc-quote"></div></div><input type="file" multiple hidden>`;
     const f = n => el.querySelector(`[name="${n}"]`);
     f('to').value = mailAddrs(d.toRecipients); f('cc').value = mailAddrs(d.ccRecipients); f('bcc').value = mailAddrs(d.bccRecipients); f('subject').value = d.subject || '';
@@ -11669,13 +11758,51 @@ body { width: max-content !important; min-width: 0 !important; }
     if (f('cc').value) showRow('cc'); if (f('bcc').value) showRow('bcc');
     // Formatting acts on what is selected in the message (the buttons do not take the cursor away).
     el.querySelector('.mc-fmt').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+    // (A menu takes the cursor away for a moment, so the selection is kept and put back before the change is made.)
+    let keptSel = null;
+    const keepSel = () => { const sl = window.getSelection(); keptSel = sl.rangeCount && el.querySelector('.mc-ed').contains(sl.anchorNode) ? sl.getRangeAt(0).cloneRange() : null; };
+    const backSel = () => { const e0 = el.querySelector('.mc-ed'); e0.focus(); if (keptSel) { const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(keptSel); } };
+    const doCmd = (cmd, arg) => { backSel(); document.execCommand(cmd, false, arg === undefined ? null : arg); };
+    const FMT_COLOURS = [['Black', '#000000'], ['Dark grey', '#595959'], ['Red', '#C00000'], ['Orange', '#ED7D31'], ['Gold', '#B36E24'], ['Green', '#328276'], ['Teal', '#1B5A68'], ['Blue', '#0563C1'], ['Purple', '#7030A0'], ['Magenta', '#FF4C80']];
+    const FMT_MARKS = [['None', 'transparent'], ['Yellow', '#FFF200'], ['Green', '#B7F0C0'], ['Blue', '#BDE3FF'], ['Pink', '#FFC2D4'], ['Orange', '#FFD8A8'], ['Grey', '#E3E3E3']];
     el.querySelector('.mc-fmt').addEventListener('click', e => {
-      const b = e.target.closest('button[data-cmd]'); if (!b) return;
-      el.querySelector('.mc-ed').focus();
-      if (b.dataset.cmd === 'link') { const sel = String(window.getSelection()); const u = /^https?:\/\//i.test(sel.trim()) ? sel.trim() : ''; mailAskLink(u, url => { el.querySelector('.mc-ed').focus(); document.execCommand('createLink', false, url); }); return; }
-      document.execCommand(b.dataset.cmd, false, null);
+      const b = e.target.closest('button'); if (!b) return;
+      const r0 = b.getBoundingClientRect(), menu = items => showMenu(r0.left, r0.bottom + 4, items);
+      if (b.dataset.cmd === 'link') { keepSel(); const sel = String(window.getSelection()); const u = /^https?:\/\//i.test(sel.trim()) ? sel.trim() : ''; mailAskLink(u, url => doCmd('createLink', url)); return; }
+      if (b.dataset.cmd) { el.querySelector('.mc-ed').focus(); document.execCommand(b.dataset.cmd, false, null); return; }
+      keepSel();
+      const what = b.dataset.do;
+      if (what === 'color') return menu(FMT_COLOURS.map(([n, c]) => ({ label: n, dot: c, run: () => doCmd('foreColor', c) })));
+      if (what === 'hilite') return menu(FMT_MARKS.map(([n, c]) => ({ label: n, dot: c === 'transparent' ? '#ffffff' : c, run: () => doCmd('hiliteColor', c) })));
+      if (what === 'align') return menu([['Left', 'justifyLeft'], ['Centre', 'justifyCenter'], ['Right', 'justifyRight'], ['Justified', 'justifyFull']].map(([n, c]) => ({ label: n, run: () => doCmd(c) })));
+      if (what === 'space') return menu([['Single', '1.2'], ['1.15', '1.38'], ['1.5', '1.8'], ['Double', '2.4']].map(([n, v]) => ({ label: n, run: () => {
+        backSel(); const e0 = el.querySelector('.mc-ed'), sl = window.getSelection(); if (!sl.rangeCount) return;
+        const blockOf = nd => { let x = nd && nd.nodeType === 1 ? nd : nd && nd.parentNode; while (x && x !== e0 && x.parentNode !== e0) x = x.parentNode; return x && x !== e0 ? x : null; };
+        if (!blockOf(sl.anchorNode)) document.execCommand('formatBlock', false, 'div');
+        const a = blockOf(window.getSelection().anchorNode), z = blockOf(window.getSelection().focusNode) || a; if (!a) return;
+        let go2 = false; for (const k of [...e0.children]) { if (k === a || k === z) { k.style.lineHeight = v; if (a === z || go2) break; go2 = true; } else if (go2) k.style.lineHeight = v; }
+      } })));
+      if (what === 'emoji') return menu(['🙂', '😀', '😊', '😉', '🙏', '👍', '👏', '🎉', '❤️', '✅', '⭐', '📎', '📅', '☎️', '🎭', '🙌'].map(em => ({ label: em, run: () => doCmd('insertText', em) })));
+      if (what === 'more') return menu([
+        { label: 'Strikethrough', run: () => doCmd('strikeThrough') },
+        { label: 'Quote', run: () => doCmd('formatBlock', 'blockquote') },
+        { label: 'Table (3 by 3)', run: () => doCmd('insertHTML', '<table style="border-collapse:collapse">' + '<tr>' .concat('<td style="border:1px solid #999;padding:4px 10px;min-width:70px">&nbsp;</td>'.repeat(3), '</tr>').repeat(3) + '</table><div><br></div>') },
+        { label: 'Superscript', run: () => doCmd('superscript') },
+        { label: 'Subscript', run: () => doCmd('subscript') },
+      ]);
+      if (what === 'image') return el.querySelector('.mc-img').click();
     });
-    el.querySelector('.mc-fmt select').addEventListener('change', e => { el.querySelector('.mc-ed').focus(); document.execCommand('fontSize', false, e.target.value); });
+    // A picture goes into the message itself: it is attached to the draft out of sight and shown where the cursor is.
+    el.querySelector('.mc-img').addEventListener('change', async ev => {
+      const file = ev.target.files[0]; ev.target.value = ''; if (!file) return;
+      if (file.size > 3e6) return toast('That picture is over 3 MB. Make it smaller, or attach it as a file instead.');
+      const url = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result)); rd.readAsDataURL(file); });
+      const cid = 'img' + Math.random().toString(36).slice(2, 10) + '@navigator';
+      const up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: file.name, contentType: file.type || 'image/png', contentBytes: url.split(',')[1], isInline: true, contentId: cid } });
+      if (!up.ok) return toast(`Could not add the picture: ${up.error || 'try again'}`);
+      doCmd('insertHTML', `<img src="${url}" data-cid="${cid}" style="max-width:100%">`);
+    });
+    for (const sl of el.querySelectorAll('.mc-fmt select')) { sl.addEventListener('mousedown', keepSel); sl.addEventListener('change', e => doCmd(e.target.dataset.cmd, e.target.value)); }
     const ed = el.querySelector('.mc-ed');
     // For the drafting panel: your own words so far (without the signature), and putting words in.
     C.userText = () => { const all = (ed.innerText || '').replace(/\u00a0/g, ' ').trimEnd(), sg = ed.querySelector('.mc-sig'), tail = sg ? (sg.innerText || '').trimEnd() : ''; return (tail && all.endsWith(tail) ? all.slice(0, all.length - tail.length) : all).trim(); };
@@ -11726,9 +11853,14 @@ body { width: max-content !important; min-width: 0 !important; }
     el.addEventListener('focusout', () => setTimeout(() => { sug.hidden = true; }, 150));
     const paintFiles = () => {
       const box = el.querySelector('.mc-files'); box.replaceChildren();
-      for (const fl of C.files) { const c = document.createElement('span'); c.className = 'mail-att'; c.textContent = `📎 ${fl.name}${fl.sent ? '' : fl.pct ? ` ${fl.pct}%` : ' …'}`; box.appendChild(c); }
+      for (const fl of C.files) {
+        const c = mailFileTile('span', fl.name, fl.sent ? mailSize(fl.size) : fl.pct ? `Adding ${fl.pct}%` : 'Adding…'); c.title = fl.name;
+        if (fl.sent && fl.id) { const x = document.createElement('button'); x.className = 'att-x'; x.textContent = '\u00d7'; x.title = 'Take this file off the message'; x.addEventListener('click', async () => { x.disabled = true; const r = await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}/attachments/${fl.id}` }); if (r.ok) { C.files = C.files.filter(z => z !== fl); paintFiles(); } else { x.disabled = false; toast(`Could not take it off: ${r.error || 'try again'}`); } }); c.appendChild(x); }
+        box.appendChild(c);
+      }
     };
-    const fileIn = el.querySelector('input[type="file"]');
+    if (mode === 'forward' || mode === 'draft') mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size,isInline` }).then(r => { if (!r.ok || mailUi.compose !== C) return; for (const a of (r.data.value || []).filter(z => !z.isInline)) if (!C.files.some(z => z.id === a.id)) C.files.push({ name: a.name, id: a.id, size: a.size, sent: true }); paintFiles(); });
+    const fileIn = el.querySelector('input[type="file"]:not(.mc-img)');
     // Files join the draft in Outlook as you add them: small ones in one go, larger ones (to 25 MB) in pieces.
     const attach = async files => {
       for (const file of files) {
@@ -11748,7 +11880,7 @@ body { width: max-content !important; min-width: 0 !important; }
             rec.pct = Math.round(Math.min(file.size, at + STEP) / file.size * 100); paintFiles();
           }
         }
-        if (up && up.ok) rec.sent = true; else { C.files = C.files.filter(x => x !== rec); toast(`Could not attach “${file.name}”: ${(up && up.error) || 'try again'}`); }
+        if (up && up.ok) { rec.sent = true; if (up.data && up.data.id) rec.id = up.data.id; } else { C.files = C.files.filter(x => x !== rec); toast(`Could not attach “${file.name}”: ${(up && up.error) || 'try again'}`); }
         paintFiles();
       }
     };
@@ -11761,13 +11893,20 @@ body { width: max-content !important; min-width: 0 !important; }
     const fields = () => {
       const lists = { to: mailParse(f('to').value), cc: mailParse(f('cc').value), bcc: mailParse(f('bcc').value) };
       const bad = [...lists.to, ...lists.cc, ...lists.bcc].find(x => x.bad);
-      const mine = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:11pt">${ed.innerHTML}</div>`;
+      const out = ed.cloneNode(true); for (const im of out.querySelectorAll('img[data-cid]')) { im.setAttribute('src', 'cid:' + im.dataset.cid); im.removeAttribute('data-cid'); }
+      const mine = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:11pt">${out.innerHTML}</div>`;
       return { bad, lists, body: { subject: f('subject').value, toRecipients: lists.to, ccRecipients: lists.cc, bccRecipients: lists.bcc, body: { contentType: 'html', content: mine + (C.under ? C.under() : C.quoted || C.draftBody || '') } } };
     };
-    const shut = () => { if (mailAi.views.chief) mailAiClose(); el.remove(); mailUi.compose = null; mailUi.composeEl = null; mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); };
+    const shut = () => { if (mailAi.views.chief) mailAiClose(); el.remove(); if (C.shade) C.shade.remove(); mailUi.compose = null; mailUi.composeEl = null; mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); };
     el.addEventListener('click', async e => {
       const x = e.target.closest('[data-x]'); if (!x || C.sending) return;
       const what = x.dataset.x;
+      if (what === 'min' || what === 'zoom') {
+        const on = what === 'min' && !el.classList.contains('min');
+        el.classList.toggle('min', on); if (what === 'zoom') el.classList.toggle('full'); if (C.shade) C.shade.hidden = on;
+        el.querySelector('.min-t').textContent = f('subject').value || 'New message';
+        return;
+      }
       if (what === 'attach') return fileIn.click();
       if (what === 'ai') { C.fields = fields; return mailDraftWith(C, m); }
       if (what === 'snip') {
@@ -11813,6 +11952,9 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     if (seed) { if (seed.to) f('to').value = seed.to; if (seed.cc) { f('cc').value = seed.cc; showRow('cc'); } if (seed.subject) f('subject').value = seed.subject; if (seed.text) C.insert(seed.text); }
     mailUi.composeEl = el;
+    el.addEventListener('click', e => { if (el.classList.contains('min') && !e.target.closest('.lights')) { e.stopPropagation(); el.classList.remove('min'); if (C.shade) C.shade.hidden = false; } }, true);
+    const cshade = document.createElement('div'); cshade.className = 'mail-cshade'; C.shade = cshade;
+    $('mailPanel').appendChild(cshade);
     $('mailPanel').appendChild(el);
     setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
   }
@@ -12325,7 +12467,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!isApp) return toast('This works in the desktop app.');
     if (!mailAi.el) {
       const el = mailAi.el = document.createElement('div'); el.id = 'mailAi';
-      el.innerHTML = '<div class="ai-head"><span class="app-ic mini cos"></span><b></b><span class="sp"></span><button class="tb" data-x="prefs" title="How drafts are written: your notes, snippets and quick changes"><span class="t">Preferences</span></button><button class="tb" data-x="chat" title="Show or hide the chat with Claude itself"><span class="t">Chat</span></button><button class="tb" data-x="close" title="Close">✕</button></div><div class="ai-tabs"></div><div class="ai-cards"></div><div class="ai-ask"></div><div class="ai-views"></div><div class="ai-rs" title="Drag to resize"></div>';
+      el.innerHTML = '<div class="ai-head"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close">\u00d7</button></span><span class="app-ic mini cos"></span><b></b><span class="sp"></span><button class="tb" data-x="prefs" title="How drafts are written: your notes, snippets and quick changes"><span class="t">Preferences</span></button><button class="tb" data-x="chat" title="Show or hide the chat with Claude itself"><span class="t">Chat</span></button></div><div class="ai-tabs"></div><div class="ai-cards"></div><div class="ai-ask"></div><div class="ai-views"></div><div class="ai-rs" title="Drag to resize"></div>';
       el.querySelector('.app-ic').innerHTML = ($('appPop').querySelector('.app-ic.cos') || {}).innerHTML || '';
       el.addEventListener('click', e => {
         const x = e.target.closest('[data-x]'); if (!x) return;
@@ -12762,6 +12904,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!k) return;
       const item = DOCK.find(x => x[0] === k);
       const tb = (html, title, run, on) => { const bt = document.createElement('button'); bt.className = 'tb' + (on ? ' on' : ''); bt.innerHTML = html; bt.title = title; bt.addEventListener('click', run); head.appendChild(bt); return bt; };
+      head.appendChild(macLights({ close: () => sideCloseApp(k), titles: { close: `Close ${item[1]} (its icon in the dock opens it again)` } }));
       if (upper && hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.3"/></svg>',
         sideState.nav ? `Hide ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}` : `Show ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}`, () => { sideState.nav = !sideState.nav; sideSave(); sideMount(); sideStart(true); }, sideState.nav);
       head.insertAdjacentHTML('beforeend', `${dockIcon(item[2])}<b></b><span class="sp"></span>`);
@@ -12774,7 +12917,6 @@ body { width: max-content !important; min-width: 0 !important; }
       if (OWN_WINDOW.includes(k === 'folders' ? 'navigator' : k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k === 'folders' ? 'navigator' : k));
       if (k !== 'chats') tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
-      tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideCloseApp(k));
     };
     paint($('spHead'), a, true); paint($('spHead2'), b, false);
     try { renderSplit(); } catch (e) { /* starting up */ }
