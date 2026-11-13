@@ -8328,10 +8328,12 @@
     const chiefLines = n.chief ? [
       `You lead the ${p ? p.name + ' ' : ''}team: ${(cosTeam() || { nodes: [] }).nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') || 'no staff yet'}.`,
       'Use my Granola meeting notes and transcripts (my NCTI and Monkey Baa meetings) for what is current and how I am thinking. Say which meeting something came from.',
-      'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, suggest where finished work belongs in the company folders, and say when two staff members are working on the same thing.',
+      'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, and say when two staff members are working on the same thing.',
+      'The company folders hold outputs, not workings: artifacts, documents, PDFs and final files. Chats are the working and stay with the staff member who did it. When work is finished, check it has a final output, suggest which company folder that output belongs in, and point out finished work that has no output yet.',
       ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
     ] : [];
-    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
+    const outputLine = n.chief ? '' : 'When a piece of work is finished, give me the final version as its own output: an artifact, a document, a PDF or a file, with a clear title that says what it is. Outputs are what get filed in the company folders. This chat is the working and stays with you, so do not leave the final version only in the middle of a chat.';
+    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, outputLine, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
     navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {});
@@ -14603,18 +14605,54 @@ body { width: max-content !important; min-width: 0 !important; }
           ] });
       }
     }
-    // 2. Finished work not in the company folders yet (with where it probably belongs).
+    // 2. Finished work whose OUTPUT is not in the company folders yet. The company folders hold what the work
+    //    produced (artifacts, documents, PDFs, final files); the chat is the working and stays with the staff member.
+    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
+    const outputsOf = x => {
+      if (!/\/chat\//.test(x.url || '')) return [{ name: x.name, url: x.url, node: x }];          // the item is itself an output
+      return ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
+    };
+    const fileOutput = (o, folderId, st) => {
+      if (o.node) return fileIntoCompany([o.node.id], folderId);
+      if (!isCompanyFolder(folderId)) return toast('Choose one of the company folders (outside Team).');
+      if (companyHomes(o.url, p).some(f2 => f2.id === folderId)) return toast('It is already filed there.');
+      snap(); insertInto(folderId, Object.assign(Link(o.name, o.url), { filedBy: st.name, filedById: st.id, filedAt: Date.now() }));
+      try { botLearnFiling([o.name], folderId); } catch (e) { /* not ready */ }
+      if (!usualPlace(st)) { st.fileTo = folderId; saveCos(); }
+      commit(); toast(`Filed “${o.name}” in ${nodeOf(folderId).name}. The chat stays with ${st.name}.`, true);
+    };
     for (const s of t.nodes.filter(x => x.kind === 'staff')) {
       const f = s.folderId && nodeOf(s.folderId);
       if (!f) continue;
-      const done = workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && !companyHomes(x.url, p).length).slice(0, 3);
+      const done = workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id)).slice(0, 12);
+      let shown = 0;
       for (const x of done) {
-        const usual = usualPlace(s), best = usual || botBestFolder(x, p);
-        out.push({ type: 'file', name: x.name, folderId: best ? best.id : null, key: 'file:' + x.id, kind: 'File it', text: `\u201c${x.name}\u201d is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' \u203a ' : ''}${best.name}` : ''}.`,
-          actions: [
-            best && { label: `File in ${best.name}`, go: true, run: () => { fileIntoCompany([x.id], best.id); cosBotSoon(); } },
-            { label: best ? 'Elsewhere\u2026' : 'File\u2026', go: !best, run: () => fileToPicker([x.id]) },
-          ].filter(Boolean) });
+        if (shown >= 3) break;
+        const outs = outputsOf(x), loose = outs.filter(o => o.url && !companyHomes(o.url, p).length);
+        const usual = usualPlace(s);
+        for (const o of loose.slice(0, 2)) {
+          const best = usual || botBestFolder({ name: o.name }, p);
+          shown++;
+          out.push({ type: 'file', name: o.name, folderId: best ? best.id : null, key: 'out:' + normUrl(o.url), kind: 'File the output',
+            text: o.node ? `“${o.name}” is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' › ' : ''}${best.name}` : ''}.`
+              : `“${o.name}” came out of “${x.name}” (${s.name}) and is not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' › ' : ''}${best.name}` : ''}.`,
+            actions: [
+              best && { label: `File in ${best.name}`, go: true, run: () => { fileOutput(o, best.id, s); cosBotSoon(); } },
+              { label: best ? 'Elsewhere…' : 'File…', go: !best, run: () => openDialog({ title: `File “${o.name}” in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileOutput(o, folderId, s); cosBotSoon(); } }) },
+              { label: 'Open', run: () => go({ kind: 'page', url: o.url }) },
+            ].filter(Boolean) });
+        }
+        // A finished chat with nothing to show for it: the output is what is wanted, not the chat.
+        if (!outs.length && !companyHomes(x.url, p).length) {
+          shown++;
+          const ask = 'Please give me the final version of this work as its own output (an artifact or a document, with a clear title) so it can be filed in the company folders.';
+          out.push({ type: 'file', name: x.name, folderId: null, key: 'noout:' + x.id, kind: 'No output yet',
+            text: `“${x.name}” is done (${s.name}) but has no finished output to file. The company folders keep outputs; the chat stays with ${s.name}.`,
+            actions: [
+              { label: 'Ask for the Final Version', go: true, run: () => { navigator.clipboard.writeText(ask).catch(() => {}); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); } },
+              { label: 'File the Chat Instead…', run: () => fileToPicker([x.id]) },
+            ] });
+        }
       }
     }
     // 3. Two staff members working on the same thing.
