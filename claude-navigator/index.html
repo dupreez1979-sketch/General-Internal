@@ -872,6 +872,7 @@
   .cal-gut { position: relative; }
   .cal-gut span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); background: var(--win); padding: 0 2px; }
   .cal-col { position: relative; border-left: 1px solid var(--line); }
+  .cal-col.wkend, .cal-dh.wkend, .cal-md.wkend, .cal-adc.wkend { background: color-mix(in srgb, var(--text) 4.5%, transparent); }
   .cal-col.today { background: color-mix(in srgb, var(--accent) 4%, transparent); }
   .cal-ev.tm.can { cursor: grab; }
   .cal-ev.tm.can::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 7px; cursor: ns-resize; }
@@ -9976,13 +9977,13 @@ body { width: max-content !important; min-width: 0 !important; }
     const today = calDayStart(new Date()).getTime();
     const hd = document.createElement('div'); hd.className = 'cal-wk-head';
     hd.appendChild(document.createElement('span'));
-    for (const d of days) { const c = document.createElement('div'); c.className = 'cal-dh' + (d.getTime() === today ? ' today' : ''); c.innerHTML = `<span>${d.toLocaleDateString('en-AU', { weekday: 'short' })}</span><b>${d.getDate()}</b>`; c.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calRender(); }); c.title = 'Show this day'; hd.appendChild(c); }
+    for (const d of days) { const c = document.createElement('div'); c.className = 'cal-dh' + (d.getTime() === today ? ' today' : '') + (d.getDay() % 6 === 0 ? ' wkend' : ''); c.innerHTML = `<span>${d.toLocaleDateString('en-AU', { weekday: 'short' })}</span><b>${d.getDate()}</b>`; c.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calRender(); }); c.title = 'Show this day'; hd.appendChild(c); }
     wrap.appendChild(hd);
     // All-day meetings (and ones that run over midnight for a day or more) along the top.
     const ad = document.createElement('div'); ad.className = 'cal-allday';
     ad.appendChild(Object.assign(document.createElement('span'), { className: 'cal-adl', textContent: 'All day' }));
     days.forEach(d => {
-      const cell = document.createElement('div'); cell.className = 'cal-adc';
+      const cell = document.createElement('div'); cell.className = 'cal-adc' + (d.getDay() % 6 === 0 ? ' wkend' : '');
       const s = d.getTime(), e = calAddDays(d, 1).getTime();
       for (const i of list) if ((i.allDay || i.end - i.start >= 86400e3) && i.start < e && i.end > s) { const c = calChip(i, 'ad'); c.textContent = i.ev.title || '(No title)'; cell.appendChild(c); }
       ad.appendChild(cell);
@@ -9994,7 +9995,7 @@ body { width: max-content !important; min-width: 0 !important; }
     for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => ' ' + x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
     grid.appendChild(gut);
     for (const d of days) {
-      const col = document.createElement('div'); col.className = 'cal-col' + (d.getTime() === today ? ' today' : '');
+      const col = document.createElement('div'); col.className = 'cal-col' + (d.getTime() === today ? ' today' : '') + (d.getDay() % 6 === 0 ? ' wkend' : '');
       const s = d.getTime(), e = calAddDays(d, 1).getTime();
       const evs = list.filter(i => !i.allDay && i.end - i.start < 86400e3 && i.start < e && i.end > s)
         .map(i => ({ i, a: Math.max(i.start, s), b: Math.min(i.end, e) }));
@@ -10041,7 +10042,11 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     sc.appendChild(grid);
     wrap.appendChild(sc);
-    if (!calUi.scrolled) { calUi.scrolled = true; setTimeout(() => { sc.scrollTop = 7 * H; }, 0); }
+    // The working day (9 to 5) is what shows: in the middle of the view, and never starting later than half past eight.
+    // Where you scroll to is kept, so the calendar does not jump back when it is drawn again.
+    const keep = calUi.scrolled && calUi.scrollTop != null ? calUi.scrollTop : null;
+    calUi.scrolled = true;
+    setTimeout(() => { sc.scrollTop = keep != null ? keep : Math.max(0, Math.min(8.5 * H, 13 * H - sc.clientHeight / 2)); calUi.scrollTop = sc.scrollTop; sc.addEventListener('scroll', () => { calUi.scrollTop = sc.scrollTop; }); }, 0);
     return wrap;
   }
   // Drag a meeting of yours to another time or day; drag its bottom edge to make it longer or shorter (quarter hours).
@@ -10139,7 +10144,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const today = calDayStart(new Date()).getTime(), mo = calUi.date.getMonth();
     for (let k = 0; k < 42; k++) {
       const d = calAddDays(from, k), s = d.getTime(), e = calAddDays(d, 1).getTime();
-      const cell = document.createElement('div'); cell.className = 'cal-md' + (d.getMonth() !== mo ? ' other' : '') + (s === today ? ' today' : '');
+      const cell = document.createElement('div'); cell.className = 'cal-md' + (d.getMonth() !== mo ? ' other' : '') + (s === today ? ' today' : '') + (d.getDay() % 6 === 0 ? ' wkend' : '');
       const num = document.createElement('span'); num.className = 'n'; num.textContent = d.getDate(); num.title = 'Show this day';
       num.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calUi.scrolled = false; calRender(); });
       cell.appendChild(num);
