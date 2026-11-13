@@ -19,6 +19,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   acctAttachmentSave: (id, msgId, attId, name, box, where) => ipcRenderer.invoke('acct-attachment-save', id, msgId, attId, name, box, where),
   testAiUrl: () => ipcRenderer.invoke('test-ai-url'),
   dictationStart: () => ipcRenderer.invoke('dictation-start'),
+  pageLayout: id => ipcRenderer.invoke('page-layout', id),
   inviteKitGet: (pid) => ipcRenderer.invoke('invite-kit-get', pid),
   inviteKitSet: (pid, text) => ipcRenderer.invoke('invite-kit-set', pid, text),
   mailIndexTexts: (keys) => ipcRenderer.invoke('mailindex-texts', keys),

@@ -1665,7 +1665,10 @@
   html.profiled .cos-head, html.profiled #main > #mailPanel > .cal-head, html.profiled #main > #calPanel > .cal-head, html.profiled body.notes-mode #main > #notesPanel > .fhead { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
   /* One top bar for every app: the same height, the same tint, the title in the same place and size. */
   body.notes-mode #main > #notesPanel > .fhead { height: 52px; padding: 0 12px 0 16px; }
-  body.notes-mode #main > #notesPanel > .fhead .fname { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); }
+  /* Notes as an app: one bar with the note's name. The list of notes is the sidebar, so the row of tabs goes. */
+  body.notes-mode #main > #notesPanel > .fhead .fname { display: none; }
+  body.notes-mode #main > #notesPanel > .fhead .ftitle { font-size: 15px; font-weight: 700; }
+  body.notes-mode #main > #notesPanel > .ntabs { display: none; }
   #main > #mailPanel > .cal-head, #main > #calPanel > .cal-head, .cos-head { padding-left: 16px; }
   #bar #bMore { order: 99990; }
   html.profiled #main::before, html.profiled #side::before { content: ""; position: absolute; top: 0; height: 3px; background: var(--tint); z-index: 6; }
@@ -10040,6 +10043,14 @@ body { width: max-content !important; min-width: 0 !important; }
       b.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#E0A800" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5" stroke="#E0A800" stroke-width="1.3" stroke-linecap="round"/></svg><span></span>';
       b.querySelector('span').textContent = n.name;
       b.addEventListener('click', () => { notesState.cur = n.id; notesSave(); notesRender(); });
+      b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [
+        { label: 'Rename or Change Link\u2026', run: () => notesAdd(n) },
+        { label: 'Open in Web Browser', run: () => openExternal(n.url) },
+        { label: 'Copy the Page Layout (to Help Tidy This View)', run: async () => { const v = notesViews.get(n.id); let t = ''; try { t = v ? await window.navigatorApp.pageLayout(v.getWebContentsId()) : ''; } catch (er) { /* older app */ }
+          if (!t) return toast('Open the note first, then try again.'); navigator.clipboard.writeText(t).catch(() => {}); toast('Copied. It lists the page\u2019s parts and sizes only, none of your words. Paste it to Claude.'); } },
+        '-',
+        { label: 'Remove from Here', run: () => { notesState.list = notesState.list.filter(x => x !== n); const v = notesViews.get(n.id); if (v) v.remove(); notesViews.delete(n.id); notesSave(); notesRender(); toast(`Removed \u201c${n.name}\u201d from here. The note itself is untouched.`, true); } },
+      ]); });
       sd.appendChild(b);
     }
     const a = document.createElement('button'); a.className = 'add'; a.innerHTML = `${UI.plus}<span>Add a Note\u2026</span>`; a.addEventListener('click', () => notesAdd()); sd.appendChild(a);

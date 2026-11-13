@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen, webFrameMain,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -265,6 +265,22 @@ app.on('web-contents-created', (_event, contents) => {
       if (navigator.credentials) { navigator.credentials.get = no; navigator.credentials.create = no; }
       if (window.PublicKeyCredential) { window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable = () => Promise.resolve(false); window.PublicKeyCredential.isConditionalMediationAvailable = () => Promise.resolve(false); }
     } catch (e) {} })()`).catch(() => {});
+  });
+
+  // A shared Apple note asks you to accept its invitation each time it opens: when the page says it is an
+  // invitation and offers a plain Accept (or Join, Open) button, press it for you. Only on icloud.com pages.
+  contents.on('did-frame-finish-load', (_e, _isMain, pid, rid) => {
+    try {
+      if (!/^https:\/\/(www\.)?icloud\.com\/(notes|applications\/notes)/i.test(contents.getURL())) return;
+      const fr = webFrameMain.fromId(pid, rid);
+      if (!fr || !/^https:\/\/([a-z0-9-]+\.)*icloud\.com\//i.test(fr.url)) return;
+      fr.executeJavaScript(`(() => { if (window.__navAccept) return; window.__navAccept = 1; let n = 0;
+        const t = setInterval(() => { if (++n > 60) return clearInterval(t);
+          const words = document.body ? (document.body.innerText || '').slice(0, 5000) : '';
+          if (!/invit/i.test(words)) return;
+          const b = [...document.querySelectorAll('button, [role="button"], a')].find(x => /^(accept|join|open|open note|view note)$/i.test((x.innerText || '').trim()) && x.offsetParent);
+          if (b) { clearInterval(t); b.click(); } }, 500); })()`).catch(() => {});
+    } catch (e) { /* the frame has gone */ }
   });
 
   // Pop-ups from Claude (sign-in, connector authorisation, "open in new tab")
@@ -1417,6 +1433,22 @@ ipcMain.handle('fs-new-docx', async (_e, destRel, name, paras) => {
 });
 // (Tests point the drafting panel at a stand-in page instead of Claude. Never in the app you install.)
 // The Mac's own dictation, started for whatever box has the cursor (the same as Edit > Start Dictation).
+// The shape of an embedded page (tags, ids and class names only, never its words), so its extra bars can be
+// hidden by name. Asked for by hand from the Notes menu.
+ipcMain.handle('page-layout', async (e, id) => {
+  if (!fromOwnWindow(e)) return '';
+  const wc = webContents.fromId(Number(id));
+  if (!wc || wc.hostWebContents !== e.sender) return '';
+  const dump = `(() => { const out = []; const walk = (el, d) => { if (out.length > 350 || d > 10) return; const r = el.getBoundingClientRect(); if (r.width < 80 || r.height < 20) return;
+    const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).slice(0, 4).join('.') : '';
+    out.push(' '.repeat(d) + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : '') + (el.getAttribute('role') ? '[' + el.getAttribute('role') + ']' : '') + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top));
+    for (const c of el.children) walk(c, d + 1); }; if (document.body) walk(document.body, 0); return out.join('\\n'); })()`;
+  const parts = [];
+  for (const fr of wc.mainFrame.framesInSubtree) {
+    try { let host = ''; try { host = new URL(fr.url).hostname; } catch (e2) { /* about:blank */ } parts.push('FRAME ' + host + '\n' + await fr.executeJavaScript(dump)); } catch (e2) { /* a frame that will not answer */ }
+  }
+  return parts.join('\n\n').slice(0, 60000);
+});
 ipcMain.handle('dictation-start', () => { if (!isMac) return false; try { Menu.sendActionToFirstResponder('startDictation:'); return true; } catch (e) { return false; } });
 // A profile's invite design (logo, shapes, fonts, colours) is a file kept on this Mac only, never in the app itself.
 const inviteKitFile = pid => path.join(app.getPath('userData'), 'invite-kits', String(pid).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80) + '.json');
