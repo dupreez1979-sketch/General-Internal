@@ -611,6 +611,10 @@
   .lights button.lt { width: 12px; height: 12px; min-width: 0; box-sizing: border-box; border-radius: 50%; border: .5px solid rgba(0,0,0,.2); padding: 0; margin: 0; font: 700 9px/11px -apple-system, Helvetica, Arial, sans-serif; color: transparent; text-align: center; cursor: default; }
   .lights button.lt.r { background: #FF5F57; } .lights button.lt.y { background: #FEBC2E; } .lights button.lt.g { background: #28C840; }
   .lights:hover button.lt { color: rgba(0,0,0,.6); }
+  .lights button.lt.off, .lights:hover button.lt.off { background: color-mix(in srgb, var(--text) 16%, transparent); border-color: transparent; color: transparent; pointer-events: none; }
+  dialog > .dlg-lights { position: absolute; top: 12px; left: 14px; margin: 0; z-index: 5; }
+  dialog.has-lights { padding-top: 38px !important; }
+  dialog.has-lights.full { width: 96vw !important; height: 94vh !important; max-width: none !important; max-height: none !important; left: 2vw !important; top: 3vh !important; margin: 0 !important; }
   .min-t { display: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; font-weight: 600; }
   .mail-read.pop.full, .mail-compose.full { top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 0; }
   .mail-read.pop.min, .mail-compose.min { top: auto !important; bottom: 0 !important; width: min(340px, 80%); height: 38px; border-radius: 10px 10px 0 0; cursor: pointer; }
@@ -10498,7 +10502,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const e = inst.ev, pop = document.createElement('div');
     pop.className = 'cal-pop';
     pop.style.setProperty('--ev', calColour(inst));
-    pop.innerHTML = '<div class="bar"></div><div class="hd"><span class="lights"><button class="x lt r" title="Close">\u00d7</button></span><b></b></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
+    pop.innerHTML = '<div class="bar"></div><div class="hd"><span class="lights"><button class="x lt r" title="Close">\u00d7</button><button type="button" class="lt y off" disabled tabindex="-1"></button><button type="button" class="lt g off" disabled tabindex="-1"></button></span><b></b></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
     pop.querySelector('b').textContent = e.title || '(No title)';
     pop.querySelector('.x').addEventListener('click', calClosePop);
     const day = new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -11507,10 +11511,35 @@ body { width: max-content !important; min-width: 0 !important; }
     const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); };
     addEventListener('mousemove', mv); addEventListener('mouseup', up);
   });
+  // Every dialog gets the same dots as the other pop-ups: red closes it (as its Cancel button would), green makes it full size.
+  (() => {
+    const show = HTMLDialogElement.prototype.showModal;
+    HTMLDialogElement.prototype.showModal = function () {
+      try {
+        if (!this.querySelector(':scope > .dlg-lights')) {
+          const d = this;
+          const close = () => {
+            const btn = [...d.querySelectorAll('button')].find(b => /^(cancel|close|not now|done)$/i.test((b.textContent || '').trim()) && !b.disabled);
+            if (btn) return btn.click();
+            if (d.dispatchEvent(new Event('cancel', { cancelable: true }))) d.close();
+          };
+          // (kept in a closed-off corner of the page, so no dialog's own code mistakes the dots for its buttons)
+          const host = document.createElement('span'); host.className = 'dlg-lights';
+          const sh = host.attachShadow({ mode: 'open' });
+          sh.innerHTML = '<style>:host{display:inline-flex;gap:8px;align-items:center}button{width:12px;height:12px;box-sizing:border-box;border-radius:50%;border:.5px solid rgba(0,0,0,.2);padding:0;margin:0;font:700 9px/11px -apple-system,Helvetica,Arial,sans-serif;color:transparent;text-align:center;cursor:default}.r{background:#FF5F57}.g{background:#28C840}.off{background:rgba(128,128,128,.3);border-color:transparent;pointer-events:none}:host(:hover) button:not(.off){color:rgba(0,0,0,.6)}</style><button class="r" title="Close">\u00d7</button><button class="off" disabled tabindex="-1"></button><button class="g" title="Full size">+</button>';
+          sh.querySelector('.r').addEventListener('click', e => { e.stopPropagation(); close(); });
+          sh.querySelector('.g').addEventListener('click', e => { e.stopPropagation(); d.classList.toggle('full'); });
+          for (const b of sh.querySelectorAll('button')) b.tabIndex = -1;
+          d.classList.add('has-lights'); d.appendChild(host);
+        }
+      } catch (e) { /* the dialog still opens */ }
+      return show.apply(this, arguments);
+    };
+  })();
   function macLights(o) {
     const w = document.createElement('span'); w.className = 'lights';
     for (const [c, g, k, t] of [['r', '\u00d7', 'close', 'Close'], ['y', '\u2212', 'min', 'Minimise'], ['g', '+', 'zoom', 'Full size']]) {
-      if (!o[k]) continue;
+      if (!o[k]) { const off = document.createElement('button'); off.type = 'button'; off.className = 'lt ' + c + ' off'; off.disabled = true; off.tabIndex = -1; w.appendChild(off); continue; }
       const b = document.createElement('button'); b.type = 'button'; b.className = 'lt ' + c; b.textContent = g; b.title = (o.titles && o.titles[k]) || t;
       b.addEventListener('click', e => { e.stopPropagation(); o[k](e); }); w.appendChild(b);
     }
@@ -13676,7 +13705,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!isApp) return toast('This works in the desktop app.');
     if (!mailAi.el) {
       const el = mailAi.el = document.createElement('div'); el.id = 'mailAi';
-      el.innerHTML = '<div class="ai-head"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close">\u00d7</button></span><span class="app-ic mini cos"></span><b></b><span class="sp"></span><button class="tb" data-x="prefs" title="How drafts are written: your notes, snippets and quick changes"><span class="t">Preferences</span></button><button class="tb" data-x="chat" title="Show or hide the chat with Claude itself"><span class="t">Chat</span></button></div><div class="ai-tabs"></div><div class="ai-cards"></div><div class="ai-ask"></div><div class="ai-views"></div><div class="ai-rs" title="Drag to resize"></div>';
+      el.innerHTML = '<div class="ai-head"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close">\u00d7</button><button type="button" class="lt y off" disabled tabindex="-1"></button><button type="button" class="lt g off" disabled tabindex="-1"></button></span><span class="app-ic mini cos"></span><b></b><span class="sp"></span><button class="tb" data-x="prefs" title="How drafts are written: your notes, snippets and quick changes"><span class="t">Preferences</span></button><button class="tb" data-x="chat" title="Show or hide the chat with Claude itself"><span class="t">Chat</span></button></div><div class="ai-tabs"></div><div class="ai-cards"></div><div class="ai-ask"></div><div class="ai-views"></div><div class="ai-rs" title="Drag to resize"></div>';
       el.querySelector('.app-ic').innerHTML = ($('appPop').querySelector('.app-ic.cos') || {}).innerHTML || '';
       el.addEventListener('click', e => {
         const x = e.target.closest('[data-x]'); if (!x) return;
