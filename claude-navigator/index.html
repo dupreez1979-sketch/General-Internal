@@ -523,7 +523,9 @@
   body.mail-mode #mailSide { display: block; }
   .mailnav .mail-acc { display: flex; align-items: center; gap: 6px; padding: 10px 8px 6px 6px; cursor: default; border-radius: 8px; }
   .mailnav .mail-acc:hover { background: var(--hover); }
-  .mailnav .mail-acc .tw { width: 12px; font-size: 9px; color: var(--muted); flex: none; }
+  .mailnav .mail-acc .tw { width: 16px; height: 16px; display: grid; place-items: center; color: var(--text); opacity: .7; flex: none; border-radius: 4px; }
+  .mailnav .tw:not(:empty):hover { background: color-mix(in srgb, var(--text) 10%, transparent); opacity: 1; }
+  .mailnav .tw.open svg { transform: rotate(90deg); }
   .mailnav .mail-acc > div { flex: 1; min-width: 0; display: grid; }
   .mailnav .mail-acc b { font-size: 13.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mailnav .mail-acc .em { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -533,7 +535,7 @@
   .mailnav .mail-f:hover { background: var(--hover); }
   .mailnav .mail-f.on { background: var(--sel); }
   .mailnav .mail-f.unread .nm { font-weight: 650; }
-  .mailnav .mail-f .tw { width: 10px; font-size: 9px; color: var(--muted); flex: none; }
+  .mailnav .mail-f .tw { width: 16px; height: 16px; display: grid; place-items: center; color: var(--text); opacity: .7; flex: none; border-radius: 4px; margin-left: -4px; }
   .mailnav .mail-f svg { flex: none; color: var(--muted); }
   .mailnav .mail-f .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mailnav .mail-f .n { font-size: 11.5px; color: var(--accent); font-weight: 650; }
@@ -12044,6 +12046,7 @@ body { width: max-content !important; min-width: 0 !important; }
     archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
   const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // The sidebar, as in Outlook: New Email at the top, then each account (name over address) with its folders.
+  const MAIL_TW = '<svg width="12" height="12" viewBox="0 0 16 16"><path d="M5.5 2.8L10.8 8l-5.3 5.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function mailSideRender() {
     const sd = currentApp === 'mail' ? $('mailSide') : sideApp() === 'mail' ? $('spNav') : null;
     if (!sd) return;
@@ -12071,7 +12074,7 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const a of vis) {
       const shut = !!mailState.shut[a.id];
       const h = document.createElement('div'); h.className = 'mail-acc' + (a.needsSignIn ? ' warn' : '') + (a.shared ? ' shared' : '');
-      h.innerHTML = `<span class="tw">${shut ? '▸' : '▾'}</span><div><b></b><span class="em"></span></div>${a.needsSignIn ? '<i title="Sign in again">!</i>' : ''}`;
+      h.innerHTML = `<span class="tw${shut ? '' : ' open'}">${MAIL_TW}</span><div><b></b><span class="em"></span></div>${a.needsSignIn ? '<i title="Sign in again">!</i>' : ''}`;
       h.querySelector('b').textContent = a.name || a.email;
       h.querySelector('.em').textContent = a.needsSignIn ? 'Click to sign in again' : a.shared ? `Shared · ${a.email}` : a.email;
       h.title = `${a.name}${a.name ? ' · ' : ''}${a.email}\nClick to hide or show its folders. Right-click: ${a.shared ? 'signature, remove' : 'profiles, signature, rules, automatic replies, shared mailboxes, sign in again, remove'}.`;
@@ -12095,7 +12098,7 @@ body { width: max-content !important; min-width: 0 !important; }
         b.className = 'mail-f' + (on ? ' on' : '') + (f.unreadItemCount ? ' unread' : '');
         b.style.paddingLeft = (10 + depth * 16) + 'px';
         const open = !!mailState.open[f.id];
-        b.innerHTML = `<span class="tw">${f.childFolderCount ? (open ? '▾' : '▸') : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
+        b.innerHTML = `<span class="tw${f.childFolderCount && open ? ' open' : ''}">${f.childFolderCount ? MAIL_TW : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
         b.querySelector('.nm').textContent = f.displayName;
         const count = f.wk === 'drafts' ? f.totalItemCount : f.unreadItemCount;
         b.querySelector('.n').textContent = count || '';
