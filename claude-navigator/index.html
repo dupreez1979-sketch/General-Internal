@@ -401,12 +401,12 @@
   #dock { display: none; }
   body.has-dock #dock { position: fixed; top: 0; bottom: 0; left: 0; width: var(--dock-w); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 58px;
     background: var(--side); border-right: 1px solid color-mix(in srgb, var(--text) 8%, transparent); -webkit-app-region: no-drag; }
-  .mac-app body.has-dock #dock { background: color-mix(in srgb, var(--side) 50%, transparent); padding-top: 52px; }
+  .mac-app body.has-dock #dock { background: color-mix(in srgb, var(--side) 50%, transparent); padding-top: 58px; }
   html.profiled.mac-app body.has-dock #dock { background: color-mix(in srgb, var(--tint) var(--tint-side), color-mix(in srgb, var(--side) 50%, transparent)); }
   html body.has-dock.side-off #side { left: var(--dock-w); transform: translateX(calc(-101% - var(--dock-w))); }
   html body.has-dock.side-off.side-peek #side { transform: none; }
-  .mac-app body.has-dock #topLeft { left: calc(var(--dock-w) + 38px); }
-  body.has-dock:not(.mac-app) #topLeft, html:not(.mac-app) body.has-dock #topLeft { left: calc(var(--dock-w) + 10px); }
+  .mac-app body.has-dock #topLeft { left: calc(var(--dock-w) + 44px); }
+  html:not(.mac-app) body.has-dock #topLeft { left: calc(var(--dock-w) + 10px); }
   .dock-b { position: relative; background: none; border: 0; padding: 3px; border-radius: 10px; display: grid; place-items: center; opacity: .78; }
   .dock-b:hover { opacity: 1; background: var(--hover); }
   .dock-b.on { opacity: 1; background: var(--sel); }
@@ -436,6 +436,9 @@
   .mac-app body.solo-item .mail-popbar > *, .mac-app body.solo-item .mc-bar > *, .mac-app body.solo-item .cv-bar > * { -webkit-app-region: no-drag; }
   body.pop-moving webview, body.pop-moving iframe { pointer-events: none; }
   dialog[open] > h2 { cursor: grab; }
+  dialog[open] { resize: both; overflow: auto; min-width: 320px; min-height: 140px; max-width: 98vw !important; max-height: 96vh !important; }
+  .mail-read.pop:not(.min):not(.full), .mail-compose:not(.min):not(.full), .cal-view:not(.full), .cal-help { resize: both; min-width: 380px; min-height: 240px; max-width: 100vw; max-height: 100vh; }
+  .cal-help { overflow: auto; }
   #topLeft { position: fixed; top: 0; left: 10px; height: 52px; z-index: 62; display: flex; align-items: center; gap: 6px; -webkit-app-region: no-drag; }
   .mac-app #topLeft { left: 80px; }
   #topLeft #sideToggle { color: var(--muted); padding: 4px 5px; }
@@ -739,6 +742,14 @@
   #mailAi .ai-views webview { flex: 1; min-width: 0; }
   .mail-acts .tb.mail-sendto { margin: 0 6px; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 13px 0 10px; font-weight: 600; }
   .mail-acts .tb.mail-sendto:hover { filter: brightness(1.08); }
+  #bar #bSendTo { margin: 0 6px; background: var(--accent); color: #fff; border-radius: 999px; padding: 0 13px 0 10px; font-weight: 600; }
+  #bar #bSendTo:hover { filter: brightness(1.08); }
+  #bar #bSendTo .t { display: inline; }
+  #bMore { display: none; }
+  body.cos-mode #bar #bMore { display: inline-flex; }
+  body.cos-mode #bar #bReload, body.cos-mode #bar #bExternal, body.cos-mode #bar #bNewChat { display: none !important; }
+  body.cos-mode.tb-page #bar .search { display: none !important; }
+  .cos-who .who-btns .setup-btn { padding: 4px 10px; border: 1px solid var(--line); border-radius: 8px; }
   .mail-acts .tb.mail-sendto:disabled { background: color-mix(in srgb, var(--accent) 35%, transparent); opacity: 1; }
   .mail-popbar .tb.mail-sendto { order: 99; margin: 0 0 0 auto; }
   #sidePanel .mail-acts .tb.mail-sendto .t { display: inline; }
@@ -747,7 +758,7 @@
   .mail-compose .mc-ed blockquote { margin: 6px 0 6px 6px; padding-left: 10px; border-left: 3px solid #ccc; color: #555; }
   .mail-att .att-x { border: 0; background: none; margin-left: 5px; padding: 0 2px; font: inherit; color: var(--muted); cursor: pointer; }
   .mail-att .att-x:hover { color: #99351E; }
-  #mailAi.quiet { left: -9999px !important; right: auto !important; width: 640px !important; }
+  #mailAi.quiet { opacity: 0 !important; pointer-events: none !important; z-index: -1 !important; width: 640px !important; }
   .mail-compose .mc-draft { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 7px; padding: 7px 14px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 6%, var(--win)); font-size: 12.5px; }
   .mail-compose .mc-draft[hidden] { display: none; }
   .mc-draft .spin { width: 12px; height: 12px; box-sizing: border-box; border: 2px solid color-mix(in srgb, var(--accent) 28%, transparent); border-top-color: var(--accent); border-radius: 50%; animation: mcspin .8s linear infinite; }
@@ -1039,6 +1050,7 @@
   dialog.cal-evdlg .fr .btn { flex: none; font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
   dialog.cal-evdlg .hint:empty { display: none; }
+  dialog.cal-evdlg .tzrow select { max-width: 230px; } dialog.cal-evdlg .tzrow[hidden] { display: none; } dialog.cal-evdlg .tz-def { font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .dict-sec { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .dict-b { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
@@ -1734,8 +1746,9 @@
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
-    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: turn what you have worked out in this chat into an email or a meeting, for you to check and send or save yourself"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
+    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: make an email or a meeting from this chat. Claude lays it out, and it opens for you to check. Nothing is sent or saved until you do it."><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
+    <button class="tb" id="bMore" title="More: new chat, reload, open in your web browser"></button>
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
     <div class="search" data-tb="search">
       <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
@@ -4206,6 +4219,7 @@
     $('vList').classList.toggle('on', curView() === 'list');
     $('bReload').hidden = !page;
     $('bExternal').hidden = !page;
+    document.body.classList.toggle('tb-page', !!page);
     $('bFolderRef').hidden = !page;
     $('bSendTo').hidden = !page;
     try { if (sideState.app && claudeBeside()) { sideState.app = null; sideState.app2 = null; sideSave(); setTimeout(sideMount, 0); } } catch (e) { /* starting up */ }      // a chat opened beside the list: it takes the place of the side panel
@@ -6566,6 +6580,14 @@
   $('bSaveMore').addEventListener('click', e => { const b = $('bSave').getBoundingClientRect(); showSaveMenu(b.left, b.bottom + 4); });
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
+  $('bMore').innerHTML = UI.more;
+  $('bMore').addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); const page = !$('bReload').hidden;
+    showMenu(b.left, b.bottom + 4, [
+      { label: 'New Chat', run: newChat },
+      page && '-',
+      page && { label: 'Reload This Page', run: () => viewDo(v => v.reload()) },
+      page && { label: 'Open in Your Web Browser', run: () => openExternal(state.pageUrl) },
+    ].filter(Boolean)); });
   $('bNewMenu').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
     showNewMenu(b.left, b.bottom + 4);
@@ -8618,16 +8640,9 @@
     const mk = (html, title, run, primary) => { const b = document.createElement('button'); b.className = primary ? 'btn-primary' : 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); bx.appendChild(b); return b; };
     {
       mk('Ask', n.chief ? 'A new chat with where the whole team is up to, ready to paste' : `A new chat${n.claudeProject ? ` in ${n.name}’s Claude Project` : ''}, with where ${n.name} is up to ready to paste`, () => cosAsk(n), true);
-      if (n.claudeProject) {                             // (no project yet: the card below sets it up)
-        const pb = mk(`${colourIcon('project')}<span class="t">Claude Project</span>`, `${n.claudeProject.name}: new chats for ${n.name} start here. Click to open it.`, () => cosOpenLink(n.claudeProject));
-        pb.classList.add('on');
-      }
-      if (!n.whiteboard) mk(`${colourIcon('whiteboard')}<span class="t">Add Whiteboard</span>`, `Give ${n.name} a whiteboard to brainstorm on with Claude. It gets its own tab here.`,
-        e => { const b = e.currentTarget.getBoundingClientRect(); cosBoardMenu(b.left, b.bottom + 4, n); });
-      if (!n.dashboard) mk(`${colourIcon('dashboard')}<span class="t">Add Dashboard</span>`, `Give ${n.name} a dashboard: make one with Claude, or use one you already have. It gets its own tab here.`,
-        e => { const b = e.currentTarget.getBoundingClientRect(); cosDashMenu(b.left, b.bottom + 4, n); });
-      const more = mk(UI.more, `More for ${n.name}: their Claude Project, Clara, dashboard`, e => { const b = e.currentTarget.getBoundingClientRect(); cosProjectMenu(b.right - 260, b.bottom + 4, n); });
-      more.classList.add('more');
+      // Everything about how this staff member is set up lives in one menu: their Claude Project, Clara, dashboard, whiteboard.
+      const more = mk(`<span class="t">Set Up</span><span class="pchev">\u25BE</span>`, `Set up ${n.name}: their Claude Project, Clara, a dashboard, a whiteboard`, e => { const b = e.currentTarget.getBoundingClientRect(); cosProjectMenu(b.right - 260, b.bottom + 4, n); });
+      more.classList.add('setup-btn');
     }
     let setup = null;
     if (cosUi.setupFor !== n.id && (!n.claudeProject || !n.instructionsAt)) {
@@ -9435,7 +9450,13 @@
       const box = document.querySelector('[contenteditable="true"].ProseMirror, div[contenteditable="true"], textarea');
       if (box) {
         box.focus();
-        if (!(box.innerText || box.value || '').trim()) document.execCommand('insertText', false, ${JSON.stringify(text)});
+        const has = () => (box.innerText || box.value || '').trim();
+        const words = ${JSON.stringify(text)};
+        if (!has()) document.execCommand('insertText', false, words);
+        // A chat that is out of sight may not take typed words: hand them over as a paste instead.
+        if (!has()) { try { const dt = new DataTransfer(); dt.setData('text/plain', words); box.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })); } catch (e) { /* older page */ } await sleep(200); }
+        if (!has() && 'value' in box) { box.value = words; box.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (!has()) { await sleep(400); if (!has()) return 'empty'; }
         for (let j = 0; j < 12; j++) {
           await sleep(250);
           const send = [...document.querySelectorAll('button')].find(b => /send/i.test((b.getAttribute('aria-label') || '') + ' ' + (b.getAttribute('title') || '')) && !b.disabled);
@@ -10647,7 +10668,17 @@ body { width: max-content !important; min-width: 0 !important; }
     if (g) {
       const r = await mailApi(g.acc, { path: `/me/events/${g.id}?$select=id,subject,body,attendees,organizer,showAs,sensitivity,isReminderOn,reminderMinutesBeforeStart,type,webLink`, prefer: 'outlook.body-content-type="html"' });
       if (calUi.view !== V) return;
-      if (r.ok) { V.D = r.data; if (r.data.body) showBody(r.data.body.content || '', r.data.body.contentType === 'html'); paint(); }
+      if (r.ok) {
+        V.D = r.data; let html = (r.data.body && r.data.body.content) || '';
+        if (r.data.body) showBody(html, r.data.body.contentType === 'html');
+        paint();
+        if (/cid:/i.test(html)) {          // (the picture at the top of a designed invitation is carried with the meeting)
+          const at = await mailApi(g.acc, { path: `/me/events/${g.id}/attachments` });
+          if (calUi.view !== V || !at.ok) return;
+          for (const a of at.data.value || []) if (a.contentBytes && (a.contentId || a.name)) html = html.split(`cid:${a.contentId || a.name}`).join(`data:${a.contentType || 'image/png'};base64,${a.contentBytes}`);
+          showBody(html, true);
+        }
+      }
     }
   }
   function calClosePop() { if (calUi.pop) { calUi.pop.remove(); calUi.pop = null; } }
@@ -10798,6 +10829,18 @@ body { width: max-content !important; min-width: 0 !important; }
   const calG = { accounts: null, cals: {}, inst: [], key: '', loading: false, err: '' };
   const calTz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'; } catch (e) { return 'UTC'; } };
   const calPad = n => String(n).padStart(2, '0');
+  // Time zones. A meeting is set in one time zone (the profile's, unless you choose another): the times you type are
+  // times there, the invitation says so in words, and every calendar still shows it in its own local time.
+  const tzWall = (ms, tz) => { const p = {}; for (const x of new Intl.DateTimeFormat('en-CA', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(ms))) p[x.type] = x.value; return { ymd: `${p.year}-${p.month}-${p.day}`, hm: `${p.hour === '24' ? '00' : p.hour}:${p.minute}` }; };
+  const tzAsUtc = (ymd, hm) => { const [y, m, d] = ymd.split('-').map(Number), [h, mi] = (hm || '00:00').split(':').map(Number); return Date.UTC(y, m - 1, d, h || 0, mi || 0); };
+  const tzInstant = (ymd, hm, tz) => { if (!/^\d{4}-\d\d-\d\d$/.test(ymd || '')) return NaN; const want = tzAsUtc(ymd, hm); let t = want; for (let i = 0; i < 3; i++) { const w = tzWall(t, tz); t -= tzAsUtc(w.ymd, w.hm) - want; } return t; };
+  const tzOffsetMin = (tz, ms) => { const w = tzWall(ms, tz); return Math.round((tzAsUtc(w.ymd, w.hm) - Math.floor(ms / 60e3) * 60e3) / 60e3); };
+  const tzUtc = (tz, ms) => { const o = tzOffsetMin(tz, ms), a = Math.abs(o); return `UTC${o < 0 ? '−' : '+'}${Math.floor(a / 60)}${a % 60 ? ':' + calPad(a % 60) : ''}`; };
+  const tzCity = tz => tz === 'UTC' ? 'UTC' : tz.split('/').pop().replace(/_/g, ' ');
+  const tzLabel = (tz, ms) => { let long = ''; try { long = (new Intl.DateTimeFormat('en-AU', { timeZone: tz, timeZoneName: 'long' }).formatToParts(new Date(ms)).find(x => x.type === 'timeZoneName') || {}).value || ''; } catch (e) { /* unknown zone */ } return tz === 'UTC' ? 'UTC' : `${tzCity(tz)} time (${long && !/^GMT/.test(long) ? long + ', ' : ''}${tzUtc(tz, ms)})`; };
+  const tzTime = (ms, tz) => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', timeZone: tz }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm');
+  const TZ_COMMON = ['Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Adelaide', 'Australia/Darwin', 'Australia/Perth', 'Australia/Hobart', 'Pacific/Auckland', 'Asia/Singapore', 'Asia/Tokyo', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'UTC'];
+  const tzDefault = pid => (calState.tzBy && calState.tzBy[pid || '_']) || calTz();
   const calYmd = d => `${d.getFullYear()}-${calPad(d.getMonth() + 1)}-${calPad(d.getDate())}`;
   const calHm = d => `${calPad(d.getHours())}:${calPad(d.getMinutes())}`;
   const calGKey = (accId, calId) => `g:${accId}:${calId}`;
@@ -10945,7 +10988,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const map = /\d|,/.test(M.loc) ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(M.loc)}` : '';
       where.push(`${M.online ? '<div style="padding-top:14px">' : ''}${big(M.loc.split(',')[0])}${M.loc.includes(',') ? e(M.loc.split(',').slice(1).join(',').trim()) : ''}${map ? `<div style="padding-top:13px">${M.online ? btn('Open in Maps', map, true) : btn('Open in Maps', map)}</div>` : ''}${M.online ? '</div>' : ''}`);
     }
-    const rows = [`<tr>${label('When')}${cell(big(M.day) + e(M.time) + (M.repeats ? '<br>' + sub(M.repeats) : ''))}</tr>`];
+    const rows = [`<tr>${label('When')}${cell(big(M.day) + e(M.time) + (M.zone ? `<div style="font-weight:700;padding-top:2px">${e(M.zone)}</div>` + sub('Your calendar shows it in your own time zone.') : '') + (M.repeats ? '<br>' + sub(M.repeats) : ''))}</tr>`];
     if (where.length) rows.push(`<tr>${label('Where')}${cell(where.join(''))}</tr>`);
     if (M.who && M.who.length) rows.push(`<tr>${label('Who')}${cell(M.who.map(e).join('<br>'))}</tr>`);
     const ag = inviteAgenda(M.agenda), bef = String(M.before || '').split('\n').map(x => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
@@ -10971,7 +11014,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (inst) {
       accId = inst.g.acc; calId = inst.g.cal;
       const id = series && inst.g.master ? inst.g.master : inst.g.id;
-      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type';
+      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type,originalStartTimeZone';
       let r = await mailApi(accId, { path: `/me/events/${id}?${sel}&$expand=extensions($filter=id eq '${INVITE_EXT}')`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) r = await mailApi(accId, { path: `/me/events/${id}?${sel}`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
@@ -10992,6 +11035,7 @@ body { width: max-content !important; min-width: 0 !important; }
       <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
       <label class="row"><span>Starts</span><span class="dt"><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
       <label class="row"><span>Ends</span><span class="dt"><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
+      <label class="row tzrow"><span>Time zone</span><span class="dt"><select name="tz" title="The times above are times in this time zone"></select><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
       <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
       <label class="row"><span>Where</span><input name="loc"></label>
       <label class="row"><span>Invite</span><input name="att" placeholder="Email addresses, separated by commas" spellcheck="false"></label>
@@ -11007,15 +11051,29 @@ body { width: max-content !important; min-width: 0 !important; }
       <p class="hint"></p>
       <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
     const f = n => d.querySelector(`[name="${n}"]`);
+    // The time zone the times are in: the profile's default, unless the meeting already has one or you choose another.
+    const tzPid = state.profileId || '_', tzNow = Date.now();
+    {
+      let all = []; try { all = Intl.supportedValuesOf('timeZone'); } catch (e) { all = TZ_COMMON.slice(); }
+      const first = [...new Set([tzDefault(tzPid), calTz(), ...TZ_COMMON])].filter(z => z === 'UTC' || all.includes(z));
+      const opt = z => { const o = document.createElement('option'); o.value = z; o.textContent = `${tzCity(z)} (${tzUtc(z, tzNow)})`; return o; };
+      const g1 = document.createElement('optgroup'); g1.label = 'Usual'; for (const z of first) g1.appendChild(opt(z));
+      const g2 = document.createElement('optgroup'); g2.label = 'All time zones'; for (const z of all) if (!first.includes(z)) { const o = opt(z); o.textContent = `${z.replace(/_/g, ' ')} (${tzUtc(z, tzNow)})`; g2.appendChild(o); }
+      f('tz').append(g1, g2);
+      const own = ev && ev.originalStartTimeZone && [...f('tz').options].some(o => o.value === ev.originalStartTimeZone) ? ev.originalStartTimeZone : '';
+      f('tz').value = own || tzDefault(tzPid);
+    }
+    const tzSel = () => (f('allday') && f('allday').checked ? calTz() : f('tz').value || calTz());
+    const zYmd = dt => tzWall(+dt, tzSel()).ymd, zHm = dt => tzWall(+dt, tzSel()).hm;
     d.querySelector('h2').textContent = inst ? (series ? 'Change the Series' : 'Change Meeting') : 'New Meeting';
     f('title').value = ev ? ev.subject || '' : '';
     f('allday').checked = !!(ev && ev.isAllDay);
-    f('sd').value = calYmd(s0); f('st').value = calHm(s0); f('ed').value = calYmd(e0); f('et').value = calHm(e0);
+    f('sd').value = zYmd(s0); f('st').value = zHm(s0); f('ed').value = zYmd(e0); f('et').value = zHm(e0);
     f('loc').value = ev ? (ev.location && ev.location.displayName) || '' : '';
     f('att').value = ev ? (ev.attendees || []).map(a => a.emailAddress && a.emailAddress.address).filter(Boolean).join(', ') : '';
     f('teams').checked = !!(ev && ev.isOnlineMeeting);
     f('show').value = ev && ['busy', 'free', 'tentative', 'oof'].includes(ev.showAs) ? ev.showAs : 'busy';
-    f('notes').value = ev ? ((ev.body && ev.body.content) || '').trim() : '';
+    f('notes').value = ev ? ((ev.body && ev.body.content) || '').trim().replace(/^When: [^\n]*\n\n?/, '') : '';
     f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
     f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
     if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
@@ -11081,7 +11139,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     if (seed && !inst && seed.teams) f('teams').checked = true;
     if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
-    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = calYmd(seed.end); f('et').value = calHm(seed.end); } }
+    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = zYmd(seed.end); f('et').value = zHm(seed.end); } }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
     setTimeout(kitPaint, 0);
@@ -11099,13 +11157,16 @@ body { width: max-content !important; min-width: 0 !important; }
       if (def) f('cal').value = def.value;
       if (seed && seed.acc) { const own = [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n') && o.dataset.def) || [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n')); if (own) f('cal').value = own.value; }
     }
-    const sync = () => { const ad = f('allday').checked; f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
+    const tzPaint = () => { const b = d.querySelector('.tz-def'), pr = calProfiles().find(x => x.id === state.profileId); b.hidden = f('tz').value === tzDefault(tzPid); b.textContent = `Make This the Default${pr ? ' for ' + pr.name : ''}`; d.querySelector('.tzrow').hidden = f('allday').checked; };
+    f('tz').addEventListener('change', () => { tzPaint(); f('et').dispatchEvent(new Event('change')); });
+    setTimeout(tzPaint, 0);
+    const sync = () => { const ad = f('allday').checked; try { tzPaint(); } catch (e) { /* not built yet */ } f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
     // Moving the start moves the end with it.
     let gap = (seed && !inst && seed.end && seed.end > s0 ? seed.end : e0).getTime() - s0.getTime();
-    if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = calYmd(a); f('st').value = calHm(a); f('ed').value = calYmd(b); f('et').value = calHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
-    const readDt = (dn, tn) => { const [y, m, dd] = f(dn).value.split('-').map(Number); const [h, mi] = (f(tn).value || '00:00').split(':').map(Number); return new Date(y, m - 1, dd, f('allday').checked ? 0 : h, f('allday').checked ? 0 : mi); };
-    for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = calYmd(e); f('et').value = calHm(e); });
+    if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = zYmd(b); f('et').value = zHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
+    const readDt = (dn, tn) => new Date(tzInstant(f(dn).value, f('allday').checked ? '00:00' : (f(tn).value || '00:00'), tzSel()));          // (the moment those typed times mean, in the meeting's time zone)
+    for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = zYmd(e); f('et').value = zHm(e); });
     for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
     // Are the people you are inviting free then? (Outlook's free and busy times, for people whose calendars it can see.)
     const frRow = d.querySelector('.row.free'), frOut = d.querySelector('.fr-out');
@@ -11149,7 +11210,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const e2 = new Date(t.getTime() + len), wd = t.getDay();
         if (wd === 0 || wd === 6 || t.getHours() < 8 || e2.getHours() + e2.getMinutes() / 60 > 18 || e2.getDate() !== t.getDate()) continue;
         if (taken.some(([a, b]) => a < e2.getTime() && b > t.getTime())) continue;
-        f('sd').value = calYmd(t); f('st').value = calHm(t); f('ed').value = calYmd(e2); f('et').value = calHm(e2); gap = len;
+        f('sd').value = zYmd(t); f('st').value = zHm(t); f('ed').value = zYmd(e2); f('et').value = zHm(e2); gap = len;
         frCheck(); return toast(`${t.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(t.getTime())} suits everyone whose calendar can be seen.`);
       }
       frOut.textContent = 'No time in working hours over the next two weeks suits everyone.';
@@ -11162,7 +11223,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const mineOn = day => { const a = day.getTime(), b = a + 86400e3; return (calG.inst || []).filter(i => !i.allDay && i.start < b && i.end > a && i.g.response !== 'declined' && !(inst && i.key === inst.key)).map(i => ({ a: i.start, b: i.end, subject: i.ev.title || 'Busy', status: i.ev.transp ? 'free' : 'busy' })); };
     const avCache = new Map();
     const availability = async day => {
-      const who = whoList(), key = `${calYmd(day)}|${frAcc()}|${who.map(x => x.address).join(',')}`;
+      const who = whoList(), key = `${zYmd(day)}|${frAcc()}|${who.map(x => x.address).join(',')}`;
       if (!who.length || !frAcc()) return [];
       if (avCache.has(key)) return avCache.get(key);
       const iso = t => ({ dateTime: new Date(t).toISOString().slice(0, 19), timeZone: 'UTC' }), utc = v => new Date(String(v.dateTime).slice(0, 19) + 'Z').getTime();
@@ -11171,7 +11232,7 @@ body { width: max-content !important; min-width: 0 !important; }
       avCache.set(key, pr); return pr;
     };
     const clash = (rows, mine, a, b) => rows.filter(r0 => r0.items.some(i => i.a < b && i.b > a)).length + (mine.some(i => i.status !== 'free' && i.a < b && i.b > a) ? 1 : 0);
-    const setTimes = (startMs, lenMs) => { const a = new Date(startMs), b = new Date(startMs + lenMs); f('sd').value = calYmd(a); f('st').value = calHm(a); f('ed').value = calYmd(b); f('et').value = calHm(b); gap = lenMs; f('et').dispatchEvent(new Event('change')); };
+    const setTimes = (startMs, lenMs) => { const a = new Date(startMs), b = new Date(startMs + lenMs); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = zYmd(b); f('et').value = zHm(b); gap = lenMs; f('et').dispatchEvent(new Event('change')); };
     const span = () => { const s = readDt('sd', 'st'), en = readDt('ed', 'et'); return isNaN(s) || isNaN(en) || en <= s ? null : [s.getTime(), en.getTime()]; };
     const lenText = ms => { const m = Math.round(ms / 60e3); return m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
     // The day, on the right of the form.
@@ -11271,6 +11332,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (x === 'find') return frFind(e.target);
       if (x === 'kit') return d.querySelector('.kit-file').click();
       if (x === 'sched') return schedOpen();
+      if (x === 'tzdef') { (calState.tzBy = calState.tzBy || {})[tzPid] = f('tz').value; calSave(); tzPaint(); return toast(`New meetings here now start in ${tzCity(f('tz').value)} time.`); }
       if (x === 'cancel') return shut();
       if (x !== 'ok') return;
       const ad = f('allday').checked, s = readDt('sd', 'st'), en = readDt('ed', 'et');
@@ -11278,18 +11340,20 @@ body { width: max-content !important; min-width: 0 !important; }
       if (isNaN(s) || isNaN(en) || en < s || (!ad && en.getTime() === s.getTime())) return toast('The end must be after the start.');
       const people = mailParse(f('att').value);
       if (people.find(p => p.bad)) return toast(`“${people.find(p => p.bad).bad}” is not an email address.`);
-      const tz = calTz(), iso = dt => `${calYmd(dt)}T${ad ? '00:00' : calHm(dt)}:00`;
-      const endAd = new Date(en.getFullYear(), en.getMonth(), en.getDate() + 1);
+      const tz = tzSel(), iso = dt => `${zYmd(dt)}T${ad ? '00:00' : zHm(dt)}:00`;
+      const endAd = new Date(en.getTime() + 86400e3);
       const body = { subject: f('title').value.trim(), isAllDay: ad, start: { dateTime: iso(s), timeZone: tz }, end: { dateTime: ad ? iso(endAd) : iso(en), timeZone: tz },
         location: { displayName: f('loc').value.trim() }, attendees: people.map(p => ({ emailAddress: p.emailAddress, type: 'required' })), showAs: f('show').value };
-      if (!online0) { body.body = { contentType: 'text', content: f('notes').value }; if (f('teams').checked) { body.isOnlineMeeting = true; body.onlineMeetingProvider = 'teamsForBusiness'; } }
+      // A plain invitation says the time in words too, time zone included, as its first line.
+      const whenLine = ad ? '' : `When: ${s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })}, ${tzTime(s.getTime(), tz)} to ${tzTime(en.getTime(), tz)}, ${tzLabel(tz, s.getTime())}`;
+      if (!online0) { body.body = { contentType: 'text', content: (whenLine && people.length ? whenLine + '\n\n' : '') + f('notes').value.replace(/^When: [^\n]*\n\n?/, '') }; if (f('teams').checked) { body.isOnlineMeeting = true; body.onlineMeetingProvider = 'teamsForBusiness'; } }
       const rep = f('rep').value;
       if (canRepeat && rep !== 'keep') {
         const day = CAL_DAYS[s.getDay()];
         const pattern = rep === 'daily' ? { type: 'daily', interval: 1 } : rep === 'weekdays' ? { type: 'weekly', interval: 1, daysOfWeek: CAL_DAYS.slice(1, 6), firstDayOfWeek: 'monday' }
           : rep === 'weekly' ? { type: 'weekly', interval: 1, daysOfWeek: [day], firstDayOfWeek: 'monday' } : rep === 'fortnightly' ? { type: 'weekly', interval: 2, daysOfWeek: [day], firstDayOfWeek: 'monday' }
           : rep === 'monthly' ? { type: 'absoluteMonthly', interval: 1, dayOfMonth: s.getDate() } : rep === 'yearly' ? { type: 'absoluteYearly', interval: 1, dayOfMonth: s.getDate(), month: s.getMonth() + 1 } : null;
-        if (pattern) body.recurrence = { pattern, range: f('until').value ? { type: 'endDate', startDate: calYmd(s), endDate: f('until').value } : { type: 'noEnd', startDate: calYmd(s) } };
+        if (pattern) body.recurrence = { pattern, range: f('until').value ? { type: 'endDate', startDate: zYmd(s), endDate: f('until').value } : { type: 'noEnd', startDate: zYmd(s) } };
         else if (inst && rec) body.recurrence = null;
       }
       e.target.disabled = true; e.target.textContent = 'Saving…';
@@ -11301,14 +11365,14 @@ body { width: max-content !important; min-width: 0 !important; }
         try {
           const A = inst ? accId : f('cal').value.split('\n')[0], cal = inst ? '' : f('cal').value.split('\n')[1];
           const words = { notes: f('notes').value, purpose: f('purpose').value.trim(), agenda: f('agenda').value, before: f('before').value };
-          const hero = await inviteHero(kit, body.subject, body.subject + '|' + calYmd(s));
+          const hero = await inviteHero(kit, body.subject, body.subject + '|' + zYmd(s));
           const cid = 'navhero' + Date.now().toString(36);
           const online = !!body.isOnlineMeeting, PH = 'https://join.invalid/claude-navigator';
-          const dayT = s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+          const dayT = s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
           const mins = Math.round((en - s) / 60e3), len = ad ? '' : mins % 60 === 0 ? `${mins / 60} ${mins === 60 ? 'hour' : 'hours'}` : mins > 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
           const acc0 = mailAccById(A) || {};
-          const repT = { daily: 'Repeats every day', weekdays: 'Repeats every weekday', weekly: `Repeats every ${s.toLocaleDateString('en-AU', { weekday: 'long' })}`, fortnightly: `Repeats every second ${s.toLocaleDateString('en-AU', { weekday: 'long' })}`, monthly: 'Repeats every month', yearly: 'Repeats every year' }[rep] || '';
-          const htmlOf = join => inviteHtml(kit, Object.assign({ title: body.subject, cid, day: dayT, time: ad ? 'All day' : `${calFmtTime(s.getTime())} to ${calFmtTime(en.getTime())} (${len})`, repeats: canRepeat ? repT : '', online, joinUrl: join, loc: body.location.displayName,
+          const repT = { daily: 'Repeats every day', weekdays: 'Repeats every weekday', weekly: `Repeats every ${s.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz })}`, fortnightly: `Repeats every second ${s.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz })}`, monthly: 'Repeats every month', yearly: 'Repeats every year' }[rep] || '';
+          const htmlOf = join => inviteHtml(kit, Object.assign({ title: body.subject, cid, day: dayT, time: ad ? 'All day' : `${tzTime(s.getTime(), tz)} to ${tzTime(en.getTime(), tz)} (${len})`, zone: ad ? '' : tzLabel(tz, s.getTime()), repeats: canRepeat ? repT : '', online, joinUrl: join, loc: body.location.displayName,
             who: [`${acc0.name || acc0.email || 'Organiser'} (organiser)`].concat(people.map(p2 => p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address)) }, words));
           const first = Object.assign({}, body, { attendees: [], body: { contentType: 'html', content: htmlOf(PH) } });
           const extBody = Object.assign({ '@odata.type': 'microsoft.graph.openTypeExtension', extensionName: INVITE_EXT }, words);
@@ -11378,17 +11442,26 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!moved && Math.abs(ev.clientX - e.clientX) + Math.abs(ev.clientY - e.clientY) < 5) return;
         if (!moved) { moved = true; document.body.classList.add('resizing', 'pop-moving'); }
         q = { x: ev.clientX - dx - h.left, y: ev.clientY - dy - h.top, w: Math.round(r.width), h: Math.round(r.height) }; apply(q);
+        // At the edge of the app's window: it lifts out into a window of its own, there and then, which can go to any screen.
+        if (out && (ev.clientX <= 1 || ev.clientY <= 1 || ev.clientX >= innerWidth - 2 || ev.clientY >= innerHeight - 2)) up(ev, true);
       };
-      const up = ev => {
+      const up = (ev, edge) => {
         removeEventListener('mousemove', mv); removeEventListener('mouseup', up); document.body.classList.remove('resizing', 'pop-moving');
         if (!moved) return;
         bar._moved = true; setTimeout(() => { bar._moved = false; }, 300);
-        const outside = ev.clientX < 0 || ev.clientY < 0 || ev.clientX > innerWidth || ev.clientY > innerHeight;
+        const outside = edge === true || ev.clientX <= 1 || ev.clientY <= 1 || ev.clientX >= innerWidth - 2 || ev.clientY >= innerHeight - 2;
         if (outside && out) { if (popPos[key]) apply(popPos[key]); else Object.assign(el.style, { left: '', top: '', right: '', bottom: '', width: '', height: '' }); return out({ x: Math.round(ev.screenX - dx), y: Math.round(ev.screenY - dy), width: Math.round(r.width), height: Math.round(r.height) }); }
         popPos[key] = q;
       };
       addEventListener('mousemove', mv); addEventListener('mouseup', up);
     });
+    if (out && !SOLO_ITEM && !bar.querySelector('.pop-out')) {
+      // A button anyone can find: this pop-up becomes a window of its own, to drag to another screen.
+      const ob = document.createElement('button'); ob.className = 'tb pop-out'; ob.title = 'Open in its own window, which you can drag to another screen';
+      ob.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="5" width="9" height="9" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2h6v6M14 2L8.5 7.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      ob.addEventListener('click', e => { e.stopPropagation(); const r = el.getBoundingClientRect(); out({ x: Math.round(window.screenX + r.left + 30), y: Math.round(window.screenY + r.top + 30), width: Math.round(r.width), height: Math.round(r.height) }); });
+      const lights = bar.querySelector('.lights'); if (lights) lights.after(ob); else bar.prepend(ob);
+    }
     if (out && !SOLO_ITEM) bar.addEventListener('contextmenu', e => { if (e.target.closest('button, input, select, a')) return; e.preventDefault(); const r = el.getBoundingClientRect(); showMenu(e.clientX, e.clientY, [{ label: 'Open in Its Own Window', run: () => out({ x: Math.round(window.screenX + r.left + 30), y: Math.round(window.screenY + r.top + 30), width: Math.round(r.width), height: Math.round(r.height) }) }, popPos[key] && { label: 'Put It Back in the Middle', run: () => { delete popPos[key]; Object.assign(el.style, { left: '', top: '', right: '', bottom: '', width: '', height: '' }); } }].filter(Boolean)); });
   }
   const itemWindow = (solo, item, bounds) => { try { return window.navigatorApp.itemWindowOpen(solo, JSON.stringify(item), bounds); } catch (e) { toast('This needs the latest version of the app.'); return Promise.resolve({ ok: false }); } };
@@ -13211,12 +13284,21 @@ body { width: max-content !important; min-width: 0 !important; }
   const CAL_MEET_FORMAT = 'For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person\u2019s name exactly, and the app looks it up in the contacts. Never guess an address.\n\nFormat your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: names or email addresses, separated by semicolons (leave empty if none)\nPurpose: one line on why the meeting is happening (leave empty if not said)\nAgenda: the items, separated by semicolons, each with its minutes in brackets if said, like: Budget (35 min); Strategy (40 min) (leave empty if none)\nBefore: what to read or bring, separated by semicolons (leave empty if none)\nNotes: anything else for the invitation (leave empty if nothing was said)\nCheck: anything you assumed or could not work out, in one line (this is shown only to me, it does not go in the invitation; leave empty if nothing)\n[[END]]\n[[DONE]]';
   // The account a new meeting belongs in: one that belongs to the profile you are in.
   const calMeetAcc = prof => { const all = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared); const lastA = prof && calState.lastCalBy && (calState.lastCalBy[prof.id] || '').split('\n')[0]; return (prof && all.find(a => a.id === lastA && mailProf(a.id).includes(prof.id))) || (prof && all.find(a => mailProf(a.id).includes(prof.id))) || mailVisible().find(a => !a.needsSignIn && !a.shared) || all[0] || null; };
+  const meetHeads = block => { const o = {}; let last = null;
+    for (const line of String(block).split(/\r?\n/)) {
+      const l = line.replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ').replace(/^[\s*_>\u2022\-]+/, '').trim();
+      const mm = /^(Title|Date|Start|End|Where|Teams|Invite|Purpose|Agenda|Before|Notes|Check)\s*\**\s*[:\uFF1A]\s*\**\s*(.*)$/i.exec(l);
+      if (mm) { last = mm[1].toLowerCase(); o[last] = mm[2].replace(/\*+$/, '').trim(); }
+      else if (l && last && !/^\[\[/.test(l)) o[last] += (o[last] ? ' ' : '') + l;
+    }
+    return o; };
   async function calMeetRead(blocks, ctx = {}) {
     if (mailUi.accounts === null) await mailLoadAccounts();
     const acc = calMeetAcc(ctx.profile || activeProfile());
     const out = [];
     for (const b of blocks) {
-      const h = chatHeads(b).heads;
+      let h = meetHeads(b);
+      if (!h.date && !h.title) h = meetHeads(String(b).replace(/\s*(?=\b(?:Title|Date|Start|End|Where|Teams|Invite|Purpose|Agenda|Before|Notes|Check)\s*\**\s*[:\uFF1A])/gi, '\n'));     // (it all came on one line)
       const d0 = /(\d{4})-(\d\d)-(\d\d)/.exec(h.date || ''), t = v => { const mm = /(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm ? [+mm[1], +mm[2]] : null; };
       const s0 = t(h.start), e0 = t(h.end);
       const start = d0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], s0 ? s0[0] : 9, s0 ? s0[1] : 0) : null;
@@ -13367,19 +13449,27 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!got) return toast('Could not read Claude’s answer. Select the details in the chat, then use Send To and choose the selected words.');
       calMeetOpen(await calMeetRead(got, { title: here.name || 'Meeting', ref: here.ref }), 'Meetings from this chat');
     };
-    showMenu(x, y, [
-      { label: 'An Email, Laid Out by Claude', run: email },
-      { label: 'A Meeting, Laid Out by Claude', run: meeting },
+    // Two plain choices for the whole chat. The choices for selected words only show when you have selected some.
+    const toDoc = () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
+      const r = await window.navigatorApp.fsNewDocx(f.path, here.name || picked.slice(0, 40), [{ text: here.name || 'From a chat', head: true }, ...picked.split(/\n{2,}/).map(t => ({ text: t }))]);
+      if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
+      await pullFromDisk(); toast(`“${r.name}” is in ${f.name} and opening in Word`);
+    }));
+    showMenu(x, y, picked ? [
+      { label: 'The words you selected', disabled: true, run: () => {} },
+      { label: 'Put Them in a New Email', run: () => chatToEmail({ text: picked, subject: here.name || '', from: here.ref }) },
+      { label: 'Put Them in a New Meeting…', run: () => calGEdit(null, false, null, { title: here.name || '', notes: picked }) },
+      { label: 'Put Them in a Word Document…', run: toDoc },
+      { label: 'Keep Them as a Snippet…', run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { mailLearnOf().snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
       '-',
-      { label: picked ? 'The Selected Words' : 'The Selected Words (select some in the chat first)', disabled: true, run: () => {} },
-      { label: 'As a New Email', disabled: !picked, run: () => chatToEmail({ text: picked, subject: here.name || '', from: here.ref }) },
-      { label: 'As the Notes of a New Meeting…', disabled: !picked, run: () => calGEdit(null, false, null, { title: here.name || '', notes: picked }) },
-      { label: 'As a New Word Document…', disabled: !picked, run: () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
-        const r = await window.navigatorApp.fsNewDocx(f.path, here.name || picked.slice(0, 40), [{ text: here.name || 'From a chat', head: true }, ...picked.split(/\n{2,}/).map(t => ({ text: t }))]);
-        if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
-        await pullFromDisk(); toast(`“${r.name}” is in ${f.name} and opening in Word`);
-      })) },
-      { label: 'As a Snippet…', disabled: !picked, run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { mailLearnOf().snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
+      { label: 'The whole chat', disabled: true, run: () => {} },
+      { label: 'Make an Email from This Chat', run: email },
+      { label: 'Make a Meeting from This Chat', run: meeting },
+    ] : [
+      { label: 'Make an Email from This Chat', run: email },
+      { label: 'Make a Meeting from This Chat', run: meeting },
+      '-',
+      { label: 'To send only part of it, select the words first', disabled: true, run: () => {} },
     ]);
   }
   $('bSendTo').addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); chatSendTo(r0.left, r0.bottom + 4); });
@@ -13617,7 +13707,17 @@ body { width: max-content !important; min-width: 0 !important; }
     let tries = 0;
     const go2 = () => { let ready = true; try { V.view.getURL(); } catch (e) { ready = false; }
       if (!ready) { if (++tries < 20) setTimeout(go2, 700); return; }
-      V.view.executeJavaScript(SEND_PROMPT(text)).then(r => { if (r === 'none' && ++tries < 10) setTimeout(go2, 1500); else { V.sent = true; V.queue = ''; } }).catch(() => { if (++tries < 20) setTimeout(go2, 900); }); };
+      V.view.executeJavaScript(SEND_PROMPT(text)).then(r => {
+        if ((r === 'none' || r === 'empty') && ++tries < 8) { if (r === 'empty' && tries >= 2) { try { V.view.focus(); } catch (e) { /* not shown */ } } return setTimeout(go2, 1500); }
+        if (r === 'none' || r === 'empty') {
+          // Claude never took the request: say so and show the chat, with the request copied, instead of waiting forever.
+          V.waiting = false; V.failed = true; V.queue = '';
+          try { navigator.clipboard.writeText(text); } catch (e) { /* no clipboard */ }
+          mailAi.el.classList.remove('quiet'); $('mailPanel').classList.add('ai-on'); mailAi.on = key; mailAiPaint();
+          try { if (V.cfg.onTick) V.cfg.onTick(V); } catch (e) { /* the asker has gone */ }
+          return toast(r === 'none' ? 'Claude did not open in time. The chat is showing now: sign in if it asks, then try again.' : 'Claude did not take the request. The chat is showing now and the request is copied: paste it there and press Enter.');
+        }
+        V.sent = true; V.queue = ''; }).catch(() => { if (++tries < 20) setTimeout(go2, 900); }); };
     go2();
     mailAiPaint();
   }
@@ -13916,6 +14016,14 @@ body { width: max-content !important; min-width: 0 !important; }
     const wasBeside = sideHas(k) || (dockNative(k) && dockClaudeShowing());
     if (k === 'chats' && sideHas('chats')) sideCloseApp('chats');
     setApp(k === 'folders' ? 'navigator' : k === 'chats' ? 'claude' : k);
+    // Folders, All Chats and monday.com each start on their own list alone. The Claude page that was open
+    // elsewhere does not follow you in: it opens again when you double-click a chat.
+    if (currentApp === 'navigator' && !pane.hidden) {
+      state.claudeShut = true;
+      if (state.loc.kind === 'page') go(k === 'chats' ? { kind: 'library', which: 'chats' } : k === 'monday' ? { kind: 'library', which: 'monday', mkey: 'all' } : { kind: 'folder', id: state.lastFolderId });
+      else renderMain();
+      dockRender();
+    }
     if (wasBeside && sideCan(prev) && !sideHas(prev)) sideOpen(prev, !!sideState.app);
   }
   function dockRender() {
