@@ -401,6 +401,8 @@
   .dock-b.on { opacity: 1; background: var(--sel); }
   .dock-b.main { opacity: 1; background: color-mix(in srgb, var(--accent) 20%, transparent); box-shadow: 0 0 0 2px var(--accent); }
   #appBtn { display: none !important; }
+  .dock-b.win::after { content: ''; position: absolute; right: 1px; bottom: 1px; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--accent); background: var(--win); }
+  body.solo #dock, body.solo #sidePanel { display: none !important; }
   .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
   body #menu { z-index: 300; }            /* above the app switcher, the dock and the side panel */
   .app-dragging { opacity: .4; }
@@ -1658,6 +1660,11 @@
 
   // ---------- Platform ----------
   const isApp = !!(window.navigatorApp && window.navigatorApp.isElectron);
+  // SOLO: this window is one app (Mail, Calendar or Notes) opened in a window of its own, to sit on another screen.
+  // The main window owns your folders, your team and the layout. A solo window may only save its own app's settings
+  // (below), never the folder tree or anything else, so two windows cannot overwrite each other.
+  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'notes'].includes(k) ? k : ''; } catch (e) { return ''; } })();
+  const SOLO_SAVES = k => ['claudeNavigator.mail.v1', 'claudeNavigator.cal.v1', 'claudeNavigator.notes.v1', 'claudeNavigator.links.v1'].includes(k) || String(k).startsWith('claudeNavigator.calcache.');
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   if (isMac) document.documentElement.classList.add('mac');
   if (isApp && isMac) document.documentElement.classList.add('mac-app');
@@ -1678,12 +1685,13 @@
   const ls = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) {
+      if (SOLO && !SOLO_SAVES(k)) return;
       try { localStorage.setItem(k, v); }
       catch (e) {
         if (!ls.warned) { ls.warned = true; setTimeout(() => { try { toast('Could not save your latest changes: the app\u2019s storage is full. Back up your folders from the ... menu.'); } catch (err) { /* ignore */ } }, 0); }
       }
     },
-    del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
+    del(k) { if (SOLO && !SOLO_SAVES(k)) return; try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
   };
   // Clara, the external executive assistant: its email address and dashboard (see the Clara section).
   const CLARA_STORE = 'claudeNavigator.clara.v1';
@@ -2014,6 +2022,7 @@
     fsState.timer = setTimeout(() => { fsState.timerPending = false; runApply(); }, 300);
   }
   async function runApply() {
+    if (SOLO) return;                  // only the main window writes your folders to the Mac
     if (!fsState.enabled || fsState.applying) { if (fsState.applying) scheduleApply(); return; }
     if (fsState.suspect) return;       // the folder looked empty or missing: write nothing until it is back
     fsState.applying = true;
@@ -2056,6 +2065,7 @@
   }
   // Brings in what changed on disk: new files and folders, renames and moves made in Finder, deletions.
   async function pullFromDisk() {
+    if (SOLO) return;
     if (!fsState.enabled) return;
     if (fsState.applying || fsState.timerPending) { fsState.pullAfter = true; return; }
     const scanAt = Date.now();
@@ -3880,7 +3890,7 @@
     } else {
       tEl.textContent = title;
     }
-    document.title = title + ' \u2013 Claude Navigator';
+    document.title = SOLO ? ({ mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO] + ' \u2013 Claude Navigator') : title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || (!!state.query && !inLib);
     $('libAttachedBtn').hidden = !((inLib && state.loc.which === 'chats') || (state.loc.kind === 'folder' && !state.query && !page));
     $('splitBtn').hidden = page;
@@ -4496,6 +4506,7 @@
 
   // ---------- Claude Library: loading ----------
   async function refreshLibrary(force = false) {
+    if (SOLO) return;
     if (!isApp || lib.busy) return;
     if (!force && lib.fetchedAt && Date.now() - lib.fetchedAt < 5 * 60e3) return;
     lib.busy = true;
@@ -6433,6 +6444,7 @@
     return { name: f.name, path, workspace: f.workspace, folder: id, folders: folders.filter(x => x.parent === id), boards: boards.filter(b => b.folder === id) };
   }
   async function mondayRefresh(force = true) {
+    if (SOLO) return;
     if (!isApp || mondayBusy) return;
     if (!force && mondayData.fetchedAt && Date.now() - mondayData.fetchedAt < 30 * 60e3) return;
     if (!mondayData.connected) { const st = await window.navigatorApp.mondayStatus(); if (!st.connected) return; mondayData.connected = true; }
@@ -6937,13 +6949,14 @@
   // The nine-dot button switches between the apps. Each keeps its own place.
   var navFace = ['claude', 'monday'].includes(ls.get('claudeNavigator.navFace')) ? ls.get('claudeNavigator.navFace') : 'files';
   const appKey = () => currentApp === 'navigator' ? (navFace === 'files' ? 'navigator' : navFace) : currentApp;     // which tile is on
-  var currentApp = ['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator';
+  var currentApp = SOLO || (['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
     if (typeof cosUi !== 'undefined') cosUi.making = null;
   }
   function setApp(a) {
+    if (SOLO && a !== SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('That opens in the main window.'); }
     if (a === 'notes' && currentApp !== 'notes') { try { notesState.from = currentApp; } catch (e) { /* starting up */ } }
     cosEndMaking();
     if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash', 'cos-clara'); $('claraHost').hidden = true; cosReturnSource(); }
@@ -9936,6 +9949,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // Reminders: a notification before a meeting starts, at the time set on the meeting in Outlook (often 15 minutes).
   const calReminded = new Set();
   async function calRemind() {
+    if (SOLO) return;                  // the main window gives the reminders
     if (!isApp || !window.navigatorApp.acctList) return;
     try {
       if (!calG.loading && (!calG.at || Date.now() - calG.at > 10 * 60e3)) { if (!(await window.navigatorApp.acctList()).length) return; await calGReload(); }
@@ -10614,7 +10628,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (arrived) {
           const top = await mailApi(a.id, { path: '/me/mailFolders/inbox/messages?$top=1&$orderby=receivedDateTime desc&$select=subject,from,bodyPreview' });
           const m = top.ok && (top.data.value || [])[0];
-          if (m && !(document.hasFocus() && currentApp === 'mail')) { try { const n = new Notification(mailWho(m.from) || a.email, { body: `${m.subject || '(No subject)'}\n${(m.bodyPreview || '').slice(0, 90)}`, silent: false }); n.onclick = () => { window.focus(); setApp('mail'); }; } catch (e) { /* notifications are off */ } }
+          if (m && !SOLO && !(document.hasFocus() && currentApp === 'mail')) { try { const n = new Notification(mailWho(m.from) || a.email, { body: `${m.subject || '(No subject)'}\n${(m.bodyPreview || '').slice(0, 90)}`, silent: false }); n.onclick = () => { window.focus(); setApp('mail'); }; } catch (e) { /* notifications are off */ } }
         }
         if (mailOn()) {
           const f = (mailUi.folders[a.id] || {}).list; const inbox = f && f.find(x => x.id === r.data.id);
@@ -12120,6 +12134,17 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   $('bSendTo').addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); chatSendTo(r0.left, r0.bottom + 4); });
 
+  // Two windows, one set of settings: when another window saves Mail, Calendar or the links, this one takes the
+  // shared parts in (accounts' profiles, signatures, shared mailboxes, what was learned; calendars and their profiles).
+  // Each window keeps its own place: the folder and message you are on, and its column widths.
+  window.addEventListener('storage', e => {
+    try {
+      if (!e.newValue) return;
+      if (e.key === MAIL_KEY) { const n = JSON.parse(e.newValue); for (const k of ['profiles', 'sigs', 'shared', 'learn', 'lastStaffBy', 'lastBoard', 'threads']) if (n[k] !== undefined) mailState[k] = n[k]; if (mailOn()) mailSideRender(); }
+      else if (e.key === CAL_KEY) { const keep = calState.view; Object.assign(calState, JSON.parse(e.newValue)); calState.view = keep; if (calOn()) calRender(); }
+      else if (e.key === LINKS_KEY) { const n = JSON.parse(e.newValue); if (Array.isArray(n)) { linkStore.length = 0; linkStore.push(...n); mailUi.rel = null; } }
+    } catch (err) { /* a half-written value: the next save puts it right */ }
+  });
   // ===== Working with your staff from Mail =====
   // Three things, all through the Claude Projects your staff already work in:
   //   1. Hand an email to a staff member: as a new action or onto one that is open, with its attachments saved in
@@ -12152,6 +12177,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // ----- 1. Hand an email to a staff member -----
   async function mailHandover(m) {
     if (!m) return;
+    if (SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('Hand to Staff works from the main window, where your team is. Open Mail there for this one.'); }
     // The team starts as the profile you are in; you can hand to another profile's staff from here (some mail
     // belongs to more than one company), and the app moves to that profile as it hands over.
     const all = profiles();
@@ -12526,7 +12552,7 @@ body { width: max-content !important; min-width: 0 !important; }
       e.preventDefault(); e.stopPropagation();
       const o = appOrder(), i = o.indexOf(k), hid = appHidden(), vert = axis === 'y';
       showMenu(e.clientX, e.clientY, [
-        ...(vert ? [{ label: `Make ${APP_NAMES[k]} the Main App`, disabled: appKey() === k, run: () => dockMain(k === 'navigator' ? 'folders' : k) }, '-'] : []),
+        ...(vert ? [{ label: `Make ${APP_NAMES[k]} the Main App`, disabled: appKey() === k, run: () => dockMain(k === 'navigator' ? 'folders' : k) }, OWN_WINDOW.includes(k) ? { label: `Open ${APP_NAMES[k]} in Its Own Window`, run: () => appOwnWindow(k) } : null, '-'].filter(Boolean) : []),
         { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
         { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
         '-',
@@ -12539,6 +12565,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   $('appPop').querySelectorAll('.app-tile').forEach(t => appDragWire(t, t.dataset.app, 'x'));
   var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
+  if (SOLO) { sideState.app = null; sideState.app2 = null; }
   function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }                 // the upper (or only) one
   function sideHas(k) { return typeof sideState === 'object' && !!sideState && !!k && (sideState.app === k || sideState.app2 === k); }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
@@ -12548,6 +12575,16 @@ body { width: max-content !important; min-width: 0 !important; }
   const dockNative = k => (k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos'))
     || (k === 'folders' && (currentApp === 'navigator' || (currentApp === 'cos' && document.body.classList.contains('cos-work'))));
   const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
+  // Apps open in windows of their own (Mail, Calendar, Notes). The strip marks them; clicking one brings its window forward.
+  let appWins = [];
+  const OWN_WINDOW = ['mail', 'cal', 'notes'];
+  async function appOwnWindow(k) {
+    if (!isApp || SOLO || !OWN_WINDOW.includes(k)) return;
+    await window.navigatorApp.appWindowOpen(k);
+    if (sideHas(k)) sideCloseApp(k);
+    if (currentApp === k) setApp('navigator');
+  }
+  try { if (isApp && !SOLO) { window.navigatorApp.onAppWindows(list => { appWins = Array.isArray(list) ? list : []; dockRender(); }); window.navigatorApp.appWindowList().then(list => { appWins = list || []; dockRender(); }); } } catch (e) { /* older app shell */ }
   let dockTimer = 0;
   const dockMainKey = () => (appKey() === 'navigator' ? 'folders' : appKey());
   // Make an app the main one (on the left). If it was open beside, the app that was main takes its place there.
@@ -12560,14 +12597,15 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   function dockRender() {
     const d = $('dock');
-    if (!d || !isApp) return;
+    if (!d || !isApp || SOLO) return;
     d.replaceChildren();
     const mk = (k, label, html, on, tip, isMain) => {
       const b = document.createElement('button');
-      b.className = 'dock-b' + (on ? ' on' : '') + (isMain ? ' main' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
+      b.className = 'dock-b' + (on ? ' on' : '') + (isMain ? ' main' : '') + (appWins.includes(k) ? ' win' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
       // One click opens an app beside the main one (or closes it); a double click makes it the main app.
       b.addEventListener('click', e => {
         if (k === 'actions' || k === 'chats') return dockClick(k, e);
+        if (appWins.includes(k)) return window.navigatorApp.appWindowOpen(k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
         if (e.detail >= 2) return dockMain(k);
         dockTimer = setTimeout(() => { if (dockMainKey() === k) toast(`${label} is the main app. Double-click another app to make that the main one.`); else dockClick(k, e); }, 240);
@@ -12582,7 +12620,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = isMain ? false : dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
+      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k) ? `${label} is open in its own window. Click to bring it forward.` : (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
     if (currentApp === 'navigator' && navFace === 'files') mk('chats', 'Chats to File', '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>', false, 'Chats to file: your Claude chats listed beside your folders, to drag them in');
     { const lb = document.createElement('button'); lb.className = 'dock-b dock-lay'; lb.dataset.k = 'layouts'; lb.title = 'Layouts: bring back a set of apps side by side, or keep the set you have open now';
@@ -12675,6 +12713,7 @@ body { width: max-content !important; min-width: 0 !important; }
         showMenu(r0.left - 120, r0.bottom + 4, DOCK.filter(x => sideCan(x[0]) && x[0] !== a && !hid.includes(x[0] === 'folders' ? 'navigator' : x[0])).map(x => ({ label: `${x[1]} Underneath`, run: () => sideOpen(x[0], true) })));
       });
       if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
+      if (OWN_WINDOW.includes(k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k));
       tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
       tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideCloseApp(k));
@@ -12813,8 +12852,9 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     rs.addEventListener('dblclick', () => { sideState.w = 0; sideSave(); sideMount(); });
   })();
-  document.body.classList.toggle('has-dock', !!isApp);
-  if (isApp && !ls.get('claudeNavigator.dockTip')) setTimeout(() => { ls.set('claudeNavigator.dockTip', '1'); toast('All your apps are now in the strip on the right. Click one to open it beside; double-click to make it the main app.'); }, 4000);
+  document.body.classList.toggle('has-dock', !!isApp && !SOLO);
+  if (SOLO) { document.body.classList.add('solo'); document.title = { mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO]; }
+  if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip')) setTimeout(() => { ls.set('claudeNavigator.dockTip', '1'); toast('All your apps are now in the strip on the right. Click one to open it beside; double-click to make it the main app.'); }, 4000);
   appApplyOrder();
 
   let claraView = null;
@@ -14108,6 +14148,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const LAST_BACKUP = 'claudeNavigator.lastAutoBackup';
   const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
   async function autoBackup(force = false) {
+    if (SOLO) return;
     if (!isApp || !window.navigatorApp.backupWrite) return;
     if (!force && ls.get(LAST_BACKUP) === todayKey()) return;
     const data = { app: 'claude-navigator', version: 2, saved: new Date().toISOString(), tree: state.tree,
@@ -14301,7 +14342,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const dot = btn.querySelector('.pdot');
     dot.className = 'pdot' + (p ? '' : ' all');
     dot.style.background = p ? p.color : '';
-    document.title = (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
+    document.title = SOLO ? ({ mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
   }
   function setProfile(id, { quiet = false } = {}) {

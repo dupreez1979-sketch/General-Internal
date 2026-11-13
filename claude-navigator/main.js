@@ -53,6 +53,7 @@ function openChildWindow(url) {
 }
 
 function createWindow() {
+  quitting = false;
   mainWindow = new BrowserWindow({
     width: 1440,
     height: 920,
@@ -79,7 +80,8 @@ function createWindow() {
   });
   watchRealClicks(mainWindow);
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => { mainWindow = null; quitting = true; for (const w of appWindows.values()) { try { w.close(); } catch (e) { /* gone */ } } });
+  mainWindow.webContents.once('did-finish-load', () => { const s = winState(); for (const k of Object.keys(APP_WINDOWS)) if (s[k] && s[k].open) setTimeout(() => openAppWindow(k), 600); });
 
   // Links clicked in the folder page itself (not the Claude pane) go to the browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -91,6 +93,56 @@ function createWindow() {
   mainWindow.webContents.on('will-navigate', stay);
   mainWindow.webContents.on('will-redirect', stay);
 }
+
+// ---------- An app in a window of its own ----------
+// Mail, Calendar and Notes can each open in a separate window, to put on another screen. Where each one was (which
+// screen, what size) is remembered, and so is which were open, so they come back the same next time.
+// Such a window shows that one app only. It cannot change your folders or your team: only the main window writes
+// those (see SOLO in index.html), so two windows can never overwrite each other's work.
+const APP_WINDOWS = { mail: 'Mail', cal: 'Calendar', notes: 'Notes' };
+const appWindows = new Map();
+const winFile = () => path.join(app.getPath('userData'), 'windows.json');
+const winState = () => { try { return JSON.parse(fs.readFileSync(winFile(), 'utf8')) || {}; } catch (e) { return {}; } };
+function winSave(key, patch) { try { const s = winState(); s[key] = Object.assign({}, s[key], patch); fs.writeFileSync(winFile(), JSON.stringify(s)); } catch (e) { /* next time */ } }
+function tellAppWindows() { send('app-windows', [...appWindows.keys()]); }
+function openAppWindow(key) {
+  if (!APP_WINDOWS[key]) return { ok: false };
+  const have = appWindows.get(key);
+  if (have && !have.isDestroyed()) { if (have.isMinimized()) have.restore(); have.focus(); return { ok: true, focused: true }; }
+  // Back where it was, if that screen is still there; otherwise on the screen the pointer is on.
+  const saved = (winState()[key] || {}).bounds;
+  let bounds = null;
+  if (saved && saved.width > 300 && saved.height > 200) {
+    const d = screen.getDisplayMatching(saved).workArea;
+    const seen = Math.max(0, Math.min(saved.x + saved.width, d.x + d.width) - Math.max(saved.x, d.x)) * Math.max(0, Math.min(saved.y + saved.height, d.y + d.height) - Math.max(saved.y, d.y));
+    if (seen > 200 * 120) bounds = saved;
+  }
+  if (!bounds) { const d = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea; const w = Math.min(1280, d.width - 80), h = Math.min(860, d.height - 80); bounds = { x: Math.round(d.x + (d.width - w) / 2), y: Math.round(d.y + (d.height - h) / 2), width: w, height: h }; }
+  const win = new BrowserWindow(Object.assign({}, bounds, {
+    minWidth: 620, minHeight: 420, title: APP_WINDOWS[key], autoHideMenuBar: true,
+    ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'sidebar', visualEffectState: 'active', backgroundColor: '#00000000' } : { backgroundColor: '#f3f3f3' }),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, webviewTag: true, spellcheck: true },
+  }));
+  appWindows.set(key, win);
+  watchRealClicks(win);
+  win.loadFile(path.join(__dirname, 'index.html'), { query: { solo: key } });
+  win.webContents.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' }; });
+  const stay = (e, url) => { if (url !== win.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
+  win.webContents.on('will-navigate', stay); win.webContents.on('will-redirect', stay);
+  let t = null;
+  const keep = () => { clearTimeout(t); t = setTimeout(() => { if (!win.isDestroyed() && !win.isMinimized() && !win.isFullScreen()) winSave(key, { bounds: win.getBounds() }); }, 400); };
+  win.on('moved', keep); win.on('resized', keep); win.on('move', keep); win.on('resize', keep);
+  win.on('close', () => { clearTimeout(t); try { if (!win.isMinimized() && !win.isFullScreen()) winSave(key, { bounds: win.getBounds() }); } catch (e) { /* closing */ } if (!quitting) winSave(key, { open: false }); });
+  win.on('closed', () => { if (appWindows.get(key) === win) appWindows.delete(key); tellAppWindows(); });
+  winSave(key, { open: true });
+  tellAppWindows();
+  return { ok: true };
+}
+let quitting = false;
+app.on('before-quit', () => { quitting = true; });
+ipcMain.handle('app-window-open', (e, key) => (fromOwnWindow(e) ? openAppWindow(String(key)) : { ok: false }));
+ipcMain.handle('app-window-list', () => [...appWindows.keys()]);
+ipcMain.handle('app-window-main', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } return true; });
 
 // ---------- Right-click menus ----------
 function contextMenuFor(contents, p) {
@@ -1228,21 +1280,23 @@ ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
 //    press by a person in the last moments (a script cannot fake that), and it names the one draft to send.
 // 2. "send": sends that one draft, once, within two minutes of the click.
 let sendArmed = null;
-let lastClick = null;                      // the last real mouse release in the app's window: { x, y, at }
+const lastClicks = new Map();              // per window: the last real mouse release there: { x, y, at }
 function watchRealClicks(win) {
   // The event says a mouse button was let go in this window; where the pointer really is comes from the system.
   win.webContents.on('input-event', (_e, ev) => {
     if (!ev || ev.type !== 'mouseUp' || win.isDestroyed()) return;
     const pt = screen.getCursorScreenPoint(), cb = win.getContentBounds();
-    lastClick = { x: pt.x - cb.x, y: pt.y - cb.y, at: Date.now() };
+    lastClicks.set(win.webContents.id, { x: pt.x - cb.x, y: pt.y - cb.y, at: Date.now() });
   });
 }
-const fromOwnWindow = e => !!mainWindow && !mainWindow.isDestroyed() && e.sender === mainWindow.webContents && e.senderFrame === e.sender.mainFrame;
+// The app's own windows: the main one, and any app you have opened in a window of its own.
+const isOwnContents = wc => (!!mainWindow && !mainWindow.isDestroyed() && wc === mainWindow.webContents) || [...appWindows.values()].some(w => !w.isDestroyed() && w.webContents === wc);
+const fromOwnWindow = e => isOwnContents(e.sender) && e.senderFrame === e.sender.mainFrame;
 ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
   sendArmed = null;
   if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
   // A real mouse click, seen here (not reported by the page), in the last two seconds, that landed on the Send button.
-  const c = lastClick; lastClick = null;
+  const c = lastClicks.get(e.sender.id) || null; lastClicks.delete(e.sender.id);
   let onSend = false;
   try {
     const z = e.sender.getZoomFactor() || 1;
