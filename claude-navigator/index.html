@@ -904,6 +904,12 @@
   .cal-ev .join { background: var(--ev); color: #fff; border: 0; border-radius: 7px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; }
   .cal-none { color: var(--muted); font-size: 13px; padding: 30px 0; }
   .cal-pop { --ev: #5B7A99; position: absolute; z-index: 30; width: 380px; max-height: min(560px, calc(100% - 16px)); overflow: auto; background: var(--win); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 0 16px 14px; display: grid; gap: 10px; font-size: 13px; }
+  .cal-ghost { position: absolute; left: 2px; right: 2px; z-index: 4; border-radius: 6px; border: 1.5px dashed var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 6px; pointer-events: none; overflow: hidden; }
+  dialog.cal-movedlg { width: 440px; }
+  dialog.cal-movedlg .mv { margin: 8px 0 10px; display: grid; gap: 3px; font-size: 13px; }
+  dialog.cal-movedlg .mv b { font-size: 14px; margin-bottom: 3px; }
+  dialog.cal-movedlg .mv .a { color: var(--muted); text-decoration: line-through; }
+  dialog.cal-movedlg p.hint { margin: 0 0 4px; }
   .cal-vshade { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.16); }
   .cal-view { position: absolute; top: 18px; bottom: 18px; left: 6%; right: 6%; z-index: 41; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.32), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; container-type: inline-size; }
   #sidePanel .cal-view { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; }
@@ -10008,6 +10014,27 @@ body { width: max-content !important; min-width: 0 !important; }
         if (x.i.g && x.i.g.canEdit && x.i.g.organiser && x.a === x.i.start && x.b === x.i.end) calDragWire(c, x.i, H);
         col.appendChild(c);
       }
+      // Drag over empty time (with or without Shift) to start a meeting for exactly that time.
+      col.addEventListener('mousedown', ev2 => {
+        if (ev2.button !== 0 || ev2.target !== col) return;
+        const top0 = col.getBoundingClientRect().top, q = y => Math.max(0, Math.min(24 * 60, Math.round(((y - top0) / H) * 4) * 15)), m0 = Math.floor(((ev2.clientY - top0) / H) * 4) * 15;
+        let ghost = null, a = m0, b = m0;
+        const hm = m => calFmtTime(new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(m / 60), m % 60).getTime());
+        const mv = e3 => {
+          if (!ghost && Math.abs(e3.clientY - ev2.clientY) < 6) return;
+          if (!ghost) { ghost = document.createElement('div'); ghost.className = 'cal-ghost'; col.appendChild(ghost); document.body.classList.add('resizing'); calClosePop(); }
+          const m1 = q(e3.clientY); a = Math.min(m0, m1); b = Math.max(m0 + 15, m1); if (b - a < 15) b = a + 15;
+          ghost.style.top = (a / 60 * H) + 'px'; ghost.style.height = ((b - a) / 60 * H) + 'px'; ghost.textContent = `${hm(a)} \u2013 ${hm(b)}`;
+        };
+        const up = () => {
+          removeEventListener('mousemove', mv); removeEventListener('mouseup', up); document.body.classList.remove('resizing');
+          if (!ghost) return;
+          const at = m => new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(m / 60), m % 60);
+          const g0 = ghost; setTimeout(() => g0.remove(), 1500);
+          calGEdit(null, false, at(a), { end: at(b) });
+        };
+        addEventListener('mousemove', mv); addEventListener('mouseup', up);
+      });
       col.addEventListener('dblclick', ev2 => { if (ev2.target !== col) return; const mins = Math.floor((ev2.offsetY / H) * 2) * 30; calGEdit(null, false, new Date(d.getFullYear(), d.getMonth(), d.getDate(), Math.floor(mins / 60), mins % 60)); });
       if (d.getTime() === today) { const now = new Date(); const ln = document.createElement('div'); ln.className = 'cal-now'; ln.style.top = ((now.getHours() + now.getMinutes() / 60) * H) + 'px'; col.appendChild(ln); }
       grid.appendChild(col);
@@ -10054,10 +10081,34 @@ body { width: max-content !important; min-width: 0 !important; }
           const iso = t => ({ dateTime: new Date(t).toISOString().slice(0, 19), timeZone: 'UTC' });
           return mailApi(inst.g.acc, { method: 'PATCH', path: `/me/events/${inst.g.id}`, body: { start: iso(a), end: iso(b) } });
         };
-        const r = await set(resize ? was[0] : shift(was[0], mins, days), shift(was[1], mins, resize ? 0 : days));
-        if (!r.ok) { inst.start = was[0]; inst.end = was[1]; calRender(); return toast(`Could not move it: ${r.error || 'try again'}`); }
-        toast(`${inst.ev.title || 'Meeting'}: ${new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(inst.start)} – ${calFmtTime(inst.end)}${inst.ev.attendees && inst.ev.attendees.length ? '. The people invited are told.' : ''}`,
-          { label: 'Undo', run: async () => { const u = await set(was[0], was[1]); if (!u.ok) toast('Could not undo that. Move it back by hand.'); } });
+        const na = resize ? was[0] : shift(was[0], mins, days), nb = shift(was[1], mins, resize ? 0 : days);
+        const fmt = (a, b) => `${new Date(a).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(a)} – ${calFmtTime(b)}`;
+        const invited = inst.ev.attendees && inst.ev.attendees.length;
+        const series = inst.recurring && inst.g.master;
+        const one = async () => {
+          const r = await set(na, nb);
+          if (!r.ok) { inst.start = was[0]; inst.end = was[1]; calRender(); return toast(`Could not move it: ${r.error || 'try again'}`); }
+          toast(`${inst.ev.title || 'Meeting'}: ${fmt(na, nb)}${invited ? '. The people invited are told.' : ''}`, { label: 'Undo', run: async () => { const u = await set(was[0], was[1]); if (!u.ok) toast('Could not undo that. Move it back by hand.'); } });
+        };
+        // The whole series: every meeting in it starts (and ends) that much earlier or later.
+        const all = async () => {
+          const m0 = await mailApi(inst.g.acc, { path: `/me/events/${inst.g.master}?$select=start,end` });
+          if (!m0.ok) { calRender(); return toast(`Could not read the series: ${m0.error || 'try again'}`); }
+          const sh = (t, m) => ({ dateTime: new Date(new Date(String(t.dateTime).slice(0, 19) + 'Z').getTime() + m * 60e3).toISOString().slice(0, 19), timeZone: t.timeZone });
+          const r = await mailApi(inst.g.acc, { method: 'PATCH', path: `/me/events/${inst.g.master}`, body: { start: sh(m0.data.start, resize ? 0 : mins), end: sh(m0.data.end, mins) } });
+          toast(r.ok ? `Every “${inst.ev.title || 'meeting'}” in the series moved${invited ? '. The people invited are told.' : ''}` : `Could not move the series: ${r.error || 'try again'}`);
+          calGReload();
+        };
+        calRender();                                   // back where it was until you have said yes
+        const d = mailDlg('cal-movedlg', `<h2>${resize ? 'Change the length of this meeting?' : 'Move this meeting?'}</h2><p class="mv"><b></b><span class="a"></span><span class="b"></span></p><p class="hint"></p><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn" data-x="edit">Edit…</button>${series && !days ? '<button class="btn" data-x="all">The Whole Series</button>' : ''}<button class="btn-primary" data-x="one">${series ? 'This Meeting Only' : resize ? 'Change' : 'Move'}</button></div>`);
+        d.querySelector('.mv b').textContent = inst.ev.title || '(No title)'; d.querySelector('.mv .a').textContent = `From  ${fmt(was[0], was[1])}`; d.querySelector('.mv .b').textContent = `To  ${fmt(na, nb)}`;
+        d.querySelector('.hint').textContent = (invited ? 'The people invited are told about the new time. ' : '') + (series ? (days ? 'This meeting repeats. To move the whole series to another day, choose Edit.' : 'This meeting repeats: move just this one, or every one in the series.') : '');
+        d.addEventListener('click', ev => {
+          const x = ev.target.dataset && ev.target.dataset.x; if (!x) return;
+          d.close();
+          if (x === 'one') one(); else if (x === 'all') all();
+          else if (x === 'edit') (series ? showMenu(lastMenuX || 300, lastMenuY || 200, [{ label: 'This Meeting Only', run: () => calGEdit(inst, false, null, { at: [na, nb] }) }, { label: 'The Whole Series', run: () => calGEdit(inst, true) }]) : calGEdit(inst, inst.recurring, null, { at: [na, nb] }));
+        });
       };
       addEventListener('mousemove', move); addEventListener('mouseup', stop);
     });
@@ -10594,6 +10645,7 @@ body { width: max-content !important; min-width: 0 !important; }
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
     // Moving the start moves the end with it.
     let gap = (seed && !inst && seed.end && seed.end > s0 ? seed.end : e0).getTime() - s0.getTime();
+    if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = calYmd(a); f('st').value = calHm(a); f('ed').value = calYmd(b); f('et').value = calHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
     const readDt = (dn, tn) => { const [y, m, dd] = f(dn).value.split('-').map(Number); const [h, mi] = (f(tn).value || '00:00').split(':').map(Number); return new Date(y, m - 1, dd, f('allday').checked ? 0 : h, f('allday').checked ? 0 : mi); };
     for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = calYmd(e); f('et').value = calHm(e); });
     for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
