@@ -18,6 +18,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   fsNewDocx: (destRel, name, paras) => ipcRenderer.invoke('fs-new-docx', destRel, name, paras),
   acctAttachmentSave: (id, msgId, attId, name, box, where) => ipcRenderer.invoke('acct-attachment-save', id, msgId, attId, name, box, where),
   testAiUrl: () => ipcRenderer.invoke('test-ai-url'),
+  dictationStart: () => ipcRenderer.invoke('dictation-start'),
   mailIndexTexts: (keys) => ipcRenderer.invoke('mailindex-texts', keys),
   mailIndexBoxes: (list) => ipcRenderer.invoke('mailindex-boxes', list),
   mailIndexStatus: () => ipcRenderer.invoke('mailindex-status'),

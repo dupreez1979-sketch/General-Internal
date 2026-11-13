@@ -905,6 +905,33 @@
   .cal-ev .join { background: var(--ev); color: #fff; border: 0; border-radius: 7px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; }
   .cal-none { color: var(--muted); font-size: 13px; padding: 30px 0; }
   .cal-pop { --ev: #5B7A99; position: absolute; z-index: 30; width: 380px; max-height: min(560px, calc(100% - 16px)); overflow: auto; background: var(--win); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 0 16px 14px; display: grid; gap: 10px; font-size: 13px; }
+  .cal-newrow { display: flex; gap: 6px; margin: 4px 4px 8px; }
+  .cal-newrow > .mail-new { flex: 1; width: auto; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
+  .cal-newrow > .cal-mic { flex: none; width: 38px; padding: 0; border-radius: 9px; display: grid; place-items: center; }
+  .cal-hshade { position: fixed; z-index: 69; }
+  .cal-view.cal-help { position: fixed; z-index: 70; top: 36px; bottom: 36px; left: 7%; right: 7%; }
+  .cal-help .ch-left { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; overflow: auto; }
+  .cal-help .ch-left h1 { margin: 0; font-size: 19px; font-weight: 650; }
+  .cal-help .ch-say { min-height: 130px; resize: vertical; font: inherit; font-size: 15px; line-height: 1.45; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--win); color: var(--text); outline: none; }
+  .cal-help .ch-say:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .cal-help .ch-btns { display: flex; align-items: center; gap: 8px; }
+  .cal-help .ch-btns .sp { flex: 1; }
+  .cal-help .ch-mic { display: inline-flex; align-items: center; gap: 6px; }
+  .cal-help .ch-note { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+  .cal-help .ch-st { font-size: 13px; color: var(--muted); }
+  .cal-help .ch-card { display: flex; align-items: center; gap: 12px; padding: 11px 13px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px; box-shadow: inset 3px 0 0 var(--ev); }
+  .cal-help .ch-card > div { flex: 1; min-width: 0; display: grid; gap: 2px; font-size: 12.5px; }
+  .cal-help .ch-card b { font-size: 14px; }
+  .cal-help .ch-card .w, .cal-help .ch-card .p { color: var(--muted); }
+  .cal-help .ch-card .c { color: #B36E24; }
+  .cal-help .ch-card .c:empty { display: none; }
+  .cal-help .ch-right { flex: 1.15; min-width: 0; display: flex; border-left: 1px solid var(--line); }
+  .cal-help .ch-right webview { flex: 1; border: 0; }
+  .cal-help.nochat .ch-right { position: absolute; width: 600px; height: 500px; left: -9000px; }
+  .cal-help .ch-who { display: inline-flex; align-items: baseline; gap: 8px; }
+  .cal-help .ch-who b { font-size: 13px; }
+  @container (max-width: 640px) { .cal-help .ch-right { min-height: 380px; border-left: 0; border-top: 1px solid var(--line); } }
+  dialog.cal-evdlg .cal-check { margin: 2px 0 10px; padding: 7px 10px; border-radius: 7px; font-size: 12.5px; line-height: 1.4; background: color-mix(in srgb, #B36E24 14%, transparent); color: var(--text); }
   .cal-ghost { position: absolute; left: 2px; right: 2px; z-index: 4; border-radius: 6px; border: 1.5px dashed var(--accent); background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); font-size: 11px; font-weight: 600; padding: 2px 6px; pointer-events: none; overflow: hidden; }
   dialog.cal-movedlg { width: 440px; }
   dialog.cal-movedlg .mv { margin: 8px 0 10px; display: grid; gap: 3px; font-size: 13px; }
@@ -1015,6 +1042,10 @@
   .cos-who .who-btns .more { padding: 4px 6px; }
   body.cos-mode.cos-adding #main { display: grid; grid-template-columns: minmax(var(--cos-left-min, 300px), 1fr) 7px minmax(280px, var(--cos-src-w, 50%)); grid-template-rows: auto minmax(0, 1fr) auto; }
   body.cos-mode.cos-adding #cosMain { grid-column: 1; grid-row: 1 / -1; }
+  /* With another app open beside, the staff member's chat takes the main area and their page gives way (never three across). */
+  body.cos-mode.cos-adding.sp-open #main { grid-template-columns: minmax(0, 1fr) !important; }
+  body.cos-mode.cos-adding.sp-open #cosMain, body.cos-mode.cos-adding.sp-open #cosSrcRs { display: none !important; }
+  body.cos-mode.cos-adding.sp-open #cosSrcHead, body.cos-mode.cos-adding.sp-open #content, body.cos-mode.cos-adding.sp-open #pathbar { grid-column: 1 !important; border-left: 0 !important; border-right: 0 !important; }
   body.cos-mode.cos-adding #cosSrcRs { display: block; grid-column: 2; grid-row: 1 / -1; margin: 0 -3px 0 -4px; }
   body.cos-mode.cos-adding #cosSrcHead { display: block; grid-column: 3; grid-row: 1; border-left: 1px solid var(--line); min-width: 0; }
   body.cos-mode.cos-adding #content { grid-column: 3; grid-row: 2; min-height: 0; min-width: 0; border-left: 1px solid var(--line); }
@@ -9936,7 +9967,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (currentApp !== 'cal') {
       const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Event'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
       nm.addEventListener('click', () => calGEdit(null));
-      head.insertBefore(nm, head.firstChild);
+      const mic = document.createElement('button'); mic.className = 'tb cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Meeting helper: say the meeting, and your Executive Assistant lays out the invite for you to check';
+      mic.addEventListener('click', () => calHelper(mic));
+      head.insertBefore(mic, head.firstChild); head.insertBefore(nm, head.firstChild);
     }
     calGLoad(from, to, false);
     P.appendChild(head);
@@ -9964,7 +9997,7 @@ body { width: max-content !important; min-width: 0 !important; }
     // Resting the pointer on a meeting shows its card; a click keeps the card there; a double-click opens the meeting.
     c.addEventListener('click', e => { e.stopPropagation(); clearTimeout(calUi.hoverT); if (e.detail < 2) calOpen(inst, c); });
     c.addEventListener('dblclick', e => { e.stopPropagation(); clearTimeout(calUi.hoverT); calView(inst); });
-    c.addEventListener('mouseenter', () => { clearTimeout(calUi.hoverT); clearTimeout(calUi.outT); calUi.hoverT = setTimeout(() => { if (calUi.view || !c.isConnected || document.body.classList.contains('resizing') || (calUi.pop && !calUi.popHover) || $('menu').classList.contains('open')) return; calOpen(inst, c, true); }, 550); });
+    c.addEventListener('mouseenter', () => { clearTimeout(calUi.hoverT); clearTimeout(calUi.outT); calUi.hoverT = setTimeout(() => { if (calUi.view || !c.isConnected || document.body.classList.contains('resizing') || (calUi.pop && !calUi.popHover) || $('menu').classList.contains('show')) return; calOpen(inst, c, true); }, 550); });
     c.addEventListener('mouseleave', () => { clearTimeout(calUi.hoverT); calHoverOut(); });
     c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); calMenu(inst, e.clientX, e.clientY); });
     return c;
@@ -10436,7 +10469,10 @@ body { width: max-content !important; min-width: 0 !important; }
       nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>New Event</span>';
       nw.title = `Make a meeting (${K.mod}N)`;
       nw.addEventListener('click', () => calGEdit(null));
-      sd.appendChild(nw);
+      const row = document.createElement('div'); row.className = 'cal-newrow';
+      const mic = document.createElement('button'); mic.className = 'btn-primary cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Meeting helper: say the meeting, and your Executive Assistant lays out the invite for you to check';
+      mic.addEventListener('click', () => calHelper(mic));
+      row.append(nw, mic); sd.appendChild(row);
     }
     // A small month to move about with, as in Outlook.
     {
@@ -10635,6 +10671,8 @@ body { width: max-content !important; min-width: 0 !important; }
     f('rep').value = repeat0; if (repeat0 === 'keep') f('rep').querySelector('[value="keep"]').hidden = false;
     f('until').value = rec && rec.range && rec.range.type === 'endDate' ? rec.range.endDate : '';
     if (!canRepeat) d.querySelector('[data-rep]').hidden = true;
+    if (seed && !inst && seed.teams) f('teams').checked = true;
+    if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = calYmd(seed.end); f('et').value = calHm(seed.end); } }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
@@ -12502,6 +12540,149 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
     await mailCompose('new', null, Object.assign({ acc: acc.id }, seed));
   }
+  // How Claude lays a meeting out so the app can read it. People without a known address are given by name: the app
+  // looks them up in your contacts.
+  const CAL_MEET_FORMAT = 'For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person\u2019s name exactly, and the app looks it up in the contacts. Never guess an address.\n\nFormat your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: names or email addresses, separated by semicolons (leave empty if none)\nNotes: one or two lines for the invitation (leave empty if nothing was said)\nCheck: anything you assumed or could not work out, in one line (this is shown only to me, it does not go in the invitation; leave empty if nothing)\n[[END]]\n[[DONE]]';
+  // The account a new meeting belongs in: one that belongs to the profile you are in.
+  const calMeetAcc = prof => { const all = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared); return (prof && all.find(a => mailProf(a.id).includes(prof.id))) || mailVisible().find(a => !a.needsSignIn && !a.shared) || all[0] || null; };
+  async function calMeetRead(blocks, ctx = {}) {
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    const acc = calMeetAcc(ctx.profile || activeProfile());
+    const out = [];
+    for (const b of blocks) {
+      const h = chatHeads(b).heads;
+      const d0 = /(\d{4})-(\d\d)-(\d\d)/.exec(h.date || ''), t = v => { const mm = /(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm ? [+mm[1], +mm[2]] : null; };
+      const s0 = t(h.start), e0 = t(h.end);
+      const start = d0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], s0 ? s0[0] : 9, s0 ? s0[1] : 0) : null;
+      let end = start && e0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], e0[0], e0[1]) : null; if (end && end <= start) end = null;
+      // who: an address is kept; a name is looked up in your contacts (the people you write to)
+      const found = [], missing = [];
+      for (const raw of (h.invite || '').split(/[;,]/).map(z => z.trim()).filter(Boolean)) {
+        const em = /[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+/.exec(raw);
+        if (em) { found.push(em[0]); continue; }
+        if (/^(none|nobody|n\/a|-)$/i.test(raw)) continue;
+        let hit = null;
+        if (acc) { try { const pr = await mailApi(acc.id, { path: `/me/people?$search=${encodeURIComponent('"' + raw.replace(/"/g, '') + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); hit = pr.ok && (pr.data.value || []).map(x => ((x.scoredEmailAddresses || [])[0] || {}).address).find(Boolean); } catch (e) { /* not found */ } }
+        if (hit) found.push(hit); else missing.push(raw);
+      }
+      out.push({ title: h.title || ctx.title || 'Meeting', start, end, loc: /^\(?leave empty/i.test(h.where || '') ? '' : h.where || '', att: [...new Set(found)].join(', '), notes: h.notes || '', teams: /^y/i.test(h.teams || ''), check: h.check || '', missing, acc: acc && acc.id, ref: ctx.ref || null });
+    }
+    return out;
+  }
+  // Each one opens as an invite for you to check. Nothing is in a calendar, and nobody is told, until you save it.
+  function calMeetOpen(list, heading) {
+    if (!list || !list.length) return;
+    const open = M => {
+      const notes = [M.missing.length ? `No address found for ${M.missing.join(', ')}: add ${M.missing.length > 1 ? 'them' : 'it'} in Invite.` : '', M.check, !M.start ? 'No date was given: set the date and time.' : ''].filter(Boolean).join(' ');
+      calGEdit(null, false, M.start, { title: M.title, att: M.att, notes: M.notes, loc: M.loc, end: M.end, acc: M.acc, teams: M.teams, check: notes,
+        onSaved: (ev, acc) => { if (M.ref) linkAdd(M.ref, { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || M.title, at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }); } });
+    };
+    if (list.length === 1) return open(list[0]);
+    const d = mailDlg('mail-meets', '<h2></h2><p class="hint">Open each one you want, check it, and save it. Nothing is in your calendar until you save.</p><div class="mt-list"></div><div class="dlg-actions"><button class="btn" data-x="close">Done</button></div>');
+    d.querySelector('h2').textContent = heading || 'Meetings';
+    for (const M of list) {
+      const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open\u2026</button>';
+      r.querySelector('b').textContent = M.title;
+      r.querySelector('span').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' \u2013 ' + calFmtTime(M.end.getTime()) : ''}` : 'No date given';
+      r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; open(M); });
+      d.querySelector('.mt-list').appendChild(r);
+    }
+    d.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.x === 'close') d.close(); });
+  }
+  // ---------- The meeting helper: say (or type) the meeting, and the profile's Executive Assistant lays it out as an invite.
+  const calHelp = { el: null, shade: null, view: null, timer: null, staff: null, prof: null };
+  const calHelpStaff = prof => { const t = prof && cosTeam(prof), st = t ? t.nodes.filter(n => n.kind === 'staff') : []; return st.find(n => /executive assistant|personal assistant|\bEA\b|\bPA\b/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => /assistant/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => n.chief) || st[0] || null; };
+  function calHelpClose() { clearInterval(calHelp.timer); if (calHelp.el) { calHelp.el.remove(); calHelp.shade.remove(); } calHelp.el = calHelp.shade = calHelp.view = calHelp.timer = null; }
+  function calHelper(anchor, profIn) {
+    if (!isApp) return toast('This works in the desktop app.');
+    const prof = profIn || activeProfile();
+    if (!prof) { const r0 = anchor.getBoundingClientRect(); return showMenu(r0.left, r0.bottom + 4, calProfiles().map(p => ({ label: `For ${p.name}`, dot: p.color, run: () => calHelper(anchor, p) }))); }
+    if (calHelp.el) calHelpClose();
+    const all = (cosTeam(prof) || { nodes: [] }).nodes.filter(n => n.kind === 'staff');
+    let staff = (calState.helpStaff && all.find(n => n.id === calState.helpStaff[prof.id])) || calHelpStaff(prof);
+    if (!staff) return toast(`${prof.name} has no staff yet. Add an Executive Assistant in Chief of Staff first.`);
+    const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', calHelpClose);
+    const el = document.createElement('div'); el.className = 'cal-view cal-help'; el.style.setProperty('--ev', prof.color || CAL_COLOUR);
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Dictate with your Mac's dictation">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. If Dictate does nothing, click in the box and press your Mac\u2019s dictation key (or Fn twice).</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
+    Object.assign(calHelp, { el, shade, prof, staff });
+    document.body.append(shade, el);          // (over the whole app, so drawing the calendar again never disturbs the chat)
+    const say = el.querySelector('.ch-say'), out = el.querySelector('.ch-out'), right = el.querySelector('.ch-right');
+    const load = () => {
+      right.replaceChildren();
+      const v = document.createElement('webview'); v.setAttribute('partition', 'persist:claude'); v.setAttribute('allowpopups', '');
+      const kept = calState.helpChat && calState.helpChat[staff.id];
+      v.setAttribute('src', mailAiTestUrl || kept || mailStaffUrl(staff));          // the same chat each time, so it learns how you like meetings set
+      right.appendChild(v); calHelp.view = v;
+    };
+    const bar = () => {
+      const b = el.querySelector('.cv-bar'); b.replaceChildren();
+      b.appendChild(macLights({ close: calHelpClose, zoom: () => el.classList.toggle('full') }));
+      const who = document.createElement('button'); who.className = 'tb ch-who'; who.innerHTML = '<b></b><span class="t"></span>'; who.querySelector('b').textContent = 'Meeting Helper'; who.querySelector('.t').textContent = `${staff.name} \u00b7 ${prof.name} \u25be`;
+      who.title = 'Who helps. Click to choose someone else on this team.';
+      who.addEventListener('click', () => { const r0 = who.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, all.map(n => ({ label: n.name, checked: n.id === staff.id, run: () => { staff = calHelp.staff = n; (calState.helpStaff = calState.helpStaff || {})[prof.id] = n.id; calSave(); bar(); load(); } }))); });
+      b.appendChild(who);
+      b.appendChild(Object.assign(document.createElement('span'), { className: 'sp', style: 'flex:1' }));
+      const ch = document.createElement('button'); ch.className = 'tb'; ch.innerHTML = '<span class="t">Chat</span>'; ch.title = 'Show or hide the chat with Claude itself'; ch.addEventListener('click', () => { calState.helpNoChat = !calState.helpNoChat; calSave(); el.classList.toggle('nochat', !!calState.helpNoChat); });
+      const nw = document.createElement('button'); nw.className = 'tb'; nw.innerHTML = '<span class="t">Start a Fresh Chat</span>'; nw.title = 'Leave the ongoing chat and start a new one in this person\u2019s project'; nw.addEventListener('click', () => { if (calState.helpChat) delete calState.helpChat[staff.id]; calSave(); load(); });
+      b.append(nw, ch);
+    };
+    el.classList.toggle('nochat', !!calState.helpNoChat);
+    bar(); load();
+    setTimeout(() => say.focus(), 100);
+    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (e) { /* older app */ } if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
+    const status = t => { out.replaceChildren(Object.assign(document.createElement('div'), { className: 'ch-st', textContent: t })); };
+    const go = () => {
+      const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the meeting first.'); }
+      const v = calHelp.view, now = new Date(), first = ((calMeetAcc(prof) || {}).name || 'Kevin').split(/\s+/)[0];
+      const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const prompt = [
+        `You are ${staff.name} for ${first} (${prof.name}). This is the meeting helper: ${first} dictates a meeting and you lay it out so his calendar app can open the invitation for him to check and send himself. Do not create anything and do not use any calendar or email tools: only write it out here.`,
+        `Right now it is ${now.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(now.getTime())} (${Intl.DateTimeFormat().resolvedOptions().timeZone}). Work out days such as "next Thursday" or "tomorrow" from that. If no length is said, make it 30 minutes (a lunch or a workshop: one hour). The words were dictated, so read past small slips. Write the title as it would sit in a calendar. Australian English. Never use em dashes.`,
+        CAL_MEET_FORMAT,
+        `What ${first} said:\n${words}`,
+      ].join('\n\n');
+      const text = `${prompt}\n\nDo not repeat this line in your answer: ${nonce}`;
+      status(`${staff.name} is laying it out\u2026`); el.querySelector('.ch-go').disabled = true;
+      let tries = 0, ticks = 0, last = '', stable = 0;
+      const send = () => { let ready = true; try { v.getURL(); } catch (e) { ready = false; }
+        if (!ready) { if (++tries < 20) setTimeout(send, 700); return; }
+        v.executeJavaScript(SEND_PROMPT(text)).then(r => { if (r === 'none' && ++tries < 12) setTimeout(send, 1500); }).catch(() => { if (++tries < 20) setTimeout(send, 900); }); };
+      send();
+      const re = /\[\[\s*MEETING\s*\]\]([\s\S]*?)\[\[\s*END\s*\]\]/gi;
+      clearInterval(calHelp.timer);
+      calHelp.timer = setInterval(async () => {
+        if (calHelp.view !== v) return clearInterval(calHelp.timer);
+        const fail = t => { clearInterval(calHelp.timer); el.querySelector('.ch-go').disabled = false; status(t); };
+        if (++ticks > 80) return fail('Could not read the answer. Look at the chat on the right: if Claude is asking you to sign in or has a question, answer it there, then press Make the Invite again.');
+        let page = ''; try { page = String(await v.executeJavaScript('document.body ? document.body.innerText : ""') || ''); } catch (e) { return; }
+        const at = page.lastIndexOf(nonce); if (at < 0) return;
+        const body = page.slice(at + nonce.length), found = []; let mm; re.lastIndex = 0;
+        while ((mm = re.exec(body))) if (mm[1].trim()) found.push(mm[1].replace(/^\n+|\s+$/g, ''));
+        if (!found.length) return;
+        const sig = found.join('\u0001'); stable = sig === last ? stable + 1 : 0; last = sig;
+        if (!/\[\[\s*DONE\s*\]\]/i.test(body) && stable < 3) return;
+        clearInterval(calHelp.timer); el.querySelector('.ch-go').disabled = false;
+        try { const u = v.getURL(); if (/\/chat\//.test(u)) { (calState.helpChat = calState.helpChat || {})[staff.id] = u; calSave(); } } catch (e) { /* not ready */ }
+        status('Looking up the people in your contacts\u2026');
+        const list = await calMeetRead(found, { profile: prof, title: 'Meeting' });
+        out.replaceChildren();
+        for (const M of list) {
+          const c = document.createElement('div'); c.className = 'ch-card'; c.innerHTML = '<div><b></b><span class="w"></span><span class="p"></span><span class="c"></span></div><button class="btn-primary">Open\u2026</button>';
+          c.querySelector('b').textContent = M.title;
+          c.querySelector('.w').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' \u2013 ' + calFmtTime(M.end.getTime()) : ''}${M.loc ? ' \u00b7 ' + M.loc : ''}${M.teams ? ' \u00b7 Teams' : ''}` : 'No date given';
+          c.querySelector('.p').textContent = M.att ? `Invite: ${M.att}` : 'Nobody invited';
+          c.querySelector('.c').textContent = [M.missing.length ? `No address found for ${M.missing.join(', ')}.` : '', M.check].filter(Boolean).join(' ');
+          c.querySelector('button').addEventListener('click', () => calMeetOpen([M]));
+          out.appendChild(c);
+        }
+        say.value = '';
+        if (list.length === 1) calMeetOpen(list);
+      }, 1500);
+    };
+    el.querySelector('.ch-go').addEventListener('click', go);
+    say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
+  }
+  const CAL_MIC = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="5.8" y="1.8" width="4.4" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2.2M5.8 14.2h4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   async function chatSendTo(x, y) {
     const here = chatHere(), picked = await chatSelection();
     const email = async () => {
@@ -12515,26 +12696,9 @@ body { width: max-content !important; min-width: 0 !important; }
     const meeting = async () => {
       const got = await chatAsk(['Lay out the meeting (or meetings) we have been working out in this chat, so they can go into my calendar app for me to check and save myself. One block for each date we settled on or are holding as an option.',
         'Do not create anything and do not use any calendar or email tools: only write it out here.',
-        'Format your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nInvite: email addresses, separated by commas (leave empty if not known)\nNotes: one or two lines\n[[END]]\n[[DONE]]'].join('\n\n'), 'MEETING', 'meeting');
+        CAL_MEET_FORMAT].join('\n\n'), 'MEETING', 'meeting');
       if (!got) return toast('Could not read Claude’s answer. Select the details in the chat, then use Send To and choose the selected words.');
-      const list = got.map(b => chatHeads(b).heads).map(h => {
-        const d0 = /^(\d{4})-(\d\d)-(\d\d)/.exec(h.date || ''), t = v => { const mm = /^(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm ? [+mm[1], +mm[2]] : null; };
-        const s0 = t(h.start), e0 = t(h.end);
-        const start = d0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], s0 ? s0[0] : 9, s0 ? s0[1] : 0) : null;
-        return { title: h.title || here.name || 'Meeting', start, end: start && e0 ? new Date(+d0[1], +d0[2] - 1, +d0[3], e0[0], e0[1]) : null, loc: h.where || '', att: (h.invite || '').split(/[,;]/).map(z => z.trim()).filter(z => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(z)).join(', '), notes: h.notes || '' };
-      });
-      const open = M => calGEdit(null, false, M.start, { title: M.title, att: M.att, notes: M.notes, loc: M.loc, end: M.end,
-        onSaved: (ev, acc) => { if (here.ref) linkAdd(here.ref, { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || M.title, at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }); } });
-      if (list.length === 1) return open(list[0]);
-      const d = mailDlg('mail-meets', '<h2>Meetings from this chat</h2><p class="hint">Open each one you want, check it, and save it. Nothing is in your calendar until you save.</p><div class="mt-list"></div><div class="dlg-actions"><button class="btn" data-x="close">Done</button></div>');
-      for (const M of list) {
-        const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open…</button>';
-        r.querySelector('b').textContent = M.title;
-        r.querySelector('span').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' – ' + calFmtTime(M.end.getTime()) : ''}` : 'No date given';
-        r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; open(M); });
-        d.querySelector('.mt-list').appendChild(r);
-      }
-      d.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.x === 'close') d.close(); });
+      calMeetOpen(await calMeetRead(got, { title: here.name || 'Meeting', ref: here.ref }), 'Meetings from this chat');
     };
     showMenu(x, y, [
       { label: 'An Email, Laid Out by Claude', run: email },
@@ -13080,7 +13244,9 @@ body { width: max-content !important; min-width: 0 !important; }
   // place at a time: as the main app, or in one of the two places here.
   function sideOpen(k, below) {
     if (k === currentApp) return;
-    if (claudeBeside()) closeClaude();              // one frame beside the main app, never two
+    // One frame beside the main app, never two. A chat that is open stays open: it takes the whole of the main area,
+    // and the list (or staff page) it sat beside gives way until the side frame is closed again.
+    if (claudeBeside() && currentApp === 'navigator') { try { if (!fr('claude').wide) { sideState.autoWide = true; setFrame('claude', { wide: true }); } } catch (e) { closeClaude(); } }
     try { if (currentApp === 'cos' && !fr('actions').hidden && !fr('actions').popped) setFrame('actions', { hidden: true }); } catch (e) { /* not on a staff page */ }
     if (below && sideState.app && sideState.app !== k) sideState.app2 = k;
     else { if (sideState.app2 === k) sideState.app2 = null; sideState.app = k; sideState.nav = false; }     // its own sidebar starts hidden
@@ -13089,7 +13255,9 @@ body { width: max-content !important; min-width: 0 !important; }
   function sideCloseApp(k) {
     if (sideState.app === k) { sideState.app = sideState.app2 || null; sideState.app2 = null; sideState.nav = false; }
     else if (sideState.app2 === k) sideState.app2 = null;
+    const back = !sideState.app && sideState.autoWide; if (!sideState.app) sideState.autoWide = false;
     sideSave(); sideMount(); sideStart(true);
+    if (back) { try { setFrame('claude', { wide: false }); } catch (e) { /* no chat open */ } }
   }
   function sideClose() { sideCloseApp(sideState.app); }
   const sideCan = k => k && k !== currentApp && isApp && k !== dockMainKey() && !(k === 'claude' && dockNative('claude')) && !(k === 'chats' && appKey() === 'claude');
