@@ -178,7 +178,7 @@
   .cos-detail select { width: 100%; text-overflow: ellipsis; }
   body:not(.cos-mode).claude-left #pane { order: -2; }
   body:not(.cos-mode).claude-left #paneRs { order: -1; }
-  body.claude-beside:not(.cos-mode) #pane { flex: 0 1 var(--claude-w, 58%); min-width: 320px; max-width: calc(100% - 260px); overflow: hidden; }
+  body.claude-beside:not(.cos-mode) #pane { flex: 0 1 var(--claude-w, 50%); min-width: 320px; max-width: calc(100% - 260px); overflow: hidden; }
   #content { overflow: hidden; }
   /* The sidebar: on the left or right; unpinned it tucks away and slides out from the edge; hidden it waits at the edge. */
   body.side-right:not(.side-off) { grid-template-columns: minmax(0, 1fr) 1px var(--side-w); }
@@ -210,7 +210,7 @@
   body.detail-left .cos-body > .cos-detail { order: -2; border-left: 0; border-right: 1px solid var(--line); }
   body.detail-left .cos-body > .col-detail { order: -1; }
   .cos-src-head .fctl { margin-left: 4px; }
-  body.cos-mode.cos-adding.claude-left #main { grid-template-columns: minmax(280px, var(--cos-src-w, 46%)) 7px minmax(var(--cos-left-min, 300px), 1fr); }
+  body.cos-mode.cos-adding.claude-left #main { grid-template-columns: minmax(280px, var(--cos-src-w, 50%)) 7px minmax(var(--cos-left-min, 300px), 1fr); }
   body.cos-mode.cos-adding.claude-left #cosMain { grid-column: 3; }
   body.cos-mode.cos-adding.claude-left #cosSrcHead, body.cos-mode.cos-adding.claude-left #content, body.cos-mode.cos-adding.claude-left #pathbar { grid-column: 1; border-left: 0; border-right: 1px solid var(--line); }
   body.cos-mode.cos-work:not(.split-right) #splitLeft:not([hidden]) { order: 0 !important; border-left: 0 !important; border-right: 1px solid var(--line) !important; }
@@ -391,7 +391,10 @@
   body.notes-mode #tree, body.notes-mode #sNewFolder { display: none !important; }
   /* The dock (small app icons down the edge) and the side panel it opens */
   body.has-dock { --dock-w: 46px; }
-  body.sp-open { --sp-now: var(--sp-w, min(38vw, 480px)); }
+  body { --side-now: calc(var(--side-w) + 1px); }
+  body.side-off { --side-now: 0px; }
+  body { --sp-def: calc((100vw - var(--dock-w, 0px) - var(--side-now)) * var(--sp-f, .5)); }
+  body.sp-open { --sp-now: var(--sp-def); }
   body.has-dock #main { margin-right: calc(var(--dock-w, 0px) + var(--sp-now, 0px)); }
   #dock { display: none; }
   body.has-dock #dock { position: fixed; top: 0; bottom: 0; right: 0; width: var(--dock-w); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px; padding-top: 58px;
@@ -401,8 +404,32 @@
   .dock-b.on { opacity: 1; background: var(--sel); }
   .dock-b.main { opacity: 1; background: color-mix(in srgb, var(--accent) 20%, transparent); box-shadow: 0 0 0 2px var(--accent); }
   #appBtn { display: none !important; }
+  #spChats { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--win); }
+  #spChats[hidden] { display: none; }
+  #spChats .sch-top { flex: none; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  #spChats .sch-top input { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--win); color: var(--text); }
+  #spChats .sch-list { flex: 1; overflow: auto; padding: 4px 6px 12px; }
+  #spChats .sch-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; font-size: 13px; cursor: grab; }
+  #spChats .sch-row:hover { background: color-mix(in srgb, var(--text) 7%, transparent); }
+  #spChats .sch-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #spChats .sch-row .s { flex: none; font-size: 11px; color: var(--muted); }
+  #spChats .sch-row.filed .nm { color: var(--muted); }
+  #spChats .sc-note { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+  #bar { container-type: inline-size; }
+  @container (max-width: 780px) { #bar .tb .t { display: none; } #bar #search, #bar .search { min-width: 90px; } }
   .dock-b.win::after { content: ''; position: absolute; right: 1px; bottom: 1px; width: 9px; height: 9px; border-radius: 2px; border: 1.5px solid var(--accent); background: var(--win); }
   body.solo #dock, body.solo #sidePanel { display: none !important; }
+  #topLeft { position: fixed; top: 0; left: 10px; height: 52px; z-index: 62; display: flex; align-items: center; gap: 6px; -webkit-app-region: no-drag; }
+  .mac-app #topLeft { left: 80px; }
+  #topLeft #sideToggle { color: var(--muted); padding: 4px 5px; }
+  #topLeft #sideToggle.on { color: var(--text); }
+  #topLeft .profile-btn { max-width: calc(var(--side-w) - 130px); }
+  body.side-off #topLeft .profile-btn { max-width: 170px; }
+  #edgeSide { display: none !important; }
+  /* With the sidebar hidden, the top bars start clear of the profile picker. */
+  body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead { padding-left: 250px !important; }
+  .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead { padding-left: 320px !important; }
+  #sidePanel .sl-head .fctl, #sidePanel .sl-src, #splitBtn { display: none !important; }
   .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
   body #menu { z-index: 300; }            /* above the app switcher, the dock and the side panel */
   .app-dragging { opacity: .4; }
@@ -418,7 +445,7 @@
   .app-ic.mini { width: 30px; height: 30px; border-radius: 8px; }
   .app-ic.mini svg { width: 16px; height: 16px; }
   .app-ic.act { background: #6B7C93; }
-  #sidePanel { position: fixed; top: 0; bottom: 0; right: var(--dock-w, 0px); width: var(--sp-w, min(38vw, 480px)); min-width: 300px; max-width: calc(100vw - 420px); z-index: 40; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+  #sidePanel { position: fixed; top: 0; bottom: 0; right: var(--dock-w, 0px); width: var(--sp-def); min-width: 300px; max-width: calc(100vw - var(--dock-w, 0px) - var(--side-now) - 280px); z-index: 40; background: var(--win); border-left: 1px solid var(--line); display: flex; flex-direction: column; }
   #sidePanel[hidden] { display: none; }
   #spRs { position: absolute; left: -5px; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 8; }
   #spRs:hover, #spRs.rs-on { background: linear-gradient(90deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
@@ -909,7 +936,7 @@
   .lrow.selected.done .label { color: inherit; opacity: .75; }
   .cos-who .who-btns .tb.on { color: var(--text); }
   .cos-who .who-btns .more { padding: 4px 6px; }
-  body.cos-mode.cos-adding #main { display: grid; grid-template-columns: minmax(var(--cos-left-min, 300px), 1fr) 7px minmax(280px, var(--cos-src-w, 46%)); grid-template-rows: auto minmax(0, 1fr) auto; }
+  body.cos-mode.cos-adding #main { display: grid; grid-template-columns: minmax(var(--cos-left-min, 300px), 1fr) 7px minmax(280px, var(--cos-src-w, 50%)); grid-template-rows: auto minmax(0, 1fr) auto; }
   body.cos-mode.cos-adding #cosMain { grid-column: 1; grid-row: 1 / -1; }
   body.cos-mode.cos-adding #cosSrcRs { display: block; grid-column: 2; grid-row: 1 / -1; margin: 0 -3px 0 -4px; }
   body.cos-mode.cos-adding #cosSrcHead { display: block; grid-column: 3; grid-row: 1; border-left: 1px solid var(--line); min-width: 0; }
@@ -1449,6 +1476,7 @@
 <aside id="side" aria-label="Sidebar">
   <div class="side-top"><span class="brand">Claude Navigator</span>
     <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator and Notes"><span data-icon="apps"></span></button>
+    <span id="topLeft"><button class="tb" id="sideToggle" title="Hide or show the sidebar"><svg width="18" height="18" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.6v4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></span>
     <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="pname">All Profiles</span><span class="pchev" data-icon="chev"></span></button>
   </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
@@ -1663,8 +1691,13 @@
   // SOLO: this window is one app (Mail, Calendar or Notes) opened in a window of its own, to sit on another screen.
   // The main window owns your folders, your team and the layout. A solo window may only save its own app's settings
   // (below), never the folder tree or anything else, so two windows cannot overwrite each other.
-  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'notes'].includes(k) ? k : ''; } catch (e) { return ''; } })();
-  const SOLO_SAVES = k => ['claudeNavigator.mail.v1', 'claudeNavigator.cal.v1', 'claudeNavigator.notes.v1', 'claudeNavigator.links.v1'].includes(k) || String(k).startsWith('claudeNavigator.calcache.');
+  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'notes', 'cos', 'navigator', 'claude', 'monday'].includes(k) ? k : ''; } catch (e) { return ''; } })();
+  // Mail, Calendar and Notes windows save only their own settings. Chief of Staff, File Navigator, Claude and monday.com
+  // work on your folders and team, so their windows save those too; every window takes in what another has just saved
+  // (see the 'storage' listeners), and only the main window writes folders to the Mac and makes backups.
+  const SOLO_TREE = ['cos', 'navigator', 'claude', 'monday'].includes(SOLO);
+  const SOLO_LAYOUT = k => ['claudeNavigator.app', 'claudeNavigator.side.v1', 'claudeNavigator.navFace', 'claudeNavigator.frames.v1', 'claudeNavigator.split', 'claudeNavigator.appOrder', 'claudeNavigator.appHidden', 'claudeNavigator.activeProfile'].includes(k);
+  const SOLO_SAVES = k => (SOLO_TREE && !SOLO_LAYOUT(k)) || ['claudeNavigator.mail.v1', 'claudeNavigator.cal.v1', 'claudeNavigator.notes.v1', 'claudeNavigator.links.v1'].includes(k) || String(k).startsWith('claudeNavigator.calcache.');
   const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   if (isMac) document.documentElement.classList.add('mac');
   if (isApp && isMac) document.documentElement.classList.add('mac-app');
@@ -3890,7 +3923,7 @@
     } else {
       tEl.textContent = title;
     }
-    document.title = SOLO ? ({ mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO] + ' \u2013 Claude Navigator') : title + ' \u2013 Claude Navigator';
+    document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : title + ' \u2013 Claude Navigator';
     $('viewSeg').hidden = page || (!!state.query && !inLib);
     $('libAttachedBtn').hidden = !((inLib && state.loc.which === 'chats') || (state.loc.kind === 'folder' && !state.query && !page));
     $('splitBtn').hidden = page;
@@ -3911,6 +3944,7 @@
     $('bExternal').hidden = !page;
     $('bFolderRef').hidden = !page;
     $('bSendTo').hidden = !page;
+    try { if (sideState.app && claudeBeside()) { sideState.app = null; sideState.app2 = null; sideSave(); setTimeout(sideMount, 0); } } catch (e) { /* starting up */ }      // a chat opened beside the list: it takes the place of the side panel
     $('bSave').hidden = !page;
     $('bSaveMore').hidden = !page;
     if (page) {
@@ -6746,10 +6780,16 @@
     e.preventDefault();
     if (fr('side').hidden) showFrame('side'); else frameAction('side', 'hide');
   }, true);
+  // The profile picker and the sidebar button sit at the top left of the window, whether the sidebar is showing or not.
+  (() => {
+    const tl = $('topLeft'); if (!tl) return;
+    tl.appendChild($('profileBtn')); document.body.appendChild(tl);
+    $('sideToggle').addEventListener('click', () => { if (fr('side').hidden) showFrame('side'); else frameAction('side', 'hide'); });
+  })();
   // Put every panel where its settings say.
   function applyFrames(rerender) {
     const b = document.body, sd = fr('side'), cl = fr('claude'), sp = fr('split');
-    b.classList.toggle('side-right', sd.at === 'right');
+    b.classList.toggle('side-right', false);            // the sidebar is always on the left (the apps strip has the right)
     b.classList.toggle('side-off', !!sd.hidden);
     if (!sd.hidden) b.classList.remove('side-peek');
     b.classList.toggle('claude-left', cl.at === 'left');
@@ -6765,7 +6805,8 @@
     paintEdges();
     // The sidebar's own controls sit at its foot (the window buttons are at its top).
     const foot = $('side').querySelector('.side-foot');
-    if (foot) { const old = foot.querySelector('.fctl'); const c = frameCtl('side'); if (old) old.replaceWith(c); else foot.appendChild(c); }
+    if (foot) { const old = foot.querySelector('.fctl'); if (old) old.remove(); }      // (hiding it is the button at the top, beside the profile)
+    try { $('sideToggle').classList.toggle('on', !sd.hidden); $('sideToggle').title = sd.hidden ? 'Show the sidebar' : 'Hide the sidebar'; } catch (e) { /* starting up */ }
     if (!rerender) return;
     renderMain(); renderSplit(); renderToolbar();
     if (cos) renderCos();
@@ -6793,13 +6834,11 @@
   // ---------- Split view ----------
   // Your folders on the left, the list you are browsing (Claude or monday.com) on the right. Drag across to file
   // things without losing your place on either side. The left side has its own navigation.
-  var splitOn = ls.get('claudeNavigator.split') === '1';
+  var splitOn = false;
   var splitFolder = ls.get('claudeNavigator.splitFolder') || null;
-  function setSplit(on) {
-    splitOn = on;
-    ls.set('claudeNavigator.split', on ? '1' : '0');
-    renderSplit();
-    renderToolbar();
+  function setSplit(on) {                        // (the old "split view" is now Folders in the side panel)
+    splitOn = false; ls.set('claudeNavigator.split', '0');
+    if (on) { if (!sideHas('folders') && sideCan('folders')) sideOpen('folders', !!sideState.app); } else if (sideHas('folders')) sideCloseApp('folders');
   }
   function splitGo(id) {
     splitFolder = id && nodeOf(id) ? id : null;
@@ -6810,7 +6849,7 @@
     const panel = $('splitLeft');
     if (!panel) return;
     const inSide = sideHas('folders');             // your folders, beside Mail, Calendar or Notes
-    const show = inSide || (splitOn && isApp !== undefined && (currentApp === 'navigator' || currentApp === 'cos') && (state.loc.kind !== 'page' || (currentApp !== 'cos' && !fr('claude').wide)));
+    const show = inSide;                           // (it used to be able to sit inside the list as well; now it is always its own frame)
     $('splitRs').hidden = !show || inSide;
     try { paintEdges(); } catch (e) { /* starting up */ }
     const sh = panel.querySelector('.sl-head');
@@ -6949,14 +6988,17 @@
   // The nine-dot button switches between the apps. Each keeps its own place.
   var navFace = ['claude', 'monday'].includes(ls.get('claudeNavigator.navFace')) ? ls.get('claudeNavigator.navFace') : 'files';
   const appKey = () => currentApp === 'navigator' ? (navFace === 'files' ? 'navigator' : navFace) : currentApp;     // which tile is on
-  var currentApp = SOLO || (['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
+  var currentApp = (SOLO_TREE ? (SOLO === 'cos' ? 'cos' : 'navigator') : SOLO) || (['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
     if (typeof cosUi !== 'undefined') cosUi.making = null;
   }
   function setApp(a) {
-    if (SOLO && a !== SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('That opens in the main window.'); }
+    if (SOLO) {                                   // a window of its own stays the app it is
+      if (SOLO_TREE && SOLO !== 'cos' && ['navigator', 'claude', 'monday'].includes(a)) a = SOLO;
+      else if (a !== SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('That opens in the main window.'); }
+    }
     if (a === 'notes' && currentApp !== 'notes') { try { notesState.from = currentApp; } catch (e) { /* starting up */ } }
     cosEndMaking();
     if (a !== 'cos') { cosUi.adding = false; document.body.classList.remove('cos-adding', 'cos-work', 'cos-dash', 'cos-clara'); $('claraHost').hidden = true; cosReturnSource(); }
@@ -12523,8 +12565,8 @@ body { width: max-content !important; min-width: 0 !important; }
   // Chief of Staff, the Claude and Folders icons open the panels those apps already had, which you can drag between.)
   // A side app opens without its own sidebar; the button at its top left brings that back.
   // The order of the apps (in the switcher and in the dock) is yours: drag one to move it, or right-click it.
-  const APP_KEYS = ['cos', 'navigator', 'claude', 'mail', 'cal', 'notes', 'monday'];
-  const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', mail: 'Mail', cal: 'Calendar', notes: 'Notes', monday: 'monday.com' };
+  const APP_KEYS = ['cos', 'navigator', 'claude', 'chats', 'mail', 'cal', 'notes', 'monday'];
+  const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', chats: 'All Chats', mail: 'Mail', cal: 'Calendar', notes: 'Notes', monday: 'monday.com' };
   function appOrder() { let o = []; try { o = JSON.parse(ls.get('claudeNavigator.appOrder') || '[]'); } catch (e) { /* default */ } o = o.filter(k => APP_KEYS.includes(k)); for (const k of APP_KEYS) if (!o.includes(k)) o.push(k); return o; }
   function appHidden() { try { return JSON.parse(ls.get('claudeNavigator.appHidden') || '[]').filter(k => APP_KEYS.includes(k)); } catch (e) { return []; } }
   function appApplyOrder() {
@@ -12551,12 +12593,24 @@ body { width: max-content !important; min-width: 0 !important; }
     el.addEventListener('contextmenu', e => {
       e.preventDefault(); e.stopPropagation();
       const o = appOrder(), i = o.indexOf(k), hid = appHidden(), vert = axis === 'y';
+      const dk = k === 'navigator' ? 'folders' : k, name = APP_NAMES[k], isMain = vert && dockMainKey() === dk;
+      const beside = vert && !isMain && (dockNative(dk) ? dockClaudeShowing() : sideHas(dk)), win = appWins.includes(k);
       showMenu(e.clientX, e.clientY, [
-        ...(vert ? [{ label: `Make ${APP_NAMES[k]} the Main App`, disabled: appKey() === k, run: () => dockMain(k === 'navigator' ? 'folders' : k) }, OWN_WINDOW.includes(k) ? { label: `Open ${APP_NAMES[k]} in Its Own Window`, run: () => appOwnWindow(k) } : null, '-'].filter(Boolean) : []),
+        // what you can do with this app, in one place
+        ...(vert ? [
+          win ? { label: `Bring ${name}\u2019s Window Forward`, run: () => window.navigatorApp.appWindowOpen(k) } : null,
+          !win && !isMain ? { label: beside ? `Close ${name}` : `Open ${name} Beside`, run: () => dockClick(dk) } : null,
+          !win && k !== 'chats' ? { label: `Make ${name} the Main App`, disabled: isMain, run: () => dockMain(dk) } : null,
+          !win && OWN_WINDOW.includes(k) ? { label: `Open ${name} in Its Own Window`, run: () => appOwnWindow(k) } : null,
+          k === 'mail' ? { label: 'New Email', run: () => chatToEmail({}) } : null,
+          k === 'cal' ? { label: 'New Event', run: () => calGEdit(null, false) } : null,
+          k === 'mail' ? { label: 'Mail Health\u2026', run: () => mailHealth() } : null,
+          '-',
+        ].filter(Boolean) : []),
         { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
         { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
         '-',
-        { label: `Hide ${APP_NAMES[k]}`, disabled: appKey() === k, run: () => { appSetHidden(k, true); toast(`${APP_NAMES[k]} is hidden from the apps and the dock. Right-click any app to show it again.`); } },
+        { label: `Hide ${name}`, disabled: appKey() === k, run: () => { appSetHidden(k, true); toast(`${name} is hidden from the strip. Right-click any app to show it again.`); } },
         ...(hid.length ? ['-', ...hid.map(h => ({ label: `Show ${APP_NAMES[h]}`, run: () => appSetHidden(h, false) }))] : []),
         '-',
         { label: 'Put Back the Usual Order', run: () => { ls.del('claudeNavigator.appOrder'); ls.del('claudeNavigator.appHidden'); appApplyOrder(); } },
@@ -12566,23 +12620,28 @@ body { width: max-content !important; min-width: 0 !important; }
   $('appPop').querySelectorAll('.app-tile').forEach(t => appDragWire(t, t.dataset.app, 'x'));
   var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
   if (SOLO) { sideState.app = null; sideState.app2 = null; }
+  if (SOLO_TREE && SOLO !== 'cos') { try { navFace = SOLO === 'navigator' ? 'files' : SOLO; document.body.dataset.face = navFace; } catch (e) { /* starting up */ } }
   function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }                 // the upper (or only) one
   function sideHas(k) { return typeof sideState === 'object' && !!sideState && !!k && (sideState.app === k || sideState.app2 === k); }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
-  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
-  const dockIcon = cls => `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
-  const dockNative = k => (k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos'))
-    || (k === 'folders' && (currentApp === 'navigator' || (currentApp === 'cos' && document.body.classList.contains('cos-work'))));
+  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
+  const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
+  // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
+  // is Claude while File Navigator, Claude or Chief of Staff is the main app: there a chat opens in the app's own
+  // Claude pane, which the lists and the staff pages are wired to.
+  const dockNative = k => k === 'claude' && (currentApp === 'navigator' || currentApp === 'cos');
+  const claudeBeside = () => (currentApp === 'cos' ? document.body.classList.contains('cos-adding') : currentApp === 'navigator' && !pane.hidden && document.body.classList.contains('claude-beside'));
   const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
   // Apps open in windows of their own (Mail, Calendar, Notes). The strip marks them; clicking one brings its window forward.
   let appWins = [];
-  const OWN_WINDOW = ['mail', 'cal', 'notes'];
+  const OWN_WINDOW = ['mail', 'cal', 'notes', 'cos', 'navigator', 'claude', 'monday'];
   async function appOwnWindow(k) {
     if (!isApp || SOLO || !OWN_WINDOW.includes(k)) return;
     await window.navigatorApp.appWindowOpen(k);
-    if (sideHas(k)) sideCloseApp(k);
-    if (currentApp === k) setApp('navigator');
+    const dk = k === 'navigator' ? 'folders' : k;
+    if (sideHas(dk)) sideCloseApp(dk);
+    if (appKey() === k) setApp(k === 'navigator' ? 'cos' : 'navigator');        // it has moved to its window: show something else here
   }
   try { if (isApp && !SOLO) { window.navigatorApp.onAppWindows(list => { appWins = Array.isArray(list) ? list : []; dockRender(); }); window.navigatorApp.appWindowList().then(list => { appWins = list || []; dockRender(); }); } } catch (e) { /* older app shell */ }
   let dockTimer = 0;
@@ -12591,7 +12650,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function dockMain(k) {
     const prev = dockMainKey();
     if (prev === k) return;
-    const wasBeside = sideHas(k) || (dockNative(k) && (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden));
+    const wasBeside = sideHas(k) || (dockNative(k) && dockClaudeShowing());
     setApp(k === 'folders' ? 'navigator' : k);
     if (wasBeside && sideCan(prev) && !sideHas(prev)) sideOpen(prev, !!sideState.app);
   }
@@ -12601,16 +12660,16 @@ body { width: max-content !important; min-width: 0 !important; }
     d.replaceChildren();
     const mk = (k, label, html, on, tip, isMain) => {
       const b = document.createElement('button');
-      b.className = 'dock-b' + (on ? ' on' : '') + (isMain ? ' main' : '') + (appWins.includes(k) ? ' win' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
+      b.className = 'dock-b' + (on ? ' on' : '') + (isMain ? ' main' : '') + (appWins.includes(k === 'folders' ? 'navigator' : k) ? ' win' : ''); b.dataset.k = k; b.innerHTML = html; b.title = tip;
       // One click opens an app beside the main one (or closes it); a double click makes it the main app.
       b.addEventListener('click', e => {
-        if (k === 'actions' || k === 'chats') return dockClick(k, e);
-        if (appWins.includes(k)) return window.navigatorApp.appWindowOpen(k);          // it is in its own window: bring that forward
+        if (k === 'actions') return dockClick(k, e);
+        if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
-        if (e.detail >= 2) return dockMain(k);
+        if (e.detail >= 2 && k !== 'chats') return dockMain(k);
         dockTimer = setTimeout(() => { if (dockMainKey() === k) toast(`${label} is the main app. Double-click another app to make that the main one.`); else dockClick(k, e); }, 240);
       });
-      if (k !== 'actions' && k !== 'chats') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
+      if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
     const hid = appHidden();
@@ -12618,15 +12677,10 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
       const isMain = k === dockMainKey();
       if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
-      const on = isMain ? false : dockNative(k) ? (k === 'claude' ? dockClaudeShowing() : splitOn && !$('splitLeft').hidden) : sideHas(k);
+      const on = isMain ? false : dockNative(k) ? dockClaudeShowing() : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k) ? `${label} is open in its own window. Click to bring it forward.` : (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
+      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' ? `All your Claude chats, to drag into folders: click to ${on ? 'close' : 'open beside'}` : (isMain ? `${label} is the main app` : `${label}: click to ${on ? 'close it' : 'open it beside'}, double-click to make it the main app`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
-    if (currentApp === 'navigator' && navFace === 'files') mk('chats', 'Chats to File', '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>', false, 'Chats to file: your Claude chats listed beside your folders, to drag them in');
-    { const lb = document.createElement('button'); lb.className = 'dock-b dock-lay'; lb.dataset.k = 'layouts'; lb.title = 'Layouts: bring back a set of apps side by side, or keep the set you have open now';
-      lb.innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9 3v10M9 8h5" stroke="currentColor" stroke-width="1.3"/></svg>';
-      lb.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); layMenu(r0.left - 250, r0.top); });
-      d.appendChild(lb); }
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
       const on = !fr('actions').hidden;
@@ -12634,21 +12688,22 @@ body { width: max-content !important; min-width: 0 !important; }
     }
   }
   function dockClick(k, e) {
-    if (k === 'actions') { setFrame('actions', { hidden: !fr('actions').hidden }); return dockRender(); }
-    if (k === 'chats') return layApply({ name: 'Filing Chats', main: 'claude', a: 'folders' });
+    if (k === 'actions') { const show = fr('actions').hidden; if (show && sideState.app) { sideState.app = null; sideState.app2 = null; sideSave(); sideMount(); } setFrame('actions', { hidden: !show }); return dockRender(); }
     if (k === 'claude' && dockNative(k)) {
+      if (!dockClaudeShowing() && sideState.app) { sideState.app = null; sideState.app2 = null; sideSave(); sideMount(); }
       if (dockClaudeShowing()) closeClaude();
       else if (currentApp === 'cos') { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: state.pageUrl || HOME }); }
       else showFrame('claude');
       return dockRender();
     }
-    if (k === 'folders' && dockNative(k)) { setSplit(!(splitOn && !$('splitLeft').hidden)); return dockRender(); }
     if (sideHas(k)) sideCloseApp(k); else sideOpen(k, !!sideState.app);       // the first goes on top, the next underneath (replacing what was there)
   }
   // The side panel holds one app, or two with one above the other. Each app has one screen, so it shows in one
   // place at a time: as the main app, or in one of the two places here.
   function sideOpen(k, below) {
     if (k === currentApp) return;
+    if (claudeBeside()) closeClaude();              // one frame beside the main app, never two
+    try { if (currentApp === 'cos' && !fr('actions').hidden && !fr('actions').popped) setFrame('actions', { hidden: true }); } catch (e) { /* not on a staff page */ }
     if (below && sideState.app && sideState.app !== k) sideState.app2 = k;
     else { if (sideState.app2 === k) sideState.app2 = null; sideState.app = k; sideState.nav = false; }     // its own sidebar starts hidden
     sideSave(); sideMount(); sideStart();
@@ -12659,7 +12714,7 @@ body { width: max-content !important; min-width: 0 !important; }
     sideSave(); sideMount(); sideStart(true);
   }
   function sideClose() { sideCloseApp(sideState.app); }
-  const sideCan = k => k && k !== currentApp && isApp && !(k === 'folders' && dockNative('folders')) && !(k === 'claude' && dockNative('claude'));
+  const sideCan = k => k && k !== currentApp && isApp && k !== dockMainKey() && !(k === 'claude' && dockNative('claude')) && !(k === 'chats' && appKey() === 'claude');
   // Put each side app's own screen into its place in the side panel, and everything else back where it lives.
   function sideMount() {
     const P = $('sidePanel'), B1 = $('spBody'), B2 = $('spBody2'), main = $('main');
@@ -12675,6 +12730,9 @@ body { width: max-content !important; min-width: 0 !important; }
     place($('mailPanel'), 'mail', toMain); place($('calPanel'), 'cal', toMain); place($('notesPanel'), 'notes', toMain);
     if (!slotOf('mail') && currentApp !== 'mail') $('mailPanel').hidden = true;
     if (!slotOf('cal') && currentApp !== 'cal') $('calPanel').hidden = true;
+    let sh = $('spChats');
+    if (slotOf('chats') && !sh) { sh = document.createElement('div'); sh.id = 'spChats'; }
+    if (sh) { if (slotOf('chats') && sh.parentNode !== slotOf('chats')) slotOf('chats').appendChild(sh); sh.hidden = !slotOf('chats'); }
     let sc = $('spCos');
     if (slotOf('cos') && !sc) { sc = document.createElement('div'); sc.id = 'spCos'; }
     if (sc) { if (slotOf('cos') && sc.parentNode !== slotOf('cos')) slotOf('cos').appendChild(sc); sc.hidden = !slotOf('cos'); }
@@ -12694,7 +12752,7 @@ body { width: max-content !important; min-width: 0 !important; }
     P.hidden = !a;
     document.body.classList.toggle('sp-open', !!a);
     for (const id of ['spSplit', 'spHead2', 'spBody2']) $(id).hidden = !b;
-    if (sideState.w) document.documentElement.style.setProperty('--sp-w', sideState.w + 'px'); else document.documentElement.style.removeProperty('--sp-w');
+    if (sideState.f) document.documentElement.style.setProperty('--sp-f', String(sideState.f)); else document.documentElement.style.removeProperty('--sp-f');
     if (sideState.h2) document.documentElement.style.setProperty('--sp-h2', sideState.h2 + 'px'); else document.documentElement.style.removeProperty('--sp-h2');
     const hasNav = a === 'mail' || a === 'cal';
     $('spNav').hidden = !(hasNav && sideState.nav);
@@ -12713,8 +12771,8 @@ body { width: max-content !important; min-width: 0 !important; }
         showMenu(r0.left - 120, r0.bottom + 4, DOCK.filter(x => sideCan(x[0]) && x[0] !== a && !hid.includes(x[0] === 'folders' ? 'navigator' : x[0])).map(x => ({ label: `${x[1]} Underneath`, run: () => sideOpen(x[0], true) })));
       });
       if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
-      if (OWN_WINDOW.includes(k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k));
-      tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
+      if (OWN_WINDOW.includes(k === 'folders' ? 'navigator' : k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k === 'folders' ? 'navigator' : k));
+      if (k !== 'chats') tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
       tb(FICON.hide, `Close ${item[1]} (its icon in the dock opens it again)`, () => sideCloseApp(k));
     };
@@ -12730,8 +12788,46 @@ body { width: max-content !important; min-width: 0 !important; }
         else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
         else if (k === 'notes') notesRender();
         else if (k === 'cos') sideCosRender();
+        else if (k === 'chats') sideChatsRender();
       } catch (e) { /* that app is not ready yet */ }
     }
+  }
+  // All Chats beside another app: every Claude chat, newest first, to drag into your folders (open Folders beside it,
+  // or drop onto the sidebar). Clicking one opens it in Claude without changing which app is the main one.
+  const sideChats = { q: '' };
+  function sideChatsRender() {
+    const el = $('spChats');
+    if (!el || !sideHas('chats')) return;
+    el.replaceChildren();
+    const top = document.createElement('div'); top.className = 'sch-top';
+    top.innerHTML = '<input type="search" placeholder="Search your chats" spellcheck="false">';
+    const inp = top.querySelector('input'); inp.value = sideChats.q;
+    inp.addEventListener('input', () => { sideChats.q = inp.value; paint(); });
+    el.appendChild(top);
+    const list = document.createElement('div'); list.className = 'sch-list'; el.appendChild(list);
+    const filed = new Set(); try { walk(state.tree, n => { if (n.type === 'link' && n.url) filed.add(normUrl(n.url)); }); } catch (e) { /* starting up */ }
+    const paint = () => {
+      list.replaceChildren();
+      const q = sideChats.q.trim().toLowerCase();
+      const all = (lib.chats || []).filter(c => !q || (c.name || '').toLowerCase().includes(q));
+      for (const c of all.slice(0, 400)) {
+        const r = document.createElement('div'); r.className = 'sch-row' + (filed.has(normUrl(c.url)) ? ' filed' : ''); r.draggable = true;
+        r.innerHTML = `${colourIcon('chat')}<span class="nm"></span><span class="s"></span>`;
+        r.querySelector('.nm').textContent = c.name || 'Untitled chat';
+        r.querySelector('.s').textContent = filed.has(normUrl(c.url)) ? 'Filed' : '';
+        r.title = `${c.name || 'Untitled chat'}\nDrag it into a folder to file it. Click to open it.`;
+        r.addEventListener('dragstart', e => { e.dataTransfer.effectAllowed = 'copy'; e.dataTransfer.setData(LIB_TYPE, JSON.stringify([{ name: c.name, url: c.url }])); e.dataTransfer.setData('text/uri-list', c.url); e.dataTransfer.setData('text/plain', c.url); });
+        r.addEventListener('click', () => {
+          if (currentApp === 'navigator' || currentApp === 'cos') return go({ kind: 'page', url: c.url });          // the app's own Claude pane
+          if (!sideHas('claude')) sideOpen('claude', true);
+          setTimeout(() => { try { sideViews.claude.loadURL(c.url); } catch (e) { try { sideViews.claude.setAttribute('src', c.url); } catch (e2) { /* not ready */ } } }, 300);
+        });
+        list.appendChild(r);
+      }
+      if (!all.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'sc-note', textContent: (lib.chats || []).length ? 'No chat has those words in its name.' : 'Your chats have not been read from Claude yet. Open the Claude app once and they appear here.' }));
+      else if (all.length > 400) list.appendChild(Object.assign(document.createElement('div'), { className: 'sc-note', textContent: `Showing the newest 400 of ${all.length}. Search to find an older one.` }));
+    };
+    paint();
   }
   (() => {
     const sp = $('spSplit'); if (!sp) return;
@@ -12843,17 +12939,18 @@ body { width: max-content !important; min-width: 0 !important; }
     rs.addEventListener('mousedown', e => {
       if (e.button !== 0) return;
       e.preventDefault();
-      const P = $('sidePanel'), r0 = P.getBoundingClientRect(), leftSide = document.body.classList.contains('side-right');
+      const P = $('sidePanel'), r0 = P.getBoundingClientRect();
       document.body.classList.add('resizing');
-      const width = ev => Math.max(300, Math.min(innerWidth - 420, Math.round(leftSide ? ev.clientX - r0.left : r0.right - ev.clientX)));
-      const move = ev => document.documentElement.style.setProperty('--sp-w', width(ev) + 'px');
-      const stop = ev => { document.body.classList.remove('resizing'); removeEventListener('mousemove', move); removeEventListener('mouseup', stop); sideState.w = width(ev); sideSave(); };
+      const room = innerWidth - (parseFloat(getComputedStyle(document.body).getPropertyValue('--dock-w')) || 46) - (document.body.classList.contains('side-off') ? 0 : $('side').getBoundingClientRect().width + 1);
+      const share = ev => Math.max(0.2, Math.min(0.8, (r0.right - ev.clientX) / room));
+      const move = ev => document.documentElement.style.setProperty('--sp-f', share(ev).toFixed(4));
+      const stop = ev => { document.body.classList.remove('resizing'); removeEventListener('mousemove', move); removeEventListener('mouseup', stop); sideState.f = +share(ev).toFixed(4); sideSave(); };
       addEventListener('mousemove', move); addEventListener('mouseup', stop);
     });
-    rs.addEventListener('dblclick', () => { sideState.w = 0; sideSave(); sideMount(); });
+    rs.addEventListener('dblclick', () => { sideState.f = 0; sideSave(); sideMount(); });      // back to half and half
   })();
   document.body.classList.toggle('has-dock', !!isApp && !SOLO);
-  if (SOLO) { document.body.classList.add('solo'); document.title = { mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO]; }
+  if (SOLO) { document.body.classList.add('solo'); document.title = APP_NAMES[SOLO]; }
   if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip')) setTimeout(() => { ls.set('claudeNavigator.dockTip', '1'); toast('All your apps are now in the strip on the right. Click one to open it beside; double-click to make it the main app.'); }, 4000);
   appApplyOrder();
 
@@ -14342,7 +14439,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const dot = btn.querySelector('.pdot');
     dot.className = 'pdot' + (p ? '' : ' all');
     dot.style.background = p ? p.color : '';
-    document.title = SOLO ? ({ mail: 'Mail', cal: 'Calendar', notes: 'Notes' }[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
+    document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
   }
   function setProfile(id, { quiet = false } = {}) {
@@ -14768,7 +14865,12 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     fitTimer = setTimeout(() => { if (!browseEl.hidden && browseEl.querySelector('.list')) renderMain(); }, 150);
   });
 
-  addEventListener('storage', e => { if (e.key === STORE) { state.tree = load(); renderAll(); } });
+  addEventListener('storage', e => {
+    try {
+      if (e.key === STORE) { state.tree = load(); renderAll(); if (currentApp === 'cos') renderCos(); if (!SOLO && fsState.enabled) scheduleApply(); }      // another window changed your folders: the main window writes them to the Mac
+      else if (e.key === COS_STORE && e.newValue) { const x = JSON.parse(e.newValue); if (x && x.teams) { cos.teams = x.teams; for (const k of Object.keys(x)) cos[k] = x[k]; if (currentApp === 'cos') renderCos(); try { sideCosRender(); } catch (err) { /* not open */ } } }
+    } catch (err) { /* a half-written value: the next save puts it right */ }
+  });
 
   // Anything dropped outside the places that accept drops does nothing (it never opens in the window).
   document.addEventListener('dragover', e => { if (!e.defaultPrevented) { e.preventDefault(); e.dataTransfer.dropEffect = 'none'; } });

@@ -99,7 +99,7 @@ function createWindow() {
 // screen, what size) is remembered, and so is which were open, so they come back the same next time.
 // Such a window shows that one app only. It cannot change your folders or your team: only the main window writes
 // those (see SOLO in index.html), so two windows can never overwrite each other's work.
-const APP_WINDOWS = { mail: 'Mail', cal: 'Calendar', notes: 'Notes' };
+const APP_WINDOWS = { mail: 'Mail', cal: 'Calendar', notes: 'Notes', cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', monday: 'monday.com' };
 const appWindows = new Map();
 const winFile = () => path.join(app.getPath('userData'), 'windows.json');
 const winState = () => { try { return JSON.parse(fs.readFileSync(winFile(), 'utf8')) || {}; } catch (e) { return {}; } };
