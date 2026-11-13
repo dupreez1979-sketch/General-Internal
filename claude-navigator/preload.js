@@ -39,6 +39,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   openFile: (file) => ipcRenderer.invoke('open-file', file),
   onShortcut: (fn) => ipcRenderer.on('shortcut', (_e, action) => fn(action)),
   appWindowOpen: (key) => ipcRenderer.invoke('app-window-open', key),
+  itemWindowOpen: (solo, itemJson, bounds) => ipcRenderer.invoke('item-window-open', solo, itemJson, bounds),
   appWindowList: () => ipcRenderer.invoke('app-window-list'),
   appWindowMain: () => ipcRenderer.invoke('app-window-main'),
   onAppWindows: (fn) => ipcRenderer.on('app-windows', (_e, list) => fn(list)),

@@ -141,6 +141,30 @@ function openAppWindow(key) {
 let quitting = false;
 app.on('before-quit', () => { quitting = true; });
 ipcMain.handle('app-window-open', (e, key) => (fromOwnWindow(e) ? openAppWindow(String(key)) : { ok: false }));
+// A window for one thing (an email, a message being written, a meeting), opened where it was dropped: it can sit
+// on another screen. It is one of the app's own windows, so the send lock watches it like the others.
+let itemSeq = 0;
+function openItemWindow(solo, itemJson, b) {
+  if (!['mail', 'cal'].includes(solo) || typeof itemJson !== 'string' || itemJson.length > 20000) return { ok: false };
+  try { JSON.parse(itemJson); } catch (e) { return { ok: false }; }
+  const pt = b && Number.isFinite(b.x) && Number.isFinite(b.y) ? { x: Math.round(b.x), y: Math.round(b.y) } : screen.getCursorScreenPoint();
+  const d = screen.getDisplayNearestPoint(pt).workArea;
+  const w = Math.max(560, Math.min(d.width, Math.round((b && b.width) || 900))), h = Math.max(420, Math.min(d.height, Math.round((b && b.height) || 760)));
+  const x = Math.max(d.x, Math.min(d.x + d.width - w, pt.x)), y = Math.max(d.y, Math.min(d.y + d.height - h, pt.y));
+  const win = new BrowserWindow({ x, y, width: w, height: h, minWidth: 480, minHeight: 360, autoHideMenuBar: true,
+    ...(isMac ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, backgroundColor: '#ffffff' } : { backgroundColor: '#f3f3f3' }),
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, webviewTag: true, spellcheck: true } });
+  const key = 'item:' + (++itemSeq);
+  appWindows.set(key, win);
+  watchRealClicks(win);
+  win.loadFile(path.join(__dirname, 'index.html'), { query: { solo, item: itemJson } });
+  win.webContents.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' }; });
+  const stay = (e, url) => { if (url !== win.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
+  win.webContents.on('will-navigate', stay); win.webContents.on('will-redirect', stay);
+  win.on('closed', () => { if (appWindows.get(key) === win) appWindows.delete(key); });
+  return { ok: true };
+}
+ipcMain.handle('item-window-open', (e, solo, itemJson, b) => (fromOwnWindow(e) ? openItemWindow(String(solo), itemJson, b) : { ok: false }));
 ipcMain.handle('app-window-list', () => [...appWindows.keys()]);
 ipcMain.handle('app-window-main', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } return true; });
 
