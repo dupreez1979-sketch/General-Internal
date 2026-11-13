@@ -451,6 +451,8 @@
   #spRs:hover, #spRs.rs-on { background: linear-gradient(90deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
   .sp-head { flex: none; height: 40px; display: flex; align-items: center; gap: 7px; padding: 0 8px 0 10px; border-bottom: 1px solid var(--line); font-size: 13px; }
   .sp-head .sp { flex: 1; }
+  /* In a frame beside the main app the close dot sits on the right; in pop-ups and windows it is on the left. */
+  .sp-head .lights { order: 99; margin: 0 2px 0 8px; }
   .sp-head .app-ic.mini { width: 22px; height: 22px; border-radius: 6px; }
   .sp-head .app-ic.mini svg { width: 13px; height: 13px; }
   .sp-head .tb.on { background: var(--sel); color: var(--text); }
@@ -1006,6 +1008,45 @@
   dialog.cal-evdlg .fr .btn { flex: none; font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
   dialog.cal-evdlg .hint:empty { display: none; }
+  dialog.cal-evdlg.with-day { width: min(840px, 96vw); padding-right: 300px; position: fixed; }
+  dialog.cal-evdlg .daypane { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; border-left: 1px solid var(--line); display: flex; flex-direction: column; background: color-mix(in srgb, var(--text) 2.5%, var(--win)); }
+  dialog.cal-evdlg .dp-h { flex: none; display: flex; align-items: center; gap: 6px; padding: 10px 10px 8px; border-bottom: 1px solid var(--line); }
+  dialog.cal-evdlg .dp-h b { flex: 1; text-align: center; font-size: 13px; }
+  dialog.cal-evdlg .dp-h .tb { font-size: 17px; line-height: 1; padding: 2px 8px; }
+  dialog.cal-evdlg .dp-sc { flex: 1; min-height: 0; overflow-y: auto; }
+  dialog.cal-evdlg .dp-grid { position: relative; margin: 6px 8px 6px 50px; }
+  dialog.cal-evdlg .dp-hr { position: absolute; left: -50px; right: 0; height: 0; border-top: 1px solid var(--line); font-size: 10.5px; color: var(--muted); line-height: 0; padding-left: 2px; }
+  dialog.cal-evdlg .dp-ev { position: absolute; left: 0; right: 0; box-sizing: border-box; border-radius: 5px; padding: 2px 6px; font-size: 11.5px; line-height: 1.25; overflow: hidden; background: color-mix(in srgb, var(--accent) 18%, var(--win)); box-shadow: inset 3px 0 0 var(--accent); color: var(--text); }
+  dialog.cal-evdlg .dp-ev.free { background: none; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+  dialog.cal-evdlg .dp-me { position: absolute; left: -4px; right: -4px; box-sizing: border-box; border-radius: 6px; padding: 2px 7px; font-size: 11.5px; font-weight: 600; line-height: 1.3; overflow: hidden; cursor: grab; z-index: 2; background: color-mix(in srgb, #328276 88%, transparent); color: #fff; display: flex; flex-wrap: wrap; gap: 0 8px; justify-content: space-between; }
+  dialog.cal-evdlg .dp-me.bad { background: color-mix(in srgb, #C0392B 90%, transparent); }
+  dialog.cal-evdlg .dp-me i { font-style: normal; font-weight: 500; }
+  dialog.cal-evdlg .schedrow .fr-out { text-align: left; }
+  dialog.cal-evdlg .fr { flex-wrap: wrap; row-gap: 4px; } dialog.cal-evdlg .fr-out { min-width: 140px; overflow-wrap: anywhere; }
+  dialog.cal-evdlg.sched-on { width: min(1140px, 97vw); height: min(680px, 92vh); padding-right: 20px; overflow: hidden; }
+  dialog.cal-evdlg.sched-on > :not(.sched) { visibility: hidden; }
+  dialog.cal-evdlg .sched { position: absolute; inset: 0; z-index: 5; background: var(--win); display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; }
+  dialog.cal-evdlg .sc-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  dialog.cal-evdlg .sc-bar .tb { font-size: 17px; line-height: 1; padding: 2px 8px; }
+  dialog.cal-evdlg .sc-day { font-size: 14px; min-width: 210px; text-align: center; }
+  dialog.cal-evdlg .sc-note { flex: 1; font-size: 12.5px; color: #328276; font-weight: 600; text-align: right; }
+  dialog.cal-evdlg .sc-note.bad { color: #C0392B; }
+  dialog.cal-evdlg .sc-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
+  dialog.cal-evdlg .sc-row { display: flex; min-width: max-content; border-bottom: 1px solid var(--line); height: 42px; }
+  dialog.cal-evdlg .sc-row.sc-head { height: 26px; position: sticky; top: 0; z-index: 4; background: var(--win); }
+  dialog.cal-evdlg .sc-n { flex: none; width: 200px; box-sizing: border-box; padding: 5px 10px; position: sticky; left: 0; z-index: 3; background: var(--win); border-right: 1px solid var(--line); display: grid; align-content: center; min-width: 0; }
+  dialog.cal-evdlg .sc-n b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog.cal-evdlg .sc-n span { font-size: 10.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog.cal-evdlg .sc-t { position: relative; flex: none; background-image: linear-gradient(to right, var(--line) 1px, transparent 1px); background-size: 90px 100%; }
+  dialog.cal-evdlg .sc-head .sc-t span { position: absolute; top: 6px; font-size: 10.5px; color: var(--muted); padding-left: 4px; }
+  dialog.cal-evdlg .sc-row.unk .sc-t { background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--text) 9%, transparent) 6px 8px); }
+  dialog.cal-evdlg .sc-ev { position: absolute; top: 6px; bottom: 6px; box-sizing: border-box; border-radius: 4px; padding: 0 6px; font-size: 11px; line-height: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: color-mix(in srgb, var(--accent) 20%, var(--win)); box-shadow: inset 3px 0 0 var(--accent); }
+  dialog.cal-evdlg .sc-ev.tentative { background-image: repeating-linear-gradient(135deg, transparent 0 5px, color-mix(in srgb, var(--accent) 22%, transparent) 5px 8px); background-color: transparent; }
+  dialog.cal-evdlg .sc-ev.oof { background: color-mix(in srgb, #8E44AD 24%, var(--win)); box-shadow: inset 3px 0 0 #8E44AD; }
+  dialog.cal-evdlg .sc-band { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border: 2px solid #328276; background: color-mix(in srgb, #328276 10%, transparent); border-radius: 4px; cursor: grab; z-index: 2; }
+  dialog.cal-evdlg .sc-band.bad { border-color: #C0392B; background: color-mix(in srgb, #C0392B 9%, transparent); }
+  dialog.cal-evdlg .sc-none { padding: 16px; font-size: 13px; color: var(--muted); }
+  dialog.cal-evdlg .sc-hint { flex: none; margin: 0; padding: 8px 16px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
   dialog.cal-evdlg .cal-sug { margin: -4px 0 8px 80px; border: 1px solid var(--line); border-radius: 8px; display: grid; background: var(--win); box-shadow: 0 6px 18px rgba(0,0,0,.12); overflow: hidden; }
   dialog.cal-evdlg .cal-sug[hidden] { display: none; }
   dialog.cal-evdlg .cal-sug button { display: flex; gap: 10px; align-items: baseline; background: none; border: 0; text-align: left; font: inherit; font-size: 13px; padding: 6px 10px; color: var(--text); }
@@ -1310,6 +1351,21 @@
   .cos-list .cn span:last-child, .cos-list .crow > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cos-empty { margin: auto; text-align: center; max-width: 380px; color: var(--muted); display: grid; gap: 10px; justify-items: center; }
   .cos-empty b { color: var(--text); font-size: 15px; }
+  .cos-empty.cos-pick { max-width: 920px; gap: 6px; padding: 30px 20px; }
+  .cos-empty.cos-pick > b { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+  .cos-empty.cos-pick > span { font-size: 14px; margin-bottom: 18px; }
+  .cos-pick .pcards { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+  .cos-pick .pcard { width: 200px; padding: 0 0 14px; border: 0; border-radius: 14px; background: var(--win); box-shadow: 0 0 0 1px var(--line), 0 2px 8px rgba(0,0,0,.05); display: grid; gap: 4px; text-align: left; font: inherit; color: var(--text); cursor: pointer; overflow: hidden; transition: transform .16s ease, box-shadow .16s ease; }
+  .cos-pick .pcard:hover { transform: translateY(-4px); box-shadow: 0 0 0 1.5px var(--pc), 0 12px 26px color-mix(in srgb, var(--pc) 26%, transparent); }
+  .cos-pick .pcard:focus-visible { outline: 3px solid color-mix(in srgb, var(--pc) 55%, transparent); outline-offset: 2px; }
+  .cos-pick .pcard .top { height: 84px; background: var(--pc); display: flex; align-items: flex-end; padding: 0 12px 10px; margin-bottom: 8px; }
+  .cos-pick .faces { display: flex; }
+  .cos-pick .faces i { width: 30px; height: 30px; border-radius: 50%; margin-right: -7px; box-shadow: 0 0 0 2px var(--win); display: grid; place-items: center; font: 600 10.5px/1 inherit; font-style: normal; color: #fff; }
+  .cos-pick .faces i.more { background: var(--win); color: var(--text); }
+  .cos-pick .pcard .nm { padding: 0 14px; font-size: 16px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-pick .pcard .meta { padding: 0 14px; font-size: 12px; color: var(--muted); }
+  .cos-pick .pcard .go { padding: 6px 14px 0; font-size: 12.5px; font-weight: 600; color: var(--pc); opacity: 0; transition: opacity .16s; }
+  .cos-pick .pcard:hover .go, .cos-pick .pcard:focus-visible .go { opacity: 1; }
   .cos-side-row { display: flex; align-items: center; gap: 7px; padding: 4px 8px; padding-left: calc(8px + var(--d, 0) * 14px); border-radius: 6px; font-size: 13px; cursor: default; }
   .cos-side-row:hover { background: var(--hover); }
   .cos-side-row.sel { background: var(--sel); }
@@ -7636,8 +7692,24 @@
     if (!p) {
       const e = document.createElement('div');
       e.className = 'cos-empty';
-      e.innerHTML = '<b>Choose a profile</b><span>Each profile has its own team. Pick one to see or build its team.</span><div class="row2"></div>';
-      for (const pr of profiles()) { const b = document.createElement('button'); b.className = 'btn'; b.textContent = pr.name; b.addEventListener('click', () => { setProfile(pr.id); renderCos(); }); e.querySelector('.row2').appendChild(b); }
+      // One card for each profile: its colour, the people on its team, and how much is open.
+      e.classList.add('cos-pick');
+      e.innerHTML = '<b>Whose team today?</b><span>Each profile has its own Chief of Staff and team.</span><div class="pcards"></div>';
+      for (const pr of profiles()) {
+        const tm = cos.teams[pr.id], st = tm ? tm.nodes.filter(n => n.kind === 'staff') : [];
+        let open = 0; try { for (const n of st) { const fo = n.folderId && nodeOf(n.folderId); if (fo) open += workItems(fo).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length; } } catch (er) { /* a team still being set up */ }
+        const b = document.createElement('button'); b.className = 'pcard'; b.style.setProperty('--pc', pr.color || '#6B7C93');
+        b.innerHTML = '<span class="top"><span class="faces"></span></span><span class="nm"></span><span class="meta"></span><span class="go">Open the team →</span>';
+        const faces = b.querySelector('.faces');
+        for (const n of st.slice(0, 5)) { const d0 = document.createElement('i'); d0.style.background = n.color || pr.color || '#6B7C93'; d0.textContent = (n.name || '?').split(/\s+/).filter(w0 => !/^(of|the|and|for|&)$/i.test(w0)).map(w0 => w0[0]).slice(0, 2).join('').toUpperCase(); d0.title = n.name; faces.appendChild(d0); }
+        if (st.length > 5) { const d0 = document.createElement('i'); d0.className = 'more'; d0.textContent = '+' + (st.length - 5); faces.appendChild(d0); }
+        if (!st.length) faces.innerHTML = '<i class="more">+</i>';
+        b.querySelector('.nm').textContent = pr.name;
+        b.querySelector('.meta').textContent = st.length ? `${st.length} ${st.length === 1 ? 'person' : 'people'} · ${open ? `${open} open ${open === 1 ? 'action' : 'actions'}` : 'nothing open'}` : 'No team yet';
+        if (!st.length) b.querySelector('.go').textContent = 'Start the team →';
+        b.addEventListener('click', () => { setProfile(pr.id); renderCos(); });
+        e.querySelector('.pcards').appendChild(b);
+      }
       body.appendChild(e);
     } else if (staff) {
       renderStaffPage(t, staff, body);
@@ -10833,6 +10905,7 @@ body { width: max-content !important; min-width: 0 !important; }
       <label class="row"><span>Where</span><input name="loc"></label>
       <label class="row"><span>Invite</span><input name="att" placeholder="Email addresses, separated by commas" spellcheck="false"></label>
       <div class="row free" hidden><span></span><span class="fr"><span class="fr-out"></span><button type="button" class="btn" data-x="find">Find a Free Time</button></span></div>
+      <div class="row schedrow"><span></span><span class="fr"><button type="button" class="btn" data-x="sched">Scheduling Assistant…</button><span class="fr-out">See who is free, and drag the meeting to a time that suits.</span></span></div>
       <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
       <label class="row"><span>Show as</span><select name="show"><option value="busy">Busy</option><option value="free">Free</option><option value="tentative">Tentative</option><option value="oof">Away</option></select></label>
       <div class="row kitrow"><span>Invitation</span><span class="fr"><label class="kit-on"><input type="checkbox" name="designed"> <span class="kit-name"></span></label><span class="fr-out kit-none"></span><button type="button" class="btn" data-x="kit"></button><input type="file" class="kit-file" accept=".json,application/json" hidden></span></div>
@@ -10924,8 +10997,14 @@ body { width: max-content !important; min-width: 0 !important; }
     if (inst) d.querySelector('[data-new]').hidden = true;
     else {
       for (const a of accounts) for (const c of (calG.cals[a.id] || []).filter(c => c.canEdit !== false)) { const o = document.createElement('option'); o.value = `${a.id}\n${c.id}`; o.textContent = `${c.name} (${a.email})`; if (c.isDefaultCalendar) o.dataset.def = '1'; f('cal').appendChild(o); }
-      const last = calState.lastCal && [...f('cal').options].find(o => o.value === calState.lastCal);
-      const def = last || [...f('cal').options].find(o => o.dataset.def);
+      // A new meeting starts in the calendar of the profile you are in: the one you last used there, else that
+      // profile's own account. You can still choose any other. (With All Profiles: the one you used last.)
+      const opts = [...f('cal').options], prof = state.profileId || '';
+      const mine = prof ? opts.filter(o => mailProf(o.value.split('\n')[0]).includes(prof)) : [];
+      if (mine.length && mine.length < opts.length) { const g1 = document.createElement('optgroup'), g2 = document.createElement('optgroup'); g1.label = (calProfiles().find(x => x.id === prof) || {}).name || 'This profile'; g2.label = 'Other accounts'; for (const o of opts) (mine.includes(o) ? g1 : g2).appendChild(o); f('cal').append(g1, g2); }
+      const lastP = prof && calState.lastCalBy && calState.lastCalBy[prof];
+      const last = prof ? mine.find(o => o.value === lastP) : calState.lastCal && opts.find(o => o.value === calState.lastCal);
+      const def = last || (prof ? mine.find(o => o.dataset.def) || mine[0] : null) || opts.find(o => o.dataset.def) || opts[0];
       if (def) f('cal').value = def.value;
       if (seed && seed.acc) { const own = [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n') && o.dataset.def) || [...f('cal').options].find(o => o.value.startsWith(seed.acc + '\n')); if (own) f('cal').value = own.value; }
     }
@@ -10984,11 +11063,123 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       frOut.textContent = 'No time in working hours over the next two weeks suits everyone.';
     };
+    // ----- Who is free when. The day's calendar sits on the right of the form; the Scheduling Assistant lays everyone
+    // out side by side. In both, the meeting is a block you can drag to another time.
+    const DAY0 = 7 * 60, DAY1 = 19 * 60;                       // the hours shown
+    const dayOf = () => { const s = readDt('sd', 'st'); return isNaN(s) ? null : new Date(s.getFullYear(), s.getMonth(), s.getDate()); };
+    const whoList = () => mailParse(f('att').value).filter(p2 => !p2.bad).map(p2 => ({ address: p2.emailAddress.address, name: p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address }));
+    const mineOn = day => { const a = day.getTime(), b = a + 86400e3; return (calG.inst || []).filter(i => !i.allDay && i.start < b && i.end > a && i.g.response !== 'declined' && !(inst && i.key === inst.key)).map(i => ({ a: i.start, b: i.end, subject: i.ev.title || 'Busy', status: i.ev.transp ? 'free' : 'busy' })); };
+    const avCache = new Map();
+    const availability = async day => {
+      const who = whoList(), key = `${calYmd(day)}|${frAcc()}|${who.map(x => x.address).join(',')}`;
+      if (!who.length || !frAcc()) return [];
+      if (avCache.has(key)) return avCache.get(key);
+      const iso = t => ({ dateTime: new Date(t).toISOString().slice(0, 19), timeZone: 'UTC' }), utc = v => new Date(String(v.dateTime).slice(0, 19) + 'Z').getTime();
+      const pr = mailApi(frAcc(), { method: 'POST', path: '/me/calendar/getSchedule', prefer: 'outlook.timezone="UTC"', body: { schedules: who.map(x => x.address), startTime: iso(day.getTime()), endTime: iso(day.getTime() + 86400e3), availabilityViewInterval: 15 } })
+        .then(r => who.map(x => { const v = r.ok && (r.data.value || []).find(z => String(z.scheduleId).toLowerCase() === x.address.toLowerCase()); return { who: x, unknown: !v || !!v.error, items: v && !v.error ? (v.scheduleItems || []).filter(i => i.status && i.status !== 'free').map(i => ({ a: utc(i.start), b: utc(i.end), status: i.status, subject: i.subject || '' })) : [] }; }));
+      avCache.set(key, pr); return pr;
+    };
+    const clash = (rows, mine, a, b) => rows.filter(r0 => r0.items.some(i => i.a < b && i.b > a)).length + (mine.some(i => i.status !== 'free' && i.a < b && i.b > a) ? 1 : 0);
+    const setTimes = (startMs, lenMs) => { const a = new Date(startMs), b = new Date(startMs + lenMs); f('sd').value = calYmd(a); f('st').value = calHm(a); f('ed').value = calYmd(b); f('et').value = calHm(b); gap = lenMs; f('et').dispatchEvent(new Event('change')); };
+    const span = () => { const s = readDt('sd', 'st'), en = readDt('ed', 'et'); return isNaN(s) || isNaN(en) || en <= s ? null : [s.getTime(), en.getTime()]; };
+    const lenText = ms => { const m = Math.round(ms / 60e3); return m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+    // The day, on the right of the form.
+    const pane = document.createElement('div'); pane.className = 'daypane';
+    pane.innerHTML = '<div class="dp-h"><button type="button" class="tb" data-dp="-1" title="The day before">‹</button><b></b><button type="button" class="tb" data-dp="1" title="The day after">›</button></div><div class="dp-sc"><div class="dp-grid"></div></div>';
+    d.appendChild(pane); d.classList.add('with-day');
+    const DPH = 40;
+    let dpSeq = 0, dpScrolled = false;
+    const dayPaint = async () => {
+      const day = dayOf(), grid = pane.querySelector('.dp-grid'); if (!day) return;
+      const my = ++dpSeq, sp = span(), mine = mineOn(day), ad = f('allday').checked;
+      pane.querySelector('.dp-h b').textContent = day.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      const draw = rows => {
+        grid.replaceChildren(); grid.style.height = (24 * DPH) + 'px';
+        for (let h = 0; h < 24; h++) { const l = document.createElement('div'); l.className = 'dp-hr'; l.style.top = (h * DPH) + 'px'; l.textContent = h === 0 ? '' : calFmtTime(new Date(2020, 0, 1, h).getTime()).replace(':00', ' '); grid.appendChild(l); }
+        const y = t => (t - day.getTime()) / 3600e3 * DPH;
+        mine.forEach((m, i) => { const b = document.createElement('div'); b.className = 'dp-ev' + (m.status === 'free' ? ' free' : ''); const over = mine.slice(0, i).some(o => o.a < m.b && o.b > m.a); Object.assign(b.style, { top: Math.max(0, y(m.a)) + 'px', height: Math.max(14, y(Math.min(m.b, day.getTime() + 86400e3)) - Math.max(0, y(m.a)) - 1) + 'px', left: over ? '50%' : '' }); b.textContent = m.subject; b.title = `${m.subject}\n${calFmtTime(m.a)} – ${calFmtTime(m.b)}`; grid.appendChild(b); });
+        if (sp && !ad) {
+          const n = clash(rows || [], mine, sp[0], sp[1]);
+          const pb = document.createElement('div'); pb.className = 'dp-me' + (n ? ' bad' : ''); Object.assign(pb.style, { top: y(sp[0]) + 'px', height: Math.max(18, y(sp[1]) - y(sp[0])) + 'px' });
+          pb.innerHTML = '<span></span><i></i>'; pb.querySelector('span').textContent = `${calFmtTime(sp[0])} – ${calFmtTime(sp[1])} (${lenText(sp[1] - sp[0])})`; pb.querySelector('i').textContent = n ? `${n} ${n === 1 ? 'is' : 'are'} unavailable` : rows && rows.length ? 'Everyone is free' : '';
+          pb.title = 'Drag to move the meeting';
+          pb.addEventListener('mousedown', ev0 => { if (ev0.button !== 0) return; ev0.preventDefault(); const y0 = ev0.clientY, t0 = parseFloat(pb.style.top); let dm = 0;
+            const mv = e2 => { dm = Math.round((e2.clientY - y0) / DPH * 4) * 15; pb.style.top = (t0 + dm / 60 * DPH) + 'px'; pb.querySelector('span').textContent = `${calFmtTime(sp[0] + dm * 60e3)} – ${calFmtTime(sp[1] + dm * 60e3)}`; };
+            const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); if (dm) setTimes(sp[0] + dm * 60e3, sp[1] - sp[0]); };
+            addEventListener('mousemove', mv); addEventListener('mouseup', up); });
+          grid.appendChild(pb);
+          if (!dpScrolled) { dpScrolled = true; pane.querySelector('.dp-sc').scrollTop = Math.max(0, y(sp[0]) - 2.5 * DPH); }
+        }
+      };
+      draw(null);
+      const rows = await availability(day); if (my === dpSeq) draw(rows);
+    };
+    pane.querySelector('.dp-grid').addEventListener('dblclick', ev0 => { if (ev0.target.closest('.dp-me, .dp-ev')) return; const day = dayOf(), sp = span(); if (!day) return; const r0 = pane.querySelector('.dp-grid').getBoundingClientRect(); const m = Math.floor((ev0.clientY - r0.top) / DPH * 2) * 30; setTimes(day.getTime() + m * 60e3, sp ? sp[1] - sp[0] : 30 * 60e3); });
+    pane.querySelector('.dp-h').addEventListener('click', ev0 => { const k = +(ev0.target.dataset.dp || 0), sp = span(); if (!k || !sp) return; const a = new Date(sp[0]); a.setDate(a.getDate() + k); setTimes(a.getTime(), sp[1] - sp[0]); });
+    for (const n of ['sd', 'st', 'ed', 'et', 'allday', 'att', 'cal']) f(n).addEventListener('change', () => { dayPaint(); if (d.querySelector('.sched')) schedPaint(); });
+    setTimeout(dayPaint, 0);
+    // The Scheduling Assistant: one row for each person, the working day across, and the meeting as a band to drag.
+    const SW0 = 8 * 60, SW1 = 18 * 60, SPX = 1.5;               // 8 am to 6 pm, a pixel and a half to the minute
+    let scSeq = 0;
+    async function schedPaint() {
+      const sc = d.querySelector('.sched'), day = dayOf(); if (!sc || !day) return;
+      const my = ++scSeq, sp = span(), mine = mineOn(day), accN = (mailAccById(frAcc()) || {}).name || 'You';
+      sc.querySelector('.sc-day').textContent = day.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+      const body = sc.querySelector('.sc-body');
+      const draw = rows => {
+        body.replaceChildren();
+        const W = (SW1 - SW0) * SPX, x = t => ((t - day.getTime()) / 60e3 - SW0) * SPX;
+        const head = document.createElement('div'); head.className = 'sc-row sc-head'; head.innerHTML = '<div class="sc-n"></div><div class="sc-t"></div>'; head.querySelector('.sc-t').style.width = W + 'px';
+        for (let m = SW0; m < SW1; m += 60) { const l = document.createElement('span'); l.style.left = ((m - SW0) * SPX) + 'px'; l.textContent = calFmtTime(day.getTime() + m * 60e3).replace(':00', ' '); head.querySelector('.sc-t').appendChild(l); }
+        body.appendChild(head);
+        const row = (name, role, items, unknown) => {
+          const r0 = document.createElement('div'); r0.className = 'sc-row' + (unknown ? ' unk' : ''); r0.innerHTML = '<div class="sc-n"><b></b><span></span></div><div class="sc-t"></div>';
+          r0.querySelector('b').textContent = name; r0.querySelector('.sc-n span').textContent = unknown ? 'Calendar cannot be seen' : role; const t = r0.querySelector('.sc-t'); t.style.width = W + 'px';
+          for (const i of items) { const a = Math.max(0, x(i.a)), b = Math.min(W, x(i.b)); if (b <= 0 || a >= W) continue; const e0 = document.createElement('div'); e0.className = 'sc-ev ' + (i.status || 'busy'); Object.assign(e0.style, { left: a + 'px', width: Math.max(4, b - a - 1) + 'px' }); e0.textContent = i.subject || (i.status === 'tentative' ? 'Tentative' : i.status === 'oof' ? 'Away' : 'Busy'); e0.title = `${e0.textContent}\n${calFmtTime(i.a)} – ${calFmtTime(i.b)}`; t.appendChild(e0); }
+          body.appendChild(r0);
+        };
+        row(accN, 'Organiser', mine.filter(m => m.status !== 'free'), false);
+        for (const r1 of rows || whoList().map(w0 => ({ who: w0, items: [], unknown: false }))) row(r1.who.name, r1.who.name === r1.who.address ? '' : r1.who.address, r1.items, rows ? r1.unknown : false);
+        if (!whoList().length) body.appendChild(Object.assign(document.createElement('div'), { className: 'sc-none', textContent: 'Add people in Invite to see when they are free.' }));
+        const note = sc.querySelector('.sc-note');
+        if (sp) {
+          const n = clash(rows || [], mine, sp[0], sp[1]), busy = (rows || []).filter(r1 => r1.items.some(i => i.a < sp[1] && i.b > sp[0])).map(r1 => r1.who.name);
+          note.textContent = `${calFmtTime(sp[0])} – ${calFmtTime(sp[1])} (${lenText(sp[1] - sp[0])}): ` + (!rows ? 'checking…' : n ? `${n} ${n === 1 ? 'is' : 'are'} unavailable${busy.length ? ` (${busy.join(', ')}${n > busy.length ? ', you' : ''})` : ' (you)'}` : rows.length ? 'everyone whose calendar can be seen is free' : 'you are free');
+          note.classList.toggle('bad', !!n);
+          const band = document.createElement('div'); band.className = 'sc-band' + (n ? ' bad' : '');
+          const place = (a, b) => { const l = Math.max(0, x(a)), r2 = Math.min(W, x(b)); band.hidden = r2 <= 0 || l >= W; Object.assign(band.style, { left: (200 + l) + 'px', width: Math.max(6, r2 - l) + 'px' }); };
+          place(sp[0], sp[1]); band.title = 'Drag to move the meeting';
+          band.addEventListener('mousedown', ev0 => { if (ev0.button !== 0) return; ev0.preventDefault(); const x0 = ev0.clientX; let dm = 0;
+            const mv = e2 => { dm = Math.round((e2.clientX - x0) / SPX / 15) * 15; place(sp[0] + dm * 60e3, sp[1] + dm * 60e3); note.textContent = `${calFmtTime(sp[0] + dm * 60e3)} – ${calFmtTime(sp[1] + dm * 60e3)}`; };
+            const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); if (dm) setTimes(sp[0] + dm * 60e3, sp[1] - sp[0]); else schedPaint(); };
+            addEventListener('mousemove', mv); addEventListener('mouseup', up); });
+          body.appendChild(band);
+        }
+      };
+      draw(null);
+      const rows = await availability(day); if (my === scSeq && d.querySelector('.sched')) draw(rows);
+    }
+    function schedOpen() {
+      if (d.querySelector('.sched')) return;
+      if (f('allday').checked) return toast('Untick All day to use the Scheduling Assistant.');
+      const sc = document.createElement('div'); sc.className = 'sched';
+      sc.innerHTML = '<div class="sc-bar"><button type="button" class="btn-primary" data-sc="done">✓ Done</button><button type="button" class="tb" data-sc="-1" title="The day before">‹</button><b class="sc-day"></b><button type="button" class="tb" data-sc="1" title="The day after">›</button><span class="sc-note"></span><button type="button" class="btn" data-sc="find">Find a Free Time</button></div><div class="sc-body"></div><p class="sc-hint">Drag the outlined band to move the meeting, or double-click a time to start it there. Working hours, 8 am to 6 pm.</p>';
+      sc.addEventListener('click', ev0 => {
+        const k = ev0.target.dataset && ev0.target.dataset.sc; if (!k) return;
+        if (k === 'done') { sc.remove(); d.classList.remove('sched-on'); return; }
+        if (k === 'find') { Promise.resolve(frFind(ev0.target)).then(() => { dayPaint(); schedPaint(); }); return; }
+        const sp = span(); if (!sp) return; const a = new Date(sp[0]); a.setDate(a.getDate() + (+k)); setTimes(a.getTime(), sp[1] - sp[0]);
+      });
+      sc.querySelector('.sc-body').addEventListener('dblclick', ev0 => { const t = ev0.target.closest('.sc-t'); if (!t || ev0.target.closest('.sc-band')) return; const day = dayOf(), sp = span(); if (!day) return; const m = SW0 + Math.floor((ev0.clientX - t.getBoundingClientRect().left) / SPX / 30) * 30; setTimes(day.getTime() + m * 60e3, sp ? sp[1] - sp[0] : 30 * 60e3); });
+      d.appendChild(sc); d.classList.add('sched-on'); schedPaint();
+    }
+    const rememberCal = () => { const v = f('cal').value, prof = state.profileId || ''; calState.lastCal = v; if (prof && mailProf(v.split('\n')[0]).includes(prof)) (calState.lastCalBy = calState.lastCalBy || {})[prof] = v; calSave(); };
     const shut = () => { d.close(); d.remove(); };
     d.addEventListener('click', async e => {
       const x = e.target.dataset && e.target.dataset.x;
       if (x === 'find') return frFind(e.target);
       if (x === 'kit') return d.querySelector('.kit-file').click();
+      if (x === 'sched') return schedOpen();
       if (x === 'cancel') return shut();
       if (x !== 'ok') return;
       const ad = f('allday').checked, s = readDt('sd', 'st'), en = readDt('ed', 'et');
@@ -11031,7 +11222,7 @@ body { width: max-content !important; min-width: 0 !important; }
           const first = Object.assign({}, body, { attendees: [], body: { contentType: 'html', content: htmlOf(PH) } });
           const extBody = Object.assign({ '@odata.type': 'microsoft.graph.openTypeExtension', extensionName: INVITE_EXT }, words);
           if (inst) { delete first.attendees; r = await mailApi(A, { method: 'PATCH', path: `/me/events/${ev.id}`, body: first }); }
-          else { first.extensions = [extBody]; calState.lastCal = f('cal').value; calSave(); r = await mailApi(A, { method: 'POST', path: `/me/calendars/${cal}/events`, body: first }); }
+          else { first.extensions = [extBody]; rememberCal(); r = await mailApi(A, { method: 'POST', path: `/me/calendars/${cal}/events`, body: first }); }
           if (r.ok) {
             const id = inst ? ev.id : r.data.id, made = r.data || {};
             const up = await mailApi(A, { method: 'POST', path: `/me/events/${id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: 'invitation.png', contentType: 'image/png', contentBytes: hero.url.split(',')[1], isInline: true, contentId: cid } });
@@ -11051,7 +11242,7 @@ body { width: max-content !important; min-width: 0 !important; }
         } catch (er) { r = { ok: false, error: String(er && er.message || er) }; }
       }
       else if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
-      else { const [a, c] = f('cal').value.split('\n'); calState.lastCal = f('cal').value; calSave(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
+      else { const [a, c] = f('cal').value.split('\n'); rememberCal(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
       if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save'; return toast(`It was not saved: ${r.error || 'try again'}`); }
       toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
@@ -12828,7 +13019,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // looks them up in your contacts.
   const CAL_MEET_FORMAT = 'For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person\u2019s name exactly, and the app looks it up in the contacts. Never guess an address.\n\nFormat your answer exactly like this, with nothing outside it (repeat the block for each meeting):\n[[MEETING]]\nTitle: the title\nDate: YYYY-MM-DD\nStart: HH:MM (24 hour)\nEnd: HH:MM (24 hour)\nWhere: (leave empty if not said)\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: names or email addresses, separated by semicolons (leave empty if none)\nPurpose: one line on why the meeting is happening (leave empty if not said)\nAgenda: the items, separated by semicolons, each with its minutes in brackets if said, like: Budget (35 min); Strategy (40 min) (leave empty if none)\nBefore: what to read or bring, separated by semicolons (leave empty if none)\nNotes: anything else for the invitation (leave empty if nothing was said)\nCheck: anything you assumed or could not work out, in one line (this is shown only to me, it does not go in the invitation; leave empty if nothing)\n[[END]]\n[[DONE]]';
   // The account a new meeting belongs in: one that belongs to the profile you are in.
-  const calMeetAcc = prof => { const all = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared); return (prof && all.find(a => mailProf(a.id).includes(prof.id))) || mailVisible().find(a => !a.needsSignIn && !a.shared) || all[0] || null; };
+  const calMeetAcc = prof => { const all = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared); const lastA = prof && calState.lastCalBy && (calState.lastCalBy[prof.id] || '').split('\n')[0]; return (prof && all.find(a => a.id === lastA && mailProf(a.id).includes(prof.id))) || (prof && all.find(a => mailProf(a.id).includes(prof.id))) || mailVisible().find(a => !a.needsSignIn && !a.shared) || all[0] || null; };
   async function calMeetRead(blocks, ctx = {}) {
     if (mailUi.accounts === null) await mailLoadAccounts();
     const acc = calMeetAcc(ctx.profile || activeProfile());
