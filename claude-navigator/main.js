@@ -1449,6 +1449,34 @@ ipcMain.handle('page-layout', async (e, id) => {
   }
   return parts.join('\n\n').slice(0, 60000);
 });
+// The team, for the phone: one small file per profile in iCloud Drive (Claude Navigator Phone), which Apple carries
+// to your other devices. No server, and nothing leaves your Apple account. Written only when something changed.
+function phoneDir() {
+  const base = process.env.NAV_TEST_PHONE_DIR || (isMac ? path.join(app.getPath('home'), 'Library', 'Mobile Documents', 'com~apple~CloudDocs') : '');
+  try { if (!base || !fs.statSync(base).isDirectory()) return ''; } catch (e) { return ''; }      // iCloud Drive is not switched on
+  return path.join(base, 'Claude Navigator Phone');
+}
+ipcMain.handle('phone-publish', (e, docs) => {
+  if (!fromOwnWindow(e) || !docs || typeof docs !== 'object') return { ok: false };
+  const dir = phoneDir();
+  if (!dir) return { ok: false, why: 'no-icloud' };
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const put = (name, text) => { const f = path.join(dir, name); let old = null; try { old = fs.readFileSync(f, 'utf8'); } catch (e2) { /* new */ } if (old === text) return; fs.writeFileSync(f + '.tmp', text); fs.renameSync(f + '.tmp', f); };
+    const index = [];
+    for (const [pid, doc] of Object.entries(docs).slice(0, 40)) {
+      if (!doc || typeof doc !== 'object' || !/^[A-Za-z0-9_-]{1,60}$/.test(pid)) continue;
+      const name = `team-${pid}.json`;
+      if (!doc.today) { try { const was = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')); if (was && was.today) { doc.today = was.today; doc.todayAt = was.todayAt; } } catch (e2) { /* none yet */ } }
+      const text = JSON.stringify(doc);
+      if (text.length > 4e6) continue;
+      put(name, text);
+      index.push({ id: pid, name: String((doc.profile || {}).name || ''), color: String((doc.profile || {}).color || ''), file: name });
+    }
+    put('index.json', JSON.stringify({ v: 1, profiles: index }));
+    return { ok: true, dir };
+  } catch (err) { return { ok: false, why: String(err && err.message || err) }; }
+});
 ipcMain.handle('dictation-start', () => { if (!isMac) return false; try { Menu.sendActionToFirstResponder('startDictation:'); return true; } catch (e) { return false; } });
 // A profile's invite design (logo, shapes, fonts, colours) is a file kept on this Mac only, never in the app itself.
 const inviteKitFile = pid => path.join(app.getPath('userData'), 'invite-kits', String(pid).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80) + '.json');

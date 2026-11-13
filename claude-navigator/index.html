@@ -2524,7 +2524,9 @@
   }
   // Folders start closed; a chat's attached items start shown. The sidebar and the lists both use this.
   const isOpen = n => !!n.open;     // folders and chats with attached artifacts start closed
-  function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); }
+  let phoneTimer = null;
+  const phoneSoon = () => { clearTimeout(phoneTimer); phoneTimer = setTimeout(() => { try { phonePublish(); } catch (e) { /* starting up */ } }, 3000); };       // the phone's copy follows every change
+  function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); phoneSoon(); }
   // Coming back to the sidebar fresh (opening the app, switching profile, or back from Chief of Staff): every folder
   // starts collapsed again, except the way to where you are. While you work, what you open stays open.
   function tidyTree(keepId) {
@@ -7393,7 +7395,7 @@
   var cos = (() => { try { const x = JSON.parse(ls.get(COS_STORE)); if (x && x.teams) return x; } catch (e) { /* ignore */ } return { teams: {} }; })();
   const COS_COLOURS = ['#1B5A68', '#99351E', '#328276', '#B36E24', '#FF4C80', '#FF7552', '#6FC483', '#6161FF', '#4A78C2', '#7A3FB8', '#949695'];
   const cosUi = { view: ['list', 'week'].includes(ls.get('claudeNavigator.cosView')) ? ls.get('claudeNavigator.cosView') : 'chart', sel: null, zoom: 1, dragId: null, tall: ls.get('claudeNavigator.cosTall') === '1' };
-  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); }
+  function saveCos() { ls.set(COS_STORE, JSON.stringify(cos)); phoneSoon(); }
   function cosTeam(p = activeProfile()) {
     if (!p) return null;
     if (!cos.teams[p.id]) {
@@ -14993,7 +14995,39 @@ body { width: max-content !important; min-width: 0 !important; }
   let cosNotesTimer = null, cosNotesLast = '';
   function cosNotesSoon() {
     if (cosNotesTimer) return;                       // at most one write every few seconds
-    cosNotesTimer = setTimeout(() => { cosNotesTimer = null; try { cosWriteNotes(); } catch (e) { console.error('Chief of Staff notes', e); } }, 4000);
+    cosNotesTimer = setTimeout(() => { cosNotesTimer = null; try { cosWriteNotes(); } catch (e) { console.error('Chief of Staff notes', e); } try { phonePublish(); } catch (e) { console.error('Phone', e); } }, 4000);
+  }
+  // ----- The team, for the phone -----
+  // Every profile's team as a small file in iCloud Drive: who is in it and how it is arranged, each person's open
+  // and lately finished work (with what it produced and whether that is filed), and the Chief of Staff's list of
+  // what needs you. The phone only reads it. Nothing about setting the team up is in it.
+  let phoneLast = '';
+  function phoneDoc(p, t, active) {
+    const item = x => ({ id: x.id, name: x.name, url: x.url || '', added: x.added || 0 });
+    const work = {};
+    for (const n of t.nodes.filter(x => x.kind === 'staff')) {
+      const f = n.folderId && nodeOf(n.folderId); if (!f) continue;
+      const all = workItems(f).filter(x => x.type === 'link' && !inSkills(x.id));
+      work[n.id] = {
+        open: all.filter(x => !x.done && !inArchive(x.id)).slice(0, 80).map(item),
+        done: all.filter(x => x.done && (x.doneAt || 0) > Date.now() - 30 * 864e5).slice(0, 40).map(x => Object.assign(item(x), { doneAt: x.doneAt || 0,
+          outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => ({ name: o.name, url: o.url, filed: companyHomes(o.url, p).map(h => h.name) })) })),
+      };
+    }
+    const doc = { v: 1, profile: { id: p.id, name: p.name, color: p.color || '' },
+      nodes: t.nodes.map(n => ({ id: n.id, kind: n.kind, name: n.name, role: n.role || '', color: n.color || '', parent: n.parent || null, chief: !!n.chief, project: n.claudeProject ? { name: n.claudeProject.name || '', url: n.claudeProject.url || '' } : null })),
+      work };
+    if (active) { doc.today = botSuggestions().slice(0, 20).map(sg => ({ type: sg.type, kind: sg.kind, text: sg.text, name: sg.name || '' })); doc.todayAt = Date.now(); }
+    return doc;
+  }
+  function phonePublish() {
+    if (!isApp || SOLO || !window.navigatorApp || !window.navigatorApp.phonePublish) return;
+    const docs = {}, ap = activeProfile();
+    for (const p of profiles()) { const t = (cos.teams || {})[p.id]; if (t && (t.nodes || []).length) { try { docs[p.id] = phoneDoc(p, t, !!ap && ap.id === p.id); } catch (e) { /* this team is not ready */ } } }
+    const sig = JSON.stringify(docs).replace(/"todayAt":\d+/g, '');
+    if (sig === phoneLast || !Object.keys(docs).length) return;
+    phoneLast = sig;
+    window.navigatorApp.phonePublish(docs).then(r => { if (!r || !r.ok) phoneLast = ''; }).catch(() => { phoneLast = ''; });
   }
   function cosTeamOverview(p, t) {
     const L = [`# ${p.name} team overview`, 'Kept up to date by Claude Navigator whenever the team or their work changes.', ''];
