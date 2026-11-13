@@ -1006,6 +1006,11 @@
   dialog.cal-evdlg .fr .btn { flex: none; font-size: 12px; padding: 4px 10px; }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: 13px; }
   dialog.cal-evdlg .hint:empty { display: none; }
+  dialog.cal-evdlg .cal-sug { margin: -4px 0 8px 80px; border: 1px solid var(--line); border-radius: 8px; display: grid; background: var(--win); box-shadow: 0 6px 18px rgba(0,0,0,.12); overflow: hidden; }
+  dialog.cal-evdlg .cal-sug[hidden] { display: none; }
+  dialog.cal-evdlg .cal-sug button { display: flex; gap: 10px; align-items: baseline; background: none; border: 0; text-align: left; font: inherit; font-size: 13px; padding: 6px 10px; color: var(--text); }
+  dialog.cal-evdlg .cal-sug button b { font-weight: 600; } dialog.cal-evdlg .cal-sug button span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+  dialog.cal-evdlg .cal-sug button:hover, dialog.cal-evdlg .cal-sug button.on { background: var(--sel); }
   dialog.cal-evdlg .kitrow .fr { gap: 10px; } dialog.cal-evdlg .kit-on { display: inline-flex; align-items: center; gap: 6px; grid-template-columns: none; color: var(--text); font-size: 13px; flex: 1; text-align: left; }
   dialog.cal-evdlg .kit-on[hidden], dialog.cal-evdlg .kit-none[hidden], dialog.cal-evdlg .row.inv[hidden] { display: none; }
   dialog.cal-evdlg .row.inv textarea { min-height: 0; }
@@ -10878,6 +10883,38 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!ok) return toast('Could not keep that design. Try again.');
       delete inviteKits[kitPid]; f('designed').dataset.set = ''; await kitPaint(); toast(`${k.name || 'The design'} is now used for this profile\u2019s invitations.`);
     });
+    // People as you type in Invite: the ones you write to and meet with, from the account the meeting is in.
+    {
+      const inp = f('att'), sug = document.createElement('div'); sug.className = 'cal-sug'; sug.hidden = true;
+      inp.closest('.row').after(sug);
+      let sugT = null, seq = 0, at = 0;
+      const mark = () => { [...sug.children].forEach((b, i) => b.classList.toggle('on', i === at)); };
+      const pick = pp => { const parts = inp.value.split(/([,;])/); parts[parts.length - 1] = ` ${pp.name && pp.name !== pp.address ? `${pp.name} <${pp.address}>` : pp.address}`; inp.value = parts.join('').trim() + ', '; sug.hidden = true; inp.focus(); inp.dispatchEvent(new Event('change')); };
+      inp.setAttribute('autocomplete', 'off');
+      inp.placeholder = 'Start typing a name or an email address';
+      inp.addEventListener('input', () => {
+        clearTimeout(sugT);
+        const last = inp.value.split(/[,;]/).pop().trim();
+        if (last.length < 2) { sug.hidden = true; return; }
+        sugT = setTimeout(async () => {
+          const my = ++seq, A = inst ? accId : (f('cal').value || '').split('\n')[0]; if (!A) return;
+          const pr = await mailApi(A, { path: `/me/people?$search=${encodeURIComponent('"' + last.replace(/"/g, '') + '"')}&$top=7&$select=displayName,scoredEmailAddresses` });
+          if (my !== seq) return;
+          const have = new Set(mailParse(inp.value).filter(z => !z.bad).map(z => z.emailAddress.address.toLowerCase()));
+          const ppl = pr.ok ? (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).filter(x => x.address && !have.has(x.address.toLowerCase())) : [];
+          sug.replaceChildren(); sug.hidden = !ppl.length; at = 0; sug._ppl = ppl;
+          for (const pp of ppl) { const b = document.createElement('button'); b.type = 'button'; b.innerHTML = '<b></b><span></span>'; b.querySelector('b').textContent = pp.name || pp.address; b.querySelector('span').textContent = pp.name && pp.name !== pp.address ? pp.address : ''; b.addEventListener('mousedown', ev => { ev.preventDefault(); pick(pp); }); sug.appendChild(b); }
+          mark();
+        }, 220);
+      });
+      inp.addEventListener('keydown', ev => {
+        if (sug.hidden || !sug._ppl || !sug._ppl.length) return;
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); at = (at + (ev.key === 'ArrowDown' ? 1 : -1) + sug._ppl.length) % sug._ppl.length; mark(); }
+        else if (ev.key === 'Enter' || ev.key === 'Tab') { ev.preventDefault(); ev.stopPropagation(); pick(sug._ppl[at]); }
+        else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); sug.hidden = true; }
+      });
+      inp.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 150));
+    }
     if (seed && !inst && seed.teams) f('teams').checked = true;
     if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = calYmd(seed.end); f('et').value = calHm(seed.end); } }
