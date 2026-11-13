@@ -807,7 +807,6 @@
   dialog.mail-sigdlg .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
   /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
   body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
-  body.cal-mode #profileBtn { visibility: hidden; }
   body.cal-mode .cal-head .tb.on { background: #DCE4EC; color: #1F3346; }
   body.cal-mode #main > :not(#calPanel) { display: none !important; }
   body.cal-mode #tree, body.cal-mode #sNewFolder { display: none !important; }
@@ -15257,6 +15256,7 @@ body { width: max-content !important; min-width: 0 !important; }
     renderAll();
     if (currentApp === 'cos') renderCos();
     try { if (mailOn()) mailStart(false); } catch (e) { /* starting up */ }
+    try { if (calOn()) calRender(); } catch (e) { /* starting up */ }          // (the meeting helper, invite designs and new meetings follow the profile)
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
   }
   // Profiles keep the order you give them: in the sidebar, the switcher and the shortcuts.
