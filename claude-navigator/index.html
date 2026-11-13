@@ -12986,6 +12986,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const order = appOrder().map(a => a === 'navigator' ? 'folders' : a);
     for (const [k, label, cls] of DOCK.slice().sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]))) {
       const isMain = k === dockMainKey();
+      if (k === 'claude') continue;          // Claude has no icon of its own: a chat opens from a staff member, a folder, or the list of All Chats
       if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = isMain ? false : dockNative(k) ? dockClaudeShowing() : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
@@ -13040,6 +13041,7 @@ body { width: max-content !important; min-width: 0 !important; }
     place($('mailPanel'), 'mail', toMain); place($('calPanel'), 'cal', toMain); place($('notesPanel'), 'notes', toMain);
     if (!slotOf('mail') && currentApp !== 'mail') $('mailPanel').hidden = true;
     if (!slotOf('cal') && currentApp !== 'cal') $('calPanel').hidden = true;
+    if (!slotOf('notes') && currentApp !== 'notes') $('notesPanel').hidden = true;          // (closed: it must not be left floating over the app)
     let sh = $('spChats');
     if (slotOf('chats') && !sh) { sh = document.createElement('div'); sh.id = 'spChats'; }
     if (sh) { if (slotOf('chats') && sh.parentNode !== slotOf('chats')) slotOf('chats').appendChild(sh); sh.hidden = !slotOf('chats'); }
