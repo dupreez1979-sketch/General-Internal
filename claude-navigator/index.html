@@ -1120,7 +1120,12 @@
   body.cos-mode.cos-work.cos-acts.actions-left #actPanel { order: -3; border-left: 0; border-right: 1px solid var(--line); }
   body.cos-mode.cos-work.cos-acts.actions-left #actRs { order: -2; }
   #actPanel .act-list { flex: 1; overflow: auto; padding: 6px 8px 16px; display: grid; align-content: start; gap: 2px; }
-  #actPanel .act { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 4px 8px; padding: 7px 8px; border-radius: 8px; cursor: default; }
+  #actPanel .act .wb { border: 0; background: none; padding: 1px 3px; border-radius: 5px; cursor: pointer; opacity: 0; line-height: 0; }
+  #actPanel .act:hover .wb, #actPanel .act .wb.has { opacity: 1; }
+  #actPanel .act .wb:not(.has) { filter: grayscale(1); }
+  #actPanel .act .wb:hover { background: var(--hover); }
+  #actPanel .act .meta { grid-column: 2 / -1; }
+  #actPanel .act { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 4px 8px; padding: 7px 8px; border-radius: 8px; cursor: default; }
   #actPanel .act:hover { background: var(--field); }
   #actPanel .act .chk { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--muted); margin-top: 2px; cursor: pointer; background: none; padding: 0; }
   #actPanel .act .chk:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
@@ -1850,6 +1855,7 @@
     artifact: C => `<path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="${C}" stroke-width="1.3"/>`,
     doc: C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
     slides: C => `<rect x="2" y="2.5" width="12" height="8" rx="1" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 10.5v2.5M5.5 14.2L8 13l2.5 1.2" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
+    whiteboard: C => `<rect x="2" y="3" width="12" height="8.5" rx="1.2" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M5 13.5h6M8 11.5v2M4.6 8.4l2-2.3 1.7 1.5 2.9-2.7" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
     dashboard: C => `<rect x="2.5" y="7" width="3" height="6.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="6.5" y="2.5" width="3" height="11" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="10.5" y="5" width="3" height="8.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/>`,
     design: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="6.3" r="1" fill="${C}"/><circle cx="9.8" cy="5.6" r="1" fill="${C}"/><circle cx="10.8" cy="9.2" r="1" fill="${C}"/>`,
     claude: C => `<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" stroke="${C}" stroke-width="1.5" stroke-linecap="round"/>`,
@@ -1885,18 +1891,18 @@
   // Brighter versions in dark mode so every icon stays easy to see.
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
-    doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', canva: '#B08CF0',
+    doc: '#5B9BF5', slides: '#E2754F', design: '#A58BF0', dashboard: '#EE6B5E', whiteboard: '#3FB6A8', canva: '#B08CF0',
     code: '#C9CED6', schedule: '#E3A452', designsystem: '#C08BF2', clara: '#F06AA8', skill: '#E3A452', monday: '#8A8AFF', mondaydoc: '#8A8AFF', mondayws: '#8A8AFF', mondayfolder: '#8A8AFF',
     word: '#6EA0F5', excel: '#4CC27C', powerpoint: '#F07A4E', pdf: '#F06A6A', image: '#B08CF0', video: '#E07BD0', audio: '#E7A24A', text: '#A0A7B0', archive: '#B0A090', file: '#A0A7B0',
   } : {
     chat: '#C96442', claude: '#C96442', project: '#4A78C2', artifact: '#2E8F72', link: '#7A7A7A', folder: '#3D8BE6',
-    doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', canva: '#8A5CD1',
+    doc: '#2F6FD6', slides: '#A3401E', design: '#6B45C9', dashboard: '#C0392B', whiteboard: '#1F7F74', canva: '#8A5CD1',
     code: '#3A3F47', schedule: '#B36E24', designsystem: '#7A3FB8', clara: '#D9468C', skill: '#B36E24', monday: '#6161FF', mondaydoc: '#6161FF', mondayws: '#6161FF', mondayfolder: '#6161FF',
     word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
     folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
-    doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', canva: 'Canva design',
+    doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', whiteboard: 'Whiteboard', canva: 'Canva design',
     code: 'Code', schedule: 'Schedule', designsystem: 'Design system', skill: 'Claude skill', clara: 'Clara page', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace', mondayfolder: 'monday.com folder',
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
@@ -3036,7 +3042,7 @@
     any: 'All Kinds', folders: 'Folders', chats: 'Chats', artifacts: 'Artifacts (docs, slides, designs\u2026)',
     code: 'Code', projects: 'Projects', files: 'Files on This Mac (Word, PDF, images\u2026)', links: 'Other links',
   };
-  const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard']);
+  const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard', 'whiteboard']);
   state.ff = { kind: 'any', when: 'any', archived: false, arts: 'any' };
   function folderFilter(items) {
     const f = state.ff;
@@ -3313,14 +3319,16 @@
     if (/design system/.test(both)) return 'designsystem';
     if (list === 'design') return 'design';
     if (/\b(slides?|deck|presentation)\b/.test(meta)) return 'slides';
+    if (/\bwhiteboards?\b/.test(meta)) return 'whiteboard';
     if (/\bdashboard\b/.test(meta)) return 'dashboard';
     if (/\b(docs?|document)\b/.test(meta)) return 'doc';
     if (/\bdesign\b/.test(meta)) return 'design';
     if (/\b(slides|deck|presentation)\b/.test(name)) return 'slides';
+    if (/\bwhiteboard\b/.test(name)) return 'whiteboard';
     if (/\bdashboard\b/.test(name)) return 'dashboard';
     return 'artifact';
   }
-  const CHOOSABLE_KINDS = ['chat', 'doc', 'slides', 'design', 'designsystem', 'dashboard', 'artifact', 'project', 'code', 'schedule', 'link'];
+  const CHOOSABLE_KINDS = ['chat', 'doc', 'slides', 'design', 'designsystem', 'dashboard', 'whiteboard', 'artifact', 'project', 'code', 'schedule', 'link'];
   function chooseKindMenu(x, y, current, onPick) {
     showMenu(x, y, CHOOSABLE_KINDS.map(k => ({ label: KIND_NAME[k], icon: k, checked: k === current, run: () => onPick(k) })));
   }
@@ -4218,10 +4226,11 @@
     slides: { title: 'New slides', label: 'Slides', icon: 'slides', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^slides$', section: true, tile: 'Slides' },
     design: { title: 'New design', label: 'Design', icon: 'design', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^design$', section: true, tile: 'Design' },
     dashboard: { title: 'New dashboard', label: 'Dashboard', icon: 'dashboard', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^(beta\\s*)?dashboard(\\s*beta)?$', section: true, tile: 'Dashboard' },
+    whiteboard: { title: 'New whiteboard', label: 'Whiteboard', icon: 'whiteboard', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^(beta\\s*)?whiteboards?(\\s*beta)?$', section: true, tile: 'Whiteboard' },
     project: { title: 'New project', label: 'Project', icon: 'project', url: 'https://claude.ai/projects', path: '/projects', click: '^(\\+\\s*)?(new|create) project$' },
     artifactChat: { title: 'New artifact', label: 'Artifact in a Chat', icon: 'artifact', url: HOME },
   };
-  const ARTIFACT_KINDS = new Set(['doc', 'slides', 'design', 'dashboard']);
+  const ARTIFACT_KINDS = new Set(['doc', 'slides', 'design', 'dashboard', 'whiteboard']);
 
   // Addresses Claude gives to things it creates.
   const ITEM_RE = {
@@ -4277,7 +4286,7 @@
       add('chat'),
       folderItem,
       isApp && '-',
-      isApp && add('doc'), isApp && add('slides'), isApp && add('design'), isApp && add('dashboard'),
+      isApp && add('doc'), isApp && add('slides'), isApp && add('design'), isApp && add('dashboard'), isApp && add('whiteboard'),
       isApp && '-',
       isApp && add('project'), isApp && add('artifactChat'),
       '-',
@@ -5527,7 +5536,10 @@
     if (!n || n.type === 'folder' || !teamCtxOf(n.id)) return items;
     if (inSkills(n.id)) { items.unshift({ label: kindOf(n) === 'skill' ? 'Run Skill' : 'Run', run: () => runSkillItem(n.id) }, '-'); return items; }
     const i = items.indexOf('-');
-    items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) }, ...filingMenuItems(n.id));
+    items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) },
+      n.board ? { label: n.board.archived ? 'Open the Archived Whiteboard' : 'Open the Whiteboard', run: () => itemBoardOpen(n.id) } : { label: 'Add a Whiteboard\u2026', run: () => itemBoardMenu(n.id, lastMenuX, lastMenuY) },
+      ...(n.board ? [{ label: 'Whiteboard\u2026', key: '\u25B8', run: () => itemBoardMenu(n.id, lastMenuX, lastMenuY) }] : []),
+      ...filingMenuItems(n.id));
     return items;
   }
   function menuForBase(n, scope) {
@@ -7557,7 +7569,7 @@
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
     if (!staffTabs(staff).some(([k]) => k === cosUi.tab)) cosUi.tab = cosUi.tab === 'functions' ? 'skills' : cosUi.tab === 'routines' ? 'routines' : 'work';
-    const dash = !!(staff && cosUi.tab === 'dashboard' && staff.dashboard);
+    const dash = !!(staff && ((cosUi.tab === 'dashboard' && staff.dashboard) || (cosUi.tab === 'whiteboard' && staff.whiteboard)));
     const claraTab = !!(staff && cosUi.tab === 'clara' && staff.clara);
     document.body.classList.toggle('cos-clara', claraTab);
     $('claraHost').hidden = !claraTab;
@@ -7757,6 +7769,7 @@
     const tabs = [...COS_TABS];
     if (n.clara) tabs.push(['clara', 'Scheduling']);
     if (n.dashboard) { if (n.dashFirst) tabs.unshift(['dashboard', 'Dashboard']); else tabs.push(['dashboard', 'Dashboard']); }
+    if (n.whiteboard) tabs.push(['whiteboard', 'Whiteboard']);
     return tabs;
   }
   function openStaff(id) {
@@ -7764,6 +7777,7 @@
     cosUi.page = id; cosUi.sel = id; cosUi.toFolder = true;
     if (n && n.dashboard && n.dashFirst) cosUi.tab = 'dashboard';
     else if (cosUi.tab === 'dashboard' && !(n && n.dashboard)) cosUi.tab = 'work';
+    if (cosUi.tab === 'whiteboard' && !(n && n.whiteboard)) cosUi.tab = 'work';
     renderCos();
   }
 
@@ -7830,12 +7844,12 @@
     snap();
     let moved = false;
     if (!n.done) {
-      n.done = true; n.doneAt = Date.now();
+      n.done = true; n.doneAt = Date.now(); if (n.board) n.board.archived = true;          // its whiteboard is archived with it
       const a = root && archiveFolder(root);
       const l = locate(id);
       if (a && !inArchive(id)) { n.archivedFrom = l.parent ? l.parent.id : null; l.list.splice(l.index, 1); a.children.unshift(n); moved = true; }
     } else {
-      n.done = false; delete n.doneAt;
+      n.done = false; delete n.doneAt; if (n.board) delete n.board.archived;
       const back = n.archivedFrom && nodeOf(n.archivedFrom);
       if (inArchive(id) && root) {
         const l = locate(id);
@@ -8298,6 +8312,7 @@
       ...cosClaraItems(n),
       '-',
       n.dashboard ? { label: 'Dashboard\u2026', key: '\u25B8', run: () => cosDashMenu(lastMenuX, lastMenuY, n) } : { label: 'Add a Dashboard\u2026', run: () => cosDashMenu(lastMenuX, lastMenuY, n) },
+      n.whiteboard ? { label: 'Whiteboard\u2026', key: '\u25B8', run: () => cosBoardMenu(lastMenuX, lastMenuY, n) } : { label: 'Add a Whiteboard\u2026', run: () => cosBoardMenu(lastMenuX, lastMenuY, n) },
     ].filter(x => x !== false && x !== 0 && x !== null && x !== undefined));
   }
 
@@ -8360,6 +8375,48 @@
       cosUi.page = nid; cosUi.tab = 'dashboard'; cosUi.adding = false; cosUi.dashKeep = true;   // stay on what Claude is showing
     } });
   }
+  // ----- Whiteboards. A staff member has one to brainstorm on (its own tab). An action can have one too, to keep
+  // building ideas on while the work is open; it is archived with the action when the action is done.
+  const boardLinkOk = u => /^https:\/\/claude\.ai\/[^\s]+$/i.test(String(u || '').trim());
+  function cosBoardMenu(x, y, n) {
+    const cur = state.loc.kind === 'page' ? state.pageUrl : '';
+    const curArt = cur && itemKindOf(pathOf(cur)) === 'artifact' && !(n.whiteboard && normUrl(cur) === normUrl(n.whiteboard.url));
+    const mine = (lib.artifacts || []).filter(a => libKind(a, 'artifacts') === 'whiteboard').slice(0, 25);
+    const use = (name, url) => cosChange(() => { n.whiteboard = { name: name || 'Whiteboard', url }; cosUi.tab = 'whiteboard'; cosUi.toFolder = true; }, `${n.name} now has a whiteboard`);
+    showMenu(x, y, [
+      n.whiteboard && { label: 'Open in Your Browser', run: () => window.open(n.whiteboard.url, '_blank') },
+      n.whiteboard && '-',
+      { label: n.whiteboard ? 'Make a New Whiteboard with Claude\u2026' : 'Make a Whiteboard with Claude\u2026', run: () => {
+        const nid = n.id;
+        navigator.clipboard.writeText(`A whiteboard for brainstorming with ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+        cosCreate('whiteboard', { what: `${n.name}\u2019s whiteboard`, onLink: link => { const m = cosNode(cosTeam(), nid); if (!m) return; m.whiteboard = { name: link.name, url: link.url }; cosUi.page = nid; cosUi.tab = 'whiteboard'; cosUi.adding = false; cosUi.dashKeep = true; } });
+      } },
+      mine.length ? { label: 'Use an Existing Whiteboard', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled whiteboard', icon: 'whiteboard', run: () => use(a.name, a.url) }))) } : null,
+      curArt && { label: 'Use the Page Open Now', run: () => use(realTitle(state.pageTitle) || 'Whiteboard', cur) },
+      { label: 'Paste a Whiteboard Link\u2026', run: () => askText('The whiteboard\u2019s link, from Claude', '', v => { if (!boardLinkOk(v)) return toast('That is not a link to a Claude page.'); use('Whiteboard', v.trim()); }, 'Use It') },
+      n.whiteboard && '-',
+      n.whiteboard && { label: 'Remove Whiteboard\u2026', run: () => { if (!confirm(`Take the whiteboard off ${n.name}\u2019s page? The whiteboard itself stays in Claude.`)) return; cosChange(() => { delete n.whiteboard; if (cosUi.tab === 'whiteboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s whiteboard`); } },
+    ].filter(Boolean));
+  }
+  // The whiteboard of one action (an item in a staff member's Work).
+  function itemBoardOpen(id) { const x = nodeOf(id); if (x && x.board) cosOpenLink({ name: x.board.name || `${x.name}: whiteboard`, url: x.board.url }); }
+  function itemBoardSet(id, name, url) { const x = nodeOf(id); if (!x) return; snap(); x.board = { name: name || `${x.name}: whiteboard`, url, added: Date.now() }; if (x.done) x.board.archived = true; commit(); try { cosPaintActions(); } catch (e) { /* not showing */ } toast(`\u201c${x.name}\u201d now has a whiteboard`); }
+  function itemBoardMenu(id, px, py) {
+    const x = nodeOf(id); if (!x) return;
+    const cur = state.loc.kind === 'page' ? state.pageUrl : '', curArt = cur && itemKindOf(pathOf(cur)) === 'artifact';
+    showMenu(px, py, [
+      x.board && { label: x.board.archived ? 'Open the Archived Whiteboard' : 'Open the Whiteboard', run: () => itemBoardOpen(id) },
+      x.board && '-',
+      { label: x.board ? 'Make a New Whiteboard with Claude\u2026' : 'Make a Whiteboard with Claude\u2026', run: () => {
+        navigator.clipboard.writeText(`A whiteboard for \u201c${x.name}\u201d: start with the ideas so far, to keep building on`).catch(() => {});
+        cosCreate('whiteboard', { what: `\u201c${x.name}\u201d`, onLink: link => { const m = nodeOf(id); if (!m) return; snap(); m.board = { name: link.name, url: link.url, added: Date.now() }; commit(); } });
+      } },
+      curArt && { label: 'Use the Page Open Now', run: () => itemBoardSet(id, realTitle(state.pageTitle), cur) },
+      { label: 'Paste a Whiteboard Link\u2026', run: () => askText('The whiteboard\u2019s link, from Claude', '', v => { if (!boardLinkOk(v)) return toast('That is not a link to a Claude page.'); itemBoardSet(id, '', v.trim()); }, 'Use It') },
+      x.board && '-',
+      x.board && { label: 'Remove the Whiteboard\u2026', run: () => { if (!confirm('Take the whiteboard off this action? The whiteboard itself stays in Claude.')) return; snap(); delete x.board; commit(); try { cosPaintActions(); } catch (e) { /* not showing */ } } },
+    ].filter(Boolean));
+  }
   function cosUseDashboard(n, x) {
     cosChange(() => { n.dashboard = { name: x.name || 'Dashboard', url: x.url, chatUrl: '' }; cosUi.tab = 'dashboard'; }, `${n.name} now has \u201c${x.name || 'Dashboard'}\u201d as their dashboard`);
   }
@@ -8402,6 +8459,8 @@
         const pb = mk(`${colourIcon('project')}<span class="t">Claude Project</span>`, `${n.claudeProject.name}: new chats for ${n.name} start here. Click to open it.`, () => cosOpenLink(n.claudeProject));
         pb.classList.add('on');
       }
+      if (!n.whiteboard) mk(`${colourIcon('whiteboard')}<span class="t">Add Whiteboard</span>`, `Give ${n.name} a whiteboard to brainstorm on with Claude. It gets its own tab here.`,
+        e => { const b = e.currentTarget.getBoundingClientRect(); cosBoardMenu(b.left, b.bottom + 4, n); });
       if (!n.dashboard) mk(`${colourIcon('dashboard')}<span class="t">Add Dashboard</span>`, `Give ${n.name} a dashboard: make one with Claude, or use one you already have. It gets its own tab here.`,
         e => { const b = e.currentTarget.getBoundingClientRect(); cosDashMenu(b.left, b.bottom + 4, n); });
       const more = mk(UI.more, `More for ${n.name}: their Claude Project, Clara, dashboard`, e => { const b = e.currentTarget.getBoundingClientRect(); cosProjectMenu(b.right - 260, b.bottom + 4, n); });
@@ -8447,8 +8506,9 @@
       b.className = cosUi.tab === k ? 'on' : '';
       b.textContent = label;
       if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
+      if (k === 'whiteboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosBoardMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'dashboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -8464,6 +8524,13 @@
       tabBar = bar;
       return bar.querySelector('.tab-tools');
     };
+    if (cosUi.tab === 'whiteboard' && n.whiteboard) {
+      const tb = newTabBar('Whiteboard');
+      const btn = (html, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
+      btn(`<span class="ic">${UI.reload}</span>`, 'Reload the whiteboard', () => viewDo(v => v.reload()));
+      btn('<span class="t">Open in Your Browser</span>', 'Open the whiteboard in your browser, for example to share it', () => window.open(n.whiteboard.url, '_blank'));
+      btn(`<span class="ic">${UI.more}</span>`, 'Change or remove the whiteboard', e => { const b = e.currentTarget.getBoundingClientRect(); cosBoardMenu(b.right - 240, b.bottom + 4, n); });
+    }
     if (cosUi.tab === 'dashboard' && n.dashboard) {
       const tb = newTabBar('Dashboard');
       const btn = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
@@ -8495,6 +8562,13 @@
       // it is never reloaded just because you came back to this tab.
       claraViewEnsure();
       cosUi.toFolder = false;
+      return;
+    }
+    if (cosUi.tab === 'whiteboard' && n.whiteboard) {
+      // The whiteboard fills the page below the tabs, as a dashboard does.
+      const entering = cosUi.toFolder || cosUi.dashFor !== 'wb:' + n.id || state.loc.kind !== 'page';
+      if (entering && !cosUi.dashKeep) go({ kind: 'page', url: n.whiteboard.url });
+      cosUi.dashFor = 'wb:' + n.id; cosUi.dashKeep = false; cosUi.toFolder = false;
       return;
     }
     if (cosUi.tab === 'dashboard' && n.dashboard) {
@@ -8600,7 +8674,12 @@
       const st = document.createElement('span'); st.className = 'st' + (filed ? ' filed' : ''); st.textContent = filed ? 'Open, filed' : 'Open';
       st.title = filed ? 'Still open; also filed in the company folders' : 'Still open';
       meta.appendChild(st);
-      row.append(chk, nm, meta);
+      const wb = document.createElement('button'); wb.className = 'wb' + (x.board ? ' has' : ''); wb.innerHTML = colourIcon('whiteboard');
+      wb.title = x.board ? 'Open this action\u2019s whiteboard, to keep working on it' : 'Give this action a whiteboard';
+      wb.addEventListener('click', e => { e.stopPropagation(); if (x.board) itemBoardOpen(x.id); else { const r0 = wb.getBoundingClientRect(); itemBoardMenu(x.id, r0.left - 200, r0.bottom + 4); } });
+      wb.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); itemBoardMenu(x.id, e.clientX, e.clientY); });
+      wb.addEventListener('dblclick', e => e.stopPropagation());
+      row.append(chk, nm, wb, meta);
       row.title = `${x.name}\nDouble-click to open; right-click for more.`;
       row.addEventListener('click', () => { state.browseSel = x.id; try { applyBrowseSel(); } catch (e) { /* not shown */ } });
       row.addEventListener('dblclick', () => openNode(x));
