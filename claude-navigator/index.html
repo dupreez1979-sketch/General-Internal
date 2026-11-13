@@ -1640,7 +1640,13 @@
   html.profiled { --sel: color-mix(in srgb, var(--tint) 24%, transparent); --hover: color-mix(in srgb, var(--tint) 10%, transparent); }
   html.profiled #side { background: color-mix(in srgb, var(--tint) var(--tint-side), var(--side)); }
   html.profiled.mac-app #side { background: color-mix(in srgb, var(--tint) var(--tint-side), color-mix(in srgb, var(--side) 50%, transparent)); }
-  html.profiled #bar, html.profiled #findbar, html.profiled #pathbar { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
+  html.profiled #bar, html.profiled #findbar, html.profiled #pathbar,
+  html.profiled .cos-head, html.profiled #main > #mailPanel > .cal-head, html.profiled #main > #calPanel > .cal-head, html.profiled body.notes-mode #main > #notesPanel > .fhead { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
+  /* One top bar for every app: the same height, the same tint, the title in the same place and size. */
+  body.notes-mode #main > #notesPanel > .fhead { height: 52px; padding: 0 12px 0 16px; }
+  body.notes-mode #main > #notesPanel > .fhead .fname { font-size: 15px; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--text); }
+  #main > #mailPanel > .cal-head, #main > #calPanel > .cal-head, .cos-head { padding-left: 16px; }
+  #bar #bMore { order: 99990; }
   html.profiled #main::before, html.profiled #side::before { content: ""; position: absolute; top: 0; height: 3px; background: var(--tint); z-index: 6; }
   html.profiled #main::before { left: 0; right: 0; }
   html.profiled #side { position: relative; }
