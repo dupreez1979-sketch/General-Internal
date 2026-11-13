@@ -898,6 +898,36 @@
   .cal-ev .join { background: var(--ev); color: #fff; border: 0; border-radius: 7px; padding: 5px 12px; font: inherit; font-size: 12px; font-weight: 600; }
   .cal-none { color: var(--muted); font-size: 13px; padding: 30px 0; }
   .cal-pop { --ev: #5B7A99; position: absolute; z-index: 30; width: 380px; max-height: min(560px, calc(100% - 16px)); overflow: auto; background: var(--win); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); padding: 0 16px 14px; display: grid; gap: 10px; font-size: 13px; }
+  .cal-vshade { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.16); }
+  .cal-view { position: absolute; top: 18px; bottom: 18px; left: 6%; right: 6%; z-index: 41; background: var(--win); border-radius: 12px; box-shadow: 0 18px 60px rgba(0,0,0,.32), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; container-type: inline-size; }
+  #sidePanel .cal-view { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; }
+  .cal-view.full { top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 0; }
+  .cal-view.min { top: auto !important; bottom: 0 !important; left: 18px !important; right: auto !important; width: min(340px, 80%); height: 38px; border-radius: 10px 10px 0 0; cursor: pointer; }
+  .cal-view.min > :not(.cv-bar) { display: none !important; }
+  .cal-view.min .cv-bar { flex-wrap: nowrap; height: 38px; padding: 0 12px; border: 0; }
+  .cal-view.min .cv-bar > :not(.lights):not(.min-t) { display: none !important; }
+  .cal-view .cv-bar { box-shadow: inset 0 3px 0 var(--ev); }
+  .cal-view .cv-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); flex: none; display: inline-block; }
+  .cal-view .cv-bar .tb { display: inline-flex; align-items: center; gap: 6px; }
+  .cv-main { flex: 1; min-height: 0; display: flex; }
+  .cv-left { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 18px 22px 0; }
+  .cv-left h1 { margin: 0 0 12px; font-size: 21px; font-weight: 650; line-height: 1.25; }
+  .cv-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+  .cv-row[hidden] { display: none; }
+  .cv-row > svg { flex: none; color: var(--muted); margin-right: 4px; }
+  .cv-chip { border: 1px solid var(--line); border-radius: 6px; padding: 3px 9px; font-size: 12.5px; }
+  .cv-btn { font-size: 12.5px; padding: 4px 12px; }
+  .cv-tab { align-self: flex-start; margin-top: 8px; padding: 7px 2px; font-size: 13px; font-weight: 600; color: var(--accent); border-bottom: 2px solid var(--accent); }
+  .cv-body { flex: 1; min-height: 120px; margin: 0 -22px; border-top: 1px solid var(--line); background: #fff; }
+  .cv-body iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .cv-right { flex: none; width: 250px; overflow: auto; padding: 18px 16px; border-left: 1px solid var(--line); background: color-mix(in srgb, var(--text) 3%, var(--win)); }
+  .cv-right h3 { margin: 0 0 4px; font-size: 14px; }
+  .cv-g { margin: 12px 0 7px; font-size: 12.5px; color: var(--muted); }
+  .cv-p { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+  .cv-p b { display: block; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+  .cv-p .r { font-size: 11px; color: var(--muted); }
+  .cv-p > span:last-child { min-width: 0; }
+  @container (max-width: 640px) { .cv-main { flex-direction: column; overflow: auto; } .cv-right { width: auto; border-left: 0; border-top: 1px solid var(--line); overflow: visible; } .cv-left { flex: none; min-height: 420px; } }
   .cal-pop .bar { height: 5px; margin: 0 -16px; background: var(--ev); position: sticky; top: 0; }
   .cal-pop .hd { display: flex; gap: 8px; align-items: flex-start; }
   .cal-pop .hd b { flex: 1; font-size: 15px; line-height: 1.3; }
@@ -916,9 +946,12 @@
   .cal-pop a { color: var(--accent); }
   .cal-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
   .cal-acts .btn { padding: 4px 10px; font-size: 12px; }
-  dialog.cal-evdlg { width: 500px; height: auto; max-height: 92vh; overflow: auto; display: block; }
+  dialog.cal-evdlg { width: 540px; height: fit-content; max-height: 92vh; overflow: auto; display: block; }
+  dialog.cal-evdlg .row.top textarea { min-height: 84px; resize: vertical; display: block; }
+  dialog.cal-evdlg .row.top { height: auto; }
+  dialog.cal-evdlg p.hint { clear: both; margin: 8px 0 0 80px; position: static; }
   dialog.cal-evdlg:not([open]) { display: none; }
-  dialog.cal-evdlg .dlg-actions { position: sticky; bottom: -18px; background: var(--win); padding: 10px 0 0; }
+  dialog.cal-evdlg .dlg-actions { position: sticky; bottom: -18px; background: inherit; padding: 10px 0 0; }
   dialog.cal-evdlg .row { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: 10px; margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
   dialog.cal-evdlg .row.top { align-items: start; }
   dialog.cal-evdlg .row[hidden] { display: none; }
@@ -9868,6 +9901,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const P = $('calPanel');
     P.hidden = false;
     P.replaceChildren();
+    if (calUi.view) setTimeout(() => { if (calUi.view) $('calPanel').append(calUi.view.shade, calUi.view.el); }, 0);
     const head = document.createElement('div'); head.className = 'cal-head';
     const tb = (html, title, run, on) => { const b = document.createElement('button'); b.className = 'tb' + (on ? ' on' : ''); b.innerHTML = html; b.title = title; b.addEventListener('click', run); return b; };
     const move = k => { const v = calState.view, d = calUi.date; calUi.date = v === 'month' ? new Date(d.getFullYear(), d.getMonth() + k, 1) : calAddDays(d, k * (v === 'day' ? 1 : v === 'list' ? 21 : 7)); calRender(); };
@@ -9914,8 +9948,11 @@ body { width: max-content !important; min-width: 0 !important; }
     c.dataset.key = inst.key;
     const tentative = /TRANSPARENT/i.test(inst.ev.transp || '') ? ' free' : '';
     if (tentative) c.classList.add('free');
-    c.title = `${inst.ev.title || '(No title)'}\n${inst.allDay ? 'All day' : `${calFmtTime(inst.start)} – ${calFmtTime(inst.end)}`}${inst.ev.location ? '\n' + inst.ev.location : ''}\nClick for details; right-click to assign it to a profile.`;
-    c.addEventListener('click', e => { e.stopPropagation(); calOpen(inst, c); });
+    // Resting the pointer on a meeting shows its card; a click keeps the card there; a double-click opens the meeting.
+    c.addEventListener('click', e => { e.stopPropagation(); clearTimeout(calUi.hoverT); if (e.detail < 2) calOpen(inst, c); });
+    c.addEventListener('dblclick', e => { e.stopPropagation(); clearTimeout(calUi.hoverT); calView(inst); });
+    c.addEventListener('mouseenter', () => { clearTimeout(calUi.hoverT); clearTimeout(calUi.outT); calUi.hoverT = setTimeout(() => { if (calUi.view || !c.isConnected || document.body.classList.contains('resizing') || (calUi.pop && !calUi.popHover) || $('menu').classList.contains('open')) return; calOpen(inst, c, true); }, 550); });
+    c.addEventListener('mouseleave', () => { clearTimeout(calUi.hoverT); calHoverOut(); });
     c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); calMenu(inst, e.clientX, e.clientY); });
     return c;
   }
@@ -10081,8 +10118,9 @@ body { width: max-content !important; min-width: 0 !important; }
     return wrap;
   }
   // A meeting's details: when, where, Join, who, and its notes (links can be clicked).
-  function calOpen(inst, anchor) {
-    calClosePop();
+  const calHoverOut = () => { clearTimeout(calUi.outT); if (calUi.pop && calUi.popHover) calUi.outT = setTimeout(() => { if (calUi.pop && calUi.popHover) calClosePop(); }, 320); };
+  function calOpen(inst, anchor, hover) {
+    calClosePop(); clearTimeout(calUi.outT);
     const e = inst.ev, pop = document.createElement('div');
     pop.className = 'cal-pop';
     pop.style.setProperty('--ev', calColour(inst));
@@ -10102,6 +10140,7 @@ body { width: max-content !important; min-width: 0 !important; }
       row('Calendar', `${inst.g.calName} (${inst.g.email})`);
       const acts = document.createElement('div'); acts.className = 'cal-acts';
       const ab = (label, run, cls) => { const b = document.createElement('button'); b.className = cls || 'btn'; b.textContent = label; b.addEventListener('click', run); acts.appendChild(b); };
+      ab('Open', () => calView(inst));
       if (!inst.g.organiser) {
         const rs = inst.g.response;
         ab(rs === 'accepted' ? '\u2713 Accepted' : 'Accept', () => calGRespond(inst, 'accept'));
@@ -10137,7 +10176,135 @@ body { width: max-content !important; min-width: 0 !important; }
     let x = r.right + 8 - pr0.left; if (x + w > pr0.width - 8) x = Math.max(8, r.left - w - 8 - pr0.left);
     let y = Math.max(8, Math.min(r.top - pr0.top, pr0.height - h - 8));
     Object.assign(pop.style, { left: x + 'px', top: y + 'px' });
-    calUi.pop = pop;
+    calUi.pop = pop; calUi.popHover = !!hover;
+    pop.addEventListener('mouseenter', () => clearTimeout(calUi.outT)); pop.addEventListener('mouseleave', calHoverOut);
+    pop.addEventListener('mousedown', () => { calUi.popHover = false; });
+  }
+  // A meeting opened in full, as Outlook shows one: what you can do across the top, the details, and who is invited.
+  const CAL_TOOL = { edit: 'M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2', cancel: 'M2.5 4h11v9h-11zM2.5 6.5h11M5.5 2.5v2M10.5 2.5v2M6.3 8.3l3.4 3.4M9.7 8.3l-3.4 3.4', bell: 'M4 11.5V7.5a4 4 0 018 0v4l1 1H3zM6.8 13.5a1.3 1.3 0 002.4 0', lock: 'M4 7.5h8v6H4zM5.8 7.5V5.6a2.2 2.2 0 014.4 0v1.9', more: 'M3.5 8h.1M8 8h.1M12.5 8h.1', clock: 'M8 2.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM8 5v3.2l2 1.3', pin: 'M8 14s4.5-4.2 4.5-7.5a4.5 4.5 0 00-9 0C3.5 9.8 8 14 8 14zM8 5a1.6 1.6 0 110 3.2A1.6 1.6 0 018 5z', web: 'M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6', yes: 'M3 8.5l3.2 3.2L13 5', no: 'M4 4l8 8M12 4l-8 8', maybe: 'M6 6a2 2 0 113 1.7c-.7.4-1 .9-1 1.6M8 11.8v.2' };
+  const CAL_SHOW = [['free', 'Free', '#ffffff'], ['workingElsewhere', 'Working Elsewhere', '#D9C2F0'], ['tentative', 'Tentative', '#CFE3F7'], ['busy', 'Busy', '#9CC8F0'], ['oof', 'Away', '#C39BD3']];
+  const CAL_REMIND = [[null, 'No reminder'], [0, 'At the start'], [5, '5 minutes before'], [15, '15 minutes before'], [30, '30 minutes before'], [60, '1 hour before'], [120, '2 hours before'], [1440, '1 day before']];
+  const calRecText = rec => {
+    const p = rec && rec.pattern; if (!p) return '';
+    const days = (p.daysOfWeek || []).map(x => x[0].toUpperCase() + x.slice(1)).join(', '), n = p.interval || 1;
+    const how = p.type === 'daily' ? (n === 1 ? 'Every day' : `Every ${n} days`) : p.type === 'weekly' ? `${n === 1 ? 'Every week' : n === 2 ? 'Every two weeks' : `Every ${n} weeks`}${days ? ' on ' + days : ''}`
+      : /Monthly$/.test(p.type) ? (n === 1 ? 'Every month' : `Every ${n} months`) : /Yearly$/.test(p.type) ? 'Every year' : 'Repeats';
+    const r = rec.range || {};
+    return how + (r.type === 'endDate' && r.endDate ? `, until ${new Date(r.endDate + 'T00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : r.type === 'numbered' ? `, ${r.numberOfOccurrences} times` : '');
+  };
+  function calViewClose() { if (calUi.view) { calUi.view.el.remove(); calUi.view.shade.remove(); calUi.view = null; } }
+  async function calView(inst) {
+    calClosePop(); calViewClose();
+    Object.assign(MAIL_TOOL, CAL_TOOL);
+    const e = inst.ev, g = inst.g;
+    const shade = document.createElement('div'); shade.className = 'cal-vshade'; shade.addEventListener('click', calViewClose);
+    const el = document.createElement('div'); el.className = 'cal-view'; el.style.setProperty('--ev', calColour(inst));
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="cv-left"><h1></h1><div class="cv-row when">${mailToolIcon('clock')}<span></span></div><div class="cv-row where" hidden>${mailToolIcon('pin')}</div><div class="cv-tab">Meeting Details</div><div class="cv-body"></div></div><div class="cv-right"><h3>Invitees</h3><div class="cv-people"></div></div></div>`;
+    const V = calUi.view = { el, shade, inst, D: null };
+    $('calPanel').append(shade, el);
+    const day = new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const sameDay = new Date(inst.start).toDateString() === new Date(inst.end - 1).toDateString();
+    const whenText = inst.allDay ? `${inst.recurring ? 'Occurs on ' : ''}${day}, all day` : `${inst.recurring ? 'Occurs on ' : ''}${day} from ${calFmtTime(inst.start)} to ${sameDay ? '' : new Date(inst.end).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) + ' '}${calFmtTime(inst.end)}`;
+    const patch = async (body, done) => {
+      const r = await mailApi(g.acc, { method: 'PATCH', path: `/me/events/${g.id}`, body });
+      if (!r.ok) return toast(`That did not work: ${r.error || 'try again'}`);
+      if (V.D) Object.assign(V.D, body); if ('reminderMinutesBeforeStart' in body || 'isReminderOn' in body) g.remind = body.isReminderOn === false ? null : body.reminderMinutesBeforeStart;
+      toast(done); paint(); calGReload();
+    };
+    const toMail = async kind => {
+      const D = V.D || {}, me = (g.email || '').toLowerCase();
+      const org = D.organizer && D.organizer.emailAddress && D.organizer.emailAddress.address, all = (D.attendees || []).map(a => a.emailAddress && a.emailAddress.address).filter(Boolean);
+      const uniq = l => [...new Set(l.filter(a => a && a.toLowerCase() !== me).map(a => a.toLowerCase()))];
+      const ml = calMeetLink(inst);
+      const seed = { acc: g.acc, subject: `${kind === 'forward' ? 'FW' : 'RE'}: ${e.title || 'Meeting'}` };
+      if (kind === 'reply') seed.to = uniq([org]).join(', ') || uniq(all).join(', ');
+      if (kind === 'replyAll') seed.to = uniq([org, ...all]).join(', ');
+      if (kind === 'forward') seed.text = `Meeting: ${e.title || ''}\nWhen: ${whenText.replace(/^Occurs on /, '')}${e.location ? '\nWhere: ' + e.location : ''}${ml ? '\nJoin: ' + ml.url : ''}`;
+      if (mailUi.accounts === null) await mailLoadAccounts();
+      if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
+      await mailCompose('new', null, seed);
+    };
+    function paint() {
+      const D = V.D || {}, bar = el.querySelector('.cv-bar'); bar.replaceChildren();
+      const lt = macLights({ close: calViewClose, min: () => { const on = el.classList.toggle('min'); shade.hidden = on; }, zoom: () => { el.classList.remove('min'); shade.hidden = false; el.classList.toggle('full'); }, titles: { close: 'Close (Esc)', min: 'Minimise: tuck it at the bottom while you look at something else' } });
+      bar.appendChild(lt); bar.appendChild(Object.assign(document.createElement('span'), { className: 'min-t', textContent: e.title || '(No title)' }));
+      const tb = (icon, label, title, run, opts = {}) => { const b = document.createElement('button'); b.className = 'tb' + (opts.on ? ' on' : ''); b.innerHTML = `${opts.dot ? `<i class="cv-dot" style="background:${opts.dot}"></i>` : mailToolIcon(icon)}<span class="t"></span>`; b.querySelector('.t').textContent = label; b.title = title; b.disabled = !!opts.off; b.addEventListener('click', run); bar.appendChild(b); return b; };
+      const under = (ev2, items) => { const r0 = ev2.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, items); };
+      const ml = calMeetLink(inst);
+      if (g) {
+        const both = inst.recurring && g.master;
+        if (g.canEdit && g.organiser) tb('edit', 'Edit', 'Change this meeting', ev2 => both ? under(ev2, [{ label: 'This Meeting Only', run: () => { calViewClose(); calGEdit(inst, false); } }, { label: 'The Whole Series', run: () => { calViewClose(); calGEdit(inst, true); } }]) : (calViewClose(), calGEdit(inst, inst.recurring)));
+        if (g.canEdit) tb('cancel', g.organiser ? 'Cancel' : 'Delete', g.organiser ? 'Cancel the meeting: the people invited are told' : 'Take it out of your calendar', ev2 => both ? under(ev2, [{ label: 'This Meeting Only', run: () => calGDelete(inst, false) }, { label: 'The Whole Series', run: () => calGDelete(inst, true) }]) : calGDelete(inst, false));
+        if (!g.organiser) {
+          const rs = g.response;
+          tb('yes', rs === 'accepted' ? 'Accepted' : 'Accept', 'Accept: the organiser is told', () => calGRespond(inst, 'accept'), { on: rs === 'accepted' });
+          tb('maybe', rs === 'tentativelyAccepted' ? 'Maybe (chosen)' : 'Maybe', 'Tentative: the organiser is told', () => calGRespond(inst, 'tentativelyAccept'), { on: rs === 'tentativelyAccepted' });
+          tb('no', rs === 'declined' ? 'Declined' : 'Decline', 'Decline: the organiser is told', () => calGRespond(inst, 'decline'), { on: rs === 'declined' });
+        }
+        const show = CAL_SHOW.find(x => x[0] === (D.showAs || (e.transp ? 'free' : 'busy'))) || CAL_SHOW[3];
+        tb('', show[1], 'How this time shows to other people', ev2 => under(ev2, CAL_SHOW.map(x => ({ label: x[1], dot: x[2], checked: x[0] === show[0], run: () => patch({ showAs: x[0] }, `Shows as ${x[1].toLowerCase()}`) }))), { dot: show[2], off: !g.canEdit });
+        const rm = D.isReminderOn === false ? null : D.reminderMinutesBeforeStart != null ? D.reminderMinutesBeforeStart : g.remind;
+        tb('bell', (CAL_REMIND.find(x => x[0] === rm) || [0, rm == null ? 'No reminder' : `${rm} minutes before`])[1], 'When you are reminded', ev2 => under(ev2, CAL_REMIND.map(x => ({ label: x[1], checked: x[0] === rm, run: () => patch(x[0] == null ? { isReminderOn: false } : { isReminderOn: true, reminderMinutesBeforeStart: x[0] }, x[0] == null ? 'No reminder' : `Reminder: ${x[1].toLowerCase()}`) }))), { off: !g.canEdit });
+        const priv = D.sensitivity === 'private';
+        tb('lock', priv ? 'Private' : 'Mark as Private', priv ? 'Private: others who see your calendar see only that you are busy. Click to make it ordinary again.' : 'Others who can see your calendar then see only that you are busy', () => patch({ sensitivity: priv ? 'normal' : 'private' }, priv ? 'No longer private' : 'Marked as private'), { on: priv, off: !g.canEdit || !V.D });
+        tb('reply', 'Reply', 'Write to the organiser. Nothing is sent until you press Send.', () => toMail('reply'));
+        tb('replyAll', 'Reply All', 'Write to everyone invited. Nothing is sent until you press Send.', () => toMail('replyAll'));
+        tb('forward', 'Forward', 'Start an email with the details of this meeting. Nothing is sent until you press Send.', () => toMail('forward'));
+      }
+      tb('more', '', 'More', ev2 => { const cur = calProfileOf(inst); under(ev2, [
+        g && g.web && { label: 'Open in Outlook', run: () => openExternal(g.web) },
+        ml && { label: 'Copy the Joining Link', run: () => { try { navigator.clipboard.writeText(ml.url); toast('Copied'); } catch (er) { /* no clipboard */ } } },
+        (g && g.web || ml) && '-',
+        ...calProfiles().map(p => ({ label: `Profile: ${p.name}`, dot: p.color, checked: cur === p.id, run: () => { calAssign(inst, p.id, false); } })),
+        { label: 'No Profile', checked: !cur, run: () => calAssign(inst, '', false) },
+      ].filter(Boolean)); });
+      // who
+      const box = el.querySelector('.cv-people'); box.replaceChildren();
+      const head = t => box.appendChild(Object.assign(document.createElement('div'), { className: 'cv-g', textContent: t }));
+      const person = (name, address, role) => { const r = document.createElement('div'); r.className = 'cv-p'; r.appendChild(mailAvatar(name, address)); const t = document.createElement('span'); t.innerHTML = '<b></b><span class="r"></span>'; t.querySelector('b').textContent = name || address || ''; t.querySelector('.r').textContent = role; r.title = address || ''; r.appendChild(t); box.appendChild(r); };
+      const org = D.organizer && D.organizer.emailAddress;
+      if (org || e.organizer) { head('Organiser'); person(org ? org.name || org.address : e.organizer, org && org.address, 'Required'); }
+      if (D.attendees) {
+        const rest = D.attendees.filter(a => a.emailAddress && !(org && (a.emailAddress.address || '').toLowerCase() === (org.address || '').toLowerCase()));
+        for (const [k, label] of [['accepted', 'Accepted'], ['tentativelyAccepted', 'Tentative'], ['declined', 'Declined'], ['', 'No Response']]) {
+          const l = rest.filter(a => { const rs = (a.status && a.status.response) || ''; return k ? rs === k : !['accepted', 'tentativelyAccepted', 'declined'].includes(rs); });
+          if (!l.length) continue;
+          head(`${l.length} ${label}`);
+          for (const a of l) person(a.emailAddress.name || a.emailAddress.address, a.emailAddress.address, a.type === 'optional' ? 'Optional' : a.type === 'resource' ? 'Room' : 'Required');
+        }
+      } else if (e.attendees.length) { head(`${e.attendees.length} Invited`); for (const n of e.attendees) person(n, '', ''); }
+      else if (!org && !e.organizer) box.appendChild(Object.assign(document.createElement('div'), { className: 'cv-g', textContent: 'Only you' }));
+    }
+    V.paint = paint;
+    el.addEventListener('click', ev2 => { if (el.classList.contains('min') && !ev2.target.closest('.lights')) { ev2.stopPropagation(); el.classList.remove('min'); shade.hidden = false; } }, true);
+    el.querySelector('h1').textContent = e.title || '(No title)';
+    const wr = el.querySelector('.cv-row.when'); wr.querySelector('span').textContent = whenText;
+    if (g && inst.recurring) {
+      const vs = document.createElement('button'); vs.className = 'btn cv-btn'; vs.textContent = 'View Series';
+      vs.addEventListener('click', async () => { vs.disabled = true; const r = await mailApi(g.acc, { path: `/me/events/${g.master || g.id}?$select=recurrence` }); const t = r.ok && calRecText(r.data.recurrence); vs.replaceWith(Object.assign(document.createElement('span'), { className: 'cv-chip', textContent: t || 'Repeats' })); });
+      wr.appendChild(vs);
+    }
+    const ml = calMeetLink(inst), wh = el.querySelector('.cv-row.where');
+    if (ml || e.location) {
+      wh.hidden = false;
+      if (ml) { const j = document.createElement('button'); j.className = 'btn-primary cv-btn'; j.textContent = 'Join'; j.title = `Join the ${ml.what} meeting`; j.addEventListener('click', () => openExternal(ml.url)); wh.appendChild(j); }
+      if (e.location) { const c = document.createElement('span'); c.className = 'cv-chip'; calLinkify(c, e.location); wh.appendChild(c); }
+    }
+    const bodyBox = el.querySelector('.cv-body');
+    const showBody = (html, isHtml) => {
+      bodyBox.replaceChildren();
+      const fr = document.createElement('iframe'); fr.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox'); fr.setAttribute('referrerpolicy', 'no-referrer');
+      const inner = isHtml ? html : `<pre style="white-space:pre-wrap;font:inherit;margin:0">${mailEsc(html)}</pre>`;
+      fr.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; form-action 'none'"><base target="_blank"><style>body{font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f;margin:16px 22px;word-wrap:break-word}img{max-width:100%;height:auto}</style>${inner}`;
+      bodyBox.appendChild(fr);
+    };
+    showBody(e.desc || '', false);
+    paint();
+    if (g) {
+      const r = await mailApi(g.acc, { path: `/me/events/${g.id}?$select=id,subject,body,attendees,organizer,showAs,sensitivity,isReminderOn,reminderMinutesBeforeStart,type,webLink`, prefer: 'outlook.body-content-type="html"' });
+      if (calUi.view !== V) return;
+      if (r.ok) { V.D = r.data; if (r.data.body) showBody(r.data.body.content || '', r.data.body.contentType === 'html'); paint(); }
+    }
   }
   function calClosePop() { if (calUi.pop) { calUi.pop.remove(); calUi.pop = null; } }
   function calLinkify(el, text) {
@@ -10255,7 +10422,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
   }
   document.addEventListener('mousedown', e => { if (calUi.pop && !e.target.closest('.cal-pop, #menu')) calClosePop(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') calClosePop(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (calUi.pop) calClosePop(); else if (calUi.view && !document.querySelector('dialog[open]') && !mailUi.compose) calViewClose(); } });
   // Mail keys on the open message: Delete, \u2318\u21E7R reply all, \u2318J forward, \u2318E archive, \u2318\u21E7U unread.
   document.addEventListener('keydown', e => {
     try {
@@ -10340,7 +10507,8 @@ body { width: max-content !important; min-width: 0 !important; }
   async function calGRespond(inst, how) {
     const r = await mailApi(inst.g.acc, { method: 'POST', path: `/me/events/${inst.g.id}/${how}`, body: { sendResponse: true } });
     toast(r.ok ? { accept: 'Accepted', tentativelyAccept: 'Marked as maybe', decline: 'Declined' }[how] : `That did not work: ${r.error || 'try again'}`);
-    calClosePop(); calGReload();
+    if (r.ok) inst.g.response = { accept: 'accepted', tentativelyAccept: 'tentativelyAccepted', decline: 'declined' }[how];
+    calClosePop(); if (calUi.view && calUi.view.paint) calUi.view.paint(); calGReload();
   }
   async function calGDelete(inst, series) {
     const what = inst.ev.title || 'this meeting';
@@ -10348,7 +10516,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!confirm(`Delete “${what}”${series ? ' and every meeting in the series' : ''}?${others ? ' The people invited are told it is cancelled.' : ''}`)) return;
     const r = await mailApi(inst.g.acc, { method: 'DELETE', path: `/me/events/${series && inst.g.master ? inst.g.master : inst.g.id}` });
     toast(r.ok ? 'Deleted' : `Could not delete it: ${r.error || 'try again'}`);
-    calClosePop(); calGReload();
+    calClosePop(); if (r.ok) calViewClose(); calGReload();
   }
   const CAL_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   // New meeting, or change one (this one, or the whole series).
