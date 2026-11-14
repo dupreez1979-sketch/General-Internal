@@ -1713,6 +1713,9 @@
   html.profiled #main::before { left: 0; right: 0; }
   html.profiled #side { position: relative; }
   html.profiled #side::before { left: 0; right: 0; }
+  /* The profile's line runs the whole width of the window, over the strip of apps on the left as well. */
+  html.profiled.mac-app body.has-dock #dock::before { box-shadow: inset 0 3px 0 var(--tint); }
+  html.profiled:not(.mac-app) body.has-dock #dock { box-shadow: inset 0 3px 0 var(--tint); }
 
   /* Systems (Claude, monday.com) */
   .row.sys-row .label { font-weight: 600; }
