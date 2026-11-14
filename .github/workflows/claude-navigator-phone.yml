@@ -62,6 +62,7 @@ jobs:
           KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ISSUER: ${{ secrets.ASC_ISSUER_ID }}
         run: |
+          set -o pipefail          # a failed build must fail this step (the output is trimmed through tail)
           AUTH="-allowProvisioningUpdates -authenticationKeyPath $RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8 -authenticationKeyID $KEY_ID -authenticationKeyIssuerID $ISSUER"
           xcodebuild -project ClaudeNavigatorPhone.xcodeproj -scheme ClaudeNavigatorPhone \
             -sdk iphoneos -destination 'generic/platform=iOS' -configuration Release \
