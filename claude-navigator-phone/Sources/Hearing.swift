@@ -39,6 +39,7 @@ final class NewHearing: @unchecked Sendable {
     func start(from inFormat: AVAudioFormat, names: [String], onText: @escaping (String) -> Void, onProblem: @escaping () -> Void) -> Bool {
         guard NewHearing.ready, !NewHearing.failed, let locale = NewHearing.locale, let format = NewHearing.format,
               let conv = AVAudioConverter(from: inFormat, to: format) else { return false }
+        conv.primeMethod = .none
         converter = conv; target = format; ratio = format.sampleRate / inFormat.sampleRate
         let transcriber = SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
         let analyzer = SpeechAnalyzer(modules: [transcriber])

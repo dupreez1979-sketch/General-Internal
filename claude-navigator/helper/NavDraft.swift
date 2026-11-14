@@ -73,7 +73,7 @@ final class Listener: @unchecked Sendable {
 
     func start(localeId: String, names: [String]) {
         let id = self.id
-        task = Task {
+        task = Task.detached {
             do {
                 guard await AVCaptureDevice.requestAccess(for: .audio) else { emit(["id": id, "error": "microphone"]); return }
                 let wanted = Locale(identifier: localeId)
@@ -91,9 +91,10 @@ final class Listener: @unchecked Sendable {
                 guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else { emit(["id": id, "error": "no audio format"]); return }
                 let (stream, cont) = AsyncStream<AnalyzerInput>.makeStream()
                 self.feed = cont
-                let input = engine.inputNode
+                let input = self.engine.inputNode
                 let inFormat = input.outputFormat(forBus: 0)
                 guard let converter = AVAudioConverter(from: inFormat, to: format) else { emit(["id": id, "error": "no converter"]); return }
+                converter.primeMethod = .none          // (as Apple's own example does: no drift between what is said and when)
                 let ratio = format.sampleRate / inFormat.sampleRate
                 input.installTap(onBus: 0, bufferSize: 4096, format: inFormat) { buf, _ in
                     guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(Double(buf.frameLength) * ratio) + 32) else { return }
@@ -105,8 +106,8 @@ final class Listener: @unchecked Sendable {
                     }
                     if err == nil, out.frameLength > 0 { cont.yield(AnalyzerInput(buffer: out)) }
                 }
-                engine.prepare()
-                try engine.start()
+                self.engine.prepare()
+                try self.engine.start()
                 if !names.isEmpty {          // names it should know: your staff, companies and the people you write to
                     let context = AnalysisContext()
                     context.contextualStrings[.general] = names
@@ -137,9 +138,47 @@ final class Listener: @unchecked Sendable {
     }
 }
 
+// Requests are read on a thread of their own. The main thread is left free, because Apple's model and speech engine
+// both need it to do their work (reading on the main thread stalls them: words stop arriving and drafts never start).
+final class Requests: @unchecked Sendable {
+    var running: [String: Task<Void, Never>] = [:]
+    var listeners: [String: AnyObject] = [:]
+
+    func handle(_ line: String) {
+        guard let d = line.data(using: .utf8), let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return }
+        let op = o["op"] as? String ?? "", id = o["id"] as? String ?? ""
+        if op == "status" { emit(statusNow()); return }
+        if op == "cancel" { running[id]?.cancel(); running[id] = nil; return }
+        if op == "listen" {
+            if #available(macOS 26.0, *) {
+                for (_, l) in listeners { (l as? Listener)?.stop() }
+                let l = Listener(id: id); listeners = [id: l]
+                l.start(localeId: o["locale"] as? String ?? "en-AU", names: (o["names"] as? [String]) ?? [])
+            } else { emit(["id": id, "error": "macOS is too old"]) }
+            return
+        }
+        if op == "stopListen" {
+            if #available(macOS 26.0, *) { (listeners[id] as? Listener)?.stop() }
+            listeners[id] = nil
+            return
+        }
+        if op == "run" {
+            let ins = o["instructions"] as? String ?? "", prompt = o["prompt"] as? String ?? ""
+            #if canImport(FoundationModels)
+            if #available(macOS 26.0, *) {
+                running[id]?.cancel()
+                running[id] = Task.detached { await write(id: id, instructions: ins, prompt: prompt) }
+                return
+            }
+            #endif
+            emit(["id": id, "error": "The Mac's writing model is not available."])
+        }
+    }
+}
+
 @main
 struct NavDraft {
-    static func main() async {
+    static func main() {
         if CommandLine.arguments.contains("--sdk") {
             #if canImport(FoundationModels)
             print("model:yes")
@@ -148,42 +187,18 @@ struct NavDraft {
             #endif
             return
         }
-        var running: [String: Task<Void, Never>] = [:]
-        var listeners: [String: AnyObject] = [:]
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *), case .available = SystemLanguageModel.default.availability {
             LanguageModelSession().prewarm()          // load the model now, so the first draft starts at once
         }
         #endif
-        while let line = readLine(strippingNewline: true) {
-            guard let d = line.data(using: .utf8), let o = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { continue }
-            let op = o["op"] as? String ?? "", id = o["id"] as? String ?? ""
-            if op == "status" { emit(statusNow()); continue }
-            if op == "cancel" { running[id]?.cancel(); running[id] = nil; continue }
-            if op == "listen" {
-                if #available(macOS 26.0, *) {
-                    for (_, l) in listeners { (l as? Listener)?.stop() }
-                    let l = Listener(id: id); listeners = [id: l]
-                    l.start(localeId: o["locale"] as? String ?? "en-AU", names: (o["names"] as? [String]) ?? [])
-                } else { emit(["id": id, "error": "macOS is too old"]) }
-                continue
-            }
-            if op == "stopListen" {
-                if #available(macOS 26.0, *) { (listeners[id] as? Listener)?.stop() }
-                listeners[id] = nil
-                continue
-            }
-            if op == "run" {
-                let ins = o["instructions"] as? String ?? "", prompt = o["prompt"] as? String ?? ""
-                #if canImport(FoundationModels)
-                if #available(macOS 26.0, *) {
-                    running[id]?.cancel()
-                    running[id] = Task { await write(id: id, instructions: ins, prompt: prompt) }
-                    continue
-                }
-                #endif
-                emit(["id": id, "error": "The Mac's writing model is not available."])
-            }
+        let requests = Requests()
+        let reader = Thread {
+            while let line = readLine(strippingNewline: true) { requests.handle(line) }
+            exit(0)          // the app has closed
         }
+        reader.stackSize = 1 << 20
+        reader.start()
+        dispatchMain()
     }
 }
