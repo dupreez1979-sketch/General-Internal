@@ -604,6 +604,23 @@
   .mail-rh .who > div { flex: 1; min-width: 0; }
   .mail-rh .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mail-rh .who .mail-av { width: 36px; height: 36px; font-size: 12.5px; }
+  .clara-btn .n { font-style: normal; font-size: 10.5px; font-weight: 700; background: #D9468C; color: #fff; border-radius: 9px; padding: 0 6px; margin-left: 5px; }
+  .clara-btn .n[hidden] { display: none; }
+  .clara-tag { font-style: normal; font-size: 10px; font-weight: 700; background: #D9468C; color: #fff; border-radius: 4px; padding: 1px 6px; margin-right: 6px; white-space: nowrap; }
+  .mail-rh .clara-strip { order: 8; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 10px; border: 0; border-radius: 8px; background: color-mix(in srgb, #D9468C 10%, var(--win)); font: inherit; font-size: 12.5px; color: var(--text); text-align: left; cursor: default; }
+  .mail-rh .clara-strip[hidden] { display: none; } .mail-rh .clara-strip:hover { background: color-mix(in srgb, #D9468C 17%, var(--win)); }
+  .mail-rh .clara-strip b { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #D9468C; }
+  dialog.clara-dlg { width: min(640px, 94vw); }
+  .clara-dlg .cl-list { display: grid; gap: 2px; max-height: 52vh; overflow: auto; margin: 6px 0 10px; }
+  .clara-dlg .cl-h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 10px 4px 3px; }
+  .clara-dlg .cl-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; font: inherit; text-align: left; padding: 7px 6px; border-radius: 8px; color: var(--text); cursor: default; }
+  .clara-dlg .cl-row:hover { background: var(--hover); }
+  .clara-dlg .cl-row .chip { flex: none; min-width: 118px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 7px; background: color-mix(in srgb, var(--text) 9%, transparent); }
+  .clara-dlg .cl-row.needs .chip { background: #D9468C; color: #fff; } .clara-dlg .cl-row.booked .chip { background: #328276; color: #fff; }
+  .clara-dlg .cl-row .tx { flex: 1; min-width: 0; display: grid; } .clara-dlg .cl-row .tx b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .clara-dlg .cl-row .tx span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .clara-dlg .cl-row .dt { flex: none; font-size: 11.5px; color: var(--muted); }
+  .clara-dlg .cl-foot { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 6px; }
+  .clara-dlg .cl-set { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); } .clara-dlg .cl-set span { flex: 1; } .clara-dlg .cl-set button { font-size: 11.5px; padding: 3px 10px; }
   .mail-rh .gist { order: 9; margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, var(--win)); font-size: 12.5px; line-height: 1.4; }
   .mail-rh .gist[hidden] { display: none; }
   .mail-rh .gist b { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-right: 8px; }
@@ -12842,6 +12859,7 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
+    { const cb = document.createElement('button'); cb.className = 'tb clara-btn'; const c = claraOpenCount(); cb.innerHTML = `${mailToolIcon('hand')}<span class="t">Clara</span><i class="n"${c ? '' : ' hidden'}>${c || ''}</i>`; cb.title = 'What Clara is arranging: each meeting and where it is up to'; cb.addEventListener('click', () => claraPanel()); into.appendChild(cb); }
     tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none }).classList.add('mail-sendto');
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
     tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
@@ -12992,6 +13010,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
       if (mailMulti.has(x.id)) r.classList.add('multi');
+      if (isClaraAddr(addrOf(x.from)) && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const fl = r.querySelector('.fl'); if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }
       r.addEventListener('click', e => {
         // Ctrl-click (Cmd on a Mac) adds or removes one; Shift-click takes everything from the last one you clicked to this one.
         if (e.metaKey || e.ctrlKey || e.shiftKey) {
@@ -13039,6 +13058,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const hd = document.createElement('div'); hd.className = 'mail-rh';
       hd.innerHTML = '<h2></h2><div class="who"><span class="avs"></span><div><b></b><div class="to"></div></div><span class="dt"></span></div>';
       hd.querySelector('h2').textContent = m.subject || '(No subject)';
+      if (m.conversationId) { const cs = document.createElement('button'); cs.type = 'button'; cs.className = 'clara-strip'; cs.dataset.conv = m.conversationId; cs.innerHTML = '<b>Clara</b><span></span>'; cs.hidden = true; cs.title = 'Clara is arranging a meeting from this email. Click to see everything she is arranging.'; cs.addEventListener('click', () => claraPanel()); hd.appendChild(cs); setTimeout(claraStripShow, 0); }
       { const g = document.createElement('div'); g.className = 'gist'; g.dataset.k = mailGistKey(m); g.innerHTML = '<b>In short</b><span></span>'; g.title = 'Written on your Mac as you opened this email'; g.hidden = true; hd.appendChild(g); setTimeout(() => mailGistShow(g.dataset.k), 0); }
       const fe = m.from && m.from.emailAddress;
       hd.querySelector('.avs').appendChild(mailAvatar(fe && fe.name, fe && fe.address));
@@ -13393,7 +13413,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const C = mailUi.compose = { acc: acc.id, id: d.id, mode, quoted: mode === 'new' ? '' : (d.body && d.body.content) || '', files: [] };
     const el = document.createElement('div'); el.className = 'mail-compose';
     const fb = (cmd, html, title, arg) => `<button type="button" class="tb" data-cmd="${cmd}"${arg ? ` data-arg="${arg}"` : ''} title="${title}">${html}</button>`;
-    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-ai" data-x="ai" title="Write a draft for you to edit. It is written on your Mac at once; Claude can improve it if you ask. Nothing is sent: only you can press Send."><span class="t">Draft</span></button></div>
+    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-clara" data-x="clara" title="Copy Clara in to arrange the meeting, with your usual sentence. Nothing is sent: only you can press Send."><span class="t">Bring in Clara</span></button><button class="tb mc-ai" data-x="ai" title="Write a draft for you to edit. It is written on your Mac at once; Claude can improve it if you ask. Nothing is sent: only you can press Send."><span class="t">Draft</span></button></div>
       <label class="from"><span>From:</span><span class="mc-from"></span></label>
       <label><span>To:</span><input name="to" autocomplete="off" spellcheck="false"><span class="mc-ccb"><button type="button" class="tb" data-x="cc">Cc</button><button type="button" class="tb" data-x="bcc">Bcc</button></span></label><div class="mc-sug" hidden></div>
       <label data-row="cc" hidden><span>Cc:</span><input name="cc" autocomplete="off" spellcheck="false"></label>
@@ -13568,6 +13588,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       if (what === 'attach') return fileIn.click();
       if (what === 'ai') { C.fields = fields; return mailDraftWith(C, m); }
+      if (what === 'clara') { const r0 = x.getBoundingClientRect(); return claraBringIn(C, f, showRow, Math.max(8, r0.left - 120), r0.bottom + 4); }
       if (what === 'snip') {
         const L = mailLearnOf(), r0 = x.getBoundingClientRect(), picked = String(window.getSelection() || '').trim(), inEd = picked && ed.contains(window.getSelection().anchorNode);
         return showMenu(r0.left, r0.bottom + 4, [
@@ -13658,6 +13679,161 @@ body { width: max-content !important; min-width: 0 !important; }
     return out;
   }
 
+  // ===== Clara in Mail =====
+  // Clara is the scheduling assistant you copy in on an email. Three things here: a button that copies her in with your
+  // usual sentence; a Clara folder that her copies are filed into by Outlook itself; and a tracker that reads her emails
+  // and shows where each meeting is up to. Nothing is sent from here: you press Send on your own email, as always.
+  const CLARA_MAIL = 'claudeNavigator.claraMail.v1';
+  const claraMail = (() => { try { return Object.assign({ how: 'teams', folders: {} }, JSON.parse(ls.get(CLARA_MAIL) || '{}')); } catch (e) { return { how: 'teams', folders: {} }; } })();
+  const claraMailSave = () => ls.set(CLARA_MAIL, JSON.stringify(claraMail));
+  const claraAddr = () => String(clara.email || '').trim().toLowerCase();
+  const isClaraAddr = a => !!a && !!claraAddr() && String(a).trim().toLowerCase() === claraAddr();
+  const addrOf = z => String(((z || {}).emailAddress || {}).address || '').toLowerCase();
+  // --- 1. Bring in Clara, on an email you are writing
+  function claraBringIn(C, f, showRow, x, y) {
+    const first = 'Clara';
+    const put = when => {
+      const how = claraMail.how === 'teams' ? ' for a Teams call' : claraMail.how === 'person' ? ' to meet in person' : claraMail.how === 'phone' ? ' for a phone call' : '';
+      const line = `I have CC’d ${first}, who can suggest some times ${when}${how}.`;
+      const cc = f('cc').value.split(/[,;]/).map(z => z.trim()).filter(Boolean);
+      if (!cc.some(z => z.toLowerCase().includes(claraAddr())) && !f('to').value.toLowerCase().includes(claraAddr())) { cc.push(clara.email); f('cc').value = cc.join(', '); f('cc').dispatchEvent(new Event('input', { bubbles: true })); f('cc').dispatchEvent(new Event('change', { bubbles: true })); }
+      showRow('cc');
+      // The sentence goes in above your sign-off (the short last lines), or at the end if there is none.
+      const ed = C.ed, sig = ed.querySelector('.mc-sig'), kids = [...ed.children].filter(k => k !== sig && !k.classList.contains('mc-sig'));
+      const words = k => (k.innerText || '').trim().split(/\s+/).filter(Boolean).length;
+      let i = kids.length; while (i > 0 && words(kids[i - 1]) <= 5) i--;
+      const hasBody = kids.slice(0, i).some(k => words(k) > 0);
+      const d1 = document.createElement('div'); d1.textContent = line; const gap = document.createElement('div'); gap.innerHTML = '<br>';
+      const before = hasBody ? (kids.slice(i).find(k => words(k) > 0) || null) : (kids.find(k => words(k) > 0) || kids[0] || sig || null);
+      if ([...ed.innerText.matchAll(/CC’d Clara|CC'd Clara|Ccd Clara/gi)].length) return toast('Clara is already mentioned in this email. She is in Cc.');
+      if (before && before.parentNode === ed) { ed.insertBefore(d1, before); ed.insertBefore(gap, before); } else if (sig) { ed.insertBefore(d1, sig); ed.insertBefore(gap, sig); } else { ed.append(d1, gap); }
+      ed.dispatchEvent(new Event('input', { bubbles: true }));
+      toast('Clara is copied in. Check the wording, then press Send.');
+    };
+    const hows = [['teams', 'As a Teams call'], ['person', 'To meet in person'], ['phone', 'As a phone call'], ['', 'Do not say how']];
+    showMenu(x, y, [
+      { head: 'Clara will suggest times…' },
+      ...['next week', 'next week or the week after', 'in the next two weeks', 'in the next few weeks', 'early next month'].map(w => ({ label: w[0].toUpperCase() + w.slice(1), sub: `“I have CC’d Clara, who can suggest some times ${w}…”`, svg: ST_ICON.cal, tint: '#D9468C', run: () => put(w) })),
+      { label: 'Another time…', sub: 'Type it in your own words, for example: in the first week of December.', svg: ST_ICON.details, tint: '#7A8288', run: () => askText('Clara can suggest some times…', 'in the first week of December', v => { if (v && v.trim()) put(v.trim()); }) },
+      { head: `How: ${(hows.find(h => h[0] === (claraMail.how || '')) || hows[0])[1].toLowerCase()}` },
+      { label: 'Change How You Meet', sub: 'Teams, in person, by phone, or leave it out. Remembered for next time.', svg: ST_ICON.staff, tint: '#1B5A68', run: () => showMenu(x, y, hows.map(([k, l]) => ({ label: l, checked: (claraMail.how || '') === k, run: () => { claraMail.how = k; claraMailSave(); claraBringIn(C, f, showRow, x, y); } }))) },
+    ]);
+  }
+  // --- 2. What Clara's latest email on a thread says about where the meeting is up to
+  function claraStage(msg, mine) {
+    const t = String(msg.bodyPreview || '').replace(/\s+/g, ' '), toMe = (msg.toRecipients || []).some(z => mine.has(addrOf(z)));
+    if (/invites? sent|you(?:'|’)re scheduled|you are scheduled|is confirmed|has been scheduled/i.test(t)) {
+      const sent = new Date(msg.receivedDateTime); let day = null;
+      const md = /\((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})\)/i.exec(t);
+      if (md) day = dateFromWords(`${md[2]} ${md[1]}`, sent); else { const ph = /scheduled for (.{0,60}?) at /i.exec(t); if (ph) day = dateFromWords(ph[1], sent); }
+      const tm = /\bat (\d{1,2}(?::\d\d)?\s?[ap]m)/i.exec(t), tw = tm ? timesFromWords('at ' + tm[1]) : { start: null };
+      const when = day ? new Date(day.date.getFullYear(), day.date.getMonth(), day.date.getDate(), tw.start !== null ? Math.floor(tw.start / 60) : 9, tw.start !== null ? tw.start % 60 : 0) : null;
+      return { k: 'booked', label: 'Booked', when, timed: tw.start !== null };
+    }
+    if (toMe) return { k: 'needs', label: 'Clara needs you' };
+    if (/checking back in|following up|circling back|just checking/i.test(t)) return { k: 'chasing', label: 'Clara is chasing them' };
+    if (/which of the following|would be best to begin|glad to help arrange|some additional days|other times/i.test(t)) return { k: 'offered', label: 'Times offered' };
+    if (/cancel/i.test(t)) return { k: 'cancelled', label: 'Cancelled' };
+    return { k: 'going', label: 'In progress' };
+  }
+  const claraState = { at: 0, items: [], byConv: new Map(), busy: false, err: '' };
+  async function claraLoad(force) {
+    if (!isApp || claraState.busy || !claraAddr()) return claraState;
+    if (!force && Date.now() - claraState.at < 5 * 60e3) return claraState;
+    if (mailUi.accounts === null) { try { await mailLoadAccounts(); } catch (e) { /* no mail yet */ } }
+    const accs = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared);
+    if (!accs.length) return claraState;
+    claraState.busy = true; claraState.err = '';
+    const mine = new Set(accs.map(a => String(a.email || '').toLowerCase())), since = new Date(Date.now() - 75 * 864e5).toISOString(), groups = new Map();
+    for (const a of accs) {
+      const r = await mailApi(a.id, { path: `/me/messages?$filter=${encodeURIComponent(`receivedDateTime ge ${since} and from/emailAddress/address eq '${claraAddr().replace(/'/g, "''")}'`)}&$orderby=receivedDateTime desc&$top=100&$select=id,subject,conversationId,receivedDateTime,toRecipients,ccRecipients,bodyPreview,isRead` });
+      if (!r.ok) { claraState.err = r.error || 'Could not read Clara’s emails'; continue; }
+      for (const m of r.data.value || []) { m._acc = a.id; const k = a.id + '|' + (m.conversationId || m.subject); (groups.get(k) || groups.set(k, []).get(k)).push(m); }
+    }
+    const items = [];
+    for (const [key, list] of groups) {
+      list.sort((x, y) => Date.parse(y.receivedDateTime) - Date.parse(x.receivedDateTime));
+      const last = list[0], st = claraStage(last, mine);
+      const people = new Map(); for (const m of list) for (const z of (m.toRecipients || []).concat(m.ccRecipients || [])) { const ad = addrOf(z); if (ad && !mine.has(ad) && !isClaraAddr(ad)) people.set(ad, (z.emailAddress.name && !/@/.test(z.emailAddress.name) ? z.emailAddress.name : ad)); }
+      items.push({ key, acc: last._acc, conv: last.conversationId || '', title: String(last.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() || '(No subject)', who: [...people.values()].slice(0, 3).join(', '), st, last: Date.parse(last.receivedDateTime), msg: last, count: list.length });
+    }
+    const rank = { needs: 0, chasing: 1, offered: 1, going: 1, booked: 2, cancelled: 3 };
+    items.sort((a, b) => (rank[a.st.k] - rank[b.st.k]) || (a.st.k === 'booked' ? ((a.st.when ? a.st.when.getTime() : 9e15) - (b.st.when ? b.st.when.getTime() : 9e15)) : b.last - a.last));
+    Object.assign(claraState, { at: Date.now(), items, byConv: new Map(items.filter(x => x.conv).map(x => [x.conv, x])), busy: false });
+    try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); claraStripShow(); } catch (e) { /* not on screen */ }
+    return claraState;
+  }
+  const claraOpenCount = () => claraState.items.filter(x => ['needs', 'chasing', 'offered', 'going'].includes(x.st.k)).length;
+  const claraWhenText = st => st.when ? st.when.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) + (st.timed ? ', ' + calFmtTime(st.when.getTime()) : '') : '';
+  function claraStripShow() { for (const g of document.querySelectorAll('.mail-rh .clara-strip')) { const it = claraState.byConv.get(g.dataset.conv); g.hidden = !it; if (it) g.querySelector('span').textContent = `${it.st.label}${it.st.k === 'booked' && it.st.when ? ': ' + claraWhenText(it.st) : ''}${it.who ? ' · ' + it.who : ''} · last wrote ${new Date(it.last).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`; } }
+  // --- 3. The tracker
+  function claraPanel() {
+    const d = mailDlg('clara-dlg', '<h2>Clara</h2><p class="hint"></p><div class="cl-list"></div><div class="cl-foot"></div><div class="dlg-actions"><button class="btn" data-x="refresh">Check Again</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const paint = () => {
+      const list = d.querySelector('.cl-list'); list.replaceChildren();
+      const now = Date.now(), live = claraState.items.filter(x => x.st.k !== 'booked' || !x.st.when || x.st.when.getTime() > now - 864e5), past = claraState.items.length - live.length;
+      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `What Clara is arranging, read from her emails (${clara.email}). Click one to open her latest email.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
+      let head = '';
+      for (const it of live) {
+        const grp = it.st.k === 'needs' ? 'Needs you' : it.st.k === 'booked' ? 'Booked' : it.st.k === 'cancelled' ? 'Cancelled' : 'In progress';
+        if (grp !== head) { head = grp; list.appendChild(Object.assign(document.createElement('div'), { className: 'cl-h', textContent: grp })); }
+        const row = document.createElement('button'); row.type = 'button'; row.className = 'cl-row ' + it.st.k;
+        row.innerHTML = '<span class="chip"></span><span class="tx"><b></b><span></span></span><span class="dt"></span>';
+        row.querySelector('.chip').textContent = it.st.k === 'booked' ? (claraWhenText(it.st) || 'Booked') : it.st.label;
+        row.querySelector('b').textContent = it.title;
+        row.querySelector('.tx span').textContent = [it.who, `${it.count} email${it.count === 1 ? '' : 's'} from Clara`].filter(Boolean).join(' · ');
+        row.querySelector('.dt').textContent = new Date(it.last).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+        row.title = String(it.msg.bodyPreview || '').slice(0, 300);
+        row.addEventListener('click', async () => { d.close(); d.remove(); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(it.msg); });
+        list.appendChild(row);
+      }
+      // The Clara folder: Outlook files her copies there by itself, so they never sit in the Inbox.
+      const foot = d.querySelector('.cl-foot'); foot.replaceChildren();
+      const accs = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared);
+      for (const a of accs) {
+        const on = !!claraMail.folders[a.id], l = document.createElement('div'); l.className = 'cl-set';
+        l.appendChild(Object.assign(document.createElement('span'), { textContent: on ? `${a.email}: Clara’s copies go to the Clara folder.` : `${a.email}: Clara’s copies still arrive in the Inbox.` }));
+        const b = document.createElement('button'); b.className = on ? 'btn' : 'btn-primary'; b.textContent = on ? 'Tidy the Inbox Again' : 'Set Up the Clara Folder';
+        b.title = 'Makes a folder called Clara and two Outlook rules: emails from Clara that you are only copied on, and replies to Clara that you are copied on, go there. Anything Clara sends to you directly stays in the Inbox. Emails already in the Inbox are moved too.';
+        b.addEventListener('click', () => claraFolderSetup(a, msg => { toast(msg); paint(); })); l.appendChild(b); foot.appendChild(l);
+      }
+    };
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    d.querySelector('[data-x="refresh"]').addEventListener('click', async () => { paint(); await claraLoad(true); paint(); });
+    paint(); claraLoad(Date.now() - claraState.at > 60e3).then(paint);
+  }
+  // --- 4. The Clara folder and its two rules (made in Outlook itself, so they work on your phone and when this app is closed)
+  function claraFolderSetup(a0, done) {
+    mailNeedMore(a0, 'Rules', async a => {
+      const me = String(a.email || '').toLowerCase(), ad = claraAddr();
+      const fl = await mailApi(a.id, { path: '/me/mailFolders?$top=200&$select=id,displayName' });
+      if (!fl.ok) return done(`Could not read the folders: ${fl.error || 'try again'}`);
+      let folder = (fl.data.value || []).find(x => String(x.displayName).toLowerCase() === 'clara');
+      if (!folder) { const mk = await mailApi(a.id, { method: 'POST', path: '/me/mailFolders', body: { displayName: 'Clara' } }); if (!mk.ok) return done(`Could not make the Clara folder: ${mk.error || 'try again'}`); folder = mk.data; }
+      const base = '/me/mailFolders/inbox/messageRules', rl = await mailApi(a.id, { path: base });
+      if (!rl.ok) return done(`Could not read the rules: ${rl.error || 'try again'}`);
+      const have = new Set((rl.data.value || []).map(x => x.displayName)), who = [{ emailAddress: { address: clara.email, name: 'Clara' } }];
+      const want = [
+        { displayName: 'Clara: her emails I am copied on', sequence: 1, isEnabled: true, conditions: { fromAddresses: who, sentCcMe: true }, actions: { moveToFolder: folder.id, stopProcessingRules: true } },
+        { displayName: 'Clara: replies to her I am copied on', sequence: 2, isEnabled: true, conditions: { sentToAddresses: who, sentCcMe: true }, actions: { moveToFolder: folder.id, stopProcessingRules: true } },
+      ];
+      for (const ru of want) if (!have.has(ru.displayName)) { const mk = await mailApi(a.id, { method: 'POST', path: base, body: ru }); if (!mk.ok) return done(`Could not make the rule: ${mk.error || 'try again'}`); }
+      // What is already in the Inbox: the same test, applied now.
+      // (Also a folder called CC, if you have one: a rule of your own may already have been filing her copies there.)
+      let moved = 0;
+      const places = ['inbox', ...(fl.data.value || []).filter(x => /^cc$/i.test(String(x.displayName).trim())).map(x => x.id)];
+      for (const place of places) { const inb = await mailApi(a.id, { path: `/me/mailFolders/${place}/messages?$top=200&$orderby=receivedDateTime desc&$select=id,from,toRecipients,ccRecipients` });
+      if (inb.ok) for (const m of inb.data.value || []) {
+        const from = addrOf(m.from), to = (m.toRecipients || []).map(addrOf), cc = (m.ccRecipients || []).map(addrOf);
+        if (to.includes(me) || !cc.includes(me) || !(from === ad || to.includes(ad))) continue;
+        const mv = await mailApi(a.id, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: folder.id } }); if (mv.ok) moved++;
+      } }
+      claraMail.folders[a.id] = folder.id; claraMailSave();
+      try { mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); } catch (e) { /* not showing mail */ }
+      done(`The Clara folder is set up for ${a.email}.${moved ? ` ${moved} email${moved === 1 ? '' : 's'} moved into it.` : ''}`);
+    });
+  }
+  setTimeout(() => { claraLoad(false); }, 12000); setInterval(() => { if (document.visibilityState === 'visible') claraLoad(false); }, 10 * 60e3);
   const ST = (d, extra = '') => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/>${extra}</svg>`;
   const ST_ICON = {
     staff: ST('M8 8.2a2.7 2.7 0 100-5.4 2.7 2.7 0 000 5.4zM2.8 13.6c.5-2.4 2.6-3.7 5.2-3.7s4.700 1.300 5.200 3.700'),
