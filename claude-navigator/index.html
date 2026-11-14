@@ -1728,7 +1728,7 @@
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
   .swatch.on { outline: 2.5px solid var(--text); outline-offset: 2px; }
   .swatches input[type=color] { width: 30px; height: 28px; border: 0; padding: 0; background: none; }
-  #profileDlg { max-height: 92vh; overflow: auto; }
+  #profileDlg { max-height: 92vh; overflow: auto; width: min(640px, calc(100vw - 48px)); }
   #profileDlg .dlg-actions { position: sticky; bottom: 0; background: var(--win); padding: 12px 0 2px; margin-bottom: -2px; }
   .psec { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; display: grid; gap: 3px; }
   .psec span { font-size: 11.5px; font-weight: 400; letter-spacing: 0; text-transform: none; }
@@ -12038,6 +12038,18 @@ body { width: max-content !important; min-width: 0 !important; }
   // New mail by itself: every minute each account's Inbox is asked how much is unread (one small request). The Mail
   // icon carries the count; a new message shows a notification; and the Inbox on screen is read again.
   const mailSeen = {};                       // account id -> { unread, total }
+  // The number on the Mail icon: unread mail in the inboxes of the profile you are in, counting your own accounts
+  // only (not shared mailboxes). In All Profiles it is every one of your own accounts.
+  function mailBadgeCount() {
+    let sum = 0;
+    for (const a of mailUi.accounts || []) {
+      if (a.needsSignIn || a.shared || !mailSeen[a.id]) continue;
+      if (state.profileId && !mailProf(a.id).includes(state.profileId)) continue;
+      sum += mailSeen[a.id].unread || 0;
+    }
+    return sum;
+  }
+  function mailBadgeRefresh() { const n = mailBadgeCount(); if (mailUi.unread !== n) { mailUi.unread = n; try { dockRender(); appBadge(); } catch (e) { /* starting up */ } } }
   async function mailPoll() {
     if (!isApp || !window.navigatorApp.acctList || document.hidden && !mailUi.accounts) return;
     try {
@@ -12048,7 +12060,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const r = await mailApi(a.id, { path: '/me/mailFolders/inbox?$select=id,unreadItemCount,totalItemCount' });
         if (!r.ok) continue;
         const now = { unread: r.data.unreadItemCount || 0, total: r.data.totalItemCount || 0 }, was = mailSeen[a.id];
-        mailSeen[a.id] = now; sum += now.unread;
+        mailSeen[a.id] = now;
         if (!was || (now.unread === was.unread && now.total === was.total)) continue;
         const arrived = now.total > was.total && now.unread > was.unread;
         if (arrived) {
@@ -12062,7 +12074,7 @@ body { width: max-content !important; min-width: 0 !important; }
           if (mailState.sel && ((mailState.sel.acc === a.id && mailState.sel.folder === r.data.id) || mailState.sel.acc === '*') && !mailUi.search && !mailUi.loading) mailLoadMessages(true, true);
         }
       }
-      if (mailUi.unread !== sum) { mailUi.unread = sum; dockRender(); appBadge(); }
+      mailBadgeRefresh();
     } catch (e) { /* offline: try again next minute */ }
   }
   function appBadge() {
@@ -16369,6 +16381,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function setProfile(id, { quiet = false } = {}) {
     try { cosEndMaking(); cosUi.adding = false; cosUi.page = null; cosUi.sel = null; } catch (e) { /* starting up */ }
     state.profileId = id && nodeOf(id) && nodeOf(id).profile ? id : null;
+    setTimeout(() => { try { mailBadgeRefresh(); } catch (e) { /* mail not ready */ } }, 0);          // the count on the Mail icon follows the profile
     ls.set('claudeNavigator.activeProfile', state.profileId || '');
     applyProfileTheme();
     try { sideCos.staff = null; setTimeout(sideCosRender, 0); } catch (e) { /* starting up */ }
