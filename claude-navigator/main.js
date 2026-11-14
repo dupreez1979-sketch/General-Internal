@@ -267,22 +267,6 @@ app.on('web-contents-created', (_event, contents) => {
     } catch (e) {} })()`).catch(() => {});
   });
 
-  // A shared Apple note asks you to accept its invitation each time it opens: when the page says it is an
-  // invitation and offers a plain Accept (or Join, Open) button, press it for you. Only on icloud.com pages.
-  contents.on('did-frame-finish-load', (_e, _isMain, pid, rid) => {
-    try {
-      if (!/^https:\/\/(www\.)?icloud\.com\/(notes|applications\/notes)/i.test(contents.getURL())) return;
-      const fr = webFrameMain.fromId(pid, rid);
-      if (!fr || !/^https:\/\/([a-z0-9-]+\.)*icloud\.com\//i.test(fr.url)) return;
-      fr.executeJavaScript(`(() => { if (window.__navAccept) return; window.__navAccept = 1; let n = 0;
-        const t = setInterval(() => { if (++n > 60) return clearInterval(t);
-          const words = document.body ? (document.body.innerText || '').slice(0, 5000) : '';
-          if (!/invit/i.test(words)) return;
-          const b = [...document.querySelectorAll('button, [role="button"], a')].find(x => /^(accept|join|open|open note|view note)$/i.test((x.innerText || '').trim()) && x.offsetParent);
-          if (b) { clearInterval(t); b.click(); } }, 500); })()`).catch(() => {});
-    } catch (e) { /* the frame has gone */ }
-  });
-
   // Pop-ups from Claude (sign-in, connector authorisation, "open in new tab")
   // open in an app window that shares your Claude sign-in.
   contents.setWindowOpenHandler(() => ({ action: 'allow', overrideBrowserWindowOptions: childWindowOptions() }));

@@ -1852,7 +1852,6 @@
  <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, outputs and more"><span class="app-ic claude"></span><b>Claude</b></button>
   <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
   <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
-  <button class="app-tile" data-app="notes" title="Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
   <button class="app-tile" data-app="monday" title="Your monday.com workspaces and boards"><span class="app-ic monday"></span><b>monday.com</b></button>
 </div>
 
@@ -1972,7 +1971,7 @@
   // SOLO: this window is one app (Mail, Calendar or Notes) opened in a window of its own, to sit on another screen.
   // The main window owns your folders, your team and the layout. A solo window may only save its own app's settings
   // (below), never the folder tree or anything else, so two windows cannot overwrite each other.
-  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'notes', 'cos', 'navigator', 'claude', 'monday'].includes(k) ? k : ''; } catch (e) { return ''; } })();
+  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'cos', 'navigator', 'claude', 'monday'].includes(k) ? k : ''; } catch (e) { return ''; } })();
   // Mail, Calendar and Notes windows save only their own settings. Chief of Staff, File Navigator, Claude and monday.com
   // work on your folders and team, so their windows save those too; every window takes in what another has just saved
   // (see the 'storage' listeners), and only the main window writes folders to the Mac and makes backups.
@@ -7224,7 +7223,7 @@
     let seg = panel.querySelector('.sl-src');
     if (!seg) {
       seg = document.createElement('div'); seg.className = 'sl-src';
-      for (const [k, l] of [['folders', 'Folders'], ['notes', 'Notes']]) {
+      for (const [k, l] of [['folders', 'Folders']]) {
         const b = document.createElement('button'); b.dataset.src = k; b.textContent = l;
         b.title = k === 'notes' ? 'Show your Apple Notes on this side' : 'Show your folders on this side (to file things into)';
         b.addEventListener('click', () => setFrame('split', { src: k }));
@@ -7349,7 +7348,7 @@
   // The nine-dot button switches between the apps. Each keeps its own place.
   var navFace = ['claude', 'monday'].includes(ls.get('claudeNavigator.navFace')) ? ls.get('claudeNavigator.navFace') : 'files';
   const appKey = () => currentApp === 'navigator' ? (navFace === 'files' ? 'navigator' : navFace) : currentApp;     // which tile is on
-  var currentApp = (SOLO_TREE ? (SOLO === 'cos' ? 'cos' : 'navigator') : SOLO) || (['cos', 'notes', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
+  var currentApp = (SOLO_TREE ? (SOLO === 'cos' ? 'cos' : 'navigator') : SOLO) || (['cos', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
@@ -7367,7 +7366,7 @@
       // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
       tidyTree(null); tidyFresh = true;
     }
-    currentApp = ['cos', 'notes', 'cal', 'mail'].includes(a) ? a : 'navigator';
+    currentApp = ['cos', 'cal', 'mail'].includes(a) ? a : 'navigator';
     if (currentApp === 'navigator') {
       const was = navFace;
       navFace = a === 'claude' || a === 'monday' ? a : 'files';
@@ -7405,7 +7404,6 @@
   $('appPop').querySelector('.app-ic.mail').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="1.8" y="3.2" width="12.4" height="9.6" rx="1.8" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M2.5 4.5L8 8.8l5.5-4.3" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('appPop').querySelector('.app-ic.claude').innerHTML = small('claude', '#fff', 22);
   $('appPop').querySelector('.app-ic.monday').innerHTML = small('monday', undefined, 24);
-  $('appPop').querySelector('.app-ic.notes').innerHTML = '<svg width="20" height="20" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#fff" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/></svg>';
   $('appBtn').addEventListener('click', e => {
     e.stopPropagation();
     const pop = $('appPop');
@@ -10139,6 +10137,9 @@ body { width: max-content !important; min-width: 0 !important; }
   function notesToggle(on = !notesState.open) { notesState.open = on; notesSave(); notesRender(); }
   function notesRender() {
     const p = $('notesPanel');
+    if (p) p.hidden = true;
+    return;                                          // The Notes app has been removed. (Its code is left in place below, unused.)
+    /* eslint-disable no-unreachable */
     const app = currentApp === 'notes', inSplit = p.parentNode === $('spBody') || p.parentNode === $('spBody2');
     notesState.open = false;                         // (no floating window any more: an app, or one side of the split)
     p.hidden = !(app || inSplit);
@@ -14325,7 +14326,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // Chief of Staff, the Claude and Folders icons open the panels those apps already had, which you can drag between.)
   // A side app opens without its own sidebar; the button at its top left brings that back.
   // The order of the apps (in the switcher and in the dock) is yours: drag one to move it, or right-click it.
-  const APP_KEYS = ['cos', 'navigator', 'claude', 'chats', 'mail', 'cal', 'notes', 'monday'];
+  const APP_KEYS = ['cos', 'navigator', 'claude', 'chats', 'mail', 'cal', 'monday'];
   const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', chats: 'All Chats', mail: 'Mail', cal: 'Calendar', notes: 'Notes', monday: 'monday.com' };
   function appOrder() { let o = []; try { o = JSON.parse(ls.get('claudeNavigator.appOrder') || '[]'); } catch (e) { /* default */ } o = o.filter(k => APP_KEYS.includes(k)); for (const k of APP_KEYS) if (!o.includes(k)) o.push(k); return o; }
   function appHidden() { try { return JSON.parse(ls.get('claudeNavigator.appHidden') || '[]').filter(k => APP_KEYS.includes(k)); } catch (e) { return []; } }
@@ -14378,14 +14379,14 @@ body { width: max-content !important; min-width: 0 !important; }
     });
   }
   $('appPop').querySelectorAll('.app-tile').forEach(t => appDragWire(t, t.dataset.app, 'x'));
-  var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { return Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); } catch (e) { return d; } })();
+  var sideState = (() => { const d = { app: null, nav: false, w: 0 }; try { const o = Object.assign(d, JSON.parse(ls.get('claudeNavigator.side.v1') || '{}')); if (o.app === 'notes') { o.app = o.app2 || null; o.app2 = null; } if (o.app2 === 'notes') o.app2 = null; return o; } catch (e) { return d; } })();      // (the Notes app has been removed: nothing is left open on it)
   if (SOLO) { sideState.app = null; sideState.app2 = null; }
   if (SOLO_TREE && SOLO !== 'cos') { try { navFace = SOLO === 'navigator' ? 'files' : SOLO; document.body.dataset.face = navFace; } catch (e) { /* starting up */ } }
   function sideApp() { return (typeof sideState === 'object' && sideState && sideState.app) || null; }                 // the upper (or only) one
   function sideHas(k) { return typeof sideState === 'object' && !!sideState && !!k && (sideState.app === k || sideState.app2 === k); }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
-  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['notes', 'Notes', 'notes'], ['monday', 'monday.com', 'monday']];
+  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['monday', 'monday.com', 'monday']];
   const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
   // is Claude while File Navigator, Claude or Chief of Staff is the main app: there a chat opens in the app's own
@@ -14395,7 +14396,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
   // Apps open in windows of their own (Mail, Calendar, Notes). The strip marks them; clicking one brings its window forward.
   let appWins = [];
-  const OWN_WINDOW = ['mail', 'cal', 'notes', 'cos', 'navigator', 'claude', 'monday'];
+  const OWN_WINDOW = ['mail', 'cal', 'cos', 'navigator', 'claude', 'monday'];
   async function appOwnWindow(k) {
     if (!isApp || SOLO || !OWN_WINDOW.includes(k)) return;
     await window.navigatorApp.appWindowOpen(k);
