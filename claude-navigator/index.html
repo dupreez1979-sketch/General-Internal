@@ -536,6 +536,7 @@
   .mailnav .mail-f { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 7px; font-size: 13px; cursor: default; color: var(--text); }
   .mailnav .mail-f:hover { background: var(--hover); }
   .mailnav .mail-f.on { background: var(--sel); }
+  .mailnav .mail-f.drop { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: inset 0 0 0 1.5px var(--accent); border-radius: 7px; }
   .mailnav .mail-f.unread .nm { font-weight: 650; }
   .mailnav .mail-f .tw { width: 16px; height: 16px; display: grid; place-items: center; color: var(--text); opacity: .7; flex: none; border-radius: 4px; margin-left: -4px; }
   .mailnav .mail-f svg { flex: none; color: var(--muted); }
@@ -12619,6 +12620,17 @@ body { width: max-content !important; min-width: 0 !important; }
         const open = !!mailState.open[f.id];
         b.innerHTML = `<span class="tw${f.childFolderCount && open ? ' open' : ''}">${f.childFolderCount ? MAIL_TW : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
         b.querySelector('.nm').textContent = f.displayName;
+        b.addEventListener('dragover', e => { const d = mailUi.drag; if (!d || d.acc !== a.id || d.from === f.id || f.wk === 'drafts' || f.wk === 'outbox') return; e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) { /* no data */ } b.classList.add('drop'); });
+        b.addEventListener('dragleave', () => b.classList.remove('drop'));
+        b.addEventListener('drop', async e => {
+          const d = mailUi.drag; b.classList.remove('drop'); if (!d) return; e.preventDefault(); mailUi.drag = null;
+          if (d.acc !== a.id) return toast('An email can only be moved to a folder in its own account.');
+          if (d.from === f.id) return;
+          mailMulti.clear(); mailUi.multiAnchor = null;
+          let ok = 0; for (const m of d.list) { try { await mailAct(m, 'move', f); ok++; } catch (er) { /* carry on with the rest */ } }
+          if (d.list.length > 1) toast(`${ok} emails moved to ${f.displayName}`);
+          mailRefreshFolders();
+        });
         const count = f.wk === 'drafts' ? f.totalItemCount : f.unreadItemCount;
         b.querySelector('.n').textContent = count || '';
         b.querySelector('.tw').addEventListener('click', async e => {
@@ -12893,6 +12905,10 @@ body { width: max-content !important; min-width: 0 !important; }
       const name = sent ? (x.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(x.from) || '(No sender)';
       const r = document.createElement('div');
       r.className = 'mail-m' + (x.isRead && !(more && !mailUi.openThreads[tk] && more.some(y => !y.isRead)) ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '') + (sub ? ' sub' : '');
+      // Drag it (or all the selected ones) onto a folder on the left to move it there.
+      r.draggable = !x.isDraft;
+      r.addEventListener('dragstart', e => { const many = mailMulti.has(x.id) && mailMulti.size > 1 ? [...mailMulti.values()] : [x]; mailUi.drag = { list: many, acc: x._acc || (mailState.sel || {}).acc, from: (mailState.sel || {}).folder }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', many.length > 1 ? `${many.length} emails` : (x.subject || 'Email')); } catch (er) { /* no data */ } document.body.classList.add('mail-dragging'); });
+      r.addEventListener('dragend', () => { mailUi.drag = null; document.body.classList.remove('mail-dragging'); for (const z of document.querySelectorAll('.mail-f.drop')) z.classList.remove('drop'); });
       r.innerHTML = wide ? '<i class="dot"></i><span class="avs"></span><b></b><span class="fl"></span><div class="sjw"><span class="sj"></span><span class="pv"></span></div><span class="dt"></span>'
         : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
       r.querySelector('.avs').appendChild(mailAvatar(who && who.emailAddress && who.emailAddress.name, who && who.emailAddress && who.emailAddress.address));
@@ -13116,11 +13132,12 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailBulk(what, arg) {
     const list = [...mailMulti.values()]; mailMulti.clear(); mailUi.multiAnchor = null; mailRenderMain();
     for (const m of list) { try { await mailAct(m, what, arg); } catch (e) { /* carry on with the rest */ } }
-    toast(`${list.length} emails ${what === 'delete' ? 'moved to Deleted Items' : what === 'archive' ? 'archived' : arg ? 'marked as read' : 'marked as unread'}`);
+    toast(`${list.length} emails ${what === 'delete' ? 'moved to Deleted Items' : what === 'archive' ? 'archived' : what === 'move' ? 'moved to ' + arg.displayName : arg ? 'marked as read' : 'marked as unread'}`);
   }
   const mailBulkItems = () => [
     { label: 'Archive', run: () => mailBulk('archive') },
     { label: 'Delete', run: () => mailBulk('delete') },
+    { label: 'Move to', key: '\u25B8', run: () => { const any = [...mailMulti.values()][0], s = mailState.sel || {}; showMenu(lastMenuX, lastMenuY, mailAllFolders((any && any._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: '\u00a0'.repeat(z.depth * 2) + z.f.displayName, run: () => mailBulk('move', z.f) }))); } },
     { label: 'Mark as Read', run: () => mailBulk('read', true) },
     { label: 'Mark as Unread', run: () => mailBulk('read', false) },
     '-',
