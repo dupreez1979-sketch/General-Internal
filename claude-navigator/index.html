@@ -8301,8 +8301,14 @@
     const rel = lib.related || {}, stamp = (lib.fetchedAt || 0) + ':' + Object.keys(rel).length + ':' + Object.values(rel).reduce((n, l) => n + l.length, 0);
     if (stamp === outOwnersAt) return outOwners;
     const when = new Map((lib.chats || []).map(c => [normUrl(c.url || ''), Date.parse(c.created || c.updated || '') || 0]));
+    const full = u => normUrl(/^https?:/.test(u) ? u : 'https://claude.ai' + u);
     const m = new Map();
-    for (const [chat, arts] of Object.entries(rel)) for (const a of arts) { const k = normUrl(/^https?:/.test(a) ? a : 'https://claude.ai' + a), t = when.get(normUrl(chat)) || Infinity, cur = m.get(k); if (!cur || t < cur.t) m.set(k, { chat: normUrl(chat), t }); }
+    for (const [chat, arts] of Object.entries(rel)) for (const a of arts) {
+      const k = full(a), c = full(chat), t = when.get(c) || 0, cur = m.get(k);
+      if (!cur) m.set(k, { chat: c, t, sure: t > 0 });
+      else if (cur.chat !== c) { if (t > 0 && (!cur.t || t < cur.t)) m.set(k, { chat: c, t, sure: cur.t > 0 }); else if (!t || !cur.t) cur.sure = false; }      // without both dates, nobody is called the maker
+    }
+    for (const [k, v] of [...m]) if (!v.sure) m.delete(k);          // unsure: it shows under every chat that has it, and you can remove it by hand
     outOwnersAt = stamp; outOwners = m; return m;
   }
   const outRemoved = () => { const t = cosTeam(); return new Set((t && t.outHidden) || []); };
