@@ -627,7 +627,7 @@
   .clara-dlg .cl-row .tx { flex: 1; min-width: 0; display: grid; } .clara-dlg .cl-row .tx b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .clara-dlg .cl-row .tx span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .clara-dlg .cl-row .dt { flex: none; font-size: 11.5px; color: var(--muted); }
   .clara-dlg .cl-foot { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 6px; }
-  .clara-dlg .cl-set { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); } .clara-dlg .cl-set span { flex: 1; } .clara-dlg .cl-set button { font-size: 11.5px; padding: 3px 10px; }
+  .clara-dlg .cl-set { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); } .clara-dlg .cl-set span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .clara-dlg .cl-set em { font-style: normal; font-size: 11px; color: var(--muted); flex: none; } .clara-dlg .cl-foot[hidden] { display: none; } .clara-dlg .cl-set button { font-size: 11.5px; padding: 3px 10px; }
   .mail-rh .gist { order: 9; margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 8%, var(--win)); font-size: 12.5px; line-height: 1.4; }
   .mail-rh .gist[hidden] { display: none; }
   .mail-rh .gist b { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); margin-right: 8px; }
@@ -13877,6 +13877,10 @@ body { width: max-content !important; min-width: 0 !important; }
       else { claraDash.items = null; claraDash.state = /sign in|log in|continue with/i.test(text) || /login|signin|auth/i.test((r && r.url) || '') ? 'signin' : 'unread'; }
       claraDash.at = Date.now();
     } catch (e) { claraDash.items = null; claraDash.state = 'unread'; }
+    // If that did not work but Clara is open in the Scheduling tab, read the list straight from there.
+    if (claraDash.state !== 'ok' && claraView) {
+      try { const t = String(await claraView.executeJavaScript('document.body ? document.body.innerText : ""') || ''), its = claraParseDash(t); if (its.length || /In-Progress/i.test(t)) { claraDash.items = its; claraDash.state = 'ok'; } } catch (e) { /* that tab is not ready */ }
+    }
     claraDash.busy = false;
     try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); } catch (e) { /* not on screen */ }
     return claraDash;
@@ -13924,7 +13928,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (claraDash.items) { paintDash(); return paintFoot(); }
       const list = d.querySelector('.cl-list'); list.replaceChildren();
       const now = Date.now(), live = claraState.items.filter(x => x.st.k !== 'booked' || !x.st.when || x.st.when.getTime() > now - 864e5), past = claraState.items.length - live.length;
-      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `${claraDash.state === 'signin' ? 'Clara\u2019s own list could not be read because you are not signed in to Clara in this app (open the Executive Assistant\u2019s Scheduling tab to sign in). Until then, this is worked out from her emails, so it can include things you have already stopped. ' : claraDash.state === 'unread' ? 'Clara\u2019s own list could not be read just now, so this is worked out from her emails and can include things you have already stopped. ' : ''}What Clara is arranging, read from her emails. Click one to open her latest email, or press \u00d7 to clear one you have dealt with.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
+      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? (claraDash.state === 'signin' ? 'You are not signed in to Clara in this app, so this list comes from her emails and can include things you have stopped. Press Open Clara to sign in.' : claraDash.state === 'unread' ? 'Clara\u2019s own list could not be read just now, so this comes from her emails and can include things you have stopped.' : 'What Clara is arranging, read from her emails.') + ' Click one to open it, or press \u00d7 to clear it.' : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
       let head = '';
       for (const it of live) {
         const grp = it.st.k === 'needs' ? 'Needs you' : it.st.k === 'booked' ? 'Booked' : it.st.k === 'cancelled' ? 'Cancelled' : 'In progress';
@@ -13941,21 +13945,32 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       paintFoot();
     };
+    // The Clara folder is set up once, so it stays out of the way: one line until it is set up, then only behind the Clara Folder button.
+    let footOpen = false;
     const paintFoot = () => {
-      // The Clara folder: Outlook files her copies there by itself, so they never sit in the Inbox.
       const foot = d.querySelector('.cl-foot'); foot.replaceChildren();
-      foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'The Clara folder: Outlook files emails you are only copied on (from Clara, and replies to her) into a folder called Clara. Anything she sends to you directly stays in the Inbox.' }));
-      const accs = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared);
+      const accs = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared), any = accs.some(a => claraMail.folders[a.id]);
+      foot.hidden = !(footOpen || (!any && accs.length));
+      if (foot.hidden) return;
+      if (!footOpen) {
+        const l = document.createElement('div'); l.className = 'cl-set';
+        l.appendChild(Object.assign(document.createElement('span'), { textContent: 'Clara\u2019s copies still arrive in your Inbox.' }));
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Set Up the Clara Folder\u2026'; b.addEventListener('click', () => { footOpen = true; paintFoot(); }); l.appendChild(b); foot.appendChild(l);
+        return;
+      }
+      foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'Outlook files emails you are only copied on with Clara into a folder called Clara. Anything she sends straight to you stays in the Inbox.' }));
       for (const a of accs) {
         const on = !!claraMail.folders[a.id], l = document.createElement('div'); l.className = 'cl-set';
-        l.appendChild(Object.assign(document.createElement('span'), { textContent: on ? `${a.email}: Clara’s copies go to the Clara folder.` : `${a.email}: Clara’s copies still arrive in the Inbox.` }));
-        const b = document.createElement('button'); b.className = on ? 'btn' : 'btn-primary'; b.textContent = on ? 'Tidy the Inbox Again' : 'Set Up the Clara Folder';
+        l.appendChild(Object.assign(document.createElement('span'), { textContent: a.email }));
+        if (on) l.appendChild(Object.assign(document.createElement('em'), { textContent: 'On' }));
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = on ? 'Tidy Again' : 'Set Up';
         b.addEventListener('click', () => claraFolderSetup(a, msg => { toast(msg); paint(); })); l.appendChild(b); foot.appendChild(l);
       }
     };
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
     d.querySelector('[data-x="refresh"]').addEventListener('click', async () => { d.querySelector('.hint').textContent = 'Reading Clara\u2019s list\u2026'; await Promise.all([claraLoad(true), claraDashLoad(true)]); paint(); });
-    { const ob = document.createElement('button'); ob.className = 'btn'; ob.textContent = 'Open Clara'; ob.addEventListener('click', () => openNewWindow(clara.url)); d.querySelector('[data-x="refresh"]').after(ob); }
+    { const ob = document.createElement('button'); ob.className = 'btn'; ob.textContent = 'Open Clara'; ob.addEventListener('click', () => openNewWindow(clara.url)); d.querySelector('[data-x="refresh"]').after(ob);
+      const fb = document.createElement('button'); fb.className = 'btn'; fb.textContent = 'Clara Folder'; fb.addEventListener('click', () => { footOpen = !footOpen; paintFoot(); }); ob.after(fb); }
     paint(); if (!claraDash.items) d.querySelector('.hint').textContent = 'Reading Clara\u2019s list\u2026'; Promise.all([claraLoad(Date.now() - claraState.at > 60e3), claraDashLoad(Date.now() - claraDash.at > 60e3)]).then(paint);
   }
   // --- 4. The Clara folder and its two rules (made in Outlook itself, so they work on your phone and when this app is closed)

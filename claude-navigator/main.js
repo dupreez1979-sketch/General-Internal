@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen, webFrameMain,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen, webFrameMain, safeStorage,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -251,6 +251,9 @@ app.on('web-contents-created', (_event, contents) => {
     const host = contents.hostWebContents || contents;
     Menu.buildFromTemplate(items).popup({ window: BrowserWindow.fromWebContents(host) || undefined });
   });
+
+  contents.on('dom-ready', () => { tabKeepRestore(contents).then(() => setTimeout(() => tabKeepSnap(contents), 4000)).catch(() => {}); });
+  contents.on('did-navigate-in-page', () => { setTimeout(() => tabKeepSnap(contents), 1500); });
 
   if (contents.getType() !== 'webview') return;
 
@@ -1252,6 +1255,50 @@ function keepSignIns() {
   });
 }
 
+// Stay signed in to Clara. Clara keeps its sign-in inside the tab itself ("session storage"), which a browser throws
+// away when the tab closes, so every restart (and the hidden page that reads her list) started signed out. The app
+// keeps a copy, encrypted with the Mac's Keychain, and puts it back whenever a Clara page opens without one.
+const tabKeepFile = () => path.join(app.getPath('userData'), 'tab-signins.bin');
+const tabKeepReaders = new Set();
+let tabKeep = null;
+const tabKeepLoad = () => {
+  if (tabKeep) return tabKeep;
+  try { tabKeep = JSON.parse(safeStorage.decryptString(fs.readFileSync(tabKeepFile()))) || {}; } catch (e) { tabKeep = {}; }
+  return tabKeep;
+};
+const tabKeepSave = () => {
+  try {
+    if (!Object.keys(tabKeep).length) return fs.rmSync(tabKeepFile(), { force: true });
+    if (!safeStorage.isEncryptionAvailable()) return;
+    fs.writeFileSync(tabKeepFile(), safeStorage.encryptString(JSON.stringify(tabKeep)), { mode: 0o600 });
+  } catch (e) { /* signing in again still works */ }
+};
+const tabKeepOrigin = wc => {
+  try {
+    const u = new URL(wc.getURL());
+    if (u.protocol === 'https:' && /(^|\.)claralabs\.com$/i.test(u.hostname)) return u.origin;
+    if (!app.isPackaged && process.env.NAV_TEST_MS && u.hostname === '127.0.0.1' && u.pathname.startsWith('/clara')) return u.origin;
+  } catch (e) { /* not a page */ }
+  return '';
+};
+async function tabKeepRestore(wc) {
+  const o = tabKeepOrigin(wc); if (!o) return;
+  const saved = tabKeepLoad()[o] || {};
+  const n = await wc.executeJavaScript(`(d => { try { if (sessionStorage.getItem('__navKept')) return 0; sessionStorage.setItem('__navKept', '1'); let n = 0; for (const k in d) if (sessionStorage.getItem(k) === null) { sessionStorage.setItem(k, d[k]); n++; } return n; } catch (e) { return 0; } })(${JSON.stringify(saved)})`, true).catch(() => 0);
+  if (n > 0 && !wc.isDestroyed()) wc.reload();      // the page reads its sign-in as it starts, so start it again
+}
+async function tabKeepSnap(wc) {
+  if (!wc || wc.isDestroyed() || tabKeepReaders.has(wc.id)) return;
+  const o = tabKeepOrigin(wc); if (!o) return;
+  const d = await wc.executeJavaScript(`(() => { try { if (!sessionStorage.getItem('__navKept')) return null; const o = {}; for (let i = 0; i < sessionStorage.length; i++) { const k = sessionStorage.key(i); if (k !== '__navKept') o[k] = sessionStorage.getItem(k); } return o; } catch (e) { return null; } })()`, true).catch(() => null);
+  if (!d || typeof d !== 'object') return;
+  const s = JSON.stringify(d); if (s.length > 400000) return;
+  const all = tabKeepLoad(); if (JSON.stringify(all[o] || {}) === s) return;
+  if (Object.keys(d).length) all[o] = d; else delete all[o];
+  tabKeepSave();
+}
+setInterval(() => { try { webContents.getAllWebContents().forEach(wc => { tabKeepSnap(wc); }); } catch (e) { /* next time */ } }, 20000);
+
 // ---------- monday.com ----------
 ipcMain.handle('monday-status', () => ({ connected: monday.hasToken() }));
 ipcMain.handle('monday-connect', async (_e, token) => {
@@ -1644,16 +1691,23 @@ ipcMain.handle('clara-read', async (e, url) => {
   if (!test && !(u.protocol === 'https:' && /(^|\.)claralabs\.com$/.test(u.hostname))) return null;
   const win = new BrowserWindow({ show: false, width: 1280, height: 1500, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
   win.webContents.setAudioMuted(true);
+  const rid = win.webContents.id; tabKeepReaders.add(rid);
   const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 60000);
   try {
     await win.loadURL(u.href).catch(() => {});
     const read = () => win.webContents.executeJavaScript('document.body ? document.body.innerText : ""', true).catch(() => '');
-    let text = '';
-    for (let i = 0; i < 30 && !win.isDestroyed(); i++) { text = String(await read() || ''); if (/Updated .{1,30} ago|In-Progress|No (events|commands)|Sign in|Log in|Continue with/i.test(text)) break; await sleep(500); }
+    // (a sign-in page only counts once it has stayed for five seconds: Clara shows one for a moment while it signs you in)
+    let text = '', asked = 0;
+    for (let i = 0; i < 44 && !win.isDestroyed(); i++) {
+      text = String(await read() || '');
+      if (/Updated .{1,30} ago|In-Progress|No (events|commands)/i.test(text)) break;
+      if (/Sign in|Log in|Continue with/i.test(text)) { if (++asked >= 10) break; } else asked = 0;
+      await sleep(500);
+    }
     for (let i = 0; i < 4 && !win.isDestroyed(); i++) { await win.webContents.executeJavaScript('window.scrollTo(0, document.documentElement.scrollHeight); for (const el of document.querySelectorAll("*")) if (el.scrollHeight > el.clientHeight + 200 && el.clientHeight > 300) el.scrollTop = el.scrollHeight; 1', true).catch(() => {}); await sleep(700); }
     if (!win.isDestroyed()) text = String(await read() || text);
     return { text: text.slice(0, 200000), url: win.isDestroyed() ? '' : win.webContents.getURL() };
-  } finally { clearTimeout(guard); if (!win.isDestroyed()) win.destroy(); }
+  } finally { clearTimeout(guard); tabKeepReaders.delete(rid); if (!win.isDestroyed()) win.destroy(); }
 });
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
