@@ -333,17 +333,39 @@ final class Drive: NSObject {
     // Reads Claude's page until the spoken answer (between [[SAY]] and [[END]]) is complete.
     private func watch(nonce: String, id: Int) {
         let key = (try? JSONSerialization.data(withJSONObject: [nonce])).flatMap { String(data: $0, encoding: .utf8) } ?? "[\"\"]"
-        let read = "(() => { const k = \(key)[0], t = document.body ? document.body.innerText : ''; const i = t.lastIndexOf(k); return i < 0 ? '' : t.slice(i + k.length); })()"
+        // (also reads whether Claude is still working, and its latest message, in case the answer comes without the marks)
+        let read = """
+        (() => { const k = \(key)[0], t = document.body ? document.body.innerText : ''; const i = t.lastIndexOf(k); const after = i < 0 ? '' : t.slice(i + k.length);
+          const busy = !!document.querySelector('[data-is-streaming="true"]') || [...document.querySelectorAll('button')].some(b => /stop/i.test(b.getAttribute('aria-label') || '') && b.getClientRects().length > 0);
+          const all = [...document.querySelectorAll('[data-is-streaming], .font-claude-response, .font-claude-message')]; const el = all[all.length - 1];
+          return JSON.stringify({ after: after, busy: busy, last: el ? (el.innerText || '').trim() : '' }); })()
+        """
         var ticks = 0
         var last = ""
         var steady = 0
+        var everBusy = false
+        var quiet = 0
         answerTimer?.invalidate()
         answerTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] timer in
             guard let self = self, id == self.askID else { timer.invalidate(); return }
             ticks += 1
-            if ticks > 240 { timer.invalidate(); return self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude has not answered yet. The question is in the chat."]) }
+            // Patient while Claude is plainly still working (looking through files can take minutes), up to five minutes.
+            if ticks > (everBusy ? 750 : 240) { timer.invalidate(); return self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude has not answered yet. The question is in the chat."]) }
+            if ticks == 50 || (everBusy && (ticks == 150 || ticks == 375 || ticks == 600)) { self.tell("driveWait", ["n": ticks == 50 ? 0 : ticks == 150 ? 1 : 2]) }
             self.claude.evaluateJavaScript(read) { value, _ in
-                guard id == self.askID, let after = value as? String, let start = after.range(of: "[[SAY]]") else { return }
+                guard id == self.askID, let raw = value as? String, let data = raw.data(using: .utf8), let page = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
+                let after = (page["after"] as? String) ?? "", busy = (page["busy"] as? Bool) ?? false, latest = (page["last"] as? String) ?? ""
+                if busy { everBusy = true; quiet = 0 } else { quiet += 1 }
+                guard let start = after.range(of: "[[SAY]]") else {
+                    // Claude finished but left out the marks: speak its latest message (the start of it, if it is long).
+                    if !busy && everBusy && quiet >= 8 && !latest.isEmpty && after.contains(String(latest.prefix(30))) {
+                        timer.invalidate()
+                        let words = latest.split(whereSeparator: { $0 == " " || $0 == "\n" })
+                        let spoken = words.count > 90 ? words.prefix(90).joined(separator: " ") + ". The rest is in the chat." : words.joined(separator: " ")
+                        self.tell("driveAnswer", ["text": spoken, "done": true, "url": self.claude.url?.absoluteString ?? ""])
+                    }
+                    return
+                }
                 let rest = String(after[start.upperBound...])
                 let address = self.claude.url?.absoluteString ?? ""
                 if let end = rest.range(of: "[[END]]") {

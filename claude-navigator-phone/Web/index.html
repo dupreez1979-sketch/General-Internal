@@ -289,14 +289,14 @@
     return L.join('\n').slice(0, 5000); };
   function driveAsk(text, target) {
     const p = prof(), nonce = 'ref DRV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), had = drive.chats[target.id];
-    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. Start your answer with [[SAY]] and end it with [[END]]. Do this for every message in this chat.';
+    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. I am waiting in silence, so be quick: answer from what you already know in this project where you can, and look things up only when you must. If you cannot find it quickly, say so and say what you would need. Start your answer with [[SAY]] and end it with [[END]]. Do this for every message in this chat.';
     const prompt = had ? `I said: ${text}\n\n(Spoken answer, at most 70 words, between [[SAY]] and [[END]].)\n\n${nonce}`
       : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
     drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
     send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
     // No dead air: a few words straight away, while Claude thinks.
     { const ack = had ? ['One moment.', 'Let me check.', 'Just a second.'][drive.log.length % 3] : `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}.`; if (send({ do: 'say', text: ack })) drive.ackLeft = (drive.ackLeft || 0) + 1; }
-    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 100000);
+    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 330000);
   }
   // Questions the phone can answer itself, at once, from what it already holds about the team (Apple's built-in model).
   // Anything that needs thinking, advice or writing goes to Claude, and so does anything the phone is not sure of.
@@ -351,7 +351,7 @@
     if (md) { const t = team(); let hit = null; const want = md[2].replace(/^the /, ''); if (t) for (const n of t.nodes.filter(x => x.kind === 'staff')) for (const x of workOf(n.id).open) { const nm = x.name.toLowerCase(); if (!x.waiting && (nm.includes(want) || want.includes(nm))) hit = hit || { staff: n.id, who: n.name, item: x.id, name: x.name }; }
       if (hit) { drive.confirm = hit; return driveSay(`Mark ${hit.name}, with the ${hit.who}, as done? Say yes or no.`); } return driveSay('I could not find an open action with that name.'); }
     const named = staffNamed(said), back = /chief of staff/.test(low);
-    const target = back ? chiefOf() : named || drive.who || chiefOf();
+    const target = named && !named.chief ? named : back ? chiefOf() : named || drive.who || chiefOf();       // "ask the Chief of Staff to ask the Finance Officer" goes straight to the Finance Officer
     if (!target) return driveSay('There is no team in this profile yet.', 'idle');
     if (/^brief me\b/.test(low)) return driveBrief(chiefOf() || target);
     if (localOn() && !/^(ask|tell|get)\b/.test(low) && LOCALISH.test(low)) return driveLocalAsk(said, target);
@@ -364,6 +364,8 @@
     drive.stream = null; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
   // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
   // not kept waiting for the whole answer.
+  // Claude is taking a while (usually because it is looking through files): say so, so the wait is not silent.
+  window.driveWait = w => { if (!drive.on || drive.state !== 'thinking') return; const t = ['Still working on it.', 'This one needs some digging. Still looking.', 'Still going.'][w.n] || 'Still going.'; drive.line = t; render(); if (send({ do: 'say', text: t })) drive.ackLeft = (drive.ackLeft || 0) + 1; };
   window.driveAnswer = a => {
     if (!drive.on || !drive.pending) return;
     const pend = drive.pending;
