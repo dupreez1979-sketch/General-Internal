@@ -581,10 +581,15 @@ const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_r, reject) =
 // so an artifact can be attached to the chat it was made in.
 // (the pattern is kept out here as ordinary text: written inside the page script below, its backslashes would be lost)
 const MADE_FILES = '/mnt/user-data/outputs/([^"\\\\\\n<>|]{1,140}?\\.(?:xlsx|xlsm|xls|docx|doc|pptx|ppt|pdf|csv|md|html|txt|png|jpe?g|svg|json|zip))(?![A-Za-z0-9])';
+// Things made in a chat that have a Claude address of their own: Claude Docs, Slides, Designs and other artifacts.
+// (In the chat's data the slashes may be written with a backslash in front.)
+const MADE_LINKS = 'claude\\.ai\\\\?/(?:code\\\\?/)?artifact\\\\?/([0-9A-Za-z][0-9A-Za-z_-]{7,60})';
+const NAME_NEAR = '"(?:name|title)"\\s*:\\s*"((?:[^"\\\\]|\\\\.){3,160})"';
 const relationsScript = (chats, artifacts) => `(async () => {
   const chats = ${JSON.stringify(chats)};
   const arts = ${JSON.stringify(artifacts)};
-  const out = { relations: [], byName: [], files: [], scanned: {}, notes: [], failedStatus: {} };
+  const out = { relations: [], byName: [], files: [], made: [], scanned: {}, notes: [], failedStatus: {} };
+  const madeLink = new RegExp(${JSON.stringify(MADE_LINKS)}, 'gi'), nameNear = new RegExp(${JSON.stringify(NAME_NEAR)}, 'g');
   // Files Claude made in a chat (the ones under Outputs in the chat's side panel): spreadsheets, documents, PDFs.
   const made = new RegExp(${JSON.stringify(MADE_FILES)}, 'gi');
   const json = async u => { const r = await fetch(u, { credentials: 'include', headers: { accept: 'application/json' } }); return r.ok ? r : null; };
@@ -608,7 +613,17 @@ const relationsScript = (chats, artifacts) => `(async () => {
       if (a.id.length >= 8 && text.includes(a.id)) out.relations.push([c.url, a.url]);
       else if (a.name && a.name.length >= 12 && (text.includes(a.name) || text.includes(JSON.stringify(a.name).slice(1, -1)))) out.byName.push([c.url, a.url]);
     }
-    { const names = new Set(); let mm; made.lastIndex = 0; while ((mm = made.exec(text)) && names.size < 60) names.add(mm[1].split('/').pop().trim()); for (const nm of names) out.files.push([c.url, nm]); }
+    // What this chat made that has its own address (Claude Docs, Slides, Designs, artifacts): every artifact address in
+    // the chat, with the nearest name or title beside it.
+    { const flat = text.split('\\\\"').join('"'), seenIds = new Set(); let lm; madeLink.lastIndex = 0;
+      while ((lm = madeLink.exec(flat)) && seenIds.size < 80) {
+        const id = lm[1]; if (seenIds.has(id)) continue; seenIds.add(id);
+        const from = Math.max(0, lm.index - 900), win = flat.slice(from, lm.index + 500); let best = '', bestD = 1e9, nm; nameNear.lastIndex = 0;
+        while ((nm = nameNear.exec(win))) { const d = Math.abs(from + nm.index - lm.index); let val = nm[1]; try { val = JSON.parse('"' + nm[1] + '"'); } catch (e) { /* as written */ } if (/^[a-z0-9_.:\\/-]+$/.test(val)) continue;      // a tool's or a setting's name, not a title
+          if (d < bestD) { bestD = d; best = val; } }
+        out.made.push([c.url, 'https://claude.ai/artifact/' + id, String(best || '').slice(0, 160)]);
+      } }
+    { const names = new Set(); let mm; made.lastIndex = 0; while ((mm = made.exec(text)) && names.size < 60) { const nm0 = mm[1].split('/').pop().trim(); if (nm0.length > 4 && !/[*?{}$]/.test(nm0) && /[A-Za-z0-9]/.test(nm0.replace(/\\.[A-Za-z0-9]+$/, ''))) names.add(nm0); } for (const nm of names) out.files.push([c.url, nm]); }
     if (!out.sample) out.sample = { outputsFolderMentions: text.split('user-data/outputs').length - 1, fileNameKeys: text.split('file_name').length - 1, status: 'ok', length: text.length, mentionsArtifact: /artifact/i.test(text), head: text.slice(0, 300) };
   }
   return out;
@@ -674,11 +689,12 @@ async function fetchLibrary(opts = {}) {
       }
       const arts = [...known].map(([u, name]) => ({ url: u, name, id: u.replace(/\/+$/, '').split('/').pop() }));
       result.relations = [];
-      result.diag = { chatsToCheck: toScan.length, artifactsKnown: arts.length };
+      result.diag = { chatsToCheck: toScan.length, chatsWaiting: (result.chats || []).filter(c => c.url && seen[c.url] !== (c.updated || 'seen')).length, artifactsKnown: arts.length };
       if (toScan.length) {
         await openHidden(win, 'https://claude.ai/recents');
         const rel = await win.webContents.executeJavaScript(relationsScript(toScan, arts), true).catch(e => ({ relations: [], byName: [], files: [], scanned: {}, notes: [String(e)] }));
         result.chatFiles = rel.files || [];
+        result.chatMade = rel.made || [];
         // A name counts only when exactly one chat mentions it (common names are ignored).
         const chatsPerArt = new Map();
         for (const [c, a] of rel.byName || []) chatsPerArt.set(a, (chatsPerArt.get(a) || new Set()).add(c));
@@ -686,7 +702,7 @@ async function fetchLibrary(opts = {}) {
         result.relations = rel.relations.concat(byName);
         result.scanned = rel.scanned;
         Object.assign(result.diag, { chatsChecked: Object.keys(rel.scanned).length, byId: rel.relations.length, byName: byName.length, nameAmbiguous: chatsPerArt.size - byName.length, failedStatus: rel.failedStatus, sample: rel.sample || null });
-        result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${result.relations.length}, and ${(rel.files || []).length} files made in chats`, ...(rel.notes || []));
+        result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${result.relations.length}, ${(rel.made || []).length} documents and artifacts made in chats, and ${(rel.files || []).length} files`, ...(rel.notes || []));
       }
       // Artifacts still without a chat: open their page and look for a link back to the chat it was made in.
       const linked = new Set(result.relations.map(([, a]) => a).concat(opts.linkedArtifacts || []));

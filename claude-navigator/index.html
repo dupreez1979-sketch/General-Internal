@@ -2305,7 +2305,7 @@
     kinds: lib.kinds, related: lib.related, files: lib.files, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn, chatsCompleteAt: lib.chatsCompleteAt,
   })));
   state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
-  if (lib.scanVersion !== 3) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 3; }   // new ways to find links: look again
+  if (lib.scanVersion !== 4) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 4; }   // new ways to find links: look again
   const libSel = new Set();
   let libRowItems = new Map();
   const PAGE_SIZE = 100;
@@ -4915,6 +4915,15 @@
       if (r.pageChecked) lib.pageChecked = Object.assign(lib.pageChecked || {}, r.pageChecked);
       lib.diag = Object.assign({ at: new Date().toISOString(), notes: r.notes || [] }, r.diag || {});
       for (const [c, a] of r.relations || []) if (!isDetached(c, a)) addRelation(c, a);
+      // Documents and artifacts each chat made (Claude Docs, Slides, Designs, artifacts), read from the chat itself:
+      // these are what Claude lists under Outputs in the chat's side panel.
+      for (const [c, a, name] of r.chatMade || []) {
+        const k = normUrl(a), have = (lib.artifacts || []).find(x => normUrl(x.url) === k);
+        const chatName = ((lib.chats || []).find(x => normUrl(x.url) === normUrl(c)) || {}).name || 'a chat';
+        if (!have) lib.artifacts.push({ name: name || `Document from \u201c${chatName}\u201d`, url: a, fromChat: true, untitled: !name });
+        else if (have.untitled && name) { have.name = name; delete have.untitled; }
+        if (!isDetached(c, a)) addRelation(c, a);
+      }
       // Files Claude made in each chat (its Outputs panel): kept by chat, so they show as that work's outputs.
       lib.files = lib.files || {};
       for (const [c, name] of r.chatFiles || []) { const k = normUrl(c), l = lib.files[k] || (lib.files[k] = []); if (!l.includes(name) && l.length < 80) l.push(name); }
@@ -4927,6 +4936,8 @@
     lib.busy = false;
     saveLib();
     libChanged();
+    // More chats still to read (150 are read at a time): carry on by itself until all are done.
+    try { const d = lib.diag || {}; if (lib.signedIn && !lib.error && d.chatsWaiting > d.chatsToCheck && (refreshLibrary.rounds = (refreshLibrary.rounds || 0) + 1) <= 6) { toast(`Reading the rest of your chats for their outputs (${d.chatsWaiting - d.chatsToCheck} to go)\u2026`); setTimeout(() => refreshLibrary(true), 4000); } else refreshLibrary.rounds = 0; } catch (e) { /* next time */ }
   }
   function libChanged() {
     renderSide();
