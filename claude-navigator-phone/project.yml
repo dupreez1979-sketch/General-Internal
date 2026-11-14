@@ -8,12 +8,16 @@ targets:
   ClaudeNavigatorPhone:
     type: application
     platform: iOS
-    sources: [Sources]
+    sources:
+      - path: Sources
+      - path: Web
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dupreez.claude-navigator-phone
         PRODUCT_NAME: Chief of Staff
-        MARKETING_VERSION: "0.0.1"
+        MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Chief of Staff

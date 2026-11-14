@@ -1,67 +1,163 @@
-// Chief of Staff for the phone: test build 1.
-// It does one thing: shows Claude inside the app, to prove that you can sign in once and stay signed in.
-// The team, Today and the rest come after this works.
+// Chief of Staff for the phone.
+// The screens (Team, a staff member, Today, Recent) are the web page in Web/index.html, shown full screen.
+// This file does three things for that page: reads the team files the Mac app keeps in iCloud Drive,
+// lets you choose that folder once, and shows Claude over the top when you open or start a chat.
 
 import SwiftUI
 import WebKit
+import UniformTypeIdentifiers
 
 @main
 struct ChiefOfStaffApp: App {
     var body: some Scene {
-        WindowGroup { ContentView() }
+        WindowGroup { RootView() }
     }
 }
 
-final class ClaudePage: NSObject, ObservableObject, WKNavigationDelegate {
-    @Published var address = ""
-    @Published var loading = true
-    let view: WKWebView
+final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumentPickerDelegate {
+    @Published var chatOpen = false
+    @Published var chatTitle = "Claude"
+    let ui: WKWebView
+    let claude: WKWebView
+    private let bookmarkKey = "teamFolderBookmark"
 
     override init() {
-        let config = WKWebViewConfiguration()
-        config.websiteDataStore = .default()          // the sign-in is kept between launches
-        config.allowsInlineMediaPlayback = true
-        view = WKWebView(frame: .zero, configuration: config)
+        let content = WKUserContentController()
+        let uiConfig = WKWebViewConfiguration()
+        uiConfig.userContentController = content
+        ui = WKWebView(frame: .zero, configuration: uiConfig)
+        let claudeConfig = WKWebViewConfiguration()
+        claudeConfig.websiteDataStore = .default()          // the Claude sign-in is kept between launches
+        claudeConfig.allowsInlineMediaPlayback = true
+        claude = WKWebView(frame: .zero, configuration: claudeConfig)
         super.init()
-        view.navigationDelegate = self
-        view.allowsBackForwardNavigationGestures = true
-        view.load(URLRequest(url: URL(string: "https://claude.ai/new")!))
+        content.add(self, name: "phone")
+        ui.scrollView.contentInsetAdjustmentBehavior = .never
+        ui.scrollView.bounces = false
+        ui.isOpaque = false
+        claude.allowsBackForwardNavigationGestures = true
+        if let page = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
+            ui.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
+        }
     }
 
-    // Signed in means Claude has taken us past its sign-in pages.
-    var signedIn: Bool {
-        guard let url = URL(string: address), let host = url.host, host.hasSuffix("claude.ai") else { return false }
-        return !url.path.hasPrefix("/login") && !url.path.hasPrefix("/logout") && !url.path.hasPrefix("/magic-link")
+    // Messages from the page: load the team, choose the folder, open a chat.
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any], let what = body["do"] as? String else { return }
+        switch what {
+        case "load": sendData()
+        case "pick": pickFolder()
+        case "chat":
+            guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
+                  let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") else { return }
+            chatTitle = (body["title"] as? String) ?? "Claude"
+            claude.load(URLRequest(url: url))
+            chatOpen = true
+        default: break
+        }
     }
 
-    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) { loading = true }
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { loading = false; address = webView.url?.absoluteString ?? "" }
-    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { address = webView.url?.absoluteString ?? "" }
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { loading = false }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { loading = false }
+    func chatClosed() {
+        chatOpen = false
+        ui.evaluateJavaScript("window.phoneChatClosed && window.phoneChatClosed()", completionHandler: nil)
+    }
+
+    // MARK: The team files
+
+    private func folderURL() -> URL? {
+        guard let saved = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: saved, bookmarkDataIsStale: &stale) else { return nil }
+        if stale {
+            let ok = url.startAccessingSecurityScopedResource()
+            if let fresh = try? url.bookmarkData() { UserDefaults.standard.set(fresh, forKey: bookmarkKey) }
+            if ok { url.stopAccessingSecurityScopedResource() }
+        }
+        return url
+    }
+
+    // A file in iCloud Drive may not be on the phone yet: ask for it, and read it once it is here.
+    private func read(_ url: URL) -> Any? {
+        try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+        var data: Data?
+        var problem: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &problem) { at in data = try? Data(contentsOf: at) }
+        guard let found = data else { return nil }
+        return try? JSONSerialization.jsonObject(with: found)
+    }
+
+    func sendData() {
+        guard let folder = folderURL() else { return deliver(["state": "none"]) }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let ok = folder.startAccessingSecurityScopedResource()
+            defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+            var out: [String: Any] = ["state": "empty"]
+            if let index = self.read(folder.appendingPathComponent("index.json")) as? [String: Any],
+               let profiles = index["profiles"] as? [[String: Any]] {
+                var teams: [String: Any] = [:]
+                for profile in profiles {
+                    guard let id = profile["id"] as? String, let file = profile["file"] as? String,
+                          !file.contains("/"), file.hasSuffix(".json") else { continue }
+                    if let team = self.read(folder.appendingPathComponent(file)) { teams[id] = team }
+                }
+                out = ["state": teams.isEmpty ? "empty" : "ok", "index": index, "teams": teams]
+            }
+            DispatchQueue.main.async { self.deliver(out) }
+        }
+    }
+
+    private func deliver(_ payload: [String: Any]) {
+        guard let json = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: json, encoding: .utf8) else { return }
+        ui.evaluateJavaScript("window.phoneData && window.phoneData(\(text))", completionHandler: nil)
+    }
+
+    // MARK: Choosing the folder (once)
+
+    func pickFolder() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.folder])
+        picker.delegate = self
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        var top = scenes.first?.keyWindow?.rootViewController
+        while let next = top?.presentedViewController { top = next }
+        top?.present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        let ok = url.startAccessingSecurityScopedResource()
+        if let bookmark = try? url.bookmarkData() { UserDefaults.standard.set(bookmark, forKey: bookmarkKey) }
+        if ok { url.stopAccessingSecurityScopedResource() }
+        sendData()
+    }
 }
 
-struct ClaudeView: UIViewRepresentable {
-    let page: ClaudePage
-    func makeUIView(context: Context) -> WKWebView { page.view }
+struct WebHost: UIViewRepresentable {
+    let view: WKWebView
+    func makeUIView(context: Context) -> WKWebView { view }
     func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
-struct ContentView: View {
-    @StateObject private var page = ClaudePage()
+struct RootView: View {
+    @StateObject private var store = Store()
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                Circle().fill(page.signedIn ? Color.green : Color.orange).frame(width: 10, height: 10)
-                Text(page.loading ? "Loading…" : page.signedIn ? "Signed in to Claude" : "Not signed in yet: use Continue with email")
-                    .font(.footnote.weight(.semibold))
-                Spacer()
-                Button("Reload") { page.view.reload() }.font(.footnote)
+        WebHost(view: store.ui)
+            .ignoresSafeArea()
+            .onChange(of: phase) { now in if now == .active { store.sendData() } }      // fresh each time you come back
+            .fullScreenCover(isPresented: $store.chatOpen) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button("Done") { store.chatClosed() }.font(.body.weight(.semibold))
+                        Spacer()
+                        Text(store.chatTitle).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Spacer()
+                        Button { store.claude.reload() } label: { Image(systemName: "arrow.clockwise") }
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    Divider()
+                    WebHost(view: store.claude)
+                }
             }
-            .padding(.horizontal, 14).padding(.vertical, 9)
-            .background(Color(red: 0.11, green: 0.35, blue: 0.41).opacity(0.12))
-            ClaudeView(page: page)
-        }
     }
 }
