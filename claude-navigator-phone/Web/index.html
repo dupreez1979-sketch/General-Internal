@@ -343,23 +343,15 @@
   };
   // Which of Claude's models is answering: the fastest one for the drive, and the usual one put back afterwards.
   window.driveModel = m => { drive.model = m; if (drive.on) render(); else if (m.step === 'restore' && !m.ok && m.was) { const t = el('div', 'pulltip', `Claude is still on the fast model. Set it back to ${m.was} in Claude.`); t.style.opacity = 1; document.body.append(t); setTimeout(() => t.remove(), 6000); } };
-  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (v.voices) drive.voiceList = v.voices; if (v.problem) drive.voiceProblem = v.problem; else drive.voiceProblem = ''; if (drive.on) render(); };
+  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (drive.on) render(); };
   function voiceSheet() {
     const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { drive.voiceOpen = false; render(); };
     const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
     const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
-    opt('The phone’s own voice', v.phoneVoice ? `${v.phoneVoice}. Free, and works with no signal.` : 'Free, and works with no signal.', v.mode !== 'eleven', () => send({ do: 'voiceSet', mode: 'phone' }));
-    const tip = el('p', 'vtip', 'For a much better free voice, download a Premium or Enhanced English voice in iPhone Settings, under Accessibility. Look for Voices inside Read & Speak (called Spoken Content on older iPhones). Drive uses the best one installed.'); s2.append(tip);
-    if (!v.hasKey) opt('An ElevenLabs voice', 'More natural. Uses your ElevenLabs account, which charges for what is spoken. Tap to add your key.', false, () => send({ do: 'voiceKey' }));
-    else {
-      opt('An ElevenLabs voice', v.voiceName ? `Using ${v.voiceName}.` : 'Choose a voice below.', v.mode === 'eleven' && !!v.voiceID, () => { if (v.voiceID) send({ do: 'voiceSet', mode: 'eleven' }); send({ do: 'voiceList' }); });
-      if (!drive.voiceList) send({ do: 'voiceList' });
-      for (const x of (drive.voiceList || []).slice(0, 60)) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); if (x.note) nm.append(el('span', '', x.note)); r.append(nm); if (x.id === v.voiceID) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voiceSet', mode: 'eleven', voiceID: x.id, voiceName: x.name }); s2.append(r); }
-      const f = el('button', 'row', 'Forget my ElevenLabs key'); f.style.cssText = 'border:0;color:var(--muted)'; f.onclick = () => { drive.voiceList = null; send({ do: 'voiceSet', forgetKey: true }); }; s2.append(f);
-    }
+    opt('The phone’s own voice', v.phoneVoice ? `${v.phoneVoice}. Free, and works with no signal.` : 'Free, and works with no signal.', true, () => {});
+    s2.append(el('p', 'vtip', 'For a more natural voice at no cost, download a Premium or Enhanced English voice in iPhone Settings, under Accessibility. Look for Voices inside Read & Speak (called Spoken Content on older iPhones). Drive uses the best one installed.'));
     s2.append(el('div', 'sec', 'Speed'));
     { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
-    if (drive.voiceProblem) s2.append(el('p', 'vtip', drive.voiceProblem));
     return [sh, s2];
   }
   function viewDrive() {
