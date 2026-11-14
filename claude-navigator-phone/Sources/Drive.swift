@@ -332,15 +332,16 @@ final class Drive: NSObject {
         askID += 1
         let mine = askID
         answerTimer?.invalidate()
-        if !same(claude.url, url) { claude.load(URLRequest(url: url)) }
+        if !same(claude.url, url) { claude.load(URLRequest(url: url)); tell("driveStage", ["stage": "opening"]) }
         var tries = 0
         func trySend() {
             guard mine == self.askID else { return }
             tries += 1
+            self.tell("driveStage", ["stage": tries == 1 ? "typing" : "retyping", "n": tries])
             claude.callAsyncJavaScript("return await \(sendScript(prompt))", arguments: [:], in: nil, in: .page) { result in
                 guard mine == self.askID else { return }
                 let outcome = (try? result.get()) as? String ?? "none"
-                if outcome == "sent" { self.watch(nonce: nonce, id: mine) }
+                if outcome == "sent" { self.tell("driveStage", ["stage": "sent"]); self.watch(nonce: nonce, id: mine) }
                 else if tries < 8 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { trySend() } }
                 else { self.tell("driveAnswer", ["text": "", "done": true, "problem": outcome == "none" ? "Claude did not open. Check you are signed in." : "Claude did not take the question."]) }
             }
@@ -369,10 +370,12 @@ final class Drive: NSObject {
             ticks += 1
             // Patient while Claude is plainly still working (looking through files can take minutes), up to five minutes.
             if ticks > (everBusy ? 750 : 240) { timer.invalidate(); return self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude has not answered yet. The question is in the chat."]) }
-            if ticks == 50 || (everBusy && (ticks == 150 || ticks == 375 || ticks == 600)) { self.tell("driveWait", ["n": ticks == 50 ? 0 : ticks == 150 ? 1 : 2]) }
+            if everBusy && (ticks == 150 || ticks == 375 || ticks == 600) { self.tell("driveWait", ["n": ticks == 150 ? 1 : 2]) }
             self.claude.evaluateJavaScript(read) { value, _ in
                 guard id == self.askID, let raw = value as? String, let data = raw.data(using: .utf8), let page = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
                 let after = (page["after"] as? String) ?? "", busy = (page["busy"] as? Bool) ?? false, latest = (page["last"] as? String) ?? ""
+                if busy && !everBusy { self.tell("driveStage", ["stage": "working"]) }
+                if ticks == 25 && !busy && !everBusy && after.isEmpty { self.tell("driveStage", ["stage": "unseen"]) }       // ten seconds on and the question is not on Claude's page
                 if busy { everBusy = true; quiet = 0 } else { quiet += 1 }
                 guard let start = after.range(of: "[[SAY]]") else {
                     // Claude finished but left out the marks: speak its latest message (the start of it, if it is long).

@@ -325,6 +325,9 @@
     send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
     // No dead air: a few words straight away, while Claude thinks.
     { const ack = had ? ['One moment.', 'Let me check.', 'Just a second.'][drive.log.length % 3] : `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}.`; if (send({ do: 'say', text: ack })) drive.ackLeft = (drive.ackLeft || 0) + 1; }
+    // Twenty seconds on, say where it has got to, whatever the phone has or has not heard back from Claude's page.
+    drive.stage = ''; clearTimeout(drive.slow); const mine = drive.pending;
+    drive.slow = setTimeout(() => { if (!drive.on || drive.state !== 'thinking' || drive.pending !== mine) return; const g = drive.stage, t = g === 'working' || g === 'sent' ? 'Still working on it.' : g === 'unseen' ? 'Claude has not picked up the question yet. Still trying.' : 'Claude is slow to open. Still trying.'; chime('working'); if (send({ do: 'say', text: t })) drive.ackLeft = (drive.ackLeft || 0) + 1; }, 20000);
     clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; chime('no'); driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 330000);
   }
   // Questions the phone can answer itself, at once, from what it already holds about the team (Apple's built-in model).
@@ -394,6 +397,9 @@
   // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
   // not kept waiting for the whole answer.
   // Claude is taking a while (usually because it is looking through files): say so, so the wait is not silent.
+  // Where the question has got to, shown on the screen while you wait (and kept, so a stuck one can be reported).
+  const STAGE = { opening: 'Opening Claude…', typing: 'Giving Claude your question…', retyping: 'Claude is not ready yet. Trying again…', sent: 'Sent. Waiting for Claude…', working: 'Claude is working on it…', unseen: 'Sent, but Claude has not shown the question yet…' };
+  window.driveStage = g => { if (!drive.on || drive.state !== 'thinking' || !STAGE[g.stage]) return; drive.stage = g.stage; drive.line = STAGE[g.stage]; render(); };
   window.driveWait = w => { if (!drive.on || drive.state !== 'thinking') return; const t = ['Still working on it.', 'This one needs some digging. Still looking.', 'Still going.'][w.n] || 'Still going.'; drive.line = t; render(); chime('working'); if (send({ do: 'say', text: t })) drive.ackLeft = (drive.ackLeft || 0) + 1; };
   window.driveAnswer = a => {
     if (!drive.on || !drive.pending) return;
