@@ -989,6 +989,7 @@
   .cal-ev.tm.short { flex-direction: row; gap: 6px; align-items: center; padding-top: 1px; }
   .cal-ev.tm.short span { order: -1; flex: none; }
   .cal-ev.tm.short b { min-width: 0; }
+  .cal-evdlg .dt .dow { flex: none; min-width: 34px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
   .cal-now { position: absolute; left: 0; right: 0; border-top: 2px solid var(--accent); z-index: 2; pointer-events: none; }
   .cal-now::before { content: ''; position: absolute; left: -4px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
   .cal-month { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-template-rows: auto repeat(6, minmax(96px, 1fr)); }
@@ -11538,8 +11539,8 @@ body { width: max-content !important; min-width: 0 !important; }
       <label class="row"><span>Title</span><input name="title"></label>
       <label class="row" data-new><span>Calendar</span><select name="cal"></select></label>
       <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
-      <label class="row"><span>Starts</span><span class="dt"><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
-      <label class="row"><span>Ends</span><span class="dt"><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
+      <label class="row"><span>Starts</span><span class="dt"><b class="dow" data-for="sd"></b><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
+      <label class="row"><span>Ends</span><span class="dt"><b class="dow" data-for="ed"></b><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
       <label class="row tzrow"><span>Time zone</span><span class="dt"><select name="tz" title="The times above are times in this time zone"></select><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
       <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
       <label class="row"><span>Where</span><input name="loc"></label>
@@ -11668,6 +11669,9 @@ body { width: max-content !important; min-width: 0 !important; }
     setTimeout(tzPaint, 0);
     const sync = () => { const ad = f('allday').checked; try { tzPaint(); } catch (e) { /* not built yet */ } f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
+    // The day of the week beside each date (WED), kept in step however the date is changed.
+    { const dow = () => { for (const b of d.querySelectorAll('.dow')) { const v = f(b.dataset.for).value, dt = v ? new Date(v + 'T12:00:00') : null; const t = dt && !isNaN(dt) ? dt.toLocaleDateString('en-AU', { weekday: 'short' }).toUpperCase() : ''; if (b.textContent !== t) b.textContent = t; } };
+      dow(); d.addEventListener('input', dow); d.addEventListener('change', dow); const tick = setInterval(() => { if (!d.isConnected) return clearInterval(tick); dow(); }, 400); }
     // Moving the start moves the end with it.
     let gap = (seed && !inst && seed.end && seed.end > s0 ? seed.end : e0).getTime() - s0.getTime();
     if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = zYmd(b); f('et').value = zHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
