@@ -8984,7 +8984,11 @@
       const past = document.createElement('button'); past.className = 'tb' + (cosUi.outPast ? ' on' : ''); past.innerHTML = '<span class="t">Past Work</span>';
       past.title = cosUi.outPast ? 'Showing outputs from finished work too. Click to hide them.' : 'Also show outputs from work that is finished';
       past.addEventListener('click', () => { cosUi.outPast = !cosUi.outPast; renderCos(); });
-      tb.append(seg, past, q);
+      // Read Claude again from here, so new outputs show without going to All Chats.
+      const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">${lib.busy ? 'Reading Claude\u2026' : 'Refresh from Claude'}</span>`; rf.disabled = !!lib.busy;
+      rf.title = 'Read your chats in Claude again for the documents, artifacts and files they made';
+      rf.addEventListener('click', () => { toast('Reading your chats in Claude for their outputs. This can take a few minutes.'); refreshLibrary(true).then(() => { try { if (cosUi.tab === 'outputs') renderCos(); } catch (e) { /* moved on */ } }); setTimeout(() => { try { renderCos(); } catch (e) { /* moved on */ } }, 200); });
+      tb.append(seg, past, rf, q);
     }
     if (cosUi.tab === 'whiteboard' && n.whiteboard) {
       const tb = newTabBar('Whiteboard');
@@ -15336,7 +15340,7 @@ body { width: max-content !important; min-width: 0 !important; }
     await phoneMerge();
     phoneLast = ''; clearTimeout(phoneTimer); try { phonePublish(); } catch (e) { /* not ready */ }
     const after = (() => { try { return JSON.parse(ls.get(PHONE_APPLIED) || '[]').length; } catch (e) { return 0; } })();
-    try { refreshLibrary(false); } catch (e) { /* Claude's lists refresh on their own too */ }
+    try { refreshLibrary(true); } catch (e) { /* Claude's lists refresh on their own too */ }          // and read Claude again, for new chats and outputs
     if (after === before) toast('Up to date. Nothing new from your phone, and the latest has been sent to it.');
   }
   if (isApp && !SOLO) { setTimeout(phoneMerge, 6000); setInterval(phoneMerge, 60000); addEventListener('focus', () => setTimeout(phoneMerge, 800)); }
