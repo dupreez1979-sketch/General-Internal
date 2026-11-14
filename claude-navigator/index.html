@@ -7830,7 +7830,12 @@
       more.title = 'Export the org chart, mirror to Documents, keyboard shortcuts';
       more.innerHTML = UI.more;
       more.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosMoreMenu(b.right - 240, b.bottom + 4); });
-      head.append(cosSearchBox(t), more);
+      // Refresh: pick up what was done on the phone now, and send the phone the latest, without waiting for the next check.
+      const sync = document.createElement('button');
+      sync.className = 'tb'; sync.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">Refresh</span>`;
+      sync.title = 'Refresh now: bring in what you did on your phone, and send your phone the latest';
+      sync.addEventListener('click', () => phoneSyncNow());
+      head.append(sync, cosSearchBox(t), more);
     }
     main.appendChild(head);
     renderCosSide(t, p);
@@ -15054,6 +15059,16 @@ body { width: max-content !important; min-width: 0 !important; }
       if (bits.length) toast(`From your phone: ${bits.join(', ')}.`);
       phoneSoon();
     } catch (e) { console.error('Phone', e); } finally { phoneMerging = false; }
+  }
+  async function phoneSyncNow() {
+    if (!isApp || !window.navigatorApp || !window.navigatorApp.phoneChanges) return toast('This needs the latest version of the app.');
+    toast('Checking your phone\u2026');
+    const before = (() => { try { return JSON.parse(ls.get(PHONE_APPLIED) || '[]').length; } catch (e) { return 0; } })();
+    await phoneMerge();
+    phoneLast = ''; clearTimeout(phoneTimer); try { phonePublish(); } catch (e) { /* not ready */ }
+    const after = (() => { try { return JSON.parse(ls.get(PHONE_APPLIED) || '[]').length; } catch (e) { return 0; } })();
+    try { refreshLibrary(false); } catch (e) { /* Claude's lists refresh on their own too */ }
+    if (after === before) toast('Up to date. Nothing new from your phone, and the latest has been sent to it.');
   }
   if (isApp && !SOLO) { setTimeout(phoneMerge, 6000); setInterval(phoneMerge, 60000); addEventListener('focus', () => setTimeout(phoneMerge, 800)); }
   function phonePublish() {

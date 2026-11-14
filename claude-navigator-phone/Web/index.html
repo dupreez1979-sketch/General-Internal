@@ -59,6 +59,7 @@
   .dline { font-size:clamp(19px, 5.4vw, 28px); font-weight:650; line-height:1.22; }
   .dfoot { flex:none; display:flex; gap:10px; padding:0 14px 14px; } .dbtn { flex:1; min-width:0; border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; font-size:16px; border-radius:18px; padding:20px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .dbtn.stop { background:#3a2326; color:#ffb3b8; } .dbtn:active, .dbig:active { opacity:.7; }
   @media (orientation: landscape) { .dmid { flex-direction:row; gap:6%; padding:0 6%; } .dbig { --d:min(36vw, 60vh); font-size:clamp(14px, 2.3vw, 20px); gap:4px; padding:5%; } .dbig svg { width:24%; } .dmid { padding-top:0; padding-bottom:0; } .dfoot .dbtn { padding:14px 8px; } .dside { text-align:left; flex:1; } }
+  .pulltip { position:fixed; top:calc(env(safe-area-inset-top) + 4px); left:50%; transform:translate(-50%, 0); z-index:30; background:var(--ink); color:var(--win); font-size:13px; font-weight:650; border-radius:999px; padding:7px 14px; pointer-events:none; }
   .chk { width:26px; height:26px; border-radius:50%; border:2px solid var(--muted); opacity:.6; flex:none; }
   .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
   .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
@@ -386,6 +387,23 @@
     }
     render(); send({ do: 'load' });
   };
+  // Drag a list down and let go to refresh: the phone reads the team again and sends anything waiting.
+  (() => {
+    let y0 = null, pull = 0, tip = null;
+    const sc = e => e.target.closest && e.target.closest('.scroll');
+    app.addEventListener('touchstart', e => { const s2 = sc(e); y0 = s2 && s2.scrollTop <= 0 && !drive.on ? e.touches[0].clientY : null; pull = 0; }, { passive: true });
+    app.addEventListener('touchmove', e => {
+      if (y0 == null) return; pull = e.touches[0].clientY - y0; if (pull < 12) return;
+      if (!tip) { tip = el('div', 'pulltip'); document.body.append(tip); }
+      tip.textContent = pull > 80 ? 'Release to refresh' : 'Pull to refresh'; tip.style.opacity = Math.min(1, pull / 80); tip.style.transform = `translate(-50%, ${Math.min(60, pull / 2)}px)`;
+    }, { passive: true });
+    const end = () => {
+      if (y0 == null) return; const go = pull > 80; y0 = null;
+      if (tip) { if (go) { tip.textContent = 'Refreshing\u2026'; const t = tip; tip = null; setTimeout(() => t.remove(), 900); } else { tip.remove(); tip = null; } }
+      if (go) { if (changes.length) saveChanges(); send({ do: 'load' }); }
+    };
+    app.addEventListener('touchend', end, { passive: true }); app.addEventListener('touchcancel', end, { passive: true });
+  })();
   render();
   if (!send({ do: 'load' })) fetch('demo.json').then(r => r.json()).then(window.phoneData).catch(() => window.phoneData({ state: 'none' }));     // in a web browser: sample data, for design checks
 })();

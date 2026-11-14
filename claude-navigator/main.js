@@ -1439,10 +1439,11 @@ ipcMain.handle('page-layout', async (e, id) => {
   if (!fromOwnWindow(e)) return '';
   const wc = webContents.fromId(Number(id));
   if (!wc || wc.hostWebContents !== e.sender) return '';
-  const dump = `(() => { const out = []; const walk = (el, d) => { if (out.length > 350 || d > 10) return; const r = el.getBoundingClientRect(); if (r.width < 80 || r.height < 20) return;
-    const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).slice(0, 4).join('.') : '';
-    out.push(' '.repeat(d) + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : '') + (el.getAttribute('role') ? '[' + el.getAttribute('role') + ']' : '') + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top));
-    for (const c of el.children) walk(c, d + 1); }; if (document.body) walk(document.body, 0); return out.join('\\n'); })()`;
+  const dump = `(() => { const out = []; const walk = (el, d) => { if (out.length > 500 || d > 26) return; const r = el.getBoundingClientRect();
+    if (r.width >= 60 && r.height >= 16) { const cls = typeof el.className === 'string' ? el.className.trim().split(/\\s+/).slice(0, 4).join('.') : '';
+      out.push(' '.repeat(Math.min(d, 20)) + el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (cls ? '.' + cls : '') + (el.getAttribute('role') ? '[' + el.getAttribute('role') + ']' : '') + (el.shadowRoot ? ' {shadow}' : '') + ' ' + Math.round(r.width) + 'x' + Math.round(r.height) + '@' + Math.round(r.left) + ',' + Math.round(r.top)); }
+    for (const c of el.children) walk(c, d + 1);
+    if (el.shadowRoot) for (const c of el.shadowRoot.children) walk(c, d + 1); }; if (document.body) walk(document.body, 0); return out.join('\\n'); })()`;
   const parts = [];
   for (const fr of wc.mainFrame.framesInSubtree) {
     try { let host = ''; try { host = new URL(fr.url).hostname; } catch (e2) { /* about:blank */ } parts.push('FRAME ' + host + '\n' + await fr.executeJavaScript(dump)); } catch (e2) { /* a frame that will not answer */ }
