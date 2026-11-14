@@ -602,8 +602,8 @@ const relationsScript = (chats, artifacts) => `(async () => {
     { const flat = text.split('\\\\"').join('"'), seenIds = new Set(); let lm; madeLink.lastIndex = 0;
       while ((lm = madeLink.exec(flat)) && seenIds.size < 80) {
         const id = lm[1]; if (seenIds.has(id)) continue; seenIds.add(id);
-        const from = Math.max(0, lm.index - 900), win = flat.slice(from, lm.index + 500); let best = '', bestD = 1e9, nm; nameNear.lastIndex = 0;
-        while ((nm = nameNear.exec(win))) { const d = Math.abs(from + nm.index - lm.index); let val = nm[1]; try { val = JSON.parse('"' + nm[1] + '"'); } catch (e) { /* as written */ } if (/^[a-z0-9_.:\\/-]+$/.test(val)) continue;      // a tool's or a setting's name, not a title
+        const from = Math.max(0, lm.index - 3000), win = flat.slice(from, lm.index + 500); let best = '', bestD = 1e9, nm; nameNear.lastIndex = 0;
+        while ((nm = nameNear.exec(win))) { const d = Math.abs(from + nm.index - lm.index); let val = nm[1]; try { val = JSON.parse('"' + nm[1] + '"'); } catch (e) { /* as written */ } if (!/\\s/.test(val) && (/[_:\\/]/.test(val) || val === val.toLowerCase())) continue;      // a tool's or a setting's name, not a title
           if (d < bestD) { bestD = d; best = val; } }
         out.made.push([c.url, 'https://claude.ai/artifact/' + id, String(best || '').slice(0, 160)]);
       } }
@@ -688,6 +688,21 @@ async function fetchLibrary(opts = {}) {
         Object.assign(result.diag, { chatsChecked: Object.keys(rel.scanned).length, byId: rel.relations.length, byName: byName.length, nameAmbiguous: chatsPerArt.size - byName.length, failedStatus: rel.failedStatus, sample: rel.sample || null });
         result.notes.push(`links: checked ${Object.keys(rel.scanned).length} chats, found ${result.relations.length}, ${(rel.made || []).length} documents and artifacts made in chats, and ${(rel.files || []).length} files`, ...(rel.notes || []));
       }
+      // Documents that still have no name (the chat did not give one): open each one's page and read the name it shows.
+      const noName = [...new Set((opts.unnamed || []).concat((result.chatMade || []).filter(x => !x[2]).map(x => x[1])))].filter(u => /^https:\/\/claude\.ai\/(code\/)?artifact\//.test(u)).slice(0, 15);
+      result.titles = [];
+      for (const u of noName) {
+        if (win.isDestroyed()) break;
+        await openHidden(win, u);
+        const got = await win.webContents.executeJavaScript(`(async () => {
+          const read = () => { const h = document.querySelector('h1, [role="heading"][aria-level="1"]'), og = document.querySelector('meta[property="og:title"]'); return [document.title, h ? h.innerText : '', og ? og.content : ''].map(x => String(x || '').trim().slice(0, 200)); };
+          let r = read();
+          for (let i = 0; i < 10 && !/[A-Za-z]/.test(r[0].replace(/claude|artifact|loading|untitled/gi, '')) && !r[1]; i++) { await new Promise(z => setTimeout(z, 500)); r = read(); }
+          return r;
+        })()`, true).catch(() => null);
+        if (got) result.titles.push([u, got]);
+      }
+      if (noName.length) result.notes.push(`names: opened ${noName.length} documents to read their names`);
       // Artifacts still without a chat: open their page and look for a link back to the chat it was made in.
       const linked = new Set(result.relations.map(([, a]) => a).concat(opts.linkedArtifacts || []));
       const pagesToCheck = arts.filter(a => !linked.has(a.url) && !(opts.pageChecked || {})[a.url]).slice(0, 25);
@@ -1551,6 +1566,66 @@ ipcMain.handle('invite-kit-set', (e, pid, text) => {
   if (!fromOwnWindow(e) || !pid || typeof text !== 'string' || text.length > 12e6) return false;
   try { const k = JSON.parse(text); if (!k || k.v !== 1) return false; fs.mkdirSync(path.dirname(inviteKitFile(pid)), { recursive: true }); fs.writeFileSync(inviteKitFile(pid), text); return true; } catch (er) { return false; }
 });
+// ----- The Mac's own writing model (Apple Intelligence), through the small helper beside the app -----
+// Used for a first draft of an email, at once and without leaving the Mac. It only returns words: nothing is sent.
+const localAi = { proc: null, buf: '', waitStatus: [], owners: new Map(), status: null };
+function localAiPath() {
+  if (!app.isPackaged && process.env.NAV_TEST_LOCALAI) return { cmd: process.execPath, args: [process.env.NAV_TEST_LOCALAI], env: Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' }) };
+  if (!isMac) return null;
+  const file = app.isPackaged ? path.join(process.resourcesPath, 'navdraft') : path.join(__dirname, 'build', 'navdraft');
+  return fs.existsSync(file) ? { cmd: file, args: [], env: process.env } : null;
+}
+function localAiStart() {
+  if (localAi.proc) return localAi.proc;
+  const how = localAiPath(); if (!how) return null;
+  let p;
+  try { p = require('child_process').spawn(how.cmd, how.args, { env: how.env, stdio: ['pipe', 'pipe', 'ignore'] }); } catch (e) { return null; }
+  localAi.proc = p; localAi.buf = '';
+  const gone = () => {
+    if (localAi.proc !== p) return;
+    localAi.proc = null; localAi.status = null;
+    for (const w of localAi.waitStatus.splice(0)) w({ ok: false, reason: 'The helper stopped.' });
+    for (const [id, wc] of localAi.owners) { try { if (!wc.isDestroyed()) wc.send('local-ai', { id, error: 'The helper stopped.' }); } catch (e) { /* window closed */ } }
+    localAi.owners.clear();
+  };
+  p.on('error', gone); p.on('exit', gone); p.stdin.on('error', () => {});
+  p.stdout.setEncoding('utf8');
+  p.stdout.on('data', chunk => {
+    localAi.buf += chunk; let i;
+    while ((i = localAi.buf.indexOf('\n')) >= 0) {
+      const line = localAi.buf.slice(0, i); localAi.buf = localAi.buf.slice(i + 1);
+      let o = null; try { o = JSON.parse(line); } catch (e) { continue; }
+      if (!o) continue;
+      if (o.status) { const r = { ok: o.status === 'ok', reason: String(o.reason || '') }; localAi.status = r; for (const w of localAi.waitStatus.splice(0)) w(r); continue; }
+      const wc = localAi.owners.get(o.id); if (!wc) continue;
+      if (o.done || o.error) localAi.owners.delete(o.id);
+      try { if (!wc.isDestroyed()) wc.send('local-ai', { id: String(o.id), text: typeof o.text === 'string' ? o.text : undefined, done: !!o.done, error: o.error ? String(o.error).slice(0, 400) : undefined }); } catch (e) { /* window closed */ }
+    }
+  });
+  return p;
+}
+const localAiSay = o => { const p = localAiStart(); if (!p) return false; try { p.stdin.write(JSON.stringify(o) + '\n'); return true; } catch (e) { return false; } };
+ipcMain.handle('local-ai-status', e => {
+  if (!fromOwnWindow(e)) return { ok: false, reason: '' };
+  if (localAi.status && localAi.status.ok) return localAi.status;
+  if (!localAiPath()) return { ok: false, reason: 'missing' };
+  return new Promise(resolve => {
+    const done = r => { clearTimeout(t); resolve(r); };
+    const t = setTimeout(() => { localAi.waitStatus = localAi.waitStatus.filter(w => w !== done); resolve({ ok: false, reason: 'no answer' }); }, 6000);
+    localAi.waitStatus.push(done);
+    if (!localAiSay({ op: 'status' })) done({ ok: false, reason: 'could not start' });
+  });
+});
+ipcMain.handle('local-ai-run', (e, id, instructions, prompt) => {
+  if (!fromOwnWindow(e) || typeof id !== 'string' || !id || id.length > 60) return false;
+  localAi.owners.set(id, e.sender);
+  const ok = localAiSay({ op: 'run', id, instructions: String(instructions || '').slice(0, 6000), prompt: String(prompt || '').slice(0, 24000) });
+  if (!ok) localAi.owners.delete(id);
+  return ok;
+});
+ipcMain.handle('local-ai-cancel', (e, id) => { if (!fromOwnWindow(e)) return false; localAi.owners.delete(String(id)); return localAiSay({ op: 'cancel', id: String(id) }); });
+app.on('will-quit', () => { try { if (localAi.proc) localAi.proc.kill(); } catch (e) { /* already gone */ } });
+
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.

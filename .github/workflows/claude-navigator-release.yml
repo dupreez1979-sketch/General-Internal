@@ -84,6 +84,11 @@ jobs:
           done
           exit 1
 
+      # The small helper that lets the app use the Mac's own writing model for instant email drafts.
+      - name: Build the drafting helper
+        if: steps.published.outputs.skip != 'true'
+        run: bash helper/build.sh
+
       # Load the signing certificate into a temporary keychain on GitHub's Mac (deleted when the job ends).
       - name: Load the signing certificate
         if: steps.published.outputs.skip != 'true'
