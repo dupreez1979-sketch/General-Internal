@@ -1650,7 +1650,7 @@
     width: max-content; max-width: calc(100vw - 16px);   /* never squeezed by the window's edge */
   }
   #menu.show { display: block; }
-  #menu.rich { width: 340px; padding: 6px; }
+  #menu.rich { width: 340px; padding: 6px; max-height: calc(100vh - 12px); overflow-y: auto; }
   #menu.rich .mh { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 3px; }
   #menu.rich .mh:first-child { padding-top: 4px; }
   #menu.rich button.rm { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 8px; border-radius: 9px; text-align: left; white-space: normal; height: auto; }
@@ -4800,6 +4800,28 @@
     });
   }
 
+  // The + button: everything you can make here, as a panel with a line on each.
+  function showNewPanel(x, y, folderId = newHereFolder()) {
+    const f = nodeOf(folderId), here = f ? `in \u201c${f.name}\u201d` : 'here';
+    const mk = (kind, label, sub, svg, tint) => ({ label, sub, svg, tint, run: () => newInFolder(kind, folderId) });
+    const file = (k, label, sub, svg, tint) => ({ label, sub, svg, tint, run: () => newFileIn(k, folderId) });
+    showMenu(Math.max(8, x - 300), y, [
+      { head: 'In Claude' },
+      mk('chat', 'Chat', `A new conversation, filed ${here}.`, ST_ICON.chat, TINT.teal),
+      isApp && mk('doc', 'Doc', 'A live document you can keep editing in Claude.', ST_ICON.doc, TINT.word),
+      isApp && mk('slides', 'Slides', 'A deck made in Claude.', ST_ICON.slides, TINT.gold),
+      isApp && mk('design', 'Design', 'A visual design or mock-up.', ST_ICON.design, TINT.pink),
+      isApp && mk('dashboard', 'Dashboard', 'A live page of figures or status.', ST_ICON.board, TINT.purple),
+      isApp && mk('whiteboard', 'Whiteboard', 'A board for notes and sketches.', ST_ICON.wb, TINT.gold),
+      isApp && mk('project', 'Project', 'A Claude Project, with its own instructions and files.', ST_ICON.project, TINT.teal),
+      isApp && mk('artifactChat', 'Output in a Chat', 'Start a chat that is asked for a finished output.', ST_ICON.spark, TINT.green),
+      { head: isApp ? 'On your Mac' : 'In your folders' },
+      { label: 'Folder', sub: `A new folder ${here}.`, svg: ST_ICON.folder, tint: TINT.blue, run: () => newFolder(folderId) },
+      ...(isApp ? Object.keys(NEW_FILES).map(k => file(k, NEW_FILES[k], k === 'word' ? 'A new .docx in this folder, opened in Word.' : k === 'excel' ? 'A new .xlsx in this folder, opened in Excel.' : k === 'powerpoint' ? 'A new .pptx in this folder, opened in PowerPoint.' : 'A new file in this folder.', k === 'excel' ? ST_ICON.grid : k === 'powerpoint' ? ST_ICON.slides : ST_ICON.details, k === 'excel' ? TINT.green : k === 'powerpoint' ? TINT.red : TINT.word)) : []),
+      isApp && mondayData.connected && { head: 'Elsewhere' },
+      isApp && mondayData.connected && { label: 'monday.com Board', sub: 'A new board in one of your workspaces.', svg: ST_ICON.board, tint: TINT.purple, run: () => openNewBoard({ fileInto: folderId || null }) },
+    ].filter(Boolean));
+  }
   function showNewMenu(x, y, folderId = newHereFolder()) {
     const f = nodeOf(folderId);
     const where = f ? ` in “${f.name}”` : '';
@@ -6770,6 +6792,7 @@
     ].filter(Boolean)); });
   $('bNewMenu').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
+    if (!inMondayList()) return showNewPanel(b.left, b.bottom + 4);
     if (inMondayList()) return showMenu(b.left, b.bottom + 4, [{ label: 'New Folder for Workspaces\u2026', icon: 'folder', run: () => mgNew() }, mondayData.connected && mondayData.error !== 'token' ? { label: 'New Board\u2026', run: () => openNewBoard() } : null].filter(Boolean));
     showNewMenu(b.left, b.bottom + 4);
   });
@@ -9043,20 +9066,23 @@
     const curArt = cur && itemKindOf(pathOf(cur)) === 'artifact' && !(n.whiteboard && normUrl(cur) === normUrl(n.whiteboard.url));
     const mine = (lib.artifacts || []).filter(a => libKind(a, 'artifacts') === 'whiteboard').slice(0, 25);
     const use = (name, url) => cosChange(() => { n.whiteboard = { name: name || 'Whiteboard', url }; cosUi.tab = 'whiteboard'; cosUi.toFolder = true; }, `${n.name} now has a whiteboard`);
-    showMenu(x, y, [
-      n.whiteboard && { label: 'Open in Your Browser', run: () => window.open(n.whiteboard.url, '_blank') },
-      n.whiteboard && '-',
-      { label: n.whiteboard ? 'Make a New Whiteboard with Claude\u2026' : 'Make a Whiteboard with Claude\u2026', run: () => {
-        const nid = n.id;
-        navigator.clipboard.writeText(`A whiteboard for brainstorming with ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
-        cosCreate('whiteboard', { what: `${n.name}\u2019s whiteboard`, onLink: link => { const m = cosNode(cosTeam(), nid); if (!m) return; m.whiteboard = { name: link.name, url: link.url }; cosUi.page = nid; cosUi.tab = 'whiteboard'; cosUi.adding = false; cosUi.dashKeep = true; } });
-      } },
-      mine.length ? { label: 'Use an Existing Whiteboard', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled whiteboard', icon: 'whiteboard', run: () => use(a.name, a.url) }))) } : null,
-      curArt && { label: 'Use the Page Open Now', run: () => use(realTitle(state.pageTitle) || 'Whiteboard', cur) },
-      { label: 'Paste a Whiteboard Link\u2026', run: () => askText('The whiteboard\u2019s link, from Claude', '', v => { if (!boardLinkOk(v)) return toast('That is not a link to a Claude page.'); use('Whiteboard', v.trim()); }, 'Use It') },
-      n.whiteboard && '-',
-      n.whiteboard && { label: 'Remove Whiteboard\u2026', run: () => { if (!confirm(`Take the whiteboard off ${n.name}\u2019s page? The whiteboard itself stays in Claude.`)) return; cosChange(() => { delete n.whiteboard; if (cosUi.tab === 'whiteboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s whiteboard`); } },
-    ].filter(Boolean));
+    const make = () => {
+      const nid = n.id;
+      navigator.clipboard.writeText(`A whiteboard for brainstorming with ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+      cosCreate('whiteboard', { what: `${n.name}\u2019s whiteboard`, onLink: link => { const m = cosNode(cosTeam(), nid); if (!m) return; m.whiteboard = { name: link.name, url: link.url }; cosUi.page = nid; cosUi.tab = 'whiteboard'; cosUi.adding = false; cosUi.dashKeep = true; } });
+    };
+    const addRows = [
+      { label: n.whiteboard ? 'Make a New One with Claude' : 'Make One with Claude', sub: 'Claude starts a board for this person and it becomes a tab.', svg: ST_ICON.spark, tint: TINT.teal, run: make },
+      mine.length ? { label: 'Use One You Already Have', sub: `Choose from the ${mine.length} whiteboard${mine.length === 1 ? '' : 's'} found in Claude.`, svg: ST_ICON.link, tint: TINT.grey, run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled whiteboard', icon: 'whiteboard', run: () => use(a.name, a.url) }))) } : null,
+      curArt && { label: 'Use the Page Open Now', sub: 'Whatever is showing in Claude beside the team becomes the whiteboard.', svg: ST_ICON.open, tint: TINT.word, run: () => use(realTitle(state.pageTitle) || 'Whiteboard', cur) },
+      { label: 'Paste a Link', sub: 'Paste the whiteboard\u2019s address from Claude.', svg: ST_ICON.details, tint: TINT.gold, run: () => askText('The whiteboard\u2019s link, from Claude', '', v => { if (!boardLinkOk(v)) return toast('That is not a link to a Claude page.'); use('Whiteboard', v.trim()); }, 'Use It') },
+    ].filter(Boolean);
+    showMenu(Math.max(8, x - 150), y, n.whiteboard ? [
+      { head: `${n.name}\u2019s whiteboard` },
+      { label: 'Open in Your Browser', sub: 'See it full size outside the app.', svg: ST_ICON.open, tint: TINT.grey, run: () => window.open(n.whiteboard.url, '_blank') },
+      { label: 'Replace It\u2026', sub: 'Make a new one, or use another whiteboard, in its place.', svg: ST_ICON.wb, tint: TINT.gold, run: () => showMenu(lastMenuX, lastMenuY, [{ head: 'Replace the whiteboard' }, ...addRows]) },
+      { label: 'Remove the Whiteboard', sub: 'Takes the tab away. The whiteboard itself stays in Claude.', svg: ST_ICON.trash, tint: TINT.red, run: () => { if (!confirm(`Take the whiteboard off ${n.name}\u2019s page? The whiteboard itself stays in Claude.`)) return; cosChange(() => { delete n.whiteboard; if (cosUi.tab === 'whiteboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s whiteboard`); } },
+    ] : [{ head: 'Add a whiteboard' }, ...addRows]);
   }
   // The whiteboard of one action (an item in a staff member's Work).
   function itemBoardOpen(id) { const x = nodeOf(id); if (x && x.board) cosOpenLink({ name: x.board.name || `${x.name}: whiteboard`, url: x.board.url }); }
@@ -9084,21 +9110,23 @@
     const mine = (lib.artifacts || []).filter(a => libKind(a, 'artifacts') === 'dashboard').slice(0, 25);
     let cur = state.loc.kind === 'page' ? state.pageUrl : '';
     const curArt = cur && itemKindOf(pathOf(cur)) === 'artifact' && !(n.dashboard && normUrl(cur) === normUrl(cosDashUrl(n.dashboard)));
-    showMenu(x, y, [
-      n.dashboard && { label: 'Open in Your Browser', run: () => window.open(cosDashUrl(n.dashboard), '_blank') },
-      n.dashboard && { label: 'Edit in Claude', run: () => { cosUi.tab = 'dashboard'; renderCos(); setTimeout(() => cosDashEdit(n), 50); } },
-      n.dashboard && '-',
-      { label: n.dashboard ? 'Make a New Dashboard with Claude\u2026' : 'Make a Dashboard with Claude\u2026', run: () => cosNewDashboard(n) },
-      mine.length ? { label: 'Use an Existing Dashboard', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled dashboard', icon: 'dashboard', run: () => cosUseDashboard(n, a) }))) }
-        : { label: 'No dashboards found in Claude yet', disabled: true, run: () => {} },
-      !mine.length && { label: 'Refresh from Claude', run: () => { refreshLibrary(true); toast('Reading your dashboards from Claude\u2026'); } },
-      curArt && { label: 'Use the Claude Page Showing Now', run: () => cosUseDashboard(n, { name: cleanTitle(state.pageTitle) || 'Dashboard', url: cur }) },
-      n.dashboard && '-',
-      n.dashboard && { label: 'Remove Dashboard\u2026', run: () => {
-        if (!confirm(`Remove the dashboard from ${n.name}? It stays in Claude; only the tab here goes. You can delete it in Claude if you no longer need it.`)) return;
-        cosChange(() => { delete n.dashboard; delete n.dashFirst; if (cosUi.tab === 'dashboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s dashboard`);
-      } },
-    ].filter(Boolean));
+    const remove = () => {
+      if (!confirm(`Remove the dashboard from ${n.name}? It stays in Claude; only the tab here goes. You can delete it in Claude if you no longer need it.`)) return;
+      cosChange(() => { delete n.dashboard; delete n.dashFirst; if (cosUi.tab === 'dashboard') { cosUi.tab = 'work'; cosUi.toFolder = true; } }, `Removed ${n.name}\u2019s dashboard`);
+    };
+    const addRows = [
+      { label: n.dashboard ? 'Make a New One with Claude' : 'Make One with Claude', sub: 'Say what it should show. Claude builds it and it becomes a tab.', svg: ST_ICON.spark, tint: TINT.teal, run: () => cosNewDashboard(n) },
+      { label: 'Use One You Already Have', sub: mine.length ? `Choose from the ${mine.length} dashboard${mine.length === 1 ? '' : 's'} found in Claude.` : 'None found in Claude yet. Choose this to read Claude again.', svg: ST_ICON.link, tint: TINT.grey, run: () => (mine.length ? showMenu(lastMenuX, lastMenuY, mine.map(a => ({ label: a.name || 'Untitled dashboard', icon: 'dashboard', run: () => cosUseDashboard(n, a) }))) : (refreshLibrary(true), toast('Reading your dashboards from Claude\u2026'))) },
+      curArt && { label: 'Use the Page Open Now', sub: 'Whatever is showing in Claude beside the team becomes the dashboard.', svg: ST_ICON.open, tint: TINT.word, run: () => cosUseDashboard(n, { name: cleanTitle(state.pageTitle) || 'Dashboard', url: cur }) },
+    ].filter(Boolean);
+    // Before there is one: the ways to add it. Once there is one: looking after it, with replacing a step back.
+    showMenu(Math.max(8, x - 150), y, n.dashboard ? [
+      { head: `${n.name}\u2019s dashboard` },
+      { label: 'Edit in Claude', sub: 'Open it in Claude to change what it shows.', svg: ST_ICON.pencil, tint: TINT.word, run: () => { cosUi.tab = 'dashboard'; renderCos(); setTimeout(() => cosDashEdit(n), 50); } },
+      { label: 'Open in Your Browser', sub: 'See it full size outside the app.', svg: ST_ICON.open, tint: TINT.grey, run: () => window.open(cosDashUrl(n.dashboard), '_blank') },
+      { label: 'Replace It\u2026', sub: 'Make a new one, or use another dashboard, in its place.', svg: ST_ICON.board, tint: TINT.purple, run: () => showMenu(lastMenuX, lastMenuY, [{ head: 'Replace the dashboard' }, ...addRows]) },
+      { label: 'Remove the Dashboard', sub: 'Takes the tab away. The dashboard itself stays in Claude.', svg: ST_ICON.trash, tint: TINT.red, run: remove },
+    ] : [{ head: 'Add a dashboard' }, ...addRows]);
   }
 
   function renderStaffPage(t, n, body) {
@@ -9543,7 +9571,23 @@
     w.checked = Date.now();
     refreshLibrary(true);
   }
-  function cosSkillsMenu(x, y, n) { showMenu(x, y, cosSkillsItems(n)); }
+  function cosSkillsMenu(x, y, n) {
+    const f = skillsFolder(n), have = new Set(workItems(f).map(i => normUrl(i.url || ''))), list = (lib.skills || []).filter(z => !have.has(normUrl(z.url))).slice(0, 40);
+    showMenu(Math.max(8, x - 150), y, [
+      { head: 'Make a skill' },
+      { label: 'With Claude', sub: 'Say what the skill should do and Claude writes it with you.', svg: ST_ICON.spark, tint: TINT.teal, run: () => cosNewClaudeSkill(n, 'create with claude') },
+      { label: 'Record Your Screen', sub: 'Do the task once while Claude watches, and it turns the steps into a skill.', svg: ST_ICON.rec, tint: TINT.red, run: () => cosNewClaudeSkill(n, 'record your screen') },
+      { label: 'Write It Yourself', sub: 'Open Claude\u2019s skill editor and write the instructions by hand.', svg: ST_ICON.pencil, tint: TINT.word, run: () => cosNewClaudeSkill(n, 'create a skill') },
+      { head: 'Already have one' },
+      { label: 'Upload a Skill', sub: 'Add a skill file you were given or made elsewhere.', svg: ST_ICON.upload, tint: TINT.grey, run: () => cosNewClaudeSkill(n, 'upload skill') },
+      { label: 'Add One of Your Claude Skills', sub: list.length ? `${list.length} of your skills in Claude ${list.length === 1 ? 'is' : 'are'} not on this person\u2019s list yet.` : 'Every skill read from Claude is here already. Choose this to read Claude again.', svg: ST_ICON.link, tint: TINT.gold, run: () => showMenu(lastMenuX, lastMenuY, [
+        ...list.map(z => ({ label: z.name || 'Untitled skill', icon: 'skill', run: () => addSkillLinks(n, [z]) })),
+        list.length ? '-' : null,
+        { label: 'Refresh from Claude', run: () => { refreshLibrary(true); toast('Reading your Claude Skills\u2026'); } },
+        { label: 'Open Claude\u2019s Skills Page', run: () => go({ kind: 'page', url: claudeSkillsPage() }) },
+      ].filter(Boolean)) },
+    ]);
+  }
   function cosSkillsItems(n) {
     const f = skillsFolder(n);
     const have = new Set(workItems(f).map(i => normUrl(i.url || '')));
@@ -9809,7 +9853,13 @@
     nb.className = 'tb';
     nb.innerHTML = UI.plus;
     nb.title = 'New routine: with Claude, yourself in Claude, or link one you already have';
-    nb.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); showMenu(b.left, b.bottom + 4, cosNewRoutineItems(n)); });
+    nb.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(), it = cosNewRoutineItems(n); showMenu(Math.max(8, b.left - 150), b.bottom + 4, [
+      { head: 'Make a routine' },
+      { label: 'With Claude', sub: 'Describe it in a sentence. Claude sets up the scheduled task and it appears here by itself.', svg: ST_ICON.spark, tint: TINT.teal, run: it[0].run },
+      { label: 'By Hand in Claude', sub: 'Open Claude\u2019s Scheduled page and fill the task in yourself.', svg: ST_ICON.pencil, tint: TINT.word, run: it[1].run },
+      { head: 'Already have one' },
+      { label: 'Link One Already in Claude', sub: 'Pick a scheduled task you made earlier, so it shows on this person\u2019s list.', svg: ST_ICON.link, tint: TINT.grey, run: it[3].run },
+    ]); });
     const sq = document.createElement('div');
     sq.className = 'search';
     sq.innerHTML = `<span>${UI.search}</span><input type="search" placeholder="Search" autocomplete="off" spellcheck="false">`;
@@ -12748,11 +12798,12 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     const add = document.createElement('button'); add.className = 'add';
     add.innerHTML = `${UI.plus}<span>${mailUi.adding ? 'Waiting for you to sign in…' : 'Add an Account…'}</span>`;
-    add.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(); showMenu(r.left, r.bottom + 4, [
-      { label: 'Microsoft 365, Outlook.com or Hotmail', run: () => mailAddAccount() },
-      ...vis.filter(z => !z.shared && z.provider !== 'google').map(z => ({ label: `A shared mailbox under ${z.email}\u2026`, run: () => mailAddShared(z) })),
-      { label: 'Gmail (later)', disabled: true, run: () => {} },
-    ]); });
+    add.addEventListener('click', e => { const r = e.currentTarget.getBoundingClientRect(), own = vis.filter(z => !z.shared && z.provider !== 'google'); showMenu(r.left, r.bottom + 4, [
+      { head: 'Your own mail' },
+      { label: 'Microsoft 365, Outlook.com or Hotmail', sub: 'You sign in on Microsoft\u2019s own page in your browser. The app never sees your password.', svg: ST_ICON.mail, tint: TINT.blue, run: () => mailAddAccount() },
+      own.length ? { head: 'Someone else\u2019s, shared with you' } : null,
+      ...own.map(z => ({ label: own.length > 1 ? `A Shared Mailbox under ${z.email}` : 'A Shared Mailbox', sub: 'A mailbox you have been given access to, such as info@ or a colleague\u2019s. It opens under your account.', svg: ST_ICON.people, tint: TINT.teal, run: () => mailAddShared(z) })),
+    ].filter(Boolean)); });
     sd.appendChild(add);
     // Rules are easy to miss on the right-click menu, so they have a button of their own here.
     { const own = vis.filter(z => !z.needsSignIn && !z.shared); if (own.length) { const rb = document.createElement('button'); rb.className = 'add mail-hbtn'; rb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12l-4.600 5.300v4.200l-2.800-1.400v-2.800z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Rules\u2026</span>';
@@ -13949,7 +14000,22 @@ body { width: max-content !important; min-width: 0 !important; }
     details: ST('M3 4h10M3 8h10M3 12h6'),
     mail: ST('M2 4h12v8.500H2zM2.300 4.400L8 8.800l5.700-4.400'),
     snip: ST('M4 2.500h8v11l-4-2.600-4 2.600z'),
+    spark: ST('M8 2l1.400 3.600L13 7l-3.600 1.400L8 12l-1.400-3.600L3 7l3.600-1.400z'),
+    pencil: ST('M3 13l.600-3L10.800 2.800l2.400 2.400L6 12.400z'),
+    link: ST('M6.500 9.500l3-3M7 4.500l1.200-1.200a2.500 2.500 0 013.500 3.500L10.500 8M9 11.500l-1.200 1.200a2.500 2.500 0 01-3.500-3.500L5.500 8'),
+    upload: ST('M8 10.500V3M5 5.800L8 3l3 2.800M3 11v2h10v-2'),
+    rec: ST('M2.500 4h11v8h-11zM8 6.200a1.800 1.800 0 100 3.600 1.800 1.800 0 000-3.600'),
+    chat: ST('M2.500 3.500h11v7h-6l-3 2.500v-2.500h-2z'),
+    slides: ST('M2.500 3h11v7.500h-11zM8 10.500V13M5.500 13.500h5'),
+    design: ST('M3 13l2-6 6-4 2 2-4 6zM9.500 5.500l1 1'),
+    wb: ST('M2.500 3h11v8h-11zM5 13.500l1.500-2.500M11 13.500L9.500 11M5 8.500c1.500-2 2.500 1 4-1.500'),
+    project: ST('M2.500 4.500h4l1 1.200h6v6.800h-11z'),
+    grid: ST('M2.500 2.500h11v11h-11zM2.500 6h11M2.500 9.500h11M6 2.500v11'),
+    people: ST('M6 7.500a2.200 2.200 0 100-4.400 2.200 2.200 0 000 4.400zM2 13c.400-2 2-3 4-3s3.600 1 4 3M11 7.200a1.800 1.800 0 100-3.600M11.500 10c1.400.300 2.300 1.300 2.500 3'),
+    trash: ST('M3.500 4.500h9M6 4.500V3h4v1.500M4.500 4.500l.600 8.500h5.800l.600-8.500'),
+    open: ST('M9 2.500h4.500V7M13.500 2.500L8 8M12 10v2.500a1 1 0 01-1 1H3.500a1 1 0 01-1-1V5a1 1 0 011-1H6'),
   };
+  const TINT = { teal: '#1B5A68', red: '#D4574E', blue: '#4A90D9', purple: '#6C5CE7', word: '#2B5797', grey: '#7A8288', gold: '#B36E24', pink: '#D9468C', green: '#328276' };
   function mailSendTo(m, x, y) {
     if (!m) return;
     const connected = !!(mondayData && mondayData.connected && (mondayData.boards || []).length);
