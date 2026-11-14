@@ -4275,6 +4275,10 @@
     $('libAttachedBtn').classList.toggle('on', !!state.libShowAttached);
     $('bRefreshLib').hidden = !inLib;
     $('bRefreshLib').disabled = lib.busy;
+    // While it is reading, say so: a greyed-out arrow on its own looks broken.
+    { const b = $('bRefreshLib'); let t = b.querySelector('.t'); if (!t) { t = document.createElement('span'); t.className = 't'; b.appendChild(t); }
+      t.textContent = lib.busy && state.loc.which !== 'monday' ? 'Reading Claude\u2026' : ''; t.hidden = !t.textContent;
+      b.title = lib.busy ? 'Reading your chats in Claude now. This can take several minutes; the button comes back when it has finished.' : 'Refresh from Claude'; }
     $('vIcons').classList.toggle('on', curView() === 'icons');
     $('vList').classList.toggle('on', curView() === 'list');
     $('bReload').hidden = !page;
