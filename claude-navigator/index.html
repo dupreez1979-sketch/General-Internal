@@ -325,9 +325,15 @@
   .bot-wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; pointer-events: none; }
   .bot-list { position: absolute; left: 0; right: 0; bottom: 0; top: 43px; background: var(--win); overflow: auto; padding: 10px; display: grid; align-content: start; gap: 8px; }
   #cosBot[data-tab="chat"] .bot-list { display: none; }
-  .bot-item { border: 1px solid var(--line); border-radius: 10px; padding: 9px 10px; display: grid; gap: 6px; font-size: 12.5px; }
-  .bot-item .k { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
-  .bot-item .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bot-item { border-bottom: 1px solid var(--line); padding: 9px 2px 10px; display: grid; gap: 4px; font-size: 12.5px; }
+  .bot-item:last-child { border-bottom: 0; }
+  .bot-item .top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .bot-item .k { flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border-radius: 4px; padding: 1px 5px; }
+  .bot-item .ti { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bot-item .sub { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bot-item .row { display: flex; align-items: center; gap: 4px 12px; flex-wrap: wrap; margin-top: 2px; }
+  .bot-item button.ln { background: none; padding: 0; color: var(--muted); font-size: 12px; } .bot-item button.ln:hover { color: var(--text); text-decoration: underline; }
+  .bot-item button.x { flex: none; background: none; color: var(--muted); padding: 0 4px; font-size: 15px; line-height: 1; } .bot-item button.x:hover { color: var(--text); }
   .bot-learn { display: grid; gap: 6px; font-size: 12.5px; }
   .bot-learn h4 { margin: 4px 0 0; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
   .bot-learn .ln { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; line-height: 1.35; }
@@ -15584,7 +15590,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const art = (lib.artifacts || []).filter(a => !items.some(x => normUrl(x.url || '') === normUrl(a.url)) && normUrl(a.url) !== normUrl(cur.url || '') && botLike(cur.name, a.name) >= th).slice(0, 2);
       if (hits.length || art.length) {
         const where = x => { const s = staffName(x.id); return s ? `${s}\u2019s work` : botPath(x.id) || 'your folders'; };
-        out.push({ type: 'like', key: 'like:' + normUrl(cur.url || cur.name) + ':' + [...hits, ...art].map(x => x.url).join(','), kind: 'Already exists',
+        out.push({ type: 'like', key: 'like:' + normUrl(cur.url || cur.name) + ':' + [...hits, ...art].map(x => x.url).join(','), kind: 'Already exists', title: cur.name, sub: `Similar: ${[...hits.map(x => `\u201c${x.name}\u201d (${where(x)})`), ...art.map(a => `\u201c${a.name}\u201d (not filed)`)].join(', ')}`,
           text: `Something like \u201c${cur.name}\u201d already exists: ${[...hits.map(x => `\u201c${x.name}\u201d (${where(x)})`), ...art.map(a => `\u201c${a.name}\u201d (in Claude, not filed)`)].join(', ')}.`,
           actions: [
             { label: 'Open', go: true, run: () => (hits[0] ? openNode(hits[0]) : go({ kind: 'page', url: art[0].url })) },
@@ -15608,24 +15614,26 @@ body { width: max-content !important; min-width: 0 !important; }
         for (const o of loose.slice(0, 2)) {
           const best = usual || botBestFolder({ name: o.name }, p);
           shown++;
-          out.push({ type: 'file', name: o.name, folderId: best ? best.id : null, key: 'out:' + normUrl(o.url), kind: 'File the output',
+          out.push({ type: 'file', name: o.name, folderId: best ? best.id : null, key: 'out:' + normUrl(o.url), kind: 'To file', title: o.name, sub: `${s.name}${best ? ` \u00b7 suggested: ${best.name}` : ''}`, who: s.name,
             text: o.node ? `“${o.name}” is done (${s.name}) but not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' › ' : ''}${best.name}` : ''}.`
               : `“${o.name}” came out of “${x.name}” (${s.name}) and is not in the company folders${best ? `. It probably belongs in ${botPath(best.id) ? botPath(best.id) + ' › ' : ''}${best.name}` : ''}.`,
             actions: [
               best && { label: `File in ${best.name}`, go: true, run: () => { fileOutput(o, best.id, s); cosBotSoon(); } },
               { label: best ? 'Elsewhere…' : 'File…', go: !best, run: () => openDialog({ title: `File “${o.name}” in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileOutput(o, folderId, s); cosBotSoon(); } }) },
               { label: 'Open', run: () => go({ kind: 'page', url: o.url }) },
+              { label: 'Ignore', run: () => { x.outIgnore = true; commit(); cosBotSoon(); } },
             ].filter(Boolean) });
         }
         // A finished chat with nothing to show for it: the output is what is wanted, not the chat.
-        if (!outs.length && !companyHomes(x.url, p).length) {
+        if (!outs.length && !companyHomes(x.url, p).length && !x.fromDrive) {          // (a conversation from Drive is talk, not work with an output)
           shown++;
           const ask = 'Please give me the final version of this work as its own output (an artifact or a document, with a clear title) so it can be filed in the company folders.';
-          out.push({ type: 'file', name: x.name, folderId: null, key: 'noout:' + x.id, kind: 'No output yet',
+          out.push({ type: 'file', name: x.name, folderId: null, key: 'noout:' + x.id, kind: 'No output', title: x.name, sub: s.name, who: s.name,
             text: `“${x.name}” is done (${s.name}) but has no finished output to file. The company folders keep outputs; the chat stays with ${s.name}.`,
             actions: [
-              { label: 'Ask for the Final Version', go: true, run: () => askFinal(x) },
-              { label: 'File the Chat Instead…', run: () => fileToPicker([x.id]) },
+              { label: 'Ask for It', go: true, title: 'Open the chat and ask for the final version as its own output', run: () => askFinal(x) },
+              { label: 'File the Chat', title: 'File the chat itself in the company folders', run: () => fileToPicker([x.id]) },
+              { label: 'Ignore', title: 'This one needs no output', run: () => { x.outIgnore = true; commit(); cosBotSoon(); } },
             ] });
         }
       }
@@ -15635,7 +15643,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const rows = outputsReview(p, 7), wk = Math.floor((Date.now() - 4 * 864e5) / (7 * 864e5));
       if (rows.length) {
         const all = rows.reduce((n, r) => n + r.outs.length, 0), loose = rows.reduce((n, r) => n + r.outs.filter(z => !z.homes.length).length, 0), none = rows.filter(r => !r.outs.length).length;
-        out.push({ type: 'weekly', key: `weekly:${wk}:${rows.length}:${loose}:${none}`, kind: 'This week’s outputs',
+        out.push({ type: 'weekly', key: `weekly:${wk}:${rows.length}:${loose}:${none}`, kind: 'This week', title: `${rows.length} finished this week`, sub: `${all - loose} filed \u00b7 ${loose} not filed${none ? ` \u00b7 ${none} no output` : ''}`,
           text: `${rows.length} piece${rows.length === 1 ? '' : 's'} of work finished this week: ${all - loose} output${all - loose === 1 ? '' : 's'} filed, ${loose} not filed${none ? `, ${none} with no output` : ''}.`,
           actions: [{ label: 'See the List', go: true, run: () => outputsDlg(7) }] });
       }
@@ -15649,7 +15657,7 @@ body { width: max-content !important; min-width: 0 !important; }
     for (let i = 0; i < open.length && out.length < 30; i++) for (let j = i + 1; j < open.length; j++) {
       const a = open[i], b = open[j];
       if (a.s.id === b.s.id || botLike(a.x.name, b.x.name) < botThreshold('overlap')) continue;
-      out.push({ type: 'overlap', key: 'overlap:' + [a.x.id, b.x.id].sort().join(':'), kind: 'Same work', text: `${a.s.name} (\u201c${a.x.name}\u201d) and ${b.s.name} (\u201c${b.x.name}\u201d) look like they are on the same thing.`,
+      out.push({ type: 'overlap', key: 'overlap:' + [a.x.id, b.x.id].sort().join(':'), kind: 'Same work?', title: `${a.s.name} and ${b.s.name}`, sub: `\u201c${a.x.name}\u201d \u00b7 \u201c${b.x.name}\u201d`, text: `${a.s.name} (\u201c${a.x.name}\u201d) and ${b.s.name} (\u201c${b.x.name}\u201d) look like they are on the same thing.`,
         actions: [
           { label: a.s.name, run: () => openStaff(a.s.id) },
           { label: b.s.name, run: () => openStaff(b.s.id) },
@@ -15659,11 +15667,21 @@ body { width: max-content !important; min-width: 0 !important; }
     // 4. New Claude artifacts not filed anywhere (made in the last week).
     const filed = new Set(items.map(x => normUrl(x.url || '')));
     const fresh = (lib.artifacts || []).filter(a => a.url && !filed.has(normUrl(a.url)) && a.updated && Date.now() - Date.parse(a.updated) < 7 * 864e5);
-    if (fresh.length) out.push({ type: 'unfiled', key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} output${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
+    if (fresh.length) out.push({ type: 'unfiled', key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', title: `${fresh.length} new output${fresh.length === 1 ? '' : 's'} not in any folder`, sub: fresh.slice(0, 3).map(a => a.name).join(' \u00b7 ') + (fresh.length > 3 ? '\u2026' : ''), text: `${fresh.length} output${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
       actions: [{ label: 'Ask Where', go: true, run: () => botAsk(`These were made in Claude this week but are not filed in any ${p.name} folder:\n${fresh.slice(0, 12).map(a => `- \u201c${a.name}\u201d (${a.url})`).join('\n')}\nOur company folders are:\n${companyFolderChoices(p).slice(0, 60).map(([, path]) => '- ' + path).join('\n')}\nWhere should each one go, and which staff member does each belong to?`) }] });
     // What you usually act on comes first; kinds you nearly always dismiss are left out (see What I've Learned).
-    return out.filter(x => !bot.dismissed.includes(x.key) && botKindState(x.type) !== 'off')
-      .sort((a, b) => botRate(b.type) - botRate(a.type));
+    let live = out.filter(x => !bot.dismissed.includes(x.key) && botKindState(x.type) !== 'off');
+    // Several of the same kind are one line, not a wall of cards: the list behind it is one click away.
+    for (const [pre, min, kind, title] of [['noout:', 2, 'No output', n => `${n} finished chats have no output`], ['out:', 3, 'To file', n => `${n} outputs to file`]]) {
+      const grp = live.filter(x => x.key.startsWith(pre));
+      if (grp.length < min) continue;
+      const whos = [...new Set(grp.map(x => x.who).filter(Boolean))];
+      const one = { type: 'file', key: pre + 'many:' + grp.map(x => x.key).sort().join(',').slice(0, 600), kind, title: title(grp.length), sub: whos.slice(0, 4).join(' \u00b7 ') + (whos.length > 4 ? '\u2026' : ''), keys: grp.map(x => x.key),
+        text: `${title(grp.length)}${whos.length ? ` (${whos.slice(0, 3).join(', ')})` : ''}.`,
+        actions: [{ label: 'Review', go: true, run: () => outputsDlg(90) }] };
+      live = live.filter(x => !x.key.startsWith(pre)); live.push(one);
+    }
+    return live.sort((a, b) => botRate(b.type) - botRate(a.type));
   }
   // Quick questions in the chat (each fills the message box; you send it).
   function botQuick() {
@@ -15776,14 +15794,27 @@ body { width: max-content !important; min-width: 0 !important; }
   function botCard(sg, cls) {
     const c = document.createElement('div');
     c.className = cls;
-    if (cls === 'bot-item') { const k = document.createElement('span'); k.className = 'k'; k.textContent = sg.kind; c.appendChild(k); }
-    const tx = document.createElement('div'); tx.className = 'tx'; tx.textContent = sg.text; c.appendChild(tx);
+    const dismiss = () => { bot.dismissed.push(sg.key, ...(sg.keys || [])); saveBot(); botLearn(sg, 'dismiss'); c.remove(); cosBotRender(); };
+    const act = a => { const b = document.createElement('button'); b.textContent = a.label; b.className = a.go ? 'go' : 'ln'; if (a.title) b.title = a.title; b.addEventListener('click', () => { if (cls === 'bot-tip') c.remove(); botLearn(sg, 'accept'); a.run(); }); return b; };
+    if (cls === 'bot-tip') {          // the small pop-up keeps its sentence
+      const tx = document.createElement('div'); tx.className = 'tx'; tx.textContent = sg.text; c.appendChild(tx);
+      const row = document.createElement('div'); row.className = 'row';
+      for (const a of sg.actions.slice(0, 2)) row.appendChild(act(a));
+      row.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
+      const x = document.createElement('button'); x.className = 'x'; x.textContent = '\u00d7'; x.title = 'Dismiss this suggestion'; x.addEventListener('click', dismiss); row.appendChild(x);
+      c.appendChild(row);
+      return c;
+    }
+    const top = document.createElement('div'); top.className = 'top';
+    top.appendChild(Object.assign(document.createElement('span'), { className: 'k', textContent: sg.kind }));
+    top.appendChild(Object.assign(document.createElement('b'), { className: 'ti', textContent: sg.title || sg.text, title: sg.text || '' }));
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '\u00d7'; x.title = 'Dismiss'; x.addEventListener('click', dismiss); top.appendChild(x);
+    c.appendChild(top);
+    if (sg.sub) c.appendChild(Object.assign(document.createElement('div'), { className: 'sub', textContent: sg.sub, title: sg.sub }));
     const row = document.createElement('div'); row.className = 'row';
-    for (const a of sg.actions) { const b = document.createElement('button'); b.textContent = a.label; if (a.go) b.className = 'go'; b.addEventListener('click', () => { if (cls === 'bot-tip') c.remove(); botLearn(sg, 'accept'); a.run(); }); row.appendChild(b); }
-    const sp = document.createElement('span'); sp.className = 'sp'; row.appendChild(sp);
-    const x = document.createElement('button'); x.className = 'x'; x.textContent = cls === 'bot-tip' ? '\u00d7' : 'Dismiss'; x.title = 'Dismiss this suggestion';
-    x.addEventListener('click', () => { bot.dismissed.push(sg.key); saveBot(); botLearn(sg, 'dismiss'); c.remove(); cosBotRender(); });
-    row.appendChild(x);
+    const main = sg.actions.find(a => a.go) || sg.actions[0];
+    if (main) row.appendChild(act(Object.assign({}, main, { go: true })));
+    for (const a of sg.actions) if (a !== main) row.appendChild(act(Object.assign({}, a, { go: false })));
     c.appendChild(row);
     return c;
   }
