@@ -277,11 +277,11 @@
   const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
   const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
     return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
   function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
-  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; drive.stream = null; render(); }
+  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; drive.stream = null; drive.ackLeft = 0; drive.localAsk = null; render(); }
   const snapshot = () => { const t = team(), L = []; if (!t) return '';
     for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
     const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
@@ -293,8 +293,35 @@
       : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
     drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
     send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
+    // No dead air: a few words straight away, while Claude thinks.
+    { const ack = had ? ['One moment.', 'Let me check.', 'Just a second.'][drive.log.length % 3] : `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}.`; if (send({ do: 'say', text: ack })) drive.ackLeft = (drive.ackLeft || 0) + 1; }
     clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 100000);
   }
+  // Questions the phone can answer itself, at once, from what it already holds about the team (Apple's built-in model).
+  // Anything that needs thinking, advice or writing goes to Claude, and so does anything the phone is not sure of.
+  const LOCALISH = /\b(what('?s| is| are)? (open|outstanding|left|on|waiting|next|today)|open (actions?|items?|work)|outstanding|to-?do|on (my|the|his|her|their) (list|plate)|how many|what do i (have|need)|what needs|brief me|anything (open|waiting|for me|i need)|where (is|are) .{2,40} up to|what (has|have|did) .{2,40} (finish|done|complet))/;
+  const localOn = () => !!drive.local && ls.get('driveLocal') !== 'off';
+  function driveLocalAsk(said, target) {
+    const id = newId(); drive.localAsk = { id, said, target };
+    drive.state = 'thinking'; drive.who = target; drive.line = 'Checking…'; render();
+    const lines = snapshot().split('\n'), need = lines.findIndex(l => l.startsWith('Needs my attention')); if (need > 0) lines.unshift(lines.splice(need, 1)[0]);
+    const ins = 'You are a chief of staff answering your principal aloud while he drives. Answer only from the team notes you are given. One to three short plain sentences. No lists, no symbols, no dashes. Name the staff member and the items. Never say anything was sent or booked. If the notes do not hold the answer, or the question asks you to think, advise, write or find something out, reply with exactly the one word CLAUDE.';
+    send({ do: 'localAsk', id, instructions: ins, prompt: `Team notes:\n${lines.join('\n').slice(0, 3500)}\n\nQuestion: ${said}` });
+    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.localAsk && drive.localAsk.id === id) { drive.localAsk = null; driveAsk(said, target); } }, 6000);
+  }
+  window.driveLocal = v => { drive.local = !!(v && v.ok); if (drive.voiceOpen) render(); };
+  window.driveLocalAnswer = a => {
+    const q = drive.localAsk; if (!drive.on || !q || q.id !== a.id) return;
+    drive.localAsk = null; clearTimeout(drive.timer);
+    const text = String(a.text || '').replace(/\s+/g, ' ').replace(/\s*[—–]\s*/g, ', ').trim();
+    if (a.error || !text || /\bCLAUDE\b/i.test(text)) return driveAsk(q.said, q.target);          // not one for the phone
+    drive.log.push({ kind: 'talk', who: 'On your phone', text: q.said, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: '' });
+    driveSay(text);
+  };
+  const BRIEF = 'Brief me: what needs my attention today across the team, most important first.';
+  const driveBrief = who => (localOn() ? driveLocalAsk(BRIEF, who) : driveAsk(BRIEF, who));
+  // You spoke while an answer was being read out: it stops, and what you are saying is taken as your next words.
+  window.driveInterrupted = () => { if (!drive.on) return; clearTimeout(drive.timer); drive.pending = null; drive.stream = null; drive.localAsk = null; drive.ackLeft = 0; drive.state = 'listening'; drive.heard = ''; render(); };
   // What you said: a few things are done here on the phone; everything else goes to Claude.
   function driveHandle(text) {
     const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
@@ -309,11 +336,14 @@
     const named = staffNamed(said), back = /chief of staff/.test(low);
     const target = back ? chiefOf() : named || drive.who || chiefOf();
     if (!target) return driveSay('There is no team in this profile yet.', 'idle');
-    driveAsk(/^brief me\b/.test(low) ? 'Brief me: what needs my attention today across the team, most important first.' : said, target);
+    if (/^brief me\b/.test(low)) return driveBrief(chiefOf() || target);
+    if (localOn() && !/^(ask|tell|get)\b/.test(low) && LOCALISH.test(low)) return driveLocalAsk(said, target);
+    driveAsk(said, target);
   }
   window.driveHeard = h => { if (!drive.on) return; if (h.problem) { drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
   // After an answer it listens again for a moment, so you can carry on without touching the screen.
-  window.driveSpoke = () => { if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
+  window.driveSpoke = () => { if (drive.ackLeft > 0) { drive.ackLeft--; return; }       // (that was the few words said while Claude thinks)
+    if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
     drive.stream = null; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
   // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
   // not kept waiting for the whole answer.
@@ -326,16 +356,16 @@
     const t = team(), n = t && t.nodes.find(x => x.id === pend.target);
     if (!drive.stream || drive.stream.own !== pend) drive.stream = { own: pend, said: 0, left: 0, done: false };
     const st = drive.stream, text = a.text.replace(/\s+/g, ' ').trim();
+    if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
+      const url = a.url.replace(/[?#].*$/, '');
+      if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', drive: true, staff: n.id, url, name: 'Drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+    }
     let upTo = text.length;
     if (!a.done) { const m = /^[\s\S]*[.!?](?=\s|$)/.exec(text); upTo = m ? m[0].length : 0; }
     const piece = text.slice(st.said, upTo).trim();
     if (piece && upTo > st.said) { st.said = upTo; st.left++; drive.state = 'speaking'; drive.after = 'listen'; drive.line = text; send({ do: 'say', text: piece }); }
     if (a.done) {
       st.done = true; drive.pending = null; drive.line = text;
-      if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
-        const url = a.url.replace(/[?#].*$/, '');
-        if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', drive: true, staff: n.id, url, name: 'Drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
-      }
       drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend.text, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
       if (st.left <= 0) { drive.stream = null; driveListen(6); return; }
     }
@@ -355,6 +385,8 @@
     s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
     s2.append(el('div', 'sec', 'Speed'));
     { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
+    { const on = ls.get('driveBarge') !== 'off'; opt('Let me interrupt by speaking', on ? 'On. Start talking, or say stop, and the answer stops.' : 'Off. Press Stop or Reply to cut in.', on, () => { ls.set('driveBarge', on ? 'off' : 'on'); send({ do: 'barge', on: !on }); render(); }); }
+    { const on = ls.get('driveLocal') !== 'off'; opt('Answer simple questions on the phone', !drive.local ? 'Not available on this phone, so everything goes to Claude.' : on ? 'On. Things like what is open, or Brief me, are answered at once.' : 'Off. Everything goes to Claude.', on && !!drive.local, () => { ls.set('driveLocal', on ? 'off' : 'on'); render(); }); }
     return [sh, s2];
   }
   function viewDrive() {
@@ -373,7 +405,7 @@
     mid.append(big, side);
     const foot = el('div', 'dfoot');
     const fb = (text, run, cls) => { const b = el('button', 'dbtn' + (cls ? ' ' + cls : ''), text); b.onclick = run; foot.append(b); };
-    if (drive.state === 'idle') { fb('Brief me', () => driveAsk('Brief me: what needs my attention today across the team, most important first.', chiefOf() || who)); fb('Note for later', () => { drive.noteNext = true; driveListen(8); });
+    if (drive.state === 'idle') { fb('Brief me', () => driveBrief(chiefOf() || who)); fb('Note for later', () => { drive.noteNext = true; driveListen(8); });
       const fav = pinned().map(id => (team() || { nodes: [] }).nodes.find(x => x.id === id)).filter(Boolean)[0]; if (fav) fb(fav.name, () => { drive.who = fav; driveListen(8); }); }
     else if (drive.state === 'listening') { fb('Cancel', driveStop, 'stop'); fb('Done talking', () => send({ do: 'stopListening' })); }
     else { fb('Stop', driveStop, 'stop'); if (drive.state === 'speaking') { fb('Say again', () => driveSay(drive.line)); fb('Reply', () => { send({ do: 'hush' }); driveListen(8); }); } }

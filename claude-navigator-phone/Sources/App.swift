@@ -61,6 +61,9 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "restoreModel": drive.restoreModel()
         case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
         case "voiceGet": sendVoice()
+        case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
+        case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
+        case "barge": drive.bargeIn = (body["on"] as? Bool) ?? true
         case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
         case "voiceTry": drive.say("This is how I will sound when you are driving.")
         case "ask":

@@ -16,6 +16,11 @@ final class Drive: NSObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     let voice = Voice()
+    let local = Local()
+    var bargeIn = true                       // you can interrupt a spoken answer by speaking
+    private var monitoring = false           // listening while the phone is speaking, only for an interruption
+    private var spoken = Set<String>()       // the words the phone has said this turn (so it does not hear itself as you)
+    private var skipWords = 0
     private var heard = ""
     private var quietTimer: Timer?
     private var giveUpTimer: Timer?
@@ -27,10 +32,15 @@ final class Drive: NSObject {
         self.ui = ui
         self.claude = claude
         super.init()
-        voice.onFinished = { [weak self] in self?.tell("driveSpoke", [:]) }
+        local.tell = { [weak self] function, payload in self?.tell(function, payload) }
+        voice.onFinished = { [weak self] in
+            guard let self = self else { return }
+            if self.monitoring && !self.voice.hasMore { self.stopListening(send: false) }
+            self.tell("driveSpoke", [:])
+        }
     }
 
-    private func tell(_ function: String, _ payload: [String: Any]) {
+    func tell(_ function: String, _ payload: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: data, encoding: .utf8) else { return }
         DispatchQueue.main.async { self.ui.evaluateJavaScript("window.\(function) && window.\(function)(\(text))", completionHandler: nil) }
     }
@@ -55,10 +65,29 @@ final class Drive: NSObject {
         }
     }
 
-    private func startListening(wait: Double) {
+    private func norm(_ word: Substring) -> String { String(word).lowercased().filter { $0.isLetter || $0.isNumber } }
+
+    // While the phone is speaking: where in what was heard you started talking over it, if you did.
+    // A clear "stop" or "wait" counts at once; otherwise three words in a row that the phone did not say.
+    private func interruptionStart(_ tokens: [Substring]) -> Int? {
+        let w = tokens.map { norm($0) }
+        let cues: Set<String> = ["stop", "wait", "pause", "cancel", "enough"]
+        if let i = w.indices.suffix(2).first(where: { cues.contains(w[$0]) && !spoken.contains(w[$0]) }) { return i }
+        var run = 0, first = w.count
+        for i in w.indices.reversed() {
+            if w[i].count < 3 { continue }
+            if spoken.contains(w[i]) { break }
+            run += 1; first = i
+        }
+        return run >= 3 ? first : nil
+    }
+
+    private func startListening(wait: Double, monitor: Bool = false) {
         stopListening(send: false)
-        voice.stop()
-        guard let recogniser = recogniser, recogniser.isAvailable else { return tell("driveHeard", ["text": "", "final": true, "problem": "Speech recognition is not available right now."]) }
+        if !monitor { voice.stop(); spoken.removeAll() }
+        guard let recogniser = recogniser, recogniser.isAvailable else { if monitor { return }; return tell("driveHeard", ["text": "", "final": true, "problem": "Speech recognition is not available right now."]) }
+        monitoring = monitor
+        skipWords = 0
         audio()
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
@@ -66,16 +95,25 @@ final class Drive: NSObject {
         heard = ""
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate > 0 else { return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone is not ready."]) }
+        guard format.sampleRate > 0 else { if monitor { monitoring = false; return }; return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone is not ready."]) }
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in request.append(buffer) }
         engine.prepare()
-        do { try engine.start() } catch { return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone could not start."]) }
+        do { try engine.start() } catch { if monitor { monitoring = false; input.removeTap(onBus: 0); return }; return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone could not start."]) }
         listening = true
         task = recogniser.recognitionTask(with: request) { [weak self] result, error in
             guard let self = self, self.listening else { return }
             if let result = result {
-                let text = result.bestTranscription.formattedString
+                let tokens = result.bestTranscription.formattedString.split(separator: " ")
+                if self.monitoring {
+                    guard let at = self.interruptionStart(tokens) else { return }
+                    self.monitoring = false          // you spoke: stop talking and listen to you
+                    self.skipWords = at
+                    self.askID += 1
+                    DispatchQueue.main.async { self.answerTimer?.invalidate(); self.answerTimer = nil; self.voice.stop(); self.local.cancel() }
+                    self.tell("driveInterrupted", [:])
+                }
+                let text = tokens.dropFirst(self.skipWords).joined(separator: " ")
                 if text != self.heard {
                     self.heard = text
                     self.tell("driveHeard", ["text": text, "final": false])
@@ -85,9 +123,10 @@ final class Drive: NSObject {
                     }
                 }
             }
-            if error != nil { DispatchQueue.main.async { self.stopListening(send: true) } }
+            if error != nil { DispatchQueue.main.async { self.stopListening(send: !self.monitoring) } }
         }
         giveUpTimer?.invalidate()          // nothing said at all: stop waiting
+        if monitor { return }
         giveUpTimer = Timer.scheduledTimer(withTimeInterval: wait, repeats: false) { [weak self] _ in
             guard let self = self, self.heard.isEmpty else { return }
             self.stopListening(send: true)
@@ -97,8 +136,9 @@ final class Drive: NSObject {
     func stopListening(send: Bool) {
         quietTimer?.invalidate(); quietTimer = nil
         giveUpTimer?.invalidate(); giveUpTimer = nil
-        let was = listening
+        let was = listening && !monitoring
         listening = false
+        monitoring = false
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio(); request = nil
@@ -109,8 +149,12 @@ final class Drive: NSObject {
     // MARK: Speaking
 
     func say(_ text: String) {
-        stopListening(send: false)
+        if !(listening && monitoring) { stopListening(send: false) }
         audio()
+        for word in text.split(separator: " ") { spoken.insert(norm(word)) }
+        if bargeIn && !listening && SFSpeechRecognizer.authorizationStatus() == .authorized && AVAudioSession.sharedInstance().recordPermission == .granted {
+            startListening(wait: 0, monitor: true)          // so you can interrupt by speaking
+        }
         voice.say(text)          // pieces are spoken one after another, in order
     }
 
@@ -122,6 +166,7 @@ final class Drive: NSObject {
         answerTimer?.invalidate(); answerTimer = nil
         stopListening(send: false)
         voice.stop()
+        local.cancel()
     }
 
     // MARK: Claude's model while driving

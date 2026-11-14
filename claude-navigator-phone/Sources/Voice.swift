@@ -9,6 +9,7 @@ final class Voice: NSObject, AVSpeechSynthesizerDelegate {
     private let phone = AVSpeechSynthesizer()
     private var queue: [String] = []
     private var busy = false
+    var hasMore: Bool { !queue.isEmpty }      // more pieces are waiting to be spoken
 
     override init() { super.init(); phone.delegate = self }
 
