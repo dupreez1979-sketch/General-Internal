@@ -617,6 +617,7 @@
   .clara-dlg .cl-list { flex: 1 1 auto; min-height: 80px; display: block; overflow: auto; margin: 6px 0 10px; }
   .clara-dlg .cl-row .clr { flex: none; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: var(--muted); font-size: 15px; line-height: 1; }
   .clara-dlg .cl-row .clr:hover { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
+  .clara-dlg .cl-back { display: block; border: 0; background: none; font: inherit; font-size: 12px; color: var(--muted); text-decoration: underline; padding: 10px 6px 4px; cursor: default; }
   .clara-dlg .cl-why { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
   .clara-dlg .cl-h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 10px 4px 3px; }
   .clara-dlg .cl-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; font: inherit; text-align: left; padding: 7px 6px; border-radius: 8px; color: var(--text); cursor: default; }
@@ -12747,6 +12748,9 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Gmail (later)', disabled: true, run: () => {} },
     ]); });
     sd.appendChild(add);
+    // Rules are easy to miss on the right-click menu, so they have a button of their own here.
+    { const own = vis.filter(z => !z.needsSignIn && !z.shared); if (own.length) { const rb = document.createElement('button'); rb.className = 'add mail-hbtn'; rb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12l-4.600 5.300v4.200l-2.800-1.400v-2.800z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Rules\u2026</span>';
+      rb.addEventListener('click', () => { if (own.length === 1) return mailRules(own[0]); const r0 = rb.getBoundingClientRect(); showMenu(r0.left, r0.top - 4, own.map(z => ({ label: `Rules for ${z.email}`, run: () => mailRules(z) })), { above: true }); }); sd.appendChild(rb); } }
     { const hb = document.createElement('button'); hb.className = 'add mail-hbtn'; hb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M1.5 8.5h3l1.5-4 3 8 1.6-4h3.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mail Health\u2026</span>'; hb.title = 'Is mail working? What the app has asked of Microsoft lately, any problems, and a report to copy'; hb.addEventListener('click', mailHealth); sd.appendChild(hb); }
     const hidden = (mailUi.accounts || []).length - vis.length;
     if (hidden > 0) sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: `${hidden} more ${hidden === 1 ? 'account is' : 'accounts are'} in other profiles. Choose All Profiles to see ${hidden === 1 ? 'it' : 'them'}.` }));
@@ -13801,6 +13805,9 @@ body { width: max-content !important; min-width: 0 !important; }
     return out;
   }
   const claraDash = { at: 0, items: null, state: '', busy: false };
+  // An item you dismissed stays out of the way until Clara does something new on it (its status or last activity changes).
+  const claraDashKey = it => [it.type, it.title, it.status, it.act].join('|').toLowerCase();
+  const claraDashLive = () => (claraDash.items || []).filter(it => !(claraMail.dismissed || []).includes(claraDashKey(it)));
   async function claraDashLoad(force) {
     if (!isApp || !window.navigatorApp.claraRead || claraDash.busy) return claraDash;
     if (!force && claraDash.items && Date.now() - claraDash.at < 5 * 60e3) return claraDash;
@@ -13830,7 +13837,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return score >= 2 ? best : null;
   }
   const claraEmailCount = () => claraState.items.filter(x => ['needs', 'chasing', 'offered', 'going'].includes(x.st.k)).length;
-  const claraOpenCount = () => (claraDash.items ? claraDash.items.length : claraEmailCount());
+  const claraOpenCount = () => (claraDash.items ? claraDashLive().length : claraEmailCount());
   const claraWhenText = st => st.when ? st.when.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) + (st.timed ? ', ' + calFmtTime(st.when.getTime()) : '') : '';
   function claraStripShow() { for (const g of document.querySelectorAll('.mail-rh .clara-strip')) { const it = claraState.byConv.get(g.dataset.conv); g.hidden = !it; if (it) g.querySelector('span').textContent = `${it.st.label}${it.st.k === 'booked' && it.st.when ? ': ' + claraWhenText(it.st) : ''}${it.who ? ' · ' + it.who : ''} · last wrote ${new Date(it.last).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`; } }
   // --- 3. The tracker
@@ -13838,8 +13845,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = mailDlg('clara-dlg', '<h2>Clara</h2><p class="hint"></p><div class="cl-list"></div><div class="cl-foot"></div><div class="dlg-actions"><button class="btn" data-x="refresh">Check Again</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const paintDash = () => {
       const list = d.querySelector('.cl-list'); list.replaceChildren();
-      const items = claraDash.items.slice().sort((a, b) => (b.needs ? 1 : 0) - (a.needs ? 1 : 0));
-      d.querySelector('.hint').textContent = items.length ? 'Straight from Clara’s own list of what she is working on. Click one to open its emails; to stop or change one, do it in Clara.' : 'Clara has nothing in progress.';
+      const items = claraDashLive().sort((a, b) => (b.needs ? 1 : 0) - (a.needs ? 1 : 0)), gone = claraDash.items.length - items.length;
+      d.querySelector('.hint').textContent = items.length ? 'Straight from Clara’s own list of what she is working on. Click one to open its emails, or press × to dismiss it here. To stop or change one, do it in Clara.' : gone ? 'Nothing left to look at: you dismissed the rest.' : 'Clara has nothing in progress.';
       let head = '';
       for (const it of items) {
         const grp = it.needs ? 'Needs you' : 'In progress';
@@ -13850,9 +13857,11 @@ body { width: max-content !important; min-width: 0 !important; }
         row.querySelector('b').textContent = it.title && !/^untitled event$/i.test(it.title) ? it.title : (em ? em.title : it.title || 'Untitled');
         row.querySelector('.tx span').textContent = [it.type.replace(/ Event$/i, ''), it.when ? `Booked for ${it.when}` : '', it.act, em ? '' : 'no matching email found'].filter(Boolean).join(' \u00b7 ');
         row.querySelector('.dt').textContent = it.updated;
+        { const x = document.createElement('span'); x.className = 'clr'; x.textContent = '×'; x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Dismiss'); x.addEventListener('click', e => { e.stopPropagation(); claraMail.dismissed = (claraMail.dismissed || []).filter(k => k !== claraDashKey(it)).concat(claraDashKey(it)).slice(-300); claraMailSave(); paint(); try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); } catch (er) { /* not on screen */ } }); row.appendChild(x); }
         row.addEventListener('click', async () => { d.close(); d.remove(); if (!em) return openNewWindow(clara.url); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(em.msg); });
         list.appendChild(row);
       }
+      if (gone) { const back = document.createElement('button'); back.type = 'button'; back.className = 'cl-back'; back.textContent = `${gone} dismissed. Show ${gone === 1 ? 'it' : 'them'} again`; back.addEventListener('click', () => { const live = new Set(claraDash.items.map(claraDashKey)); claraMail.dismissed = (claraMail.dismissed || []).filter(k => !live.has(k)); claraMailSave(); paint(); }); list.appendChild(back); }
     };
     const paint = () => {
       if (claraDash.items) { paintDash(); return paintFoot(); }
