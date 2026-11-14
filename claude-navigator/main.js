@@ -1598,8 +1598,8 @@ function localAiStart() {
       if (!o) continue;
       if (o.status) { const r = { ok: o.status === 'ok', reason: String(o.reason || '') }; localAi.status = r; for (const w of localAi.waitStatus.splice(0)) w(r); continue; }
       const wc = localAi.owners.get(o.id); if (!wc) continue;
-      if (o.done || o.error) localAi.owners.delete(o.id);
-      try { if (!wc.isDestroyed()) wc.send('local-ai', { id: String(o.id), text: typeof o.text === 'string' ? o.text : undefined, done: !!o.done, error: o.error ? String(o.error).slice(0, 400) : undefined }); } catch (e) { /* window closed */ }
+      if (o.done || o.error || o.listenDone) localAi.owners.delete(o.id);
+      try { if (!wc.isDestroyed()) wc.send('local-ai', { id: String(o.id), text: typeof o.text === 'string' ? o.text : undefined, done: !!o.done, error: o.error ? String(o.error).slice(0, 400) : undefined, heard: typeof o.heard === 'string' ? o.heard : undefined, listening: !!o.listening, listenDone: !!o.listenDone, note: o.note ? String(o.note) : undefined }); } catch (e) { /* window closed */ }
     }
   });
   return p;
@@ -1624,6 +1624,15 @@ ipcMain.handle('local-ai-run', (e, id, instructions, prompt) => {
   return ok;
 });
 ipcMain.handle('local-ai-cancel', (e, id) => { if (!fromOwnWindow(e)) return false; localAi.owners.delete(String(id)); return localAiSay({ op: 'cancel', id: String(id) }); });
+// Dictation through the same helper (the Mac's newer speech engine: no chime, words as you say them).
+ipcMain.handle('local-listen-start', (e, id, locale) => {
+  if (!fromOwnWindow(e) || typeof id !== 'string' || !id || id.length > 60) return false;
+  localAi.owners.set(id, e.sender);
+  const ok = localAiSay({ op: 'listen', id, locale: /^[a-z]{2}(-[A-Za-z]{2,4})?$/.test(String(locale)) ? String(locale) : 'en-AU' });
+  if (!ok) localAi.owners.delete(id);
+  return ok;
+});
+ipcMain.handle('local-listen-stop', (e, id) => (fromOwnWindow(e) ? localAiSay({ op: 'stopListen', id: String(id) }) : false));
 app.on('will-quit', () => { try { if (localAi.proc) localAi.proc.kill(); } catch (e) { /* already gone */ } });
 
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));

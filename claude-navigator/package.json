@@ -63,6 +63,7 @@
       ],
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Claude uses the microphone for voice mode and dictation.",
+        "NSSpeechRecognitionUsageDescription": "Claude Navigator turns what you say into text when you press Dictate. This happens on your Mac.",
         "NSCameraUsageDescription": "Claude uses the camera when you choose to share a photo or video.",
       "NSAppleEventsUsageDescription": "Claude Navigator starts emails to Clara in Outlook, from the address you chose."
       },

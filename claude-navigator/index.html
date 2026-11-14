@@ -1102,6 +1102,12 @@
   .dict-b { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
   .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
   .dict-float[hidden] { display: none; }
+  .dict-float.rec, .dict-b.rec, .ch-mic.rec { background: #c4353f !important; color: #fff !important; }
+  #dictPill { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 2147483000; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 999px; background: #1d1d1f; color: #fff; font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,.3); -webkit-app-region: no-drag; }
+  #dictPill i { width: 10px; height: 10px; border-radius: 50%; background: #ff4c5c; animation: dictpulse 1s ease-in-out infinite; }
+  @keyframes dictpulse { 50% { opacity: .3; } }
+  #dictPill .btn { font-size: 12px; padding: 3px 12px; border-radius: 999px; }
+  .dict-live { background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 3px; }
   .dict-float:hover { background: var(--accent); color: #fff; }
   .dict-float svg { width: 13px; height: 13px; }
   .dict-b:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -12514,7 +12520,7 @@ body { width: max-content !important; min-width: 0 !important; }
         await mailCompose('new');
         await new Promise(r => setTimeout(r, 450));          // (the new message puts the cursor in To first)
         const ed = mailUi.composeEl && mailUi.composeEl.querySelector('.mc-ed, [contenteditable="true"]'); if (ed) ed.focus();
-        let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (er) { /* older app */ }
+        const ok = ed ? await dictate(ed) : false;
         if (!ok) toast('Click in the message and press your Mac\u2019s dictation key (or Fn twice).');
       });
       row.append(nw, mic); sd.appendChild(row);
@@ -13849,6 +13855,58 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     d.addEventListener('click', e => { if (e.target.dataset && e.target.dataset.x === 'close') d.close(); });
   }
+  // ----- Working out the day and the time from what was said (the app does this itself, so it is never guessed) -----
+  const WHEN_MON = '(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)';
+  const WHEN_DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const WHEN_NUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 };
+  function dateFromWords(words, now = new Date()) {
+    const s = ' ' + String(words || '').toLowerCase().replace(/[,.]/g, ' ').replace(/\s+/g, ' ') + ' ';
+    const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()), add = n => new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + n);
+    const soon = (mo, day, yr) => { let d = new Date(yr || d0.getFullYear(), mo, day); if (!yr && d < add(-1)) d = new Date(d0.getFullYear() + 1, mo, day); return d.getDate() === day ? d : null; };
+    let m;
+    if ((m = /(\d{4})-(\d\d)-(\d\d)/.exec(s))) return { date: new Date(+m[1], +m[2] - 1, +m[3]) };
+    if (/day after tomorrow/.test(s)) return { date: add(2) };
+    if (/\btomorrow\b/.test(s)) return { date: add(1) };
+    if (/\b(today|tonight|this (morning|afternoon|evening))\b/.test(s)) return { date: add(0) };
+    if ((m = new RegExp('\\b(\\d{1,2})(?:st|nd|rd|th)?(?: of)? ' + WHEN_MON + '(?: (\\d{4}))?\\b').exec(s))) { const d = soon('janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[2].slice(0, 3)) / 3, +m[1], m[3] ? +m[3] : 0); if (d) return { date: d }; }
+    if ((m = new RegExp('\\b' + WHEN_MON + ' (?:the )?(\\d{1,2})(?:st|nd|rd|th)?(?: (\\d{4}))?\\b').exec(s))) { const d = soon('janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[1].slice(0, 3)) / 3, +m[2], m[3] ? +m[3] : 0); if (d) return { date: d }; }
+    if ((m = /\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/.exec(s))) { const d = soon(+m[2] - 1, +m[1], m[3] ? (+m[3] < 100 ? 2000 + +m[3] : +m[3]) : 0); if (d) return { date: d }; }
+    if ((m = new RegExp('\\b(?:(this|next|coming) )?(' + WHEN_DAYS.join('|') + ')( week)?\\b').exec(s))) {
+      const wd = WHEN_DAYS.indexOf(m[2]); let delta = (wd - d0.getDay() + 7) % 7; if (delta === 0 && m[1] !== 'this') delta = 7;
+      if (m[1] === 'next') { const toMon = 7 - ((d0.getDay() + 6) % 7); const d = add(toMon + ((wd + 6) % 7)), near = add(delta), fmt = z => z.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }); return near.getTime() === d.getTime() ? { date: d } : { date: d, unsure: `I took “next ${m[2][0].toUpperCase() + m[2].slice(1)}” to be ${fmt(d)}. Change the date if you meant ${fmt(near)}.` }; }
+      return { date: add(delta + (m[3] ? 7 : 0)) };
+    }
+    if ((m = /\bin (a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) (day|week|fortnight|month)s?\b/.exec(s))) { const n = WHEN_NUM[m[1]] || +m[1]; return { date: m[2] === 'month' ? new Date(d0.getFullYear(), d0.getMonth() + n, d0.getDate()) : add(n * (m[2] === 'week' ? 7 : m[2] === 'fortnight' ? 14 : 1)) }; }
+    if ((m = /\bthe (\d{1,2})(?:st|nd|rd|th)\b/.exec(s))) { let d = new Date(d0.getFullYear(), d0.getMonth(), +m[1]); if (d < d0) d = new Date(d0.getFullYear(), d0.getMonth() + 1, +m[1]); if (d.getDate() === +m[1]) return { date: d }; }
+    if (/\bnext week\b/.test(s)) return { date: add(7 - ((d0.getDay() + 6) % 7)), unsure: 'You said next week without a day, so I took Monday.' };
+    return null;
+  }
+  // The start time, and the end or the length if said. Returns minutes from midnight.
+  function timesFromWords(words) {
+    const s = ' ' + String(words || '').toLowerCase().replace(/([ap])\.m\.?/g, '$1m').replace(/o'?clock/g, '').replace(/\s+/g, ' ') + ' ';
+    const found = []; let m;
+    const hour = (h, ap) => { h = +h; if (ap === 'pm' && h < 12) h += 12; else if (ap === 'am' && h === 12) h = 0; else if (!ap && h >= 1 && h <= 6) h += 12; return h; };
+    const word = '(' + Object.keys(WHEN_NUM).filter(k => k.length > 2).join('|') + '|\\d{1,2})', val = w => WHEN_NUM[w] || +w;
+    const re = new RegExp('\\b(?:(half past|quarter past|quarter to) ' + word + '(?: ?(am|pm))?|(noon|midday|midnight)|(\\d{1,2})[:.](\\d\\d) ?(am|pm)?|' + word + ' ?(am|pm)|(?:at|from|to|until|till) (\\d{1,2})(?![:.]\\d| ?(?:\\d|st|nd|rd|th|/| ' + WHEN_MON + '))\\b)', 'g');
+    while ((m = re.exec(s))) {
+      let t = null;
+      if (m[1]) { const h = hour(val(m[2]), m[3]); t = m[1] === 'half past' ? h * 60 + 30 : m[1] === 'quarter past' ? h * 60 + 15 : h * 60 - 15; }
+      else if (m[4]) t = m[4] === 'midnight' ? 0 : 720;
+      else if (m[5]) { if (+m[5] > 23 || +m[6] > 59) continue; t = hour(m[5], m[7]) * 60 + +m[6]; }
+      else if (m[8]) { if (val(m[8]) > 12) continue; t = hour(val(m[8]), m[9]) * 60; }
+      else if (m[10]) { if (+m[10] > 23 || +m[10] < 1) continue; t = hour(m[10], '') * 60; }
+      if (t !== null) found.push({ t, at: m.index, to: /\b(to|until|till|-)\s*$/.test(s.slice(Math.max(0, m.index - 8), m.index)) || /^(to|until|till) /.test(m[0]) });
+    }
+    const out = { start: null, end: null };
+    if (found.length) { out.start = found[0].t; const e = found.slice(1).find(x => x.to); if (e) { out.end = e.t; if (out.end <= out.start && out.end + 720 > out.start && out.end < 720) out.end += 720; } }
+    let len = null;
+    if ((m = /\bfor (?:about |around )?(?:(an?|one|two|three|four|\d+(?:\.\d+)?) hours?(?: and (?:a half|(\d+) min(?:ute)?s?))?|(half an hour)|(an hour and a half)|(\d+|ten|fifteen|twenty|thirty|forty five|forty-five|ninety) min(?:ute)?s?)\b/.exec(s))) {
+      const mins = { ten: 10, fifteen: 15, twenty: 20, thirty: 30, 'forty five': 45, 'forty-five': 45, ninety: 90 };
+      if (m[1]) len = (WHEN_NUM[m[1]] || +m[1]) * 60 + (/and a half/.test(m[0]) ? 30 : m[2] ? +m[2] : 0); else if (m[3]) len = 30; else if (m[4]) len = 90; else if (m[5]) len = mins[m[5]] || +m[5];
+    }
+    if (out.start !== null && out.end === null && len) out.end = out.start + len;
+    return out;
+  }
   // ---------- The meeting helper: say (or type) the meeting, and the profile's Executive Assistant lays it out as an invite.
   const calHelp = { el: null, shade: null, view: null, timer: null, staff: null, prof: null };
   const calHelpStaff = prof => { const t = prof && cosTeam(prof), st = t ? t.nodes.filter(n => n.kind === 'staff') : []; return st.find(n => /executive assistant|personal assistant|\bEA\b|\bPA\b/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => /assistant/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => n.chief) || st[0] || null; };
@@ -13863,7 +13921,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!staff) return toast(`${prof.name} has no staff yet. Add an Executive Assistant in Chief of Staff first.`);
     const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', calHelpClose);
     const el = document.createElement('div'); el.className = 'cal-view cal-help'; el.style.setProperty('--ev', prof.color || CAL_COLOUR);
-    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Dictate with your Mac's dictation">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. If Dictate does nothing, click in the box and press your Mac\u2019s dictation key (or Fn twice).</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. When you stop talking, the invite is laid out.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. Press Dictate, say the meeting, and stop: the invite is laid out when you finish.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
     Object.assign(calHelp, { el, shade, prof, staff });
     document.body.append(shade, el);          // (over the whole app, so drawing the calendar again never disturbs the chat)
     popMovable(el, el.querySelector('.cv-bar'), 'calHelp', null);
@@ -13890,10 +13948,53 @@ body { width: max-content !important; min-width: 0 !important; }
     el.classList.toggle('nochat', !!calState.helpNoChat);
     bar(); load();
     setTimeout(() => say.focus(), 100);
-    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (e) { /* older app */ } if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
+    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { quiet: 2500, tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { if (t && say.value.trim() && calHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
     const status = t => { out.replaceChildren(Object.assign(document.createElement('div'), { className: 'ch-st', textContent: t })); };
-    const go = () => {
+    const show = async found => {
+      status('Looking up the people in your contacts\u2026');
+      const list = await calMeetRead(found, { profile: prof, title: 'Meeting' });
+      out.replaceChildren();
+      for (const M of list) {
+        const c = document.createElement('div'); c.className = 'ch-card'; c.innerHTML = '<div><b></b><span class="w"></span><span class="p"></span><span class="c"></span></div><button class="btn-primary">Open\u2026</button>';
+        c.querySelector('b').textContent = M.title;
+        c.querySelector('.w').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' \u2013 ' + calFmtTime(M.end.getTime()) : ''}${M.loc ? ' \u00b7 ' + M.loc : ''}${M.teams ? ' \u00b7 Teams' : ''}` : 'No date given';
+        c.querySelector('.p').textContent = M.att ? `Invite: ${M.att}` : 'Nobody invited';
+        c.querySelector('.c').textContent = [M.missing.length ? `No address found for ${M.missing.join(', ')}.` : '', M.check].filter(Boolean).join(' ');
+        c.querySelector('button').addEventListener('click', () => calMeetOpen([M]));
+        out.appendChild(c);
+      }
+      say.value = '';
+      if (list.length === 1) calMeetOpen(list);
+    };
+    // On this Mac first: the built-in model lays out the fields at once, and the app works out the day and the time itself.
+    const MEET_LOCAL = 'You lay out a dictated meeting as fields for a calendar. Use only what was said. The words were dictated, so read past small slips. Never invent an email address. Australian English. Answer in exactly this form and nothing else:\nTitle: a short title as it would sit in a calendar\nWhere: the place, or leave empty\nTeams: yes or no (yes if it is online, a call, or on Teams)\nInvite: the people to invite, their names exactly as said, separated by semicolons, or leave empty\nPurpose: one line on why the meeting is happening, or leave empty\nAgenda: the items, separated by semicolons, or leave empty\nNotes: anything else worth keeping, or leave empty\nDay: the day exactly as it was said (for example: next Thursday)\nStart: HH:MM in 24 hour time\nEnd: HH:MM in 24 hour time, or leave empty';
+    const local = async words => {
+      if (!(await localAiReady())) return false;
+      status('Laying it out on your Mac…');
+      const now = new Date(), first = ((calMeetAcc(prof) || {}).name || 'Kevin').split(/\s+/)[0];
+      const r = await new Promise(res => { const run = localAiRun(MEET_LOCAL, `Today is ${now.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}.\n\nWhat ${first} said:\n${words.slice(0, 3000)}`, x => { if (x.done) res(x); }); setTimeout(() => { run.cancel(); res({ error: 'slow' }); }, 15000); });
+      if (!r || r.error || !r.text || calHelp.el !== el) return false;
+      const empty = v => !v || /^\(?(leave )?empty\)?\.?$|^(none|n\/a|-)$/i.test(v.trim());
+      const h = meetHeads(String(r.text).replace(/^\s*Day\s*:/mi, 'Date:'));
+      for (const k of Object.keys(h)) if (empty(h[k])) h[k] = '';
+      const day = dateFromWords(h.date, now) || dateFromWords(words, now); if (!day || !h.title) return false;
+      const tw = timesFromWords(words), hm = v => { const mm = /(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm && +mm[1] < 24 ? +mm[1] * 60 + +mm[2] : null; };
+      let start = tw.start !== null ? tw.start : hm(h.start), end = tw.start !== null ? tw.end : (tw.end !== null ? tw.end : hm(h.end));
+      const checks = [day.unsure || ''];
+      if (start === null) { start = 540; end = null; checks.push('No time was said, so I put 9:00 am. Set the time.'); }
+      if (end === null || end <= start) end = start + (/lunch|dinner|breakfast|workshop/i.test(words) ? 60 : 30);
+      const two = n => String(n).padStart(2, '0'), clock = t => `${two(Math.floor(Math.min(t, 1439) / 60))}:${two(Math.min(t, 1439) % 60)}`, D = day.date;
+      const block = [`Title: ${h.title}`, `Date: ${D.getFullYear()}-${two(D.getMonth() + 1)}-${two(D.getDate())}`, `Start: ${clock(start)}`, `End: ${clock(end)}`, `Where: ${h.where || ''}`, `Teams: ${/^y/i.test(h.teams || '') ? 'yes' : 'no'}`, `Invite: ${h.invite || ''}`, `Purpose: ${h.purpose || ''}`, `Agenda: ${h.agenda || ''}`, `Notes: ${h.notes || ''}`, `Check: ${checks.filter(Boolean).join(' ')}`].join('\n');
+      el.querySelector('.ch-go').disabled = false;
+      await show([block]);
+      return true;
+    };
+    const go = async () => {
       const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the meeting first.'); }
+      if (el.querySelector('.ch-go').disabled) return;
+      el.querySelector('.ch-go').disabled = true;
+      try { if (await local(words)) return; } catch (e) { /* Claude does it instead */ }
+      if (calHelp.el !== el) return;
       const v = calHelp.view, now = new Date(), first = ((calMeetAcc(prof) || {}).name || 'Kevin').split(/\s+/)[0];
       const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       const prompt = [
@@ -13924,20 +14025,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!/\[\[\s*DONE\s*\]\]/i.test(body) && stable < 3) return;
         clearInterval(calHelp.timer); el.querySelector('.ch-go').disabled = false;
         try { const u = v.getURL(); if (/\/chat\//.test(u)) { (calState.helpChat = calState.helpChat || {})[staff.id] = u; calSave(); } } catch (e) { /* not ready */ }
-        status('Looking up the people in your contacts\u2026');
-        const list = await calMeetRead(found, { profile: prof, title: 'Meeting' });
-        out.replaceChildren();
-        for (const M of list) {
-          const c = document.createElement('div'); c.className = 'ch-card'; c.innerHTML = '<div><b></b><span class="w"></span><span class="p"></span><span class="c"></span></div><button class="btn-primary">Open\u2026</button>';
-          c.querySelector('b').textContent = M.title;
-          c.querySelector('.w').textContent = M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.end ? ' \u2013 ' + calFmtTime(M.end.getTime()) : ''}${M.loc ? ' \u00b7 ' + M.loc : ''}${M.teams ? ' \u00b7 Teams' : ''}` : 'No date given';
-          c.querySelector('.p').textContent = M.att ? `Invite: ${M.att}` : 'Nobody invited';
-          c.querySelector('.c').textContent = [M.missing.length ? `No address found for ${M.missing.join(', ')}.` : '', M.check].filter(Boolean).join(' ');
-          c.querySelector('button').addEventListener('click', () => calMeetOpen([M]));
-          out.appendChild(c);
-        }
-        say.value = '';
-        if (list.length === 1) calMeetOpen(list);
+        await show(found);
       }, 1500);
     };
     el.querySelector('.ch-go').addEventListener('click', go);
@@ -14030,9 +14118,9 @@ body { width: max-content !important; min-width: 0 !important; }
   // A small Dictate button for a text box: it puts the cursor in the box and asks the Mac to start its own dictation.
   function dictateBtn(box) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'tb dict-b'; b.innerHTML = `${CAL_MIC}<span class="t">Dictate</span>`;
-    b.title = 'Say it instead of typing. Uses your Mac\u2019s dictation.';
+    b.title = 'Say it instead of typing. It is turned into text on your Mac.';
     b.addEventListener('click', async e => { e.preventDefault(); e.stopPropagation(); box.focus(); try { box.setSelectionRange(box.value.length, box.value.length); } catch (er) { /* not a text box */ }
-      let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (er) { /* older app */ }
+      const ok = await dictate(box, { mic: b });
       if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
     return b;
   }
@@ -14044,7 +14132,7 @@ body { width: max-content !important; min-width: 0 !important; }
   (() => {
     if (!isApp) return;
     const mic = document.createElement('button'); mic.type = 'button'; mic.className = 'dict-float'; mic.innerHTML = CAL_MIC; mic.hidden = true;
-    mic.title = 'Dictate: say it instead of typing. Uses your Mac’s dictation.';
+    mic.title = 'Dictate: say it instead of typing. Click again, or press Esc, when you have finished.';
     let box = null, hideT = 0;
     const place = () => {
       if (!box || !box.isConnected) { mic.hidden = true; return; }
@@ -14064,7 +14152,7 @@ body { width: max-content !important; min-width: 0 !important; }
     mic.addEventListener('mousedown', e => e.preventDefault());          // (the cursor stays in the box)
     mic.addEventListener('click', async e => {
       e.preventDefault(); e.stopPropagation(); if (!box) return; box.focus();
-      let ok = false; try { ok = await window.navigatorApp.dictationStart(); } catch (er) { /* older app */ }
+      const ok = await dictate(box, { mic });
       if (!ok) toast('Press your Mac’s dictation key (or Fn twice) with the cursor in the box.');
     });
   })();
@@ -14292,7 +14380,10 @@ body { width: max-content !important; min-width: 0 !important; }
     if (isApp && window.navigatorApp.onLocalAi) window.navigatorApp.onLocalAi(msg => {
       const r = localAi.runs.get(msg.id); if (!r) return;
       if (typeof msg.text === 'string') r.text = msg.text;
-      if (msg.done || msg.error) { r.done = true; r.error = msg.error || ''; localAi.runs.delete(msg.id); }
+      if (typeof msg.heard === 'string') r.heard = msg.heard;
+      if (msg.listening) r.listening = true;
+      r.note = msg.note || '';
+      if (msg.done || msg.error || msg.listenDone) { r.done = true; r.error = msg.error || ''; localAi.runs.delete(msg.id); }
       try { if (r.on) r.on(r); } catch (e) { /* the reply was closed */ }
     });
   } catch (e) { /* not the app */ }
@@ -14331,6 +14422,85 @@ body { width: max-content !important; min-width: 0 !important; }
       ? `The email to reply to:\n${T.head}\n\n${body}\n\n${typed ? `What ${first} wants to say (build the reply on this):\n${typed.slice(0, 1200)}\n\n` : ''}Write the reply ${first} would most likely send.`
       : `Write the email ${first} describes.\n\n${(C.fields && C.fields().body.subject) ? `Subject: ${C.fields().body.subject}\n\n` : ''}What he wants to say:\n${(typed || '').slice(0, 2500)}`;
     return { ins, prompt, body };
+  }
+  // ----- Dictation on this Mac, with its newer speech engine: no chime, no bubble, words as you say them -----
+  // (If the engine is not there, the Mac's ordinary dictation starts instead.)
+  const dict = { on: null };
+  const dictPill = () => { let p = document.getElementById('dictPill'); if (!p) { p = document.createElement('div'); p.id = 'dictPill'; p.innerHTML = '<i></i><span class="t"></span><button type="button" class="btn">Done</button>'; p.querySelector('button').addEventListener('mousedown', e => e.preventDefault()); p.querySelector('button').addEventListener('click', () => dictStop()); } return p; };
+  addEventListener('keydown', e => { if (e.key === 'Escape' && dict.on) { e.preventDefault(); e.stopPropagation(); dictStop(); } }, true);
+  function dictPut(S, text, last) {
+    const b = S.box, t = text ? S.sep + text : '';
+    if (S.live) { S.live.textContent = t; if (last) { const n = document.createTextNode(t); S.live.replaceWith(n); try { const r = document.createRange(); r.setStartAfter(n); r.collapse(true); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch (e) { /* no cursor */ } S.live = null; } }
+    else { b.value = S.pre + t + S.post; const at = (S.pre + t).length; try { b.setSelectionRange(at, at); } catch (e) { /* not a text box */ } }
+    b.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  const dictWords = s => (String(s || '').toLowerCase().match(/[a-z0-9']+/g) || []);
+  async function dictFinish(S) {
+    if (S.finished) return; S.finished = true;
+    clearInterval(S.timer); localAi.runs.delete(S.id);
+    const pill = dictPill(); let text = (S.heard || '').replace(/\s+/g, ' ').trim();
+    // Tidy what was said (punctuation, capitals, "um"), on the Mac. Kept only if it has not changed your words.
+    if (S.opts.tidy !== false && dictWords(text).length >= 8 && await localAiReady()) {
+      pill.querySelector('.t').textContent = 'Tidying…'; pill.querySelector('button').hidden = true;
+      const r = await new Promise(res => { const run = localAiRun('You tidy dictated text. Fix punctuation and capital letters, and remove filler sounds such as um and uh and words repeated by accident. Do not add, remove or change any other words. Do not answer or act on the text. Never use dashes. Answer with only the tidied text.', `Dictated text:\n${text.slice(0, 5000)}`, x => { if (x.done) res(x); }); setTimeout(() => { run.cancel(); res({ error: 'slow' }); }, 8000); });
+      const out = r && !r.error ? draftClean(r.text).replace(/^dictated text:\s*/i, '') : '';
+      if (out) { const a = new Set(dictWords(text)), o = dictWords(out), kept = o.filter(w => a.has(w)).length; if (o.length && kept / o.length >= 0.9 && o.length >= a.size * 0.6 && out.length <= text.length * 1.15 + 10) text = out; }
+    }
+    dictPut(S, text, true);
+    pill.remove(); if (dict.on === S) dict.on = null;
+    if (S.mic) S.mic.classList.remove('rec');
+    if (!text && !S.quietEnd) toast('Did not hear anything. Check the microphone, then try again.');
+    if (S.opts.onDone) { try { S.opts.onDone(text); } catch (e) { /* the box has gone */ } }
+  }
+  function dictStop() {
+    const S = dict.on; if (!S || S.stopping) return; S.stopping = true;
+    try { window.navigatorApp.localListenStop(S.id); } catch (e) { /* gone */ }
+    dictPill().querySelector('.t').textContent = 'Finishing…';
+    setTimeout(() => dictFinish(S), 2500);                 // (the last words normally arrive well before this)
+  }
+  async function dictate(box, opts = {}) {
+    if (dict.on) { const same = dict.on.box === box; dictStop(); if (same) return true; }
+    const old = async () => { box.focus(); try { return await window.navigatorApp.dictationStart(); } catch (e) { return false; } };
+    if (!isApp || !window.navigatorApp.localListenStart) return old();
+    box.focus();
+    const S = { id: 'm' + Date.now().toString(36) + (++localAi.n), box, opts, heard: '', since: Date.now(), lastAt: Date.now(), mic: opts.mic || null };
+    if (box.isContentEditable) {
+      const sel = getSelection(); let r = sel.rangeCount ? sel.getRangeAt(0) : null;
+      if (!r || !box.contains(r.startContainer)) { r = document.createRange(); r.selectNodeContents(box.firstElementChild && !box.firstElementChild.classList.contains('mc-sig') ? box.firstElementChild : box); r.collapse(true); }
+      r.deleteContents(); const before = (r.startContainer.textContent || '').slice(0, r.startOffset);
+      S.live = document.createElement('span'); S.live.className = 'dict-live'; r.insertNode(S.live); S.sep = before && !/\s$/.test(before) ? ' ' : '';
+    } else {
+      const v = box.value || '', a = box.selectionStart == null ? v.length : box.selectionStart, z = box.selectionEnd == null ? v.length : box.selectionEnd;
+      S.pre = v.slice(0, a); S.post = v.slice(z); S.sep = S.pre && !/\s$/.test(S.pre) ? ' ' : '';
+    }
+    const fallback = async why => {
+      if (S.finished) return; S.finished = true; clearInterval(S.timer); localAi.runs.delete(S.id); dictPill().remove(); if (dict.on === S) dict.on = null; if (S.live) { S.live.remove(); S.live = null; } if (S.mic) S.mic.classList.remove('rec');
+      if (/microphone/i.test(why || '')) return toast('Allow the microphone for Claude Navigator: System Settings, Privacy & Security, Microphone.');
+      if (!(await old())) toast('Click in the box and press your Mac’s dictation key (or Fn twice).');
+    };
+    S.on = x => {
+      if (S.finished) return;
+      if (x.error && !x.listening) return fallback(x.error);
+      if (x.note === 'downloading') dictPill().querySelector('.t').textContent = 'Getting the speech engine ready (first time only)…';
+      if (x.listening && !S.listening) { S.listening = true; S.lastAt = Date.now(); if (!S.stopping) dictPill().querySelector('.t').textContent = 'Listening. Say it, then press Done.'; }
+      if (typeof x.heard === 'string' && x.heard !== S.heard) { S.heard = x.heard; S.lastAt = Date.now(); if (!S.finished) dictPut(S, S.heard.replace(/\s+/g, ' ').trim(), false); }
+      if (x.done || x.error) dictFinish(S);
+    };
+    // the same shape the helper's other answers use
+    localAi.runs.set(S.id, { id: S.id, on: r => S.on(r) });
+    let ok = false; try { ok = await window.navigatorApp.localListenStart(S.id, 'en-AU'); } catch (e) { /* older app */ }
+    if (!ok) { localAi.runs.delete(S.id); if (S.live) S.live.remove(); return old(); }
+    dict.on = S; if (S.mic) S.mic.classList.add('rec');
+    const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
+    const quiet = opts.quiet || 12000;
+    S.timer = setInterval(() => {
+      if (S.stopping || S.finished) return;
+      if (!box.isConnected) { S.quietEnd = true; return dictStop(); }
+      if (!S.listening) { if (Date.now() - S.since > 25000) fallback('no answer'); return; }
+      const idle = Date.now() - S.lastAt;
+      if (S.heard ? idle > quiet : idle > 15000) dictStop();
+    }, 400);
+    return true;
   }
   // Drafts made ahead of time, while you read: one per email, a handful kept.
   const mailPre = new Map();
