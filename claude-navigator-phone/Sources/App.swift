@@ -20,6 +20,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
     let ui: WKWebView
     let claude: WKWebView
     private let bookmarkKey = "teamFolderBookmark"
+    private(set) var drive: Drive!
 
     override init() {
         let content = WKUserContentController()
@@ -32,6 +33,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         claude = WKWebView(frame: .zero, configuration: claudeConfig)
         super.init()
         content.add(self, name: "phone")
+        drive = Drive(ui: ui, claude: claude)
         ui.scrollView.contentInsetAdjustmentBehavior = .never
         ui.scrollView.bounces = false
         ui.isOpaque = false
@@ -48,6 +50,17 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "load": sendData()
         case "pick": pickFolder()
         case "save": if let text = body["json"] as? String { saveChanges(text) }
+        // Drive mode
+        case "awake": drive.setAwake((body["on"] as? Bool) ?? false)
+        case "listen": drive.listen(wait: (body["wait"] as? Double) ?? 8)
+        case "stopListening": drive.stopListening(send: true)
+        case "say": if let text = body["text"] as? String { drive.say(text) }
+        case "hush": drive.hush()
+        case "ask":
+            guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
+                  let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai"),
+                  let prompt = body["prompt"] as? String, let nonce = body["nonce"] as? String else { return }
+            drive.ask(url: url, prompt: prompt, nonce: nonce)
         case "chat":
             guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
                   let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") else { return }
@@ -160,8 +173,10 @@ struct RootView: View {
     @Environment(\.scenePhase) private var phase
 
     var body: some View {
-        WebHost(view: store.ui)
-            .ignoresSafeArea()
+        ZStack {
+            if !store.chatOpen { WebHost(view: store.claude).opacity(0.02).allowsHitTesting(false) }
+            WebHost(view: store.ui).ignoresSafeArea()
+        }
             .onChange(of: phase) { now in if now == .active { store.sendData() } }      // fresh each time you come back
             .fullScreenCover(isPresented: $store.chatOpen) {
                 VStack(spacing: 0) {

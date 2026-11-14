@@ -44,6 +44,21 @@
   .chips { flex:none; display:flex; gap:7px; overflow-x:auto; padding:0 12px 10px; scrollbar-width:none; } .chips::-webkit-scrollbar { display:none; }
   .chip { flex:none; display:inline-flex; align-items:center; gap:6px; border:0; background:var(--bg); color:var(--ink); font:inherit; font-size:14px; border-radius:999px; padding:8px 13px; white-space:nowrap; }
   .chip i { font-style:normal; font-size:12.5px; color:var(--muted); } .chip.on { background:var(--accent); color:#fff; font-weight:650; } .chip.on i { color:rgba(255,255,255,.8); } .chip.on .dot { box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+  .drivebtn { border:0; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:14px; border-radius:999px; padding:9px 16px; }
+  .drive { position:fixed; inset:0; z-index:20; background:#0d1417; color:#f4f6f7; display:flex; flex-direction:column; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .dbar { flex:none; display:flex; align-items:center; gap:10px; padding:12px 18px 0; } .dbar b { font-size:18px; } .dprof { background:#18242a; border-radius:999px; padding:5px 12px; font-size:13.5px; font-weight:600; }
+  .dend { border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; border-radius:999px; padding:10px 18px; }
+  .dmid { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:10px 22px; }
+  .dbig { width:min(62vw, 46vh); aspect-ratio:1; border-radius:50%; border:0; background:var(--accent); color:#fff; font:inherit; font-weight:750; font-size:clamp(17px, 5vw, 26px); line-height:1.15; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:8%; box-shadow:0 0 0 14px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 30px color-mix(in srgb, var(--accent) 14%, transparent); }
+  .dbig svg { width:32%; height:auto; }
+  .drive.listening .dbig { background:#c4353f; box-shadow:0 0 0 14px rgba(196,53,63,.3), 0 0 0 30px rgba(196,53,63,.14); animation:dpulse 1.2s ease-in-out infinite; }
+  .drive.thinking .dbig { background:#3d4a50; box-shadow:0 0 0 14px rgba(61,74,80,.4); animation:dpulse 1.6s ease-in-out infinite; }
+  .drive.speaking .dbig { background:#226b4a; box-shadow:0 0 0 14px rgba(34,107,74,.3), 0 0 0 30px rgba(34,107,74,.14); }
+  @keyframes dpulse { 50% { transform:scale(1.04); } }
+  .dside { text-align:center; min-height:84px; max-width:640px; } .dwho { font-size:13px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#9fb0b6; margin-bottom:6px; min-height:16px; }
+  .dline { font-size:clamp(19px, 5.4vw, 28px); font-weight:650; line-height:1.22; }
+  .dfoot { flex:none; display:flex; gap:10px; padding:0 14px 14px; } .dbtn { flex:1; min-width:0; border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; font-size:16px; border-radius:18px; padding:20px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .dbtn.stop { background:#3a2326; color:#ffb3b8; } .dbtn:active, .dbig:active { opacity:.7; }
+  @media (orientation: landscape) { .dmid { flex-direction:row; gap:6%; padding:0 6%; } .dbig { width:min(40vw, 58vh); } .dside { text-align:left; flex:1; } }
   .chk { width:26px; height:26px; border-radius:50%; border:2px solid var(--muted); opacity:.6; flex:none; }
   .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
   .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
@@ -107,6 +122,7 @@
     const t = el('div', 'top');
     if (showProfile) { const p = prof(); const b = el('button', 'prof'); const d = el('span', 'dot'); if (p && p.color) d.style.background = p.color; b.append(d, document.createTextNode((p ? p.name : 'Choose a profile') + ' ▾')); b.onclick = () => { ui.sheet = true; render(); }; t.append(b); }
     t.append(el('span', 'grow'));
+    if (showProfile && team()) { const d = el('button', 'drivebtn', 'Drive'); d.onclick = () => driveStart(); t.append(d); }
     const r = el('button', 'ibtn', '↻'); r.title = 'Refresh'; r.onclick = () => send({ do: 'load' }); t.append(r);
     return t;
   }
@@ -171,6 +187,7 @@
   }
   function viewToday() {
     const t = team(), s = el('div', 'scroll'), list = (t && t.today) || [];
+    lastDriveCards(s);
     if (list.length) s.append(el('div', 'sec', 'For you to look at'));
     for (const c of list) { const d = el('div', 'tcard'); d.append(el('span', 'pill', c.kind)); d.append(el('p', '', c.text)); s.append(d); }
     if (!list.length) s.append(emptyNote('Nothing needs you', 'When work is not filed, has no output, or two people are on the same thing, it shows here.'));
@@ -247,9 +264,95 @@
     if (!folders.length) s.append(emptyNote('No folders yet', 'Open Claude Navigator on your Mac so it can send the company folders.'));
     return [sh, s];
   }
+  // ---------- Drive mode ----------
+  // One big button and your voice. You talk to your Chief of Staff; say a staff member's name and they answer instead.
+  // Nothing is read off the screen: answers are spoken, and what happened is listed when you finish.
+  const drive = { on: false, state: 'idle', heard: '', line: '', who: null, chats: {}, log: [], pending: null, timer: null, noteNext: false };
+  const mic = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg>';
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
+  const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
+    return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null }); send({ do: 'awake', on: true }); render(); }
+  function driveEnd() { send({ do: 'hush' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
+  function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
+  function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
+  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; render(); }
+  const snapshot = () => { const t = team(), L = []; if (!t) return '';
+    for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
+    const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
+    return L.join('\n').slice(0, 5000); };
+  function driveAsk(text, target) {
+    const p = prof(), nonce = 'ref DRV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), had = drive.chats[target.id];
+    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. Start your answer with [[SAY]] and end it with [[END]]. Do this for every message in this chat.';
+    const prompt = had ? `I said: ${text}\n\n(Spoken answer, at most 70 words, between [[SAY]] and [[END]].)\n\n${nonce}`
+      : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
+    drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
+    send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
+    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 100000);
+  }
+  // What you said: a few things are done here on the phone; everything else goes to Claude.
+  function driveHandle(text) {
+    const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
+    const low = said.toLowerCase();
+    if (drive.confirm) { const c = drive.confirm; drive.confirm = null; if (/^(yes|yep|yeah|do it|confirm|correct|please do)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'done', staff: c.staff, item: c.item }); saveChanges(); drive.log.push({ kind: 'done', who: c.who, text: c.name }); return driveSay(`Done. ${c.name} is marked as finished.`); } return driveSay('Left as it is.'); }
+    if (drive.noteNext || /^(note|note for later|make a note|remember)\b/.test(low)) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } drive.log.push({ kind: 'note', who: 'Note', text: note }); return driveSay('Noted.'); }
+    if (/^(stop|cancel|never mind|that is all|that's all|goodbye|finish)\b/.test(low)) { drive.state = 'idle'; drive.line = ''; render(); return; }
+    const sw = /^(switch|change|go) to (.+)$/.exec(low); if (sw) { const p = data.profiles.find(x => sw[2].includes(x.name.toLowerCase())); if (p) { ui.pid = p.id; ls.set('pid', p.id); drive.chats = {}; drive.who = chiefOf(); return driveSay(`Now on ${p.name}.`); } }
+    const md = /^(mark|tick) (.+?) (as )?(done|finished|complete)/.exec(low);
+    if (md) { const t = team(); let hit = null; const want = md[2].replace(/^the /, ''); if (t) for (const n of t.nodes.filter(x => x.kind === 'staff')) for (const x of workOf(n.id).open) { const nm = x.name.toLowerCase(); if (!x.waiting && (nm.includes(want) || want.includes(nm))) hit = hit || { staff: n.id, who: n.name, item: x.id, name: x.name }; }
+      if (hit) { drive.confirm = hit; return driveSay(`Mark ${hit.name}, with the ${hit.who}, as done? Say yes or no.`); } return driveSay('I could not find an open action with that name.'); }
+    const named = staffNamed(said), back = /chief of staff/.test(low);
+    const target = back ? chiefOf() : named || drive.who || chiefOf();
+    if (!target) return driveSay('There is no team in this profile yet.', 'idle');
+    driveAsk(/^brief me\b/.test(low) ? 'Brief me: what needs my attention today across the team, most important first.' : said, target);
+  }
+  window.driveHeard = h => { if (!drive.on) return; if (h.problem) { drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
+  // After an answer it listens again for a moment, so you can carry on without touching the screen.
+  window.driveSpoke = () => { if (!drive.on || drive.state !== 'speaking') return; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+  window.driveAnswer = a => {
+    if (!drive.on || drive.state !== 'thinking') return; clearTimeout(drive.timer);
+    const pend = drive.pending; drive.pending = null;
+    if (a.problem || !a.text) return driveSay(a.problem || 'There was no answer.', 'idle');
+    const t = team(), n = pend && t && t.nodes.find(x => x.id === pend.target);
+    if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
+      const url = a.url.replace(/[?#].*$/, '');
+      if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', staff: n.id, url, name: 'From the drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+    }
+    drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend ? pend.text : '', answer: a.text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
+    driveSay(a.text);
+  };
+  function viewDrive() {
+    const d = el('div', 'drive ' + drive.state), who = drive.who || chiefOf() || { name: 'Chief of Staff', chief: true };
+    const bar = el('div', 'dbar'); bar.append(el('b', '', 'Drive'), el('span', 'dprof', (prof() || {}).name || ''), el('span', 'grow'));
+    const end = el('button', 'dend', 'Finish'); end.onclick = driveEnd; bar.append(end);
+    const mid = el('div', 'dmid'), big = el('button', 'dbig');
+    const label = { idle: who.chief ? 'Talk to your Chief of Staff' : `Talk to the ${who.name}`, listening: 'Listening', thinking: 'Thinking', speaking: who.chief ? 'Chief of Staff' : who.name }[drive.state];
+    big.innerHTML = mic + '<span></span>'; big.querySelector('span').textContent = label;
+    big.onclick = () => { if (drive.state === 'idle') driveListen(8); else if (drive.state === 'listening') send({ do: 'stopListening' }); else driveStop(); };
+    const side = el('div', 'dside');
+    if (drive.state === 'listening') side.append(el('div', 'dwho', 'You'), el('div', 'dline', drive.heard || 'Say it…'));
+    else if (drive.line) side.append(el('div', 'dwho', drive.state === 'idle' ? '' : who.chief ? 'Chief of Staff' : who.name), el('div', 'dline', drive.line.length > 150 ? drive.line.slice(0, 147) + '…' : drive.line));
+    mid.append(big, side);
+    const foot = el('div', 'dfoot');
+    const fb = (text, run, cls) => { const b = el('button', 'dbtn' + (cls ? ' ' + cls : ''), text); b.onclick = run; foot.append(b); };
+    if (drive.state === 'idle') { fb('Brief me', () => driveAsk('Brief me: what needs my attention today across the team, most important first.', chiefOf() || who)); fb('Note for later', () => { drive.noteNext = true; driveListen(8); });
+      const fav = pinned().map(id => (team() || { nodes: [] }).nodes.find(x => x.id === id)).filter(Boolean)[0]; if (fav) fb(fav.name, () => { drive.who = fav; driveListen(8); }); }
+    else if (drive.state === 'listening') { fb('Cancel', driveStop, 'stop'); fb('Done talking', () => send({ do: 'stopListening' })); }
+    else { fb('Stop', driveStop, 'stop'); if (drive.state === 'speaking') { fb('Say again', () => driveSay(drive.line)); fb('Reply', () => { send({ do: 'hush' }); driveListen(8); }); } }
+    d.append(bar, mid, foot); return [d];
+  }
+  function lastDriveCards(s) {
+    let ld = null; try { ld = JSON.parse(ls.get('lastDrive') || 'null'); } catch (e) { ld = null; }
+    if (!ld || ld.pid !== ui.pid || !ld.log || !ld.log.length || Date.now() - ld.at > 3 * 864e5) return;
+    s.append(el('div', 'sec', `From your drive, ${when(ld.at).toLowerCase()}`));
+    for (const x of ld.log) { const d = el('div', 'tcard'); d.append(el('span', 'pill ok', x.kind === 'note' ? 'Note' : x.kind === 'done' ? 'Marked done' : x.who)); d.append(el('p', '', x.text)); if (x.answer) { const a = el('p', '', x.answer); a.style.color = 'var(--muted)'; d.append(a); } if (x.url) d.onclick = () => chat(x.url, x.who); s.append(d); }
+    const clear = el('button', 'row', 'Clear this list'); clear.style.cssText = 'border:0;color:var(--muted);justify-content:center'; clear.onclick = () => { ls.set('lastDrive', 'null'); render(); }; s.append(clear);
+  }
   function render() {
     let parts;
-    if (data.state === 'loading') parts = [el('div', 'top'), emptyNote('Loading your team…', '')];
+    if (drive.on) parts = viewDrive();
+    else if (data.state === 'loading') parts = [el('div', 'top'), emptyNote('Loading your team…', '')];
     else if (data.state !== 'ok' || !data.profiles.length) parts = viewConnect();
     else {
       if (!prof()) ui.pid = data.profiles[0].id;
