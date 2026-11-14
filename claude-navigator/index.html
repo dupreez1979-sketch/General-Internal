@@ -717,6 +717,8 @@
   .outs-who { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
   .outs-row { border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; margin-bottom: 7px; }
   .outs-row > b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .outs-row { position: relative; } .outs-row > .ig { position: absolute; top: 8px; right: 11px; border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--muted); padding: 0; cursor: default; } .outs-row > .ig:hover { color: var(--text); text-decoration: underline; } .outs-row > b { padding-right: 60px; }
+  .outs-gone .igl { display: flex; align-items: center; gap: 8px; padding: 4px 0; } .outs-gone .igl .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-gone .igl button { font-size: 11.5px; padding: 2px 9px; }
   .outs-row .ol { display: flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 3px 0; }
   .outs-row .ol .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .outs-row .ol .stt { color: #B36E24; font-size: 11.5px; white-space: nowrap; }
@@ -8478,11 +8480,11 @@
   const ASK_FINAL = 'Please give me the final version of this work as its own output (an artifact or a document, with a clear title) so it can be filed in the company folders.';
   const askFinal = x => { navigator.clipboard.writeText(ASK_FINAL).catch(() => {}); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); };
   // Finished work and where its outputs are: one staff member's, or the whole team's, over the last so many days.
-  function outputsReview(p, days, onlyStaff) {
+  function outputsReview(p, days, onlyStaff, ignored) {
     const t = cosTeam(), rows = [], since = Date.now() - days * 864e5;
     for (const st of ((t && t.nodes) || []).filter(x => x.kind === 'staff' && (!onlyStaff || x.id === onlyStaff))) {
       const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
-      for (const x of workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && (x.doneAt || 0) >= since)) {
+      for (const x of workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && (x.doneAt || 0) >= since && !!x.outIgnore === !!ignored)) {
         const outs = workOutputs(x).filter(o => o.url).map(o => ({ o, homes: outHomes(o, p) }));
         rows.push({ st, x, outs, chatFiled: companyHomes(x.url, p).length > 0 });
       }
@@ -8594,9 +8596,11 @@
       const loose = rows.reduce((n, r) => n + r.outs.filter(z => !z.homes.length).length, 0), none = rows.filter(r => !r.outs.length).length;
       d.querySelector('.hint').textContent = rows.length ? `${rows.length} piece${rows.length === 1 ? '' : 's'} of work finished. ${loose ? `${loose} output${loose === 1 ? ' is' : 's are'} not filed yet.` : 'Every output is filed.'}${none ? ` ${none} ${none === 1 ? 'has' : 'have'} no output.` : ''} The company folders keep the outputs; the chats stay with the staff.` : 'Nothing was finished in this time.';
       const list = d.querySelector('.outs-list'); list.replaceChildren(); let who = '';
+      const gone = onlyItem ? [] : outputsReview(p, days, onlyStaff, true);
       for (const r of rows) {
         if (r.st.name !== who) { who = r.st.name; list.appendChild(Object.assign(document.createElement('div'), { className: 'outs-who', textContent: who })); }
         const card = document.createElement('div'); card.className = 'outs-row';
+        { const ig = document.createElement('button'); ig.className = 'lk ig'; ig.textContent = 'Ignore'; ig.title = 'Leave this piece of work out of this review and out of the Chief of Staff\u2019s reminders. Nothing is deleted.'; ig.addEventListener('click', () => { r.x.outIgnore = true; commit(); paint(); toast(`Ignoring \u201c${r.x.name}\u201d here`, { label: 'Undo', run: () => { delete r.x.outIgnore; commit(); paint(); } }); }); card.appendChild(ig); }
         card.appendChild(Object.assign(document.createElement('b'), { textContent: r.x.name }));
         const line = (name, status, btns) => { const l = document.createElement('div'); l.className = 'ol'; l.appendChild(Object.assign(document.createElement('span'), { className: 'nm', textContent: name })); l.appendChild(Object.assign(document.createElement('span'), { className: 'stt' + (status.ok ? ' ok' : ''), textContent: status.t }));
           for (const [label, run, go] of btns) { const b = document.createElement('button'); b.className = go ? 'btn-primary' : 'btn'; b.textContent = label; b.addEventListener('click', run); l.appendChild(b); } card.appendChild(l); };
@@ -8610,6 +8614,12 @@
           ]);
         }
         list.appendChild(card);
+      }
+      if (gone.length) {          // the ones you ignored: out of the way, and one click brings any of them back
+        const foot = document.createElement('div'); foot.className = 'outs-gone';
+        const tg = document.createElement('button'); tg.className = 'lk'; tg.textContent = d.dataset.showIg ? `Hide the ${gone.length} ignored` : `${gone.length} ignored. Show`; tg.addEventListener('click', () => { if (d.dataset.showIg) delete d.dataset.showIg; else d.dataset.showIg = '1'; paint(); }); foot.appendChild(tg);
+        if (d.dataset.showIg) for (const r of gone) { const l = document.createElement('div'); l.className = 'ol igl'; l.appendChild(Object.assign(document.createElement('span'), { className: 'nm', textContent: `${r.x.name} (${r.st.name})` })); const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Put Back'; b.addEventListener('click', () => { delete r.x.outIgnore; commit(); paint(); }); l.appendChild(b); foot.appendChild(l); }
+        list.appendChild(foot);
       }
     };
     document.body.appendChild(d); paint(); d.showModal();
@@ -15592,6 +15602,7 @@ body { width: max-content !important; min-width: 0 !important; }
       let shown = 0;
       for (const x of done) {
         if (shown >= 3) break;
+        if (x.outIgnore) continue;          // you chose to ignore this one in the outputs review
         const outs = outputsOf(x), loose = outs.filter(o => o.url && !outHomes(o, p).length);
         const usual = usualPlace(s);
         for (const o of loose.slice(0, 2)) {
