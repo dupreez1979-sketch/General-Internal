@@ -1002,6 +1002,7 @@
   .cal-newrow > .mail-new { flex: 1; width: auto; margin: 0; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
   .cal-newrow > .cal-mic { flex: none; width: 38px; padding: 0; border-radius: 9px; display: grid; place-items: center; }
   .cal-hshade { position: fixed; z-index: 69; }
+  .cal-view.cal-help.mail-helper { top: 14%; bottom: auto; left: calc(50% - min(310px, 46vw)); right: auto; width: min(620px, 92vw); height: 380px; }
   .cal-view.cal-help { position: fixed; z-index: 70; top: 36px; bottom: 36px; left: 7%; right: 7%; }
   .cal-help .ch-left { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; overflow: auto; }
   .cal-help .ch-left h1 { margin: 0; font-size: 19px; font-weight: 650; }
@@ -12518,14 +12519,8 @@ body { width: max-content !important; min-width: 0 !important; }
       nw.title = `Write a new message (${K.mod}N)`;
       nw.addEventListener('click', () => mailCompose('new'));
       const row = document.createElement('div'); row.className = 'cal-newrow';
-      const mic = document.createElement('button'); mic.className = 'btn-primary cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Say a new email: a new message opens and your Mac\u2019s dictation starts in it';
-      mic.addEventListener('click', async () => {
-        await mailCompose('new');
-        await new Promise(r => setTimeout(r, 450));          // (the new message puts the cursor in To first)
-        const ed = mailUi.composeEl && mailUi.composeEl.querySelector('.mc-ed, [contenteditable="true"]'); if (ed) ed.focus();
-        const ok = ed ? await dictate(ed) : false;
-        if (!ok) toast('Click in the message and press your Mac\u2019s dictation key (or Fn twice).');
-      });
+      const mic = document.createElement('button'); mic.className = 'btn-primary cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Email helper: say the email, and it opens written and addressed for you to check';
+      mic.addEventListener('click', () => mailHelper());
       row.append(nw, mic); sd.appendChild(row);
     }
     if (vis.filter(a => !a.needsSignIn).length > 1) {
@@ -14572,13 +14567,85 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const k of [...mailPre.keys()].slice(0, Math.max(0, mailPre.size - 6))) { mailPre.get(k).run.cancel(); mailPre.delete(k); }
     }, 700);
   }
+  // ---------- The email helper: say (or type) the email, and it opens laid out, with who it is to, a subject and the words.
+  // Written on this Mac at once. Nothing is sent: the email opens for you to check, change and send yourself.
+  const mailHelp = { el: null, shade: null };
+  function mailHelpClose() { if (dict.on && mailHelp.el && mailHelp.el.contains(dict.on.box)) { dict.on.opts.onDone = null; dictStop(); } if (mailHelp.el) { mailHelp.el.remove(); mailHelp.shade.remove(); } mailHelp.el = mailHelp.shade = null; }
+  async function mailFindPeople(accId, names) {
+    const found = [], missing = [];
+    for (const raw of String(names || '').split(/[;,]|\band\b/).map(z => z.trim()).filter(Boolean)) {
+      const em = /[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+/.exec(raw);
+      if (em) { found.push(em[0]); continue; }
+      if (/^\(?(none|nobody|n\/a|-|leave empty|empty)\)?\.?$/i.test(raw)) continue;
+      let hit = null;
+      try { const pr = await mailApi(accId, { path: `/me/people?$search=${encodeURIComponent('"' + raw.replace(/"/g, '') + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); hit = pr.ok && (pr.data.value || []).map(x => ((x.scoredEmailAddresses || [])[0] || {}).address).find(Boolean); } catch (e) { /* not found */ }
+      if (hit) found.push(hit); else missing.push(raw);
+    }
+    return { found: [...new Set(found)], missing };
+  }
+  function mailHelper() {
+    if (!isApp) return toast('This works in the desktop app.');
+    if (mailHelp.el) mailHelpClose();
+    const s = mailState.sel, acc = (s && s.acc === '*' ? mailVisible()[0] : mailAccOf()) || mailVisible()[0];
+    if (!acc) return toast('Add a mail account first.');
+    const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', mailHelpClose);
+    const el = document.createElement('div'); el.className = 'cal-view cal-help nochat mail-helper';
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What email do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Email Emma and Raj to say the board meeting has moved to Monday the 14th at 4:30, and ask them to confirm by Friday."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the email. When you stop talking, it is written and opened.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Write the Email</button></div><p class="ch-note">Nothing is sent. The email opens for you to check and change, and only you can press Send. Press Dictate, say it, and stop: it is written when you finish.</p><div class="ch-out"></div></div></div>`;
+    Object.assign(mailHelp, { el, shade });
+    document.body.append(shade, el);
+    popMovable(el, el.querySelector('.cv-bar'), 'mailHelp', null);
+    const bar = el.querySelector('.cv-bar'); bar.appendChild(macLights({ close: mailHelpClose, zoom: () => el.classList.toggle('full') }));
+    { const who = document.createElement('span'); who.className = 'tb ch-who'; who.innerHTML = '<b>Email Helper</b><span class="t"></span>'; who.querySelector('.t').textContent = acc.email || acc.name || ''; bar.appendChild(who); }
+    const say = el.querySelector('.ch-say'), out = el.querySelector('.ch-out'), goB = el.querySelector('.ch-go');
+    const status = t => { out.replaceChildren(Object.assign(document.createElement('div'), { className: 'ch-st', textContent: t })); };
+    setTimeout(() => say.focus(), 100);
+    const open = async (seed, words, wrote) => {
+      mailHelpClose();
+      await mailCompose('new', null, Object.assign({ acc: acc.id }, seed));
+      const C = mailUi.compose; if (!C) return;
+      if (wrote) { C.offered = seed.text; mailDraftLocal(C, null, { have: seed.text, said: words }); }
+      else if (words) mailDraftWith(C, null);          // (the Mac's model is not there: Claude writes it from your words)
+    };
+    const go = async () => {
+      const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the email first.'); }
+      if (goB.disabled) return; goB.disabled = true;
+      try {
+        if (await localAiReady()) {
+          status('Writing it on your Mac…');
+          const P = localDraftParts({ acc: acc.id }, null, words, []);
+          const ins = `${P.ins}\n\nThe words were dictated, so read past small slips. Answer in exactly this form and nothing else:\nTo: the people it is to, their names exactly as said, separated by semicolons (leave empty if not said)\nCc: the people to copy in, or leave empty\nSubject: a short, plain subject line\nBody:\nthe email itself`;
+          const r = await new Promise(res => { const run = localAiRun(ins, `What he said:\n${words.slice(0, 3000)}`, x => { if (x.done) res(x); }); setTimeout(() => { run.cancel(); res({ error: 'slow' }); }, 20000); });
+          if (mailHelp.el !== el) return;
+          const txt = r && !r.error ? String(r.text || '') : '', bi = txt.search(/^\s*Body\s*:/mi);
+          if (bi >= 0) {
+            const head = txt.slice(0, bi), val = k => { const m = new RegExp('^\\s*' + k + '\\s*:\\s*(.*)$', 'mi').exec(head); const v = m ? m[1].trim() : ''; return /^\(?(leave )?empty\)?\.?$|^(none|n\/a|-)$/i.test(v) ? '' : v; };
+            const body = draftClean(txt.slice(bi).replace(/^\s*Body\s*:\s*/i, ''));
+            if (body) {
+              status('Looking up the people in your contacts…');
+              const to = await mailFindPeople(acc.id, val('To')), cc = await mailFindPeople(acc.id, val('Cc'));
+              if (mailHelp.el !== el) return;
+              const miss = to.missing.concat(cc.missing);
+              await open({ to: to.found.join(', '), cc: cc.found.join(', '), subject: val('Subject').replace(/^["“]|["”]$/g, ''), text: body }, words, true);
+              if (miss.length) toast(`No address found for ${miss.join(', ')}. Add ${miss.length === 1 ? 'it' : 'them'} in To.`);
+              return;
+            }
+          }
+        }
+        if (mailHelp.el !== el) return;
+        await open({ text: words }, words, false);
+      } finally { goB.disabled = false; }
+    };
+    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { quiet: 3000, tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { if (t && say.value.trim() && mailHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac’s dictation key (or Fn twice).'); });
+    goB.addEventListener('click', go);
+    say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
+  }
   async function mailDraftLocal(C, m, opt = {}) {
     const bar = C.el.querySelector('.mc-draft'), acc = mailAccById(C.acc) || {};
     const gen = C.draftGen = (C.draftGen || 0) + 1;                       // a newer request takes over from this one
     if (C.draftRun) C.draftRun.cancel();
-    const typed = C.userText ? C.userText() : '', before = C.ed.innerHTML, isReply = !!(m && C.mode !== 'new' && C.mode !== 'draft');
+    const typed = opt.have ? String(opt.said || '') : (C.userText ? C.userText() : ''), before = C.ed.innerHTML, isReply = !!(m && C.mode !== 'new' && C.mode !== 'draft');
     if (!isReply && !typed.trim() && !(C.fields && C.fields().body.subject)) { if (!opt.auto) toast('Type a few words on what you want to say, then press Draft.'); return; }
-    let base = typed, held = '', lastAsk = '', err = '', run = null, T = null;
+    let base = opt.have ? C.userText() : typed, held = '', lastAsk = '', err = '', run = null, T = null;
     const alive = () => mailUi.compose === C && C.draftGen === gen;
     const untouched = () => (C.userText() || '').trim() === (base || '').trim();
     const put = (text, last) => { C.insert(text, false, !last); base = C.userText(); C.offered = text; held = ''; };
@@ -14637,6 +14704,7 @@ body { width: max-content !important; min-width: 0 !important; }
       row.appendChild(Object.assign(document.createElement('span'), { className: 'made', textContent: 'Written on your Mac' }));
       bar.appendChild(row);
     }
+    if (opt.have) { run = { done: true, text: opt.have, cancel() {} }; paint(); return; }          // (the email helper has already written it: show the change bar)
     // A draft made while you were reading is used as it is; otherwise the email is read and one is written now.
     const pre = isReply && !typed.trim() ? mailPre.get(C.acc + '|' + m.id) : null;
     if (pre && !pre.run.error && !pre.run.cancelled) { T = pre.T; mailPre.delete(C.acc + '|' + m.id); adopt(pre.run, () => write('', typed, 1500)); return; }
