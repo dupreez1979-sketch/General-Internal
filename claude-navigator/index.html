@@ -694,9 +694,9 @@
   .outs-sum { color: var(--muted); font-size: 12.5px; margin: 2px 0 12px; }
   .outs-q { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 170px; color: var(--text); margin-left: 8px; }
   .outs-tab { container-type: inline-size; }
-  .outs-r { display: grid; grid-template-columns: minmax(110px, 2fr) minmax(80px, 1.3fr) 92px minmax(130px, 1.8fr); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
-  .outs-r.wide, .outs-r.head:has(span:nth-child(5)) { grid-template-columns: minmax(110px, 2fr) minmax(70px, 1fr) minmax(80px, 1.2fr) 92px minmax(130px, 1.8fr); }
-  @container (max-width: 560px) { .outs-r, .outs-r.wide { grid-template-columns: 1fr 1fr; row-gap: 3px; } .outs-r.head { display: none; } .outs-r > span:first-child, .outs-r .where { grid-column: 1 / -1; } }
+  .outs-r { display: grid; grid-template-columns: var(--gcols, minmax(110px, 2fr) minmax(80px, 1.3fr) 100px minmax(130px, 1.8fr)); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  @container (max-width: 560px) { .outs-r, .outs-r.wide { grid-template-columns: 1fr 1fr !important; row-gap: 3px; } .outs-r.head { display: none; } .outs-r > span:first-child, .outs-r .where { grid-column: 1 / -1; } }
+  .outs-r.head > .hc { position: relative; overflow: visible; }
   .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
   .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
@@ -8382,7 +8382,14 @@
     const list = document.createElement('div'); list.className = 'outs-page';
     const loose = all.filter(r => !r.homes.length).length;
     list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: all.length ? `${all.length} output${all.length === 1 ? '' : 's'}${cosUi.outPast ? ', including finished work' : ' from current work'}. ${loose ? `${loose} not filed yet.` : 'All filed.'}${!cosUi.outPast && hidden ? ` ${hidden} more from finished work: press Past Work to see them.` : ''}` : hidden && !cosUi.outPast ? `Nothing from current work. ${hidden} output${hidden === 1 ? '' : 's'} from finished work: press Past Work to see ${hidden === 1 ? 'it' : 'them'}.` : `Nothing yet. Outputs and documents that come out of ${n.chief ? 'the team\u2019s' : n.name + '\u2019s'} work show here, with where each is saved.` }));
-    const head = document.createElement('div'); head.className = 'outs-r head'; head.innerHTML = `<span>Output</span>${n.chief ? '<span>Staff</span>' : ''}<span>From</span><span>When</span><span>Saved in</span>`; if (rows.length) list.appendChild(head);
+    // The same headings as every other list: click one to sort, drag the line beside it to change its width.
+    const gkey = n.chief ? 'outsTeam' : 'outs';
+    const cols = [{ k: 'name', label: 'Output', def: 'minmax(110px, 2fr)', min: 110 }, ...(n.chief ? [{ k: 'staff', label: 'Staff', def: 'minmax(70px, 1fr)' }] : []), { k: 'from', label: 'From', def: 'minmax(80px, 1.3fr)' }, { k: 'when', label: 'When', def: '100px' }, { k: 'where', label: 'Saved in', def: 'minmax(130px, 1.8fr)', min: 120 }];
+    const head = document.createElement('div'); head.className = 'outs-r head';
+    gridHead(head, list, gkey, cols, { canClear: true, onSort: () => paintOutputs(n, host) });
+    if (rows.length) list.appendChild(head);
+    const gs = gridSortOf(gkey);
+    if (gs) { const get = { name: r => r.o.name, staff: r => r.st.name, from: r => (r.from ? r.from.name : ''), when: r => r.at || 0, where: r => (r.homes.length ? r.homes.map(h => h.name).join(', ') : '\uffff') }[gs.col]; if (get) rows.sort(gridCmp(gs.dir, get)); }
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
       const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
