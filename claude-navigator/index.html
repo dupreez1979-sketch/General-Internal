@@ -8430,9 +8430,9 @@
     for (const [k, v] of [...m]) if (!v.sure) m.delete(k);          // unsure: it shows under every chat that has it, and you can remove it by hand
     outOwnersAt = stamp; outOwners = m; return m;
   }
-  // Working files are kept off the outputs list by themselves: web pages, pictures of every kind, and data files.
+  // Working files are kept off the outputs list by themselves: web pages, pictures of every kind, data files and Markdown notes.
   // They sit with the ones you removed (under "removed from this list"), and Put Back brings any of them back for good.
-  const OUT_HIDE_EXT = /\.(html?|png|jpe?g|gif|webp|svg|bmp|tiff?|heic|ico|json)$/i;
+  const OUT_HIDE_EXT = /\.(html?|png|jpe?g|gif|webp|svg|bmp|tiff?|heic|ico|json|md|markdown)$/i;
   const outRemoved = () => {
     const t = cosTeam(), s = new Set((t && t.outHidden) || []), back = new Set((t && t.outShown) || []), has = s.has.bind(s);
     s.has = k => has(k) || (typeof k === 'string' && !back.has(k) && k.includes('#file=') && OUT_HIDE_EXT.test((() => { try { return decodeURIComponent(k.split('#file=')[1] || ''); } catch (e) { return ''; } })()));
