@@ -34,6 +34,9 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         super.init()
         content.add(self, name: "phone")
         drive = Drive(ui: ui, claude: claude)
+        // "Hey Siri, talk to my Chief of Staff": go to Drive and start listening (tried a few times while the page loads).
+        NotificationCenter.default.addObserver(forName: .startDrive, object: nil, queue: .main) { [weak self] _ in self?.startDriveFromSiri(tries: 0) }
+        if Date().timeIntervalSince1970 - UserDefaults.standard.double(forKey: "startDriveAt") < 20 { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startDriveFromSiri(tries: 0) } }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.drive.restoreModel() }      // a drive that was cut short: put Claude's model back
         ui.scrollView.contentInsetAdjustmentBehavior = .never
         ui.scrollView.bounces = false
@@ -41,6 +44,13 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         claude.allowsBackForwardNavigationGestures = true
         if let page = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
             ui.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
+        }
+    }
+
+    private func startDriveFromSiri(tries: Int) {
+        ui.evaluateJavaScript("window.driveFromSiri ? window.driveFromSiri() : false") { value, _ in
+            if (value as? Bool) == true { UserDefaults.standard.removeObject(forKey: "startDriveAt"); return }
+            if tries < 8 { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startDriveFromSiri(tries: tries + 1) } }
         }
     }
 
@@ -64,6 +74,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
         case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
         case "barge": drive.bargeIn = (body["on"] as? Bool) ?? true
+        case "names": drive.names = ((body["list"] as? [String]) ?? []).prefix(80).map { String($0.prefix(60)) }
         case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
         case "voiceTry": drive.say("This is how I will sound when you are driving.")
         case "ask":

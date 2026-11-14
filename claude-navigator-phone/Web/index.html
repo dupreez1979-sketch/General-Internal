@@ -106,6 +106,7 @@
     for (const c of changes) {
       if (c.pid !== ui.pid) continue;
       if (c.type === 'chat' && c.staff === id && ![...open, ...done].some(x => sameUrl(x.url, c.url))) { if (c.drive) done.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, doneAt: c.at, outputs: [], waiting: true }); else open.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, waiting: true }); }       // a Drive conversation is finished, not an open action
+      if (c.type === 'note' && c.staff === id && !open.some(x => x.name === c.text)) open.unshift({ id: 'new-' + c.id, name: c.text, url: 'https://claude.ai/new?q=' + encodeURIComponent(c.text), added: c.at, waiting: true });
       if (c.type === 'done') { const i = open.findIndex(x => x.id === c.item); if (i >= 0) { const [x] = open.splice(i, 1); done.unshift(Object.assign({ outputs: [] }, x, { doneAt: c.at, waiting: true })); } }
       if (c.type === 'file' && c.staff === id && outs) outs = outs.map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o);
       if (c.type === 'file' && c.staff === id) done = done.map(x => Object.assign({}, x, { outputs: (x.outputs || []).map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o) }));
@@ -277,7 +278,7 @@
   const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
   const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
     return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
   function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
@@ -309,8 +310,11 @@
     send({ do: 'localAsk', id, instructions: ins, prompt: `Team notes:\n${lines.join('\n').slice(0, 3500)}\n\nQuestion: ${said}` });
     clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.localAsk && drive.localAsk.id === id) { drive.localAsk = null; driveAsk(said, target); } }, 6000);
   }
+  // "Hey Siri, talk to my Chief of Staff": straight into Drive, already listening.
+  window.driveFromSiri = () => { if (!team()) return false; if (!drive.on) driveStart(); setTimeout(() => { if (drive.on && drive.state === 'idle') driveListen(8); }, 900); return true; };
   window.driveLocal = v => { drive.local = !!(v && v.ok); if (drive.voiceOpen) render(); };
   window.driveLocalAnswer = a => {
+    if (drive.noteAsk && drive.noteAsk.id === a.id) { const k = drive.noteAsk; drive.noteAsk = null; clearTimeout(drive.timer); const m = /\d+/.exec(String(a.text || '')); return driveNoteFor(k.note, a.error || !m ? null : k.staff[+m[0] - 1] || null); }
     const q = drive.localAsk; if (!drive.on || !q || q.id !== a.id) return;
     drive.localAsk = null; clearTimeout(drive.timer);
     const text = String(a.text || '').replace(/\s+/g, ' ').replace(/\s*[—–]\s*/g, ', ').trim();
@@ -318,6 +322,19 @@
     drive.log.push({ kind: 'talk', who: 'On your phone', text: q.said, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: '' });
     driveSay(text);
   };
+  // A note becomes an action on the right person's list: the one you named, or else the one the phone judges it belongs to.
+  // If nobody fits, it is kept as a note for you. The Mac picks it up through iCloud like everything else.
+  function driveNoteFor(note, n) {
+    if (n) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: n.id, text: note.slice(0, 300) }); saveChanges(); drive.log.push({ kind: 'note', who: n.name, text: note }); return driveSay(`Noted, for ${n.chief ? 'your Chief of Staff' : 'the ' + n.name}.`); }
+    drive.log.push({ kind: 'note', who: 'Note', text: note }); driveSay('Noted.');
+  }
+  function driveNote(note) {
+    const t = team(), named = staffNamed(note); if (named || !t || !localOn()) return driveNoteFor(note, named);
+    const staff = t.nodes.filter(x => x.kind === 'staff'), id = newId(); drive.noteAsk = { id, note, staff };
+    drive.state = 'thinking'; drive.line = 'Noting…'; render();
+    send({ do: 'localAsk', id, instructions: 'You decide which staff member a note belongs to. Answer with only the number of the staff member whose role fits the note best. If none clearly fits, answer 0.', prompt: `Staff:\n${staff.map((x, i) => `${i + 1}. ${x.name}${x.role ? ': ' + x.role : ''}`).join('\n').slice(0, 3000)}\n\nNote: ${note}` });
+    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.noteAsk && drive.noteAsk.id === id) { drive.noteAsk = null; driveNoteFor(note, null); } }, 5000);
+  }
   const BRIEF = 'Brief me: what needs my attention today across the team, most important first.';
   const driveBrief = who => (localOn() ? driveLocalAsk(BRIEF, who) : driveAsk(BRIEF, who));
   // You spoke while an answer was being read out: it stops, and what you are saying is taken as your next words.
@@ -327,7 +344,7 @@
     const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
     const low = said.toLowerCase();
     if (drive.confirm) { const c = drive.confirm; drive.confirm = null; if (/^(yes|yep|yeah|do it|confirm|correct|please do)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'done', staff: c.staff, item: c.item }); saveChanges(); drive.log.push({ kind: 'done', who: c.who, text: c.name }); return driveSay(`Done. ${c.name} is marked as finished.`); } return driveSay('Left as it is.'); }
-    if (drive.noteNext || /^(note|note for later|make a note|remember)\b/.test(low)) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } drive.log.push({ kind: 'note', who: 'Note', text: note }); return driveSay('Noted.'); }
+    if (drive.noteNext || /^(note|note for later|make a note|remember)\b/.test(low)) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } return driveNote(note); }
     if (/^(stop|cancel|never mind|that is all|that's all|goodbye|finish)\b/.test(low)) { drive.state = 'idle'; drive.line = ''; render(); return; }
     const sw = /^(switch|change|go) to (.+)$/.exec(low); if (sw) { const p = data.profiles.find(x => sw[2].includes(x.name.toLowerCase())); if (p) { ui.pid = p.id; ls.set('pid', p.id); drive.chats = {}; drive.who = chiefOf(); return driveSay(`Now on ${p.name}.`); } }
     const md = /^(mark|tick) (.+?) (as )?(done|finished|complete)/.exec(low);

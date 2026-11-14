@@ -21,6 +21,8 @@ final class Drive: NSObject {
     private var monitoring = false           // listening while the phone is speaking, only for an interruption
     private var spoken = Set<String>()       // the words the phone has said this turn (so it does not hear itself as you)
     private var skipWords = 0
+    var names: [String] = []                 // names the hearing should know: your staff and companies
+    private var newHearing: AnyObject?       // the newer speech engine, when the phone has it
     private var heard = ""
     private var quietTimer: Timer?
     private var giveUpTimer: Timer?
@@ -32,6 +34,7 @@ final class Drive: NSObject {
         self.ui = ui
         self.claude = claude
         super.init()
+        if #available(iOS 26.0, *) { NewHearing.prepare() }
         local.tell = { [weak self] function, payload in self?.tell(function, payload) }
         voice.onFinished = { [weak self] in
             guard let self = self else { return }
@@ -82,6 +85,27 @@ final class Drive: NSObject {
         return run >= 3 ? first : nil
     }
 
+    // What has been heard so far, from either engine.
+    private func heardNow(_ full: String) {
+        let tokens = full.split(separator: " ")
+        if monitoring {
+            guard let at = interruptionStart(tokens) else { return }
+            monitoring = false          // you spoke: stop talking and listen to you
+            skipWords = at
+            askID += 1
+            DispatchQueue.main.async { self.answerTimer?.invalidate(); self.answerTimer = nil; self.voice.stop(); self.local.cancel() }
+            tell("driveInterrupted", [:])
+        }
+        let text = tokens.dropFirst(skipWords).joined(separator: " ")
+        guard text != heard else { return }
+        heard = text
+        tell("driveHeard", ["text": text, "final": false])
+        DispatchQueue.main.async {      // a pause of a second and a half means you have finished
+            self.quietTimer?.invalidate()
+            self.quietTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: false) { _ in self.stopListening(send: true) }
+        }
+    }
+
     private func startListening(wait: Double, monitor: Bool = false) {
         stopListening(send: false)
         if !monitor { voice.stop(); spoken.removeAll() }
@@ -89,42 +113,39 @@ final class Drive: NSObject {
         monitoring = monitor
         skipWords = 0
         audio()
-        let request = SFSpeechAudioBufferRecognitionRequest()
-        request.shouldReportPartialResults = true
-        self.request = request
         heard = ""
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0 else { if monitor { monitoring = false; return }; return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone is not ready."]) }
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in request.append(buffer) }
-        engine.prepare()
-        do { try engine.start() } catch { if monitor { monitoring = false; input.removeTap(onBus: 0); return }; return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone could not start."]) }
-        listening = true
-        task = recogniser.recognitionTask(with: request) { [weak self] result, error in
-            guard let self = self, self.listening else { return }
-            if let result = result {
-                let tokens = result.bestTranscription.formattedString.split(separator: " ")
-                if self.monitoring {
-                    guard let at = self.interruptionStart(tokens) else { return }
-                    self.monitoring = false          // you spoke: stop talking and listen to you
-                    self.skipWords = at
-                    self.askID += 1
-                    DispatchQueue.main.async { self.answerTimer?.invalidate(); self.answerTimer = nil; self.voice.stop(); self.local.cancel() }
-                    self.tell("driveInterrupted", [:])
-                }
-                let text = tokens.dropFirst(self.skipWords).joined(separator: " ")
-                if text != self.heard {
-                    self.heard = text
-                    self.tell("driveHeard", ["text": text, "final": false])
-                    DispatchQueue.main.async {      // a pause of a second and a half means you have finished
-                        self.quietTimer?.invalidate()
-                        self.quietTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: false) { _ in self.stopListening(send: true) }
-                    }
-                }
-            }
-            if error != nil { DispatchQueue.main.async { self.stopListening(send: !self.monitoring) } }
+        var feed: ((AVAudioPCMBuffer) -> Void)?
+        if #available(iOS 26.0, *) {          // the newer engine first
+            let hearing = NewHearing()
+            let started = hearing.start(from: format, names: names, onText: { [weak self] text in
+                guard let self = self, self.listening, self.newHearing === hearing else { return }
+                self.heardNow(text)
+            }, onProblem: { [weak self] in
+                DispatchQueue.main.async { guard let self = self, self.newHearing === hearing else { return }; self.stopListening(send: !self.monitoring) }
+            })
+            if started { newHearing = hearing; feed = { hearing.feed($0) } }
         }
+        if feed == nil {                      // the older engine
+            let request = SFSpeechAudioBufferRecognitionRequest()
+            request.shouldReportPartialResults = true
+            if !names.isEmpty { request.contextualStrings = names }
+            self.request = request
+            feed = { request.append($0) }
+            task = recogniser.recognitionTask(with: request) { [weak self] result, error in
+                guard let self = self, self.listening else { return }
+                if let result = result { self.heardNow(result.bestTranscription.formattedString) }
+                if error != nil { DispatchQueue.main.async { self.stopListening(send: !self.monitoring) } }
+            }
+        }
+        let give = feed!
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in give(buffer) }
+        engine.prepare()
+        do { try engine.start() } catch { let quiet = monitor; stopListening(send: false); if quiet { return }; return tell("driveHeard", ["text": "", "final": true, "problem": "The microphone could not start."]) }
+        listening = true
         giveUpTimer?.invalidate()          // nothing said at all: stop waiting
         if monitor { return }
         giveUpTimer = Timer.scheduledTimer(withTimeInterval: wait, repeats: false) { [weak self] _ in
@@ -142,6 +163,8 @@ final class Drive: NSObject {
         if engine.isRunning { engine.stop() }
         engine.inputNode.removeTap(onBus: 0)
         request?.endAudio(); request = nil
+        if #available(iOS 26.0, *) { (newHearing as? NewHearing)?.finish() }
+        newHearing = nil
         task?.cancel(); task = nil
         if send && was { tell("driveHeard", ["text": heard, "final": true]) }
     }
