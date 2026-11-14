@@ -12,20 +12,42 @@ final class Voice: NSObject, AVSpeechSynthesizerDelegate {
 
     override init() { super.init(); phone.delegate = self }
 
-    // The most natural voice installed on the phone, Australian first.
+    // The voice to use: the one you chose in the Voice sheet, or else the most natural English voice installed
+    // (Premium before Enhanced before the basic one; Australian first among equals).
+    private let chosenKey = "phoneVoiceChosen"
+    private func level(_ voice: AVSpeechSynthesisVoice) -> Int { voice.quality.rawValue }
+    private func place(_ language: String) -> Int { language == "en-AU" ? 0 : language == "en-GB" ? 1 : language == "en-US" ? 2 : 3 }
+
+    var englishVoices: [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("en") }
+            .sorted { level($0) != level($1) ? level($0) > level($1) : place($0.language) != place($1.language) ? place($0.language) < place($1.language) : $0.name < $1.name }
+    }
+
+    var chosenID: String {
+        get { UserDefaults.standard.string(forKey: chosenKey) ?? "" }
+        set { if newValue.isEmpty { UserDefaults.standard.removeObject(forKey: chosenKey) } else { UserDefaults.standard.set(newValue, forKey: chosenKey) } }
+    }
+
     private func bestPhoneVoice() -> AVSpeechSynthesisVoice? {
-        let all = AVSpeechSynthesisVoice.speechVoices()
-        for language in ["en-AU", "en-GB", "en-US"] {
-            let mine = all.filter { $0.language == language }.sorted { $0.quality.rawValue > $1.quality.rawValue }
-            if let first = mine.first { return first }
-        }
-        return AVSpeechSynthesisVoice(language: "en-AU")
+        if !chosenID.isEmpty, let mine = AVSpeechSynthesisVoice(identifier: chosenID) { return mine }
+        return englishVoices.first ?? AVSpeechSynthesisVoice(language: "en-AU")
+    }
+
+    private func label(_ voice: AVSpeechSynthesisVoice) -> String {
+        let quality = level(voice) >= 3 ? "Premium" : level(voice) == 2 ? "Enhanced" : "Basic"
+        let where_ = voice.language == "en-AU" ? "Australian" : voice.language == "en-GB" ? "British" : voice.language == "en-US" ? "American" : voice.language
+        return "\(quality), \(where_)"
     }
 
     var phoneVoiceNote: String {
         guard let voice = bestPhoneVoice() else { return "" }
-        let level = voice.quality.rawValue >= 3 ? "Premium" : voice.quality.rawValue == 2 ? "Enhanced" : "Standard"
-        return "\(voice.name), \(level)"
+        return "\(voice.name) (\(label(voice)))"
+    }
+
+    // Every English voice on the phone, best first, for the Voice sheet.
+    var voiceList: [[String: Any]] {
+        let current = bestPhoneVoice()?.identifier ?? ""
+        return englishVoices.prefix(40).map { ["id": $0.identifier, "name": $0.name, "note": label($0), "on": $0.identifier == current] }
     }
 
     // MARK: Speaking, one piece after another

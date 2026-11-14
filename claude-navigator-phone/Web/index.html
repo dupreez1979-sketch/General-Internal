@@ -348,8 +348,11 @@
     const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { drive.voiceOpen = false; render(); };
     const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
     const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
-    opt('The phone’s own voice', v.phoneVoice ? `${v.phoneVoice}. Free, and works with no signal.` : 'Free, and works with no signal.', true, () => {});
-    s2.append(el('p', 'vtip', 'For a more natural voice at no cost, download a Premium or Enhanced English voice in iPhone Settings, under Accessibility. Look for Voices inside Read & Speak (called Spoken Content on older iPhones). Drive uses the best one installed.'));
+    s2.append(el('p', 'vtip', `Drive is using ${v.phoneVoice || 'the phone’s voice'}. It is free and works with no signal. Tap a voice to use it, or Hear It to listen.`));
+    const hear = el('button', 'btn', 'Hear It'); hear.style.margin = '0 6px 12px'; hear.onclick = () => send({ do: 'voiceTry' }); s2.append(hear);
+    for (const x of (v.voices || [])) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); nm.append(el('span', '', x.note)); r.append(nm); if (x.on) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voicePick', id: x.id }); s2.append(r); }
+    if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
+    s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
     s2.append(el('div', 'sec', 'Speed'));
     { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
     return [sh, s2];

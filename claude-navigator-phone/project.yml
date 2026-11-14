@@ -17,7 +17,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.dupreez.claude-navigator-phone
         PRODUCT_NAME: Chief of Staff
-        MARKETING_VERSION: "0.4.1"
+        MARKETING_VERSION: "0.4.2"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Chief of Staff

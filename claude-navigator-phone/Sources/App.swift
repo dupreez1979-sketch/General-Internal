@@ -61,6 +61,8 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "restoreModel": drive.restoreModel()
         case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
         case "voiceGet": sendVoice()
+        case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
+        case "voiceTry": drive.say("This is how I will sound when you are driving.")
         case "ask":
             guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
                   let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai"),
@@ -84,7 +86,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
     }
 
     private func sendVoice() {
-        let payload: [String: Any] = ["phoneVoice": drive.voice.phoneVoiceNote]
+        let payload: [String: Any] = ["phoneVoice": drive.voice.phoneVoiceNote, "voices": drive.voice.voiceList, "chosen": !drive.voice.chosenID.isEmpty]
         guard let json = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: json, encoding: .utf8) else { return }
         ui.evaluateJavaScript("window.driveVoice && window.driveVoice(\(text))", completionHandler: nil)
     }
