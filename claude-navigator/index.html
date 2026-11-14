@@ -14385,7 +14385,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     const another = () => { const P = localDraftParts(C, T, typed, toList, 2500); base = C.userText(); lastAsk = ''; adopt(localAiRun(P.ins, `${P.prompt}\n\nTake a different reasonable line from this version (the other answer, or a different tone):\n${base.slice(0, 1500)}`, null), null); };
     const link = (label, title, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'lnk'; b.textContent = label; b.title = title; b.addEventListener('click', fn); return b; };
-    const toClaude = improve => { if (run) run.cancel(); C.draftGen++; C.fields = C.fields || null; mailDraftClaude(C, m, { improve }); };
+    const toClaude = (improve, note) => { if (run) run.cancel(); C.draftGen++; C.fields = C.fields || null; mailDraftClaude(C, m, { improve, note: String(note || '').trim().slice(0, 600) }); };
     function paint() {
       if (!alive()) return;
       bar.hidden = false; bar.replaceChildren();
@@ -14405,10 +14405,10 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!DRAFT_CHIPS.includes(t)) b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [{ label: `Remove “${t}”`, run: () => { Lr.tweaks = (Lr.tweaks || []).filter(z => z !== t); mailSave(); paint(); } }]); });
         bar.appendChild(b);
       }
-      const inp = document.createElement('input'); inp.className = 'chg'; inp.placeholder = 'Change it… for example: suggest Thursday instead';
+      const inp = document.createElement('input'); inp.className = 'chg'; inp.placeholder = 'Change it… Enter changes it here; or type, then press Improve with Claude';
       inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const v = inp.value.trim(); if (v) change(v); } });
       bar.appendChild(inp);
-      const ic = document.createElement('button'); ic.type = 'button'; ic.className = 'btn-primary imp'; ic.textContent = 'Improve with Claude'; ic.title = 'Hand this draft to Claude for a better version. Takes longer. Nothing is sent.'; ic.addEventListener('click', () => toClaude(true)); bar.appendChild(ic);
+      const ic = document.createElement('button'); ic.type = 'button'; ic.className = 'btn-primary imp'; ic.textContent = 'Improve with Claude'; ic.title = 'Hand this draft to Claude for a better version. To steer it, type what you want in the box first (for example: decline, but offer a call in December). Takes longer. Nothing is sent.'; ic.addEventListener('click', () => toClaude(true, inp.value)); bar.appendChild(ic);
       const row = document.createElement('span'); row.className = 'lnks';
       if (lastAsk && !DRAFT_CHIPS.includes(lastAsk) && !(Lr.tweaks || []).includes(lastAsk) && lastAsk.length <= 40) row.appendChild(link(`Keep “${lastAsk}” as a button`, 'Add this change to the buttons, for next time', () => { Lr.tweaks = (Lr.tweaks || []).concat(lastAsk).slice(-8); mailSave(); paint(); }));
       row.appendChild(link('Another version', 'A different take on the reply', another));
@@ -14445,6 +14445,7 @@ body { width: max-content !important; min-width: 0 !important; }
       T ? `Write the reply ${first} would most likely send to the email below. If there is a real choice to make (yes or no, now or later), take the most likely one and say so in your note.` : `Write the email ${first} describes below.`,
       `Write as ${first}, in the first person. Plain, warm, direct. Australian English. Never use em dashes. Start with the greeting and end with the sign-off and first name only: the app adds his signature and the quoted email. If you need a fact you do not have, put it in square brackets for him to fill in; never invent one.`,
       format, mailStyleFor(C, toList),
+      opt.note ? `What ${first} wants from this version (follow this above all):\n${opt.note}` : '',
       brief ? `Where the team is up to (for context, use only if relevant):\n${brief}` : '',
       typed ? `${opt.improve ? 'A quick first draft is already in the reply. Improve on it: keep what is right, fix what is weak, and make it sound like him' : T ? `What ${first} has typed so far in the reply (build on it)` : 'What he wants to say'}:\n${typed}` : (T ? '' : `Subject: ${(V0 && V0.body.subject) || ''}`),
       T ? `${MAIL_GUARD}\n\n--- EMAIL ---\n${T.head}\n\n${T.text}\n--- END OF EMAIL ---` : '',
