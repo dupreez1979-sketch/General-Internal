@@ -349,7 +349,7 @@
     const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
     const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
     opt('The phone’s own voice', v.phoneVoice ? `${v.phoneVoice}. Free, and works with no signal.` : 'Free, and works with no signal.', v.mode !== 'eleven', () => send({ do: 'voiceSet', mode: 'phone' }));
-    const tip = el('p', 'vtip', 'For a much better free voice: iPhone Settings, Accessibility, Spoken Content, Voices, English (Australia), then download a Premium or Enhanced voice. Drive uses the best one installed.'); s2.append(tip);
+    const tip = el('p', 'vtip', 'For a much better free voice, download a Premium or Enhanced English voice in iPhone Settings, under Accessibility. Look for Voices inside Read & Speak (called Spoken Content on older iPhones). Drive uses the best one installed.'); s2.append(tip);
     if (!v.hasKey) opt('An ElevenLabs voice', 'More natural. Uses your ElevenLabs account, which charges for what is spoken. Tap to add your key.', false, () => send({ do: 'voiceKey' }));
     else {
       opt('An ElevenLabs voice', v.voiceName ? `Using ${v.voiceName}.` : 'Choose a voice below.', v.mode === 'eleven' && !!v.voiceID, () => { if (v.voiceID) send({ do: 'voiceSet', mode: 'eleven' }); send({ do: 'voiceList' }); });
