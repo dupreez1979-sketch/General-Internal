@@ -1477,6 +1477,18 @@ ipcMain.handle('phone-publish', (e, docs) => {
     return { ok: true, dir };
   } catch (err) { return { ok: false, why: String(err && err.message || err) }; }
 });
+// What you did on the phone (a new chat, an action ticked done, an output filed) arrives as a small file in the same
+// iCloud Drive folder. The Mac reads it, applies each change once, and notes which ones it has applied.
+ipcMain.handle('phone-changes', (e) => {
+  if (!fromOwnWindow(e)) return null;
+  const dir = phoneDir(); if (!dir) return null;
+  try { const t = fs.readFileSync(path.join(dir, 'phone-changes.json'), 'utf8'); return t.length < 2e6 ? JSON.parse(t) : null; } catch (err) { return null; }
+});
+ipcMain.handle('phone-applied', (e, ids) => {
+  if (!fromOwnWindow(e) || !Array.isArray(ids)) return false;
+  const dir = phoneDir(); if (!dir) return false;
+  try { const f = path.join(dir, 'mac-applied.json'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify({ v: 1, ids: ids.filter(x => typeof x === 'string').slice(-800) })); fs.renameSync(f + '.tmp', f); return true; } catch (err) { return false; }
+});
 ipcMain.handle('dictation-start', () => { if (!isMac) return false; try { Menu.sendActionToFirstResponder('startDictation:'); return true; } catch (e) { return false; } });
 // A profile's invite design (logo, shapes, fonts, colours) is a file kept on this Mac only, never in the app itself.
 const inviteKitFile = pid => path.join(app.getPath('userData'), 'invite-kits', String(pid).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 80) + '.json');

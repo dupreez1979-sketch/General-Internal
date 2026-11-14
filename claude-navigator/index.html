@@ -15011,15 +15011,51 @@ body { width: max-content !important; min-width: 0 !important; }
       work[n.id] = {
         open: all.filter(x => !x.done && !inArchive(x.id)).slice(0, 80).map(item),
         done: all.filter(x => x.done && (x.doneAt || 0) > Date.now() - 30 * 864e5).slice(0, 40).map(x => Object.assign(item(x), { doneAt: x.doneAt || 0,
-          outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => ({ name: o.name, url: o.url, filed: companyHomes(o.url, p).map(h => h.name) })) })),
+          outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => { const filed = companyHomes(o.url, p).map(h => h.name); let sug = ''; if (!filed.length) { try { const b = usualPlace(n) || botBestFolder({ name: o.name }, p); sug = b ? b.id : ''; } catch (e) { /* no guess */ } } return { name: o.name, url: o.url, filed, suggest: sug }; }) })),
       };
     }
     const doc = { v: 1, profile: { id: p.id, name: p.name, color: p.color || '' },
       nodes: t.nodes.map(n => ({ id: n.id, kind: n.kind, name: n.name, role: n.role || '', color: n.color || '', parent: n.parent || null, chief: !!n.chief, project: n.claudeProject ? { name: n.claudeProject.name || '', url: n.claudeProject.url || '' } : null })),
-      work };
+      work, folders: companyFolderChoices(p).slice(0, 120) };
     if (active) { doc.today = botSuggestions().slice(0, 20).map(sg => ({ type: sg.type, kind: sg.kind, text: sg.text, name: sg.name || '' })); doc.todayAt = Date.now(); }
     return doc;
   }
+  // What was done on the phone comes back here: each change is applied once.
+  const PHONE_APPLIED = 'claudeNavigator.phoneApplied';
+  let phoneMerging = false;
+  async function phoneMerge() {
+    if (!isApp || SOLO || phoneMerging || !window.navigatorApp || !window.navigatorApp.phoneChanges) return;
+    phoneMerging = true;
+    try {
+      const got = await window.navigatorApp.phoneChanges();
+      const list = (got && Array.isArray(got.changes)) ? got.changes : [];
+      let applied = []; try { applied = JSON.parse(ls.get(PHONE_APPLIED) || '[]'); } catch (e) { applied = []; }
+      const seen = new Set(applied), fresh = list.filter(c => c && typeof c.id === 'string' && !seen.has(c.id)).slice(0, 100);
+      if (!fresh.length) { if (list.length && !phoneMerge.told) { phoneMerge.told = true; window.navigatorApp.phoneApplied(applied); } return; }
+      let chats = 0, dones = 0, files = 0;
+      for (const c of fresh) {
+        try {
+          const p = profiles().find(x => x.id === c.pid), t = p && (cos.teams || {})[p.id], st = t && t.nodes.find(x => x.id === c.staff);
+          if (c.type === 'chat' && p && st && /^https:\/\/claude\.ai\/chat\//.test(c.url || '')) {
+            const f = staffFolder(st, p);
+            if (f && !workItems(f).some(x => normUrl(x.url || '') === normUrl(c.url))) { insertInto(f.id, Object.assign(Link(String(c.name || 'Chat from the phone').slice(0, 200), c.url), { fromPhone: true })); chats++; }
+          } else if (c.type === 'done') {
+            const n = nodeOf(c.item); if (n && n.type === 'link' && !n.done) { toggleDone(n.id); dones++; }
+          } else if (c.type === 'file' && p && /^https:\/\/claude\.ai\//.test(c.url || '') && isCompanyFolder(c.folder) && profileOf(c.folder) === p) {
+            if (!companyHomes(c.url, p).some(h => h.id === c.folder)) { fileWorkOutput({ name: String(c.name || 'Output').slice(0, 200), url: c.url }, c.folder, st || null, p); files++; }
+          }
+        } catch (e) { console.error('Phone change', e); }
+        applied.push(c.id);
+      }
+      applied = applied.slice(-800); ls.set(PHONE_APPLIED, JSON.stringify(applied));
+      window.navigatorApp.phoneApplied(applied);
+      if (chats) commit();
+      const bits = [chats && `${chats} new chat${chats === 1 ? '' : 's'}`, dones && `${dones} marked done`, files && `${files} output${files === 1 ? '' : 's'} filed`].filter(Boolean);
+      if (bits.length) toast(`From your phone: ${bits.join(', ')}.`);
+      phoneSoon();
+    } catch (e) { console.error('Phone', e); } finally { phoneMerging = false; }
+  }
+  if (isApp && !SOLO) { setTimeout(phoneMerge, 6000); setInterval(phoneMerge, 60000); addEventListener('focus', () => setTimeout(phoneMerge, 800)); }
   function phonePublish() {
     if (!isApp || SOLO || !window.navigatorApp || !window.navigatorApp.phonePublish) return;
     const docs = {}, ap = activeProfile();
