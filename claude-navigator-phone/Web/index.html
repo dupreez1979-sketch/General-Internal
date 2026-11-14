@@ -105,7 +105,7 @@
     let open = w.open.slice(), done = w.done.slice(), outs = w.outs ? w.outs.slice() : null;
     for (const c of changes) {
       if (c.pid !== ui.pid) continue;
-      if (c.type === 'chat' && c.staff === id && ![...open, ...done].some(x => sameUrl(x.url, c.url))) open.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, waiting: true });
+      if (c.type === 'chat' && c.staff === id && ![...open, ...done].some(x => sameUrl(x.url, c.url))) { if (c.drive) done.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, doneAt: c.at, outputs: [], waiting: true }); else open.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, waiting: true }); }       // a Drive conversation is finished, not an open action
       if (c.type === 'done') { const i = open.findIndex(x => x.id === c.item); if (i >= 0) { const [x] = open.splice(i, 1); done.unshift(Object.assign({ outputs: [] }, x, { doneAt: c.at, waiting: true })); } }
       if (c.type === 'file' && c.staff === id && outs) outs = outs.map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o);
       if (c.type === 'file' && c.staff === id) done = done.map(x => Object.assign({}, x, { outputs: (x.outputs || []).map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o) }));
@@ -334,7 +334,7 @@
       st.done = true; drive.pending = null; drive.line = text;
       if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
         const url = a.url.replace(/[?#].*$/, '');
-        if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', staff: n.id, url, name: 'From the drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+        if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', drive: true, staff: n.id, url, name: 'Drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
       }
       drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend.text, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
       if (st.left <= 0) { drive.stream = null; driveListen(6); return; }

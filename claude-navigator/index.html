@@ -15160,13 +15160,18 @@ body { width: max-content !important; min-width: 0 !important; }
       let applied = []; try { applied = JSON.parse(ls.get(PHONE_APPLIED) || '[]'); } catch (e) { applied = []; }
       const seen = new Set(applied), fresh = list.filter(c => c && typeof c.id === 'string' && !seen.has(c.id)).slice(0, 100);
       if (!fresh.length) { if (list.length && !phoneMerge.told) { phoneMerge.told = true; window.navigatorApp.phoneApplied(applied); } return; }
-      let chats = 0, dones = 0, files = 0;
+      let chats = 0, dones = 0, files = 0, drives = 0;
       for (const c of fresh) {
         try {
           const p = profiles().find(x => x.id === c.pid), t = p && (cos.teams || {})[p.id], st = t && t.nodes.find(x => x.id === c.staff);
           if (c.type === 'chat' && p && st && /^https:\/\/claude\.ai\/chat\//.test(c.url || '')) {
             const f = staffFolder(st, p);
-            if (f && !workItems(f).some(x => normUrl(x.url || '') === normUrl(c.url))) { insertInto(f.id, Object.assign(Link(String(c.name || 'Chat from the phone').slice(0, 200), c.url), { fromPhone: true })); chats++; }
+            if (f && !workItems(f).some(x => normUrl(x.url || '') === normUrl(c.url))) {
+              const l = Object.assign(Link(String(c.name || 'Chat from the phone').slice(0, 200), c.url), { fromPhone: true });
+              // A conversation from Drive mode is finished when the drive is: it goes straight to the Archive, never onto the open list.
+              if (c.drive) { Object.assign(l, { done: true, doneAt: c.at || Date.now(), fromDrive: true }); const ar = archiveFolder(f); insertInto(ar ? ar.id : f.id, l); drives++; }
+              else { insertInto(f.id, l); chats++; }
+            }
           } else if (c.type === 'done') {
             const n = nodeOf(c.item); if (n && n.type === 'link' && !n.done) { toggleDone(n.id); dones++; }
           } else if (c.type === 'file' && p && /^https:\/\/claude\.ai\//.test(c.url || '') && isCompanyFolder(c.folder) && profileOf(c.folder) === p) {
@@ -15177,8 +15182,8 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       applied = applied.slice(-800); ls.set(PHONE_APPLIED, JSON.stringify(applied));
       window.navigatorApp.phoneApplied(applied);
-      if (chats) commit();
-      const bits = [chats && `${chats} new chat${chats === 1 ? '' : 's'}`, dones && `${dones} marked done`, files && `${files} output${files === 1 ? '' : 's'} filed`].filter(Boolean);
+      if (chats || drives) commit();
+      const bits = [chats && `${chats} new chat${chats === 1 ? '' : 's'}`, drives && `${drives} conversation${drives === 1 ? '' : 's'} from your drive, kept in the Archive`, dones && `${dones} marked done`, files && `${files} output${files === 1 ? '' : 's'} filed`].filter(Boolean);
       if (bits.length) toast(`From your phone: ${bits.join(', ')}.`);
       phoneSoon();
     } catch (e) { console.error('Phone', e); } finally { phoneMerging = false; }
