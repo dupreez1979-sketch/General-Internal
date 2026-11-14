@@ -700,6 +700,8 @@
   .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
   .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
+  .outs-x { margin-left: auto; border: 0; background: none; color: var(--muted); padding: 3px 5px; border-radius: 5px; opacity: 0; } .outs-r:hover .outs-x { opacity: .8; } .outs-x:hover { background: color-mix(in srgb, var(--text) 10%, transparent); opacity: 1; }
+  .outs-gone { margin-top: 16px; font-size: 12.5px; color: var(--muted); } .outs-gone .lk { color: var(--muted); border: 0; background: none; font: inherit; padding: 0; text-decoration: underline; } .outs-r.gone { opacity: .7; }
   .outs-r .lk.nm { font-weight: 600; max-width: calc(100% - 44px); vertical-align: middle; } .outs-r .ext { font-style: normal; font-size: 10px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: middle; } .outs-r .lk.path { color: #328276; }
   .outs-r .where { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
   dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
@@ -8287,13 +8289,37 @@
   // the working and stays with the staff member. An item that is not a chat is itself the output.
   const fileTitle = name => name.replace(/\.[A-Za-z0-9]{2,5}$/, '').replace(/[_]+/g, ' ').trim() || name;
   const fileExt = name => ((/\.([A-Za-z0-9]{2,5})$/.exec(name) || [])[1] || '').toUpperCase();
-  function workOutputs(x) {
-    if (!/\/chat\//.test(x.url || '')) return [{ name: x.name, url: x.url, node: x }];
-    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
-    const arts = ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
+  // Outputs are what a piece of work PRODUCED. Three things are kept out:
+  //  - design systems, skills and projects: those are what the work draws on, not what it makes;
+  //  - an output another, earlier chat made: when several chats mention the same one, it belongs to the earliest,
+  //    and the later chats only used it;
+  //  - anything you have removed from a staff member's outputs by hand.
+  const NOT_OUTPUT = new Set(['designsystem', 'skill', 'project', 'schedule', 'code', 'folder']);
+  const outKey = o => (o.file ? o.url : normUrl(o.url || ''));
+  let outOwnersAt = '', outOwners = new Map();
+  function outputOwners() {
+    const rel = lib.related || {}, stamp = (lib.fetchedAt || 0) + ':' + Object.keys(rel).length + ':' + Object.values(rel).reduce((n, l) => n + l.length, 0);
+    if (stamp === outOwnersAt) return outOwners;
+    const when = new Map((lib.chats || []).map(c => [normUrl(c.url || ''), Date.parse(c.created || c.updated || '') || 0]));
+    const m = new Map();
+    for (const [chat, arts] of Object.entries(rel)) for (const a of arts) { const k = normUrl(/^https?:/.test(a) ? a : 'https://claude.ai' + a), t = when.get(normUrl(chat)) || Infinity, cur = m.get(k); if (!cur || t < cur.t) m.set(k, { chat: normUrl(chat), t }); }
+    outOwnersAt = stamp; outOwners = m; return m;
+  }
+  const outRemoved = () => { const t = cosTeam(); return new Set((t && t.outHidden) || []); };
+  function workOutputs(x, withRemoved) {
+    const gone = withRemoved ? new Set() : outRemoved();
+    if (!/\/chat\//.test(x.url || '')) {
+      const kind = x.as || libKind({ url: x.url, name: x.name, meta: x.meta }, 'artifacts');
+      const o = { name: x.name, url: x.url, node: x };
+      return NOT_OUTPUT.has(kind) || !/^https?:\/\/claude\.ai\//.test(x.url || '') || gone.has(outKey(o)) ? [] : [o];
+    }
+    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a])), owners = outputOwners(), me = normUrl(x.url);
+    const arts = ((lib.related || {})[me] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url, a }; })
+      .filter(o => { const own = owners.get(normUrl(o.url)); return !NOT_OUTPUT.has(libKind(o.a || { url: o.url, name: o.name }, 'artifacts')) && (!own || own.chat === me); })
+      .map(o => ({ name: o.name, url: o.url }));
     // Files Claude made in the chat. Each is known by the chat's address plus the file's name, since a file has no address of its own.
-    const files = ((lib.files || {})[normUrl(x.url)] || []).map(name => ({ name: fileTitle(name), url: normUrl(x.url) + '#file=' + encodeURIComponent(name), file: name, ext: fileExt(name) }));
-    return arts.concat(files);
+    const files = ((lib.files || {})[me] || []).map(name => ({ name: fileTitle(name), url: me + '#file=' + encodeURIComponent(name), file: name, ext: fileExt(name) }));
+    return arts.concat(files).filter(o => !gone.has(outKey(o)));
   }
   // Where an output is filed. A file made in a chat is matched by its exact address (chat plus file name).
   function outHomes(o, p) {
@@ -8326,18 +8352,18 @@
   }
   // Everything a staff member's work has produced, newest first, with where each one is filed. For the Chief of
   // Staff: the whole team's.
-  function staffOutputs(n) {
-    const p = activeProfile(), t = cosTeam(), rows = [], seen = new Set();
+  function staffOutputs(n, removedOnly) {
+    const p = activeProfile(), t = cosTeam(), rows = [], seen = new Set(), gone = outRemoved();
     const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
     for (const st of (n.chief ? ((t && t.nodes) || []).filter(x => x.kind === 'staff') : [n])) {
       const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
       const items = workItems(f).filter(x => x.type === 'link' && !inSkills(x.id));
       const chats = items.filter(x => /\/chat\//.test(x.url || ''));
-      const add = (o, from, x) => { const key = st.id + '|' + (o.file ? o.url : normUrl(o.url || '')); if (!o.url || seen.has(key)) return; seen.add(key);
+      const add = (o, from, x) => { const key = st.id + '|' + outKey(o); if (!o.url || seen.has(key) || (removedOnly && !gone.has(outKey(o)))) return; seen.add(key);
         const a = artBy.get(normUrl(o.url)); const at = (a && a.updated && Date.parse(a.updated)) || (x && (x.doneAt || x.added)) || 0;
         rows.push({ st, o, from, at, homes: outHomes(o, p), past: !!(x && x.done) }); };          // past: the work it came from is finished
-      for (const x of chats) for (const o of workOutputs(x)) add(o, x, x);                    // what each chat made
-      for (const x of items) if (!/\/chat\//.test(x.url || '')) add({ name: x.name, url: x.url, node: x }, null, x);     // artifacts and documents kept in their work
+      for (const x of chats) for (const o of workOutputs(x, removedOnly)) add(o, x, x);                    // what each chat made
+      for (const x of items) if (!/\/chat\//.test(x.url || '')) for (const o of workOutputs(x, removedOnly)) add(o, null, x);     // outputs kept in their work as items of their own
     }
     return rows.sort((a, b) => (b.at || 0) - (a.at || 0));
   }
@@ -8368,7 +8394,19 @@
         const e = document.createElement('button'); e.className = 'btn'; e.textContent = best ? 'Elsewhere\u2026' : 'File\u2026';
         e.addEventListener('click', () => openDialog({ title: `File \u201c${r.o.name}\u201d in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileWorkOutput(r.o, folderId, r.st, p); renderCos(); } })); c4.append(e);
       }
+      const rm = document.createElement('button'); rm.className = 'outs-x'; rm.innerHTML = FICON.hide; rm.title = 'Remove from the outputs. The work stays open, and nothing is deleted in Claude.';
+      rm.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k).concat(k).slice(-2000); }, null); toast(`Removed \u201c${r.o.name}\u201d from the outputs`, { label: 'Undo', run: () => cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); }, null) }); });
+      c4.appendChild(rm);
       row.appendChild(c4); list.appendChild(row);
+    }
+    // What you removed by hand can be put back.
+    const removed = staffOutputs(n, true);
+    if (removed.length) {
+      const more = document.createElement('div'); more.className = 'outs-gone';
+      const tg = link(cosUi.outShowRemoved ? `Hide the ${removed.length} removed` : `${removed.length} removed from this list. Show`, 'Outputs you took off this list', () => { cosUi.outShowRemoved = !cosUi.outShowRemoved; paintOutputs(n, host); }); more.appendChild(tg);
+      if (cosUi.outShowRemoved) for (const r of removed) { const row = document.createElement('div'); row.className = 'outs-r gone'; row.appendChild(Object.assign(document.createElement('span'), { textContent: r.o.name })); row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.from ? r.from.name : '' }));
+        const back = document.createElement('button'); back.className = 'btn'; back.textContent = 'Put Back'; back.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); }, null); }); const sp = document.createElement('span'); sp.className = 'where'; sp.appendChild(back); row.append(document.createElement('span'), sp); more.appendChild(row); }
+      list.appendChild(more);
     }
     if (!rows.length && (all.length || q)) { const more = !cosUi.outPast && q ? every.filter(r => r.past && match(r)).length : 0; list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: more ? `Nothing in current work matches. ${more} in finished work: press Past Work.` : 'Nothing matches. Choose All or clear the search.' })); }
     host.appendChild(list);

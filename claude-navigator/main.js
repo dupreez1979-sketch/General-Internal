@@ -528,6 +528,7 @@ const API_SCRIPT = `(async () => {
             name: c.name || 'Untitled chat',
             url: 'https://claude.ai/chat/' + c.uuid,
             updated: c.updated_at || c.created_at || null,
+            created: c.created_at || null,
             starred: !!c.is_starred,
             org: o.uuid,
           });
