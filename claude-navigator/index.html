@@ -614,7 +614,8 @@
   .lights button.lt { width: 12px; height: 12px; min-width: 0; box-sizing: border-box; border-radius: 50%; border: .5px solid rgba(0,0,0,.2); padding: 0; margin: 0; font: 700 9px/11px -apple-system, Helvetica, Arial, sans-serif; color: transparent; text-align: center; cursor: default; }
   .lights button.lt.r { background: #FF5F57; } .lights button.lt.y { background: #FEBC2E; } .lights button.lt.g { background: #28C840; }
   .lights:hover button.lt { color: rgba(0,0,0,.6); }
-  .lights button.lt.off, .lights:hover button.lt.off { background: color-mix(in srgb, var(--text) 16%, transparent); border-color: transparent; color: transparent; pointer-events: none; }
+  .lights button.lt.off, .lights:hover button.lt.off { display: none; }          /* a dot that does nothing is not shown: where only Close applies, there is just the red one */
+  .fctl .lights { margin: 0 2px 0 8px; vertical-align: middle; }
   dialog > .dlg-lights { position: absolute; top: 12px; left: 14px; margin: 0; z-index: 5; }
   dialog.has-lights { padding-top: 38px !important; }
   dialog.has-lights.full { width: 96vw !important; height: 94vh !important; max-width: none !important; max-height: none !important; left: 2vw !important; top: 3vh !important; margin: 0 !important; }
@@ -7100,7 +7101,8 @@
     const nm = FRAME_NAMES[name];
     if (wide) b('wide', f.wide ? FICON.narrow : FICON.wide, f.wide ? 'Show Claude beside the list again' : 'Widen Claude to fill the window', false);
     b('swap', FICON.swap, `Move the ${nm.toLowerCase()} to the ${f.at === 'left' ? 'right' : 'left'}`);
-    b('hide', FICON.hide, `Close the ${nm.toLowerCase()} (the ${EDGE_LABEL[name]} tab at the edge brings it back)`);
+    // Close is the same red dot every panel has, at the right-hand end.
+    { const lights = macLights({ close: () => frameAction(name, 'hide'), titles: { close: `Close the ${nm.toLowerCase()} (the ${EDGE_LABEL[name]} tab at the edge brings it back)` } }); const red = lights.querySelector('.lt.r'); red.dataset.f = 'hide'; red.addEventListener('dblclick', e => e.stopPropagation()); el.appendChild(lights); }
     return el;
   }
   // Claude: open (beside the list) and close.
@@ -9473,7 +9475,8 @@
       toast('Loading your chats and outputs from Claude\u2026');
     });
     const grow = document.createElement('span'); grow.className = 'fgrow';   // pushes search and the frame buttons to the right
-    head.append(grow, q, rf, frameCtl('claude'));
+    const mm = document.createElement('button'); mm.className = 'tb'; mm.innerHTML = '<span class="t">Make Main</span>'; mm.title = 'Make Claude the main app'; mm.hidden = cosUi.srcFrom !== 'claude'; mm.addEventListener('click', () => dockMain('claude'));
+    head.append(grow, q, rf, mm, frameCtl('claude'));
     // An empty Claude list the first time: load it without being asked.
     if ((cosUi.srcFrom === 'chats' || cosUi.srcFrom === 'artifacts') && !(lib[cosUi.srcFrom] || []).length && !cosUi.autoLoaded) { cosUi.autoLoaded = true; refreshLibrary(false); }
     const sub = document.createElement('div');
