@@ -700,7 +700,7 @@
   .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
   .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
-  .outs-r .lk.nm { font-weight: 600; } .outs-r .lk.path { color: #328276; }
+  .outs-r .lk.nm { font-weight: 600; max-width: calc(100% - 44px); vertical-align: middle; } .outs-r .ext { font-style: normal; font-size: 10px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: middle; } .outs-r .lk.path { color: #328276; }
   .outs-r .where { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
   dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
   .outs-list { max-height: 56vh; overflow: auto; margin: 6px 0 12px; }
@@ -2291,7 +2291,7 @@
     return out;
   }
   const lib = (() => {
-    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], skills: [], pagePaths: {}, kinds: {}, related: {}, scanned: {}, detached: [], archived: [], pageChecked: {}, scanVersion: 0, fetchedAt: 0, error: null, signedIn: true };
+    const base = { chats: [], projects: [], artifacts: [], code: [], design: [], scheduled: [], skills: [], pagePaths: {}, kinds: {}, related: {}, files: {}, scanned: {}, detached: [], archived: [], pageChecked: {}, scanVersion: 0, fetchedAt: 0, error: null, signedIn: true };
     try {
       const x = JSON.parse(ls.get(LIB_STORE));
       if (x && typeof x === 'object') return Object.assign(base, x, { busy: false });
@@ -2300,10 +2300,10 @@
   })();
   const saveLib = () => (bumpCaches(), ls.set(LIB_STORE, JSON.stringify({
     chats: lib.chats, projects: lib.projects, artifacts: lib.artifacts, code: lib.code, design: lib.design, scheduled: lib.scheduled, skills: lib.skills, pagePaths: lib.pagePaths,
-    kinds: lib.kinds, related: lib.related, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn, chatsCompleteAt: lib.chatsCompleteAt,
+    kinds: lib.kinds, related: lib.related, files: lib.files, scanned: lib.scanned, detached: lib.detached, archived: lib.archived, pageChecked: lib.pageChecked, scanVersion: lib.scanVersion, diag: lib.diag, fetchedAt: lib.fetchedAt, error: lib.error, signedIn: lib.signedIn, chatsCompleteAt: lib.chatsCompleteAt,
   })));
   state.libFilter = ['unfiled', 'filed', 'archived'].includes(ls.get(LIB_FILTER_STORE)) ? ls.get(LIB_FILTER_STORE) : 'all';
-  if (lib.scanVersion !== 2) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 2; }   // new ways to find links: look again
+  if (lib.scanVersion !== 3) { lib.scanned = {}; lib.pageChecked = {}; lib.scanVersion = 3; }   // new ways to find links: look again
   const libSel = new Set();
   let libRowItems = new Map();
   const PAGE_SIZE = 100;
@@ -4912,6 +4912,9 @@
       if (r.pageChecked) lib.pageChecked = Object.assign(lib.pageChecked || {}, r.pageChecked);
       lib.diag = Object.assign({ at: new Date().toISOString(), notes: r.notes || [] }, r.diag || {});
       for (const [c, a] of r.relations || []) if (!isDetached(c, a)) addRelation(c, a);
+      // Files Claude made in each chat (its Outputs panel): kept by chat, so they show as that work's outputs.
+      lib.files = lib.files || {};
+      for (const [c, name] of r.chatFiles || []) { const k = normUrl(c), l = lib.files[k] || (lib.files[k] = []); if (!l.includes(name) && l.length < 80) l.push(name); }
       autoAttachSiblings();
       repairGenericNames();
       lib.error = r.chats && r.chats.length ? null : ((r.notes || []).join('; ') || null);
@@ -8282,16 +8285,27 @@
   }
   // What a piece of work produced. The company folders hold outputs (artifacts, documents, final files); a chat is
   // the working and stays with the staff member. An item that is not a chat is itself the output.
+  const fileTitle = name => name.replace(/\.[A-Za-z0-9]{2,5}$/, '').replace(/[_]+/g, ' ').trim() || name;
+  const fileExt = name => ((/\.([A-Za-z0-9]{2,5})$/.exec(name) || [])[1] || '').toUpperCase();
   function workOutputs(x) {
     if (!/\/chat\//.test(x.url || '')) return [{ name: x.name, url: x.url, node: x }];
     const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
-    return ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
+    const arts = ((lib.related || {})[normUrl(x.url)] || []).map(u => { const a = artBy.get(normUrl(u)); const url = a ? a.url : (/^https?:/.test(u) ? u : 'https://claude.ai' + u); return { name: (a && a.name) || `${x.name} (output)`, url }; });
+    // Files Claude made in the chat. Each is known by the chat's address plus the file's name, since a file has no address of its own.
+    const files = ((lib.files || {})[normUrl(x.url)] || []).map(name => ({ name: fileTitle(name), url: normUrl(x.url) + '#file=' + encodeURIComponent(name), file: name, ext: fileExt(name) }));
+    return arts.concat(files);
+  }
+  // Where an output is filed. A file made in a chat is matched by its exact address (chat plus file name).
+  function outHomes(o, p) {
+    if (!o || !o.file) return companyHomes(o.url, p);
+    const out = [], w = (list, parent) => (list || []).forEach(n => { if (n.type === 'folder') { if (!n.team) w(n.children, n); } else if (n.type === 'link' && n.url === o.url && parent) out.push(parent); });
+    if (p) w(p.children, null); return out;
   }
   function fileWorkOutput(o, folderId, st, p) {
     if (o.node) return fileIntoCompany([o.node.id], folderId);
     if (!isCompanyFolder(folderId)) return toast('Choose one of the company folders (outside Team).');
-    if (companyHomes(o.url, p).some(f2 => f2.id === folderId)) return toast('It is already filed there.');
-    snap(); insertInto(folderId, Object.assign(Link(o.name, o.url), st ? { filedBy: st.name, filedById: st.id, filedAt: Date.now() } : {}));
+    if (outHomes(o, p).some(f2 => f2.id === folderId)) return toast('It is already filed there.');
+    snap(); insertInto(folderId, Object.assign(Link(o.file || o.name, o.url), st ? { filedBy: st.name, filedById: st.id, filedAt: Date.now() } : {}, o.file ? { madeFile: o.file } : {}));
     try { botLearnFiling([o.name], folderId); } catch (e) { /* not ready */ }
     if (st && !usualPlace(st)) { st.fileTo = folderId; saveCos(); }
     commit(); toast(`Filed “${o.name}” in ${nodeOf(folderId).name}.${st ? ` The chat stays with ${st.name}.` : ''}`, true);
@@ -8304,7 +8318,7 @@
     for (const st of ((t && t.nodes) || []).filter(x => x.kind === 'staff' && (!onlyStaff || x.id === onlyStaff))) {
       const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
       for (const x of workItems(f).filter(x => x.type === 'link' && x.done && !inSkills(x.id) && (x.doneAt || 0) >= since)) {
-        const outs = workOutputs(x).filter(o => o.url).map(o => ({ o, homes: companyHomes(o.url, p) }));
+        const outs = workOutputs(x).filter(o => o.url).map(o => ({ o, homes: outHomes(o, p) }));
         rows.push({ st, x, outs, chatFiled: companyHomes(x.url, p).length > 0 });
       }
     }
@@ -8319,9 +8333,9 @@
       const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
       const items = workItems(f).filter(x => x.type === 'link' && !inSkills(x.id));
       const chats = items.filter(x => /\/chat\//.test(x.url || ''));
-      const add = (o, from, x) => { const key = st.id + '|' + normUrl(o.url || ''); if (!o.url || seen.has(key)) return; seen.add(key);
+      const add = (o, from, x) => { const key = st.id + '|' + (o.file ? o.url : normUrl(o.url || '')); if (!o.url || seen.has(key)) return; seen.add(key);
         const a = artBy.get(normUrl(o.url)); const at = (a && a.updated && Date.parse(a.updated)) || (x && (x.doneAt || x.added)) || 0;
-        rows.push({ st, o, from, at, homes: companyHomes(o.url, p), past: !!(x && x.done) }); };          // past: the work it came from is finished
+        rows.push({ st, o, from, at, homes: outHomes(o, p), past: !!(x && x.done) }); };          // past: the work it came from is finished
       for (const x of chats) for (const o of workOutputs(x)) add(o, x, x);                    // what each chat made
       for (const x of items) if (!/\/chat\//.test(x.url || '')) add({ name: x.name, url: x.url, node: x }, null, x);     // artifacts and documents kept in their work
     }
@@ -8340,7 +8354,7 @@
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
       const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
-      const c1 = document.createElement('span'); c1.append(link(r.o.name, 'Open this output beside the list', () => cosOpenLink({ name: r.o.name, url: r.o.url }), 'nm')); row.appendChild(c1);
+      const c1 = document.createElement('span'); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the chat; the file is under Outputs in its side panel.` : 'Open this output beside the list', () => cosOpenLink({ name: r.o.name, url: r.o.url }), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
       if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
       const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it, beside the list', () => cosOpenLink({ name: r.from.name, url: r.from.url }), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
       row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.at ? new Date(r.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }));
@@ -8396,7 +8410,7 @@
     const done = archived ? `Done and moved to ${d.staff ? d.staff.name + '\u2019s ' : ''}Archive.` : 'Done.';
     const p = profileOf(id), usual = usualPlace(d.staff);
     if (d.n.type !== 'link') return toast(done, true);
-    const outs = workOutputs(d.n).filter(o => o.url), loose = outs.filter(o => !companyHomes(o.url, p).length);
+    const outs = workOutputs(d.n).filter(o => o.url), loose = outs.filter(o => !outHomes(o, p).length);
     if (!outs.length) {                                  // a chat with nothing to show for it yet
       if (companyHomes(d.n.url, p).length) return toast(done, true);
       return toast(`${done} There is no finished output to file yet.`, { label: 'Ask for the Final Version', run: () => askFinal(d.n) });
@@ -14842,7 +14856,7 @@ body { width: max-content !important; min-width: 0 !important; }
       let shown = 0;
       for (const x of done) {
         if (shown >= 3) break;
-        const outs = outputsOf(x), loose = outs.filter(o => o.url && !companyHomes(o.url, p).length);
+        const outs = outputsOf(x), loose = outs.filter(o => o.url && !outHomes(o, p).length);
         const usual = usualPlace(s);
         for (const o of loose.slice(0, 2)) {
           const best = usual || botBestFolder({ name: o.name }, p);
@@ -15148,7 +15162,7 @@ body { width: max-content !important; min-width: 0 !important; }
         outs,
         open: all.filter(x => !x.done && !inArchive(x.id)).slice(0, 80).map(item),
         done: all.filter(x => x.done && (x.doneAt || 0) > Date.now() - 30 * 864e5).slice(0, 40).map(x => Object.assign(item(x), { doneAt: x.doneAt || 0,
-          outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => { const filed = companyHomes(o.url, p).map(h => h.name); let sug = ''; if (!filed.length) { try { const b = usualPlace(n) || botBestFolder({ name: o.name }, p); sug = b ? b.id : ''; } catch (e) { /* no guess */ } } return { name: o.name, url: o.url, filed, suggest: sug }; }) })),
+          outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => { const filed = outHomes(o, p).map(h => h.name); let sug = ''; if (!filed.length) { try { const b = usualPlace(n) || botBestFolder({ name: o.name }, p); sug = b ? b.id : ''; } catch (e) { /* no guess */ } } return { name: o.name, url: o.url, filed, suggest: sug }; }) })),
       };
     }
     const doc = { v: 1, profile: { id: p.id, name: p.name, color: p.color || '' },
