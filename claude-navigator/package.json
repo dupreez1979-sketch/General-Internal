@@ -1,0 +1,95 @@
+{
+  "name": "claude-navigator",
+  "productName": "Claude Navigator",
+  "version": "0.6.20",
+  "description": "Your own folder tree for Claude chats, projects and artifacts, with Claude open alongside.",
+  "author": "Kevin du Preez",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "release:mac": "electron-builder --mac --arm64 --publish always"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.dupreez.claude-navigator",
+    "productName": "Claude Navigator",
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "fsync.js",
+      "monday.js",
+      "accounts.js",
+      "mailindex.js",
+      "maillog.js",
+      "mailindex-worker.js",
+      "vendor/**",
+      "look.js",
+      "templates/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.productivity",
+      "extraResources": [
+        {
+          "from": "build/navdraft",
+          "to": "navdraft"
+        }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Claude uses the microphone for voice mode and dictation.",
+        "NSCameraUsageDescription": "Claude uses the camera when you choose to share a photo or video.",
+      "NSAppleEventsUsageDescription": "Claude Navigator starts emails to Clara in Outlook, from the address you chose."
+      },
+      "icon": "build/icon.png",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": true
+    },
+    "directories": {
+      "buildResources": "build"
+    },
+    "icon": "build/icon.png",
+    "dmg": {
+      "title": "Claude Navigator ${version}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dupreez1979-sketch",
+        "repo": "claude-navigator-releases",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  }
+}

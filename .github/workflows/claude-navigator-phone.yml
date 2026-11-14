@@ -1,0 +1,75 @@
+# Checks that the phone app builds, on GitHub's Mac, for the iPhone simulator. No signing and no secrets.
+# Sending it to a phone through TestFlight is a later step.
+
+name: Build Chief of Staff (phone)
+
+on:
+  push:
+    branches: ['**']
+    paths: ['claude-navigator-phone/**', '.github/workflows/claude-navigator-phone.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make the Xcode project
+        working-directory: claude-navigator-phone
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build for the iPhone simulator
+        working-directory: claude-navigator-phone
+        run: |
+          xcodebuild -project ClaudeNavigatorPhone.xcodeproj -scheme ClaudeNavigatorPhone \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug CODE_SIGNING_ALLOWED=NO build | tail -40
+
+  # Sends the app to TestFlight, so it can be installed on a phone. Runs only when started by hand
+  # (Actions > Build Chief of Staff (phone) > Run workflow), and needs three secrets:
+  #   ASC_KEY_ID, ASC_ISSUER_ID and ASC_KEY_P8 (the whole text of the .p8 key file).
+  testflight:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check the secrets are there
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER: ${{ secrets.ASC_ISSUER_ID }}
+          P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          missing=""
+          [ -n "$KEY_ID" ] || missing="$missing ASC_KEY_ID"
+          [ -n "$ISSUER" ] || missing="$missing ASC_ISSUER_ID"
+          [ -n "$P8" ] || missing="$missing ASC_KEY_P8"
+          if [ -n "$missing" ]; then echo "::error::Missing secrets:$missing"; exit 1; fi
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$P8" > "$RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8"
+      - name: Make the Xcode project
+        working-directory: claude-navigator-phone
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Build, sign and send to TestFlight
+        working-directory: claude-navigator-phone
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ISSUER: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          AUTH="-allowProvisioningUpdates -authenticationKeyPath $RUNNER_TEMP/keys/AuthKey_$KEY_ID.p8 -authenticationKeyID $KEY_ID -authenticationKeyIssuerID $ISSUER"
+          xcodebuild -project ClaudeNavigatorPhone.xcodeproj -scheme ClaudeNavigatorPhone \
+            -sdk iphoneos -destination 'generic/platform=iOS' -configuration Release \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            DEVELOPMENT_TEAM=484VNWY9P3 CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            $AUTH archive | tail -40
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist -exportPath "$RUNNER_TEMP/out" $AUTH | tail -40
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

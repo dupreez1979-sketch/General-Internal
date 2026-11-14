@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en-AU"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Chief of Staff</title>
+<style>
+  :root { --ink:#1d1d1f; --muted:#6e7377; --line:#e4e7e9; --bg:#f2f4f5; --win:#fff; --accent:#1B5A68; --warn:#B36E24; --ok:#328276; }
+  @media (prefers-color-scheme: dark) { :root { --ink:#f2f2f3; --muted:#9aa0a5; --line:#2c3033; --bg:#1c1e20; --win:#111213; } }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--win); color:var(--ink); font:16px/1.35 -apple-system, "Helvetica Neue", Arial, sans-serif; overflow:hidden; -webkit-user-select:none; user-select:none; }
+  #app { height:100%; display:flex; flex-direction:column; padding-top:env(safe-area-inset-top); }
+  .top { flex:none; display:flex; align-items:center; gap:10px; padding:8px 16px 6px; min-height:48px; }
+  .prof { display:inline-flex; align-items:center; gap:8px; background:var(--bg); border:0; border-radius:999px; padding:8px 14px; font:inherit; font-weight:650; font-size:15px; color:var(--ink); }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex:none; }
+  .grow { flex:1; }
+  .ibtn { width:40px; height:40px; border-radius:50%; border:0; background:var(--bg); color:var(--ink); font-size:20px; display:grid; place-items:center; flex:none; }
+  h1 { font-size:30px; font-weight:780; letter-spacing:-.02em; margin:2px 16px 10px; }
+  .scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 12px 16px; }
+  .sec { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin:18px 6px 7px; }
+  .card { display:flex; align-items:center; gap:12px; width:100%; text-align:left; border:0; font:inherit; color:var(--ink); background:var(--bg); border-radius:16px; padding:12px 13px; margin-bottom:8px; min-height:62px; }
+  .card:active, .row:active { opacity:.6; }
+  .av { width:40px; height:40px; border-radius:50%; color:#fff; font-weight:700; font-size:14px; display:grid; place-items:center; flex:none; background:var(--accent); }
+  .card .tx { min-width:0; flex:1; } .card b { display:block; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .card .s { display:block; font-size:13.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .badge { background:var(--win); border-radius:999px; padding:3px 10px; font-size:13px; font-weight:650; color:var(--accent); flex:none; }
+  .card.chief { background:var(--accent); color:#fff; } .card.chief .s { color:rgba(255,255,255,.82); } .card.chief .av { background:rgba(255,255,255,.22); }
+  .tabs { flex:none; display:flex; border-top:1px solid var(--line); padding:6px 0 calc(6px + env(safe-area-inset-bottom)); background:var(--win); }
+  .tabs button { flex:1; border:0; background:none; font:inherit; font-size:11.5px; color:var(--muted); display:flex; flex-direction:column; align-items:center; gap:3px; padding:4px 0; }
+  .tabs button.on { color:var(--accent); font-weight:700; } .tabs svg { width:24px; height:24px; }
+  .ask { flex:none; display:flex; align-items:center; gap:10px; margin:8px 12px 10px; border:0; width:calc(100% - 24px); text-align:left; font:inherit; font-weight:650; font-size:16px; background:var(--accent); color:#fff; border-radius:18px; padding:15px 16px; }
+  .ask.last { margin-bottom:calc(10px + env(safe-area-inset-bottom)); }
+  .ask .mic { margin-left:auto; opacity:.85; }
+  .seg { flex:none; display:flex; background:var(--bg); border-radius:11px; padding:3px; margin:4px 12px 8px; }
+  .seg button { flex:1; border:0; background:none; font:inherit; font-size:14px; color:var(--muted); padding:8px 0; border-radius:9px; }
+  .seg button.on { background:var(--win); color:var(--ink); font-weight:650; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .row { display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:none; font:inherit; color:var(--ink); padding:13px 6px; min-height:52px; }
+  .row .nm { flex:1; min-width:0; } .row .nm span { display:block; font-size:13px; color:var(--muted); }
+  .pins { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px 6px; padding:10px 2px 4px; }
+  .pin { border:0; background:none; font:inherit; color:var(--muted); font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:7px; padding:0; min-width:0; }
+  .pin .av { width:76px; height:76px; font-size:26px; position:relative; box-shadow:0 6px 16px rgba(0,0,0,.14); }
+  .pin .av i { position:absolute; top:-2px; right:-2px; min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:var(--win); color:var(--accent); font-style:normal; font-size:13px; font-weight:700; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .pin > span:last-child { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pin:active { opacity:.6; }
+  .ibtn.on { color:#E0A800; }
+  .chips { flex:none; display:flex; gap:7px; overflow-x:auto; padding:0 12px 10px; scrollbar-width:none; } .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:none; display:inline-flex; align-items:center; gap:6px; border:0; background:var(--bg); color:var(--ink); font:inherit; font-size:14px; border-radius:999px; padding:8px 13px; white-space:nowrap; }
+  .chip i { font-style:normal; font-size:12.5px; color:var(--muted); } .chip.on { background:var(--accent); color:#fff; font-weight:650; } .chip.on i { color:rgba(255,255,255,.8); } .chip.on .dot { box-shadow:0 0 0 2px rgba(255,255,255,.7); }
+  .drivebtn { border:0; background:var(--accent); color:#fff; font:inherit; font-weight:700; font-size:14px; border-radius:999px; padding:9px 16px; }
+  .drive { position:fixed; inset:0; z-index:20; background:#0d1417; color:#f4f6f7; display:flex; flex-direction:column; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .dbar { flex:none; display:flex; align-items:center; gap:10px; padding:12px 18px 0; } .dbar b { font-size:18px; } .dprof { background:#18242a; border-radius:999px; padding:5px 12px; font-size:13.5px; font-weight:600; }
+  .dend { border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; border-radius:999px; padding:10px 18px; }
+  .dmid { flex:1; min-height:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px; padding:10px 22px; }
+  .dbig { --d:min(62vw, 46vh); flex:none; width:var(--d); height:var(--d); box-sizing:border-box; overflow:hidden; border-radius:50%; border:0; background:var(--accent); color:#fff; font:inherit; font-weight:750; font-size:clamp(17px, 5vw, 26px); line-height:1.15; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:8%; box-shadow:0 0 0 14px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 30px color-mix(in srgb, var(--accent) 14%, transparent); }
+  .dbig svg { width:32%; height:auto; }
+  .drive.listening .dbig { background:#c4353f; box-shadow:0 0 0 14px rgba(196,53,63,.3), 0 0 0 30px rgba(196,53,63,.14); animation:dpulse 1.2s ease-in-out infinite; }
+  .drive.thinking .dbig { background:#3d4a50; box-shadow:0 0 0 14px rgba(61,74,80,.4); animation:dpulse 1.6s ease-in-out infinite; }
+  .drive.speaking .dbig { background:#226b4a; box-shadow:0 0 0 14px rgba(34,107,74,.3), 0 0 0 30px rgba(34,107,74,.14); }
+  @keyframes dpulse { 50% { transform:scale(1.04); } }
+  .dside { text-align:center; min-height:84px; max-width:640px; } .dwho { font-size:13px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:#9fb0b6; margin-bottom:6px; min-height:16px; }
+  .dline { font-size:clamp(19px, 5.4vw, 28px); font-weight:650; line-height:1.22; }
+  .dfoot { flex:none; display:flex; gap:10px; padding:0 14px 14px; } .dbtn { flex:1; min-width:0; border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; font-size:16px; border-radius:18px; padding:20px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .dbtn.stop { background:#3a2326; color:#ffb3b8; } .dbtn:active, .dbig:active { opacity:.7; }
+  @media (orientation: landscape) { .dmid { flex-direction:row; gap:6%; padding:0 6%; } .dbig { --d:min(36vw, 60vh); font-size:clamp(14px, 2.3vw, 20px); gap:4px; padding:5%; } .dbig svg { width:24%; } .dmid { padding-top:0; padding-bottom:0; } .dfoot .dbtn { padding:14px 8px; } .dside { text-align:left; flex:1; } }
+  .pulltip { position:fixed; top:calc(env(safe-area-inset-top) + 4px); left:50%; transform:translate(-50%, 0); z-index:30; background:var(--ink); color:var(--win); font-size:13px; font-weight:650; border-radius:999px; padding:7px 14px; pointer-events:none; }
+  .dmodel { font-size:12px; color:#9fb0b6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .vtip { font-size:13px; color:var(--muted); margin:2px 6px 12px; line-height:1.4; }
+  .chk { width:26px; height:26px; border-radius:50%; border:2px solid var(--muted); opacity:.6; flex:none; }
+  .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
+  .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
+  .pill.ok { background:color-mix(in srgb, var(--ok) 16%, transparent); color:var(--ok); }
+  .tcard { background:var(--bg); border-radius:16px; padding:12px 14px; margin-bottom:8px; } .tcard p { margin:6px 0 0; font-size:15px; }
+  .empty { text-align:center; color:var(--muted); padding:40px 26px; font-size:15px; } .empty b { display:block; color:var(--ink); font-size:19px; margin-bottom:8px; }
+  .empty ol { text-align:left; padding-left:22px; margin:14px 0 18px; } .empty li { margin-bottom:7px; }
+  .btn { border:0; background:var(--accent); color:#fff; font:inherit; font-weight:650; border-radius:14px; padding:13px 20px; }
+  .who { display:flex; align-items:center; gap:12px; padding:2px 12px 8px; } .who b { font-size:19px; display:block; } .who span { font-size:13.5px; color:var(--muted); }
+  .shade { position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9; }
+  .sheet { position:fixed; left:0; right:0; bottom:0; z-index:10; background:var(--win); border-radius:22px 22px 0 0; padding:10px 12px calc(16px + env(safe-area-inset-bottom)); max-height:70%; overflow-y:auto; }
+  .grab { width:40px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px; }
+  .asof { text-align:center; font-size:12px; color:var(--muted); margin:14px 0 4px; }
+</style></head><body><div id="app"></div>
+<script>
+(() => {
+  'use strict';
+  const app = document.getElementById('app');
+  const send = m => { try { window.webkit.messageHandlers.phone.postMessage(m); return true; } catch (e) { return false; } };
+  const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private */ } } };
+  let data = { state: 'loading', profiles: [], teams: {} };
+  const ui = { tab: 'team', pid: ls.get('pid') || '', staff: null, seg: 'open', sheet: false };
+
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const initials = n => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  const when = t => { if (!t) return ''; const d = new Date(t), n = new Date(), days = Math.floor((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+    return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? d.toLocaleDateString('en-AU', { weekday: 'short' }) : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); };
+  // Favourite staff, kept on this phone for each profile: they sit as big circles under the Chief of Staff.
+  let pins = {}; try { pins = JSON.parse(ls.get('pins') || '{}') || {}; } catch (e) { pins = {}; }
+  const pinned = () => pins[ui.pid] || [];
+  const togglePin = id => { const l = pinned().slice(), i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); pins[ui.pid] = l.slice(0, 9); ls.set('pins', JSON.stringify(pins)); render(); };
+  const team = () => data.teams[ui.pid] || null;
+  const prof = () => data.profiles.find(p => p.id === ui.pid) || null;
+  // What you have done here that the Mac has not picked up yet. Shown straight away, and sent to the Mac through iCloud.
+  let changes = []; try { changes = JSON.parse(ls.get('changes') || '[]'); } catch (e) { changes = []; }
+  const saveChanges = () => { ls.set('changes', JSON.stringify(changes)); send({ do: 'save', json: JSON.stringify({ v: 1, changes }) }); };
+  const change = c => { changes.push(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at: Date.now(), pid: ui.pid }, c)); saveChanges(); render(); };
+  const sameUrl = (a, b) => String(a || '').replace(/[?#].*$/, '').replace(/\/$/, '') === String(b || '').replace(/[?#].*$/, '').replace(/\/$/, '');
+  const workOf = id => {
+    const w = ((team() || {}).work || {})[id] || { open: [], done: [] };
+    let open = w.open.slice(), done = w.done.slice(), outs = w.outs ? w.outs.slice() : null;
+    for (const c of changes) {
+      if (c.pid !== ui.pid) continue;
+      if (c.type === 'chat' && c.staff === id && ![...open, ...done].some(x => sameUrl(x.url, c.url))) { if (c.drive) done.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, doneAt: c.at, outputs: [], waiting: true }); else open.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, waiting: true }); }       // a Drive conversation is finished, not an open action
+      if (c.type === 'done') { const i = open.findIndex(x => x.id === c.item); if (i >= 0) { const [x] = open.splice(i, 1); done.unshift(Object.assign({ outputs: [] }, x, { doneAt: c.at, waiting: true })); } }
+      if (c.type === 'file' && c.staff === id && outs) outs = outs.map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o);
+      if (c.type === 'file' && c.staff === id) done = done.map(x => Object.assign({}, x, { outputs: (x.outputs || []).map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o) }));
+    }
+    return { open, done, outs };
+  };
+  const icon = { team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9.5" y="3" width="5" height="5" rx="1.4"/><rect x="3" y="16" width="5" height="5" rx="1.4"/><rect x="16" y="16" width="5" height="5" rx="1.4"/><path d="M12 8v4M5.5 16v-4h13v4"/></svg>',
+    actions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l1.6 1.6L8.6 5M4 12.5l1.6 1.6 3-3.1M4.6 18.5h.01M12 6.5h8M12 12.5h8M12 18.5h8"/></svg>',
+    today: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>',
+    recent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    mic: '<svg class="mic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg>' };
+
+  // Chatting happens in Claude, inside the app: the page slides up over this one.
+  const chat = (url, title) => { if (!url) url = 'https://claude.ai/new'; if (!send({ do: 'chat', url, title: title || 'Claude' })) location.href = url; };
+  const askUrl = n => (n && n.project && n.project.url) || 'https://claude.ai/new';
+
+  function topBar(showProfile) {
+    const t = el('div', 'top');
+    if (showProfile) { const p = prof(); const b = el('button', 'prof'); const d = el('span', 'dot'); if (p && p.color) d.style.background = p.color; b.append(d, document.createTextNode((p ? p.name : 'Choose a profile') + ' ▾')); b.onclick = () => { ui.sheet = true; render(); }; t.append(b); }
+    t.append(el('span', 'grow'));
+    if (showProfile && team()) { const d = el('button', 'drivebtn', 'Drive'); d.onclick = () => driveStart(); t.append(d); }
+    const r = el('button', 'ibtn', '↻'); r.title = 'Refresh'; r.onclick = () => send({ do: 'load' }); t.append(r);
+    return t;
+  }
+  function tabs() {
+    const t = el('div', 'tabs');
+    for (const [k, label] of [['team', 'Team'], ['actions', 'Actions'], ['today', 'Today'], ['recent', 'Recent']]) { const b = el('button', ui.tab === k ? 'on' : ''); b.innerHTML = icon[k] + '<span></span>'; b.querySelector('span').textContent = label; b.onclick = () => { ui.tab = k; ui.staff = null; render(); }; t.append(b); }
+    return t;
+  }
+  function askBar(n, last) {
+    const b = el('button', 'ask' + (last ? ' last' : '')); b.innerHTML = '<span></span>' + icon.mic; b.querySelector('span').textContent = `Ask ${n.chief ? 'your Chief of Staff' : 'the ' + n.name}…`;
+    b.onclick = () => { ui.asked = { staff: n.id, pid: ui.pid }; chat(askUrl(n), n.name); }; return b;
+  }
+  function staffCard(n, chief) {
+    const w = workOf(n.id), b = el('button', 'card' + (chief ? ' chief' : ''));
+    const av = el('span', 'av', initials(n.name)); if (!chief && n.color) av.style.background = n.color;
+    const tx = el('div', 'tx'); tx.append(el('b', '', n.name));
+    const need = ((team() || {}).today || []).length;
+    tx.append(el('span', 's', chief ? (need ? `${need} thing${need === 1 ? '' : 's'} for you to look at` : 'Nothing needs you right now') : (w.open[0] ? w.open[0].name : n.role || 'No open work')));
+    b.append(av, tx); if (!chief && w.open.length) b.append(el('span', 'badge', String(w.open.length)));
+    b.onclick = () => { if (chief) { ui.tab = 'today'; } else { ui.staff = n.id; ui.seg = 'open'; } render(); };
+    return b;
+  }
+  function viewTeam() {
+    const t = team(), s = el('div', 'scroll');
+    if (!t) { s.append(emptyNote('No team in this profile yet', 'Set the team up in Chief of Staff on your Mac. It appears here on its own.')); return [topBar(true), el('h1', '', 'Team'), s, tabs()]; }
+    const byId = id => t.nodes.find(x => x.id === id), chief = t.nodes.find(x => x.chief);
+    if (chief) s.append(staffCard(chief, true));
+    const favs = pinned().map(byId).filter(n => n && n.kind === 'staff' && !n.chief);
+    if (favs.length) {
+      const row = el('div', 'pins');
+      for (const n of favs) {
+        const w = workOf(n.id), b = el('button', 'pin'), av = el('span', 'av', initials(n.name)); if (n.color) av.style.background = n.color;
+        if (w.open.length) av.append(el('i', '', String(w.open.length)));
+        b.append(av, el('span', '', n.name)); b.onclick = () => { ui.staff = n.id; ui.seg = 'open'; render(); }; row.append(b);
+      }
+      s.append(row);
+    }
+    const deptOf = n => { let p = byId(n.parent), guard = 0; while (p && guard++ < 20) { if (p.kind === 'dept') return p; p = byId(p.parent); } return null; };
+    const groups = new Map();
+    for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const d = deptOf(n), k = d ? d.id : ''; if (!groups.has(k)) groups.set(k, { name: d ? d.name : 'Team', list: [] }); groups.get(k).list.push(n); }
+    for (const g of groups.values()) { s.append(el('div', 'sec', g.name)); g.list.forEach(n => s.append(staffCard(n, false))); }
+    return [topBar(true), el('h1', '', 'Team'), s, tabs()];
+  }
+  function itemRow(x, sub, right) {
+    const r = el('button', 'row'), nm = el('div', 'nm', x.name); if (sub) nm.append(el('span', '', sub));
+    r.append(nm); if (right) r.append(el('small', '', right)); r.onclick = () => { ui.asked = null; chat(x.url, x.name); }; return r;
+  }
+  function viewStaff(n) {
+    const w = workOf(n.id), top = el('div', 'top'), back = el('button', 'ibtn', '‹'); back.onclick = () => { ui.staff = null; render(); };
+    const isPin = pinned().includes(n.id), star = el('button', 'ibtn' + (isPin ? ' on' : ''), isPin ? '\u2605' : '\u2606'); star.title = isPin ? 'Remove from favourites' : 'Add to favourites'; star.onclick = () => togglePin(n.id);
+    top.append(back, el('span', 'grow'), ...(n.chief ? [] : [star]));
+    const who = el('div', 'who'), av = el('span', 'av', initials(n.name)); if (n.color) av.style.background = n.color;
+    const tx = el('div'); tx.append(el('b', '', n.name), el('span', '', n.role || (prof() || {}).name || '')); who.append(av, tx);
+    const outs = w.outs ? w.outs.map(o => ({ o, x: { name: o.from } })) : w.done.flatMap(x => (x.outputs || []).map(o => ({ o, x })));
+    const seg = el('div', 'seg');
+    for (const [k, label] of [['open', `Open ${w.open.length || ''}`], ['done', 'Done'], ['outs', 'Outputs']]) { const b = el('button', ui.seg === k ? 'on' : '', label.trim()); b.onclick = () => { ui.seg = k; render(); }; seg.append(b); }
+    const s = el('div', 'scroll');
+    if (ui.seg === 'open') { w.open.forEach(x => { const r = itemRow(x, x.waiting ? 'Started here. Your Mac will add it.' : '', when(x.added)); if (!x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: n.id, item: x.id }); }; r.prepend(c); } s.append(r); }); if (!w.open.length) s.append(emptyNote('No open work', 'Ask them something to start a piece of work.')); }
+    if (ui.seg === 'done') { w.done.forEach(x => s.append(itemRow(x, (x.outputs || []).length ? `${x.outputs.length} output${x.outputs.length === 1 ? '' : 's'}` : 'No output', when(x.doneAt)))); if (!w.done.length) s.append(emptyNote('Nothing finished lately', 'Work finished in the last 30 days shows here.')); }
+    if (ui.seg === 'outs') { for (const { o, x } of outs) { const r = itemRow(o, x.name ? `From “${x.name}”` : '', o.at ? when(o.at) : ''); const p = el('span', 'pill' + (o.filed.length ? ' ok' : ''), o.filed.length ? `Filed in ${o.filed[0]}` : 'File\u2026'); if (!o.filed.length) p.onclick = e => { e.stopPropagation(); ui.filing = { o, staff: n.id }; render(); }; r.append(p); s.append(r); } if (!outs.length) s.append(emptyNote('No outputs yet', 'What comes out of their work shows here, with where each is saved.')); }
+    return [top, who, seg, s, askBar(n, true)];
+  }
+  function viewToday() {
+    const t = team(), s = el('div', 'scroll'), list = (t && t.today) || [];
+    lastDriveCards(s);
+    if (list.length) s.append(el('div', 'sec', 'For you to look at'));
+    for (const c of list) { const d = el('div', 'tcard'); d.append(el('span', 'pill', c.kind)); d.append(el('p', '', c.text)); s.append(d); }
+    if (!list.length) s.append(emptyNote('Nothing needs you', 'When work is not filed, has no output, or two people are on the same thing, it shows here.'));
+    if (t && t.todayAt) s.append(el('div', 'asof', `As your Mac last saw it: ${when(t.todayAt)}, ${new Date(t.todayAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`));
+    const chief = t && t.nodes.find(x => x.chief);
+    return [topBar(true), el('h1', '', 'Today'), s, ...(chief ? [askBar(chief, false)] : []), tabs()];
+  }
+  // Every open action across the team in one list, with a row of names to narrow it to one person or a department.
+  function viewActions() {
+    const t = team(), s = el('div', 'scroll'), all = [];
+    const staff = t ? t.nodes.filter(x => x.kind === 'staff') : [], byId = id => t.nodes.find(x => x.id === id);
+    const deptOf = n => { let p = byId(n.parent), guard = 0; while (p && guard++ < 20) { if (p.kind === 'dept') return p; p = byId(p.parent); } return null; };
+    for (const n of staff) workOf(n.id).open.forEach(x => all.push({ x, n }));
+    all.sort((a, b) => (b.x.added || 0) - (a.x.added || 0));
+    const f = ui.actFilter || '', fav = pinned();
+    const chips = el('div', 'chips');
+    const chip = (key, label, count, color) => { const b = el('button', 'chip' + (f === key ? ' on' : '')); if (color) { const d = el('span', 'dot'); d.style.background = color; b.append(d); } b.append(document.createTextNode(label)); if (count != null) b.append(el('i', '', String(count))); b.onclick = () => { ui.actFilter = f === key && key ? '' : key; render(); }; chips.append(b); };
+    chip('', 'All', all.length);
+    if (fav.length) chip('fav', '\u2605 Favourites', all.filter(r => fav.includes(r.n.id)).length);
+    const depts = t ? t.nodes.filter(x => x.kind === 'dept') : [];
+    for (const d of depts) { const c = all.filter(r => (deptOf(r.n) || {}).id === d.id).length; if (c) chip('d:' + d.id, d.name, c); }
+    const order = staff.slice().sort((a, b) => (fav.includes(b.id) - fav.includes(a.id)));
+    for (const n of order) { const c = all.filter(r => r.n.id === n.id).length; if (c) chip('s:' + n.id, n.name, c, n.color); }
+    const shown = all.filter(r => !f || (f === 'fav' ? fav.includes(r.n.id) : f.startsWith('d:') ? (deptOf(r.n) || {}).id === f.slice(2) : r.n.id === f.slice(2)));
+    for (const r of shown.slice(0, 200)) {
+      const row = itemRow(r.x, r.x.waiting ? `${r.n.name} \u00b7 started here` : r.n.name, when(r.x.added));
+      if (!r.x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); if (r.n.color) c.style.borderColor = r.n.color; c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: r.n.id, item: r.x.id }); }; row.prepend(c); }
+      s.append(row);
+    }
+    if (!shown.length) s.append(emptyNote(all.length ? 'Nothing open here' : 'No open actions', all.length ? 'Choose All to see everyone\u2019s.' : 'Open work from every staff member shows here.'));
+    return [topBar(true), el('h1', '', 'Actions'), chips, s, tabs()];
+  }
+  function viewRecent() {
+    const t = team(), s = el('div', 'scroll'), all = [];
+    if (t) for (const n of t.nodes.filter(x => x.kind === 'staff')) { const w = workOf(n.id); w.open.forEach(x => all.push({ x, n, at: x.added })); w.done.forEach(x => all.push({ x, n, at: x.doneAt || x.added, done: true })); }
+    all.sort((a, b) => (b.at || 0) - (a.at || 0));
+    all.slice(0, 60).forEach(r => s.append(itemRow(r.x, r.n.name + (r.done ? ' · done' : ''), when(r.at))));
+    if (!all.length) s.append(emptyNote('No chats yet', 'Chats in your staff members’ work show here, newest first.'));
+    return [topBar(true), el('h1', '', 'Recent'), s, tabs()];
+  }
+  function emptyNote(title, text) { const e = el('div', 'empty'); e.append(el('b', '', title), document.createTextNode(text)); return e; }
+  function viewConnect() {
+    const e = el('div', 'empty'); e.style.marginTop = '12%';
+    e.append(el('b', '', data.state === 'empty' ? 'No team found in that folder' : 'Connect to your team'));
+    e.append(document.createTextNode('Your team lives on your Mac, in Claude Navigator. The Mac app keeps a copy for this phone in iCloud Drive.'));
+    const ol = el('ol'); ['On your Mac, open Claude Navigator (version 0.6.11 or later) and leave it open for a minute.', 'Tap the button below.', 'Choose iCloud Drive, then the folder “Claude Navigator Phone”, and tap Open.'].forEach(t => ol.append(el('li', '', t)));
+    const b = el('button', 'btn', 'Choose the Folder…'); b.onclick = () => send({ do: 'pick' });
+    e.append(ol, b); return [el('div', 'top'), e];
+  }
+  function sheet() {
+    const sh = el('div', 'shade'); sh.onclick = () => { ui.sheet = false; render(); };
+    const s = el('div', 'sheet'); s.append(el('div', 'grab'));
+    for (const p of data.profiles) {
+      const t = data.teams[p.id], staff = t ? t.nodes.filter(x => x.kind === 'staff').length : 0, need = t && t.today ? t.today.length : 0;
+      const b = el('button', 'card'), av = el('span', 'av', initials(p.name)); if (p.color) av.style.background = p.color;
+      const tx = el('div', 'tx'); tx.append(el('b', '', p.name), el('span', 's', `${staff} staff${need ? ` · ${need} for you` : ''}`));
+      b.append(av, tx); if (p.id === ui.pid) b.append(el('span', 'badge', '✓'));
+      b.onclick = () => { ui.pid = p.id; ls.set('pid', p.id); ui.sheet = false; ui.staff = null; render(); };
+      s.append(b);
+    }
+    const again = el('button', 'row', 'Choose the team folder again…'); again.style.border = '0'; again.style.color = 'var(--muted)'; again.onclick = () => { ui.sheet = false; send({ do: 'pick' }); };
+    s.append(again);
+    return [sh, s];
+  }
+  // Filing an output: the place the Mac suggests first, then every company folder.
+  function fileSheet() {
+    const t = team(), f = ui.filing, folders = (t && t.folders) || [];
+    const sh = el('div', 'shade'); sh.onclick = () => { ui.filing = null; render(); };
+    const s = el('div', 'sheet'); s.append(el('div', 'grab'), el('div', 'sec', `File \u201c${f.o.name}\u201d in`));
+    const pick = (id, path) => { const name = path.split(' \u203a ').pop(); ui.filing = null; change({ type: 'file', staff: f.staff, url: f.o.url, name: f.o.name, folder: id, folderName: name }); };
+    const sug = folders.find(x => x[0] === f.o.suggest);
+    if (sug) { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', sug[1]), el('span', 's', 'Suggested')); b.append(tx); b.onclick = () => pick(sug[0], sug[1]); s.append(b); }
+    for (const [id, path] of folders) { if (sug && id === sug[0]) continue; const r = el('button', 'row', path); r.onclick = () => pick(id, path); s.append(r); }
+    if (!folders.length) s.append(emptyNote('No folders yet', 'Open Claude Navigator on your Mac so it can send the company folders.'));
+    return [sh, s];
+  }
+  // ---------- Drive mode ----------
+  // One big button and your voice. You talk to your Chief of Staff; say a staff member's name and they answer instead.
+  // Nothing is read off the screen: answers are spoken, and what happened is listed when you finish.
+  const drive = { on: false, state: 'idle', heard: '', line: '', who: null, chats: {}, log: [], pending: null, timer: null, noteNext: false };
+  const mic = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg>';
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
+  const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
+    return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
+  function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
+  function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
+  function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
+  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; drive.stream = null; render(); }
+  const snapshot = () => { const t = team(), L = []; if (!t) return '';
+    for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
+    const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
+    return L.join('\n').slice(0, 5000); };
+  function driveAsk(text, target) {
+    const p = prof(), nonce = 'ref DRV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), had = drive.chats[target.id];
+    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. Start your answer with [[SAY]] and end it with [[END]]. Do this for every message in this chat.';
+    const prompt = had ? `I said: ${text}\n\n(Spoken answer, at most 70 words, between [[SAY]] and [[END]].)\n\n${nonce}`
+      : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
+    drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
+    send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
+    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 100000);
+  }
+  // What you said: a few things are done here on the phone; everything else goes to Claude.
+  function driveHandle(text) {
+    const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
+    const low = said.toLowerCase();
+    if (drive.confirm) { const c = drive.confirm; drive.confirm = null; if (/^(yes|yep|yeah|do it|confirm|correct|please do)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'done', staff: c.staff, item: c.item }); saveChanges(); drive.log.push({ kind: 'done', who: c.who, text: c.name }); return driveSay(`Done. ${c.name} is marked as finished.`); } return driveSay('Left as it is.'); }
+    if (drive.noteNext || /^(note|note for later|make a note|remember)\b/.test(low)) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } drive.log.push({ kind: 'note', who: 'Note', text: note }); return driveSay('Noted.'); }
+    if (/^(stop|cancel|never mind|that is all|that's all|goodbye|finish)\b/.test(low)) { drive.state = 'idle'; drive.line = ''; render(); return; }
+    const sw = /^(switch|change|go) to (.+)$/.exec(low); if (sw) { const p = data.profiles.find(x => sw[2].includes(x.name.toLowerCase())); if (p) { ui.pid = p.id; ls.set('pid', p.id); drive.chats = {}; drive.who = chiefOf(); return driveSay(`Now on ${p.name}.`); } }
+    const md = /^(mark|tick) (.+?) (as )?(done|finished|complete)/.exec(low);
+    if (md) { const t = team(); let hit = null; const want = md[2].replace(/^the /, ''); if (t) for (const n of t.nodes.filter(x => x.kind === 'staff')) for (const x of workOf(n.id).open) { const nm = x.name.toLowerCase(); if (!x.waiting && (nm.includes(want) || want.includes(nm))) hit = hit || { staff: n.id, who: n.name, item: x.id, name: x.name }; }
+      if (hit) { drive.confirm = hit; return driveSay(`Mark ${hit.name}, with the ${hit.who}, as done? Say yes or no.`); } return driveSay('I could not find an open action with that name.'); }
+    const named = staffNamed(said), back = /chief of staff/.test(low);
+    const target = back ? chiefOf() : named || drive.who || chiefOf();
+    if (!target) return driveSay('There is no team in this profile yet.', 'idle');
+    driveAsk(/^brief me\b/.test(low) ? 'Brief me: what needs my attention today across the team, most important first.' : said, target);
+  }
+  window.driveHeard = h => { if (!drive.on) return; if (h.problem) { drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
+  // After an answer it listens again for a moment, so you can carry on without touching the screen.
+  window.driveSpoke = () => { if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
+    drive.stream = null; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+  // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
+  // not kept waiting for the whole answer.
+  window.driveAnswer = a => {
+    if (!drive.on || !drive.pending) return;
+    const pend = drive.pending;
+    if (a.problem || (a.done && !a.text)) { clearTimeout(drive.timer); drive.pending = null; drive.stream = null; return driveSay(a.problem || 'There was no answer.', 'idle'); }
+    if (!a.text) return;
+    clearTimeout(drive.timer);
+    const t = team(), n = t && t.nodes.find(x => x.id === pend.target);
+    if (!drive.stream || drive.stream.own !== pend) drive.stream = { own: pend, said: 0, left: 0, done: false };
+    const st = drive.stream, text = a.text.replace(/\s+/g, ' ').trim();
+    let upTo = text.length;
+    if (!a.done) { const m = /^[\s\S]*[.!?](?=\s|$)/.exec(text); upTo = m ? m[0].length : 0; }
+    const piece = text.slice(st.said, upTo).trim();
+    if (piece && upTo > st.said) { st.said = upTo; st.left++; drive.state = 'speaking'; drive.after = 'listen'; drive.line = text; send({ do: 'say', text: piece }); }
+    if (a.done) {
+      st.done = true; drive.pending = null; drive.line = text;
+      if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
+        const url = a.url.replace(/[?#].*$/, '');
+        if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', drive: true, staff: n.id, url, name: 'Drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+      }
+      drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend.text, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
+      if (st.left <= 0) { drive.stream = null; driveListen(6); return; }
+    }
+    render();
+  };
+  // Which of Claude's models is answering: the fastest one for the drive, and the usual one put back afterwards.
+  window.driveModel = m => { drive.model = m; if (drive.on) render(); else if (m.step === 'restore' && !m.ok && m.was) { const t = el('div', 'pulltip', `Claude is still on the fast model. Set it back to ${m.was} in Claude.`); t.style.opacity = 1; document.body.append(t); setTimeout(() => t.remove(), 6000); } };
+  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (drive.on) render(); };
+  function voiceSheet() {
+    const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { drive.voiceOpen = false; render(); };
+    const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
+    const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
+    s2.append(el('p', 'vtip', `Drive is using ${v.phoneVoice || 'the phone’s voice'}. It is free and works with no signal. Tap a voice to use it, or Hear It to listen.`));
+    const hear = el('button', 'btn', 'Hear It'); hear.style.margin = '0 6px 12px'; hear.onclick = () => send({ do: 'voiceTry' }); s2.append(hear);
+    for (const x of (v.voices || [])) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); nm.append(el('span', '', x.note)); r.append(nm); if (x.on) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voicePick', id: x.id }); s2.append(r); }
+    if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
+    s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
+    s2.append(el('div', 'sec', 'Speed'));
+    { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
+    return [sh, s2];
+  }
+  function viewDrive() {
+    const d = el('div', 'drive ' + drive.state), who = drive.who || chiefOf() || { name: 'Chief of Staff', chief: true };
+    const bar = el('div', 'dbar'); bar.append(el('b', '', 'Drive'), el('span', 'dprof', (prof() || {}).name || ''), el('span', 'grow'));
+    const mo = drive.model; if (mo && mo.step === 'fast') bar.append(el('span', 'dmodel', mo.ok ? `Fast model: ${mo.now.split(' ').slice(0, 2).join(' ')}` : `Model: ${mo.was ? mo.was.split(' ').slice(0, 2).join(' ') : 'as it was'}`));
+    const vb = el('button', 'dend', 'Voice'); vb.onclick = () => { drive.voiceOpen = true; send({ do: 'voiceGet' }); render(); }; bar.append(vb);
+    const end = el('button', 'dend', 'Finish'); end.onclick = driveEnd; bar.append(end);
+    const mid = el('div', 'dmid'), big = el('button', 'dbig');
+    const label = { idle: who.chief ? 'Talk to your Chief of Staff' : `Talk to the ${who.name}`, listening: 'Listening', thinking: 'Thinking', speaking: who.chief ? 'Chief of Staff' : who.name }[drive.state];
+    big.innerHTML = mic + '<span></span>'; big.querySelector('span').textContent = label;
+    big.onclick = () => { if (drive.state === 'idle') driveListen(8); else if (drive.state === 'listening') send({ do: 'stopListening' }); else driveStop(); };
+    const side = el('div', 'dside');
+    if (drive.state === 'listening') side.append(el('div', 'dwho', 'You'), el('div', 'dline', drive.heard || 'Say it…'));
+    else if (drive.line) side.append(el('div', 'dwho', drive.state === 'idle' ? '' : who.chief ? 'Chief of Staff' : who.name), el('div', 'dline', drive.line.length > 150 ? drive.line.slice(0, 147) + '…' : drive.line));
+    mid.append(big, side);
+    const foot = el('div', 'dfoot');
+    const fb = (text, run, cls) => { const b = el('button', 'dbtn' + (cls ? ' ' + cls : ''), text); b.onclick = run; foot.append(b); };
+    if (drive.state === 'idle') { fb('Brief me', () => driveAsk('Brief me: what needs my attention today across the team, most important first.', chiefOf() || who)); fb('Note for later', () => { drive.noteNext = true; driveListen(8); });
+      const fav = pinned().map(id => (team() || { nodes: [] }).nodes.find(x => x.id === id)).filter(Boolean)[0]; if (fav) fb(fav.name, () => { drive.who = fav; driveListen(8); }); }
+    else if (drive.state === 'listening') { fb('Cancel', driveStop, 'stop'); fb('Done talking', () => send({ do: 'stopListening' })); }
+    else { fb('Stop', driveStop, 'stop'); if (drive.state === 'speaking') { fb('Say again', () => driveSay(drive.line)); fb('Reply', () => { send({ do: 'hush' }); driveListen(8); }); } }
+    d.append(bar, mid, foot); return drive.voiceOpen ? [d, ...voiceSheet()] : [d];
+  }
+  function lastDriveCards(s) {
+    let ld = null; try { ld = JSON.parse(ls.get('lastDrive') || 'null'); } catch (e) { ld = null; }
+    if (!ld || ld.pid !== ui.pid || !ld.log || !ld.log.length || Date.now() - ld.at > 3 * 864e5) return;
+    s.append(el('div', 'sec', `From your drive, ${when(ld.at).toLowerCase()}`));
+    for (const x of ld.log) { const d = el('div', 'tcard'); d.append(el('span', 'pill ok', x.kind === 'note' ? 'Note' : x.kind === 'done' ? 'Marked done' : x.who)); d.append(el('p', '', x.text)); if (x.answer) { const a = el('p', '', x.answer); a.style.color = 'var(--muted)'; d.append(a); } if (x.url) d.onclick = () => chat(x.url, x.who); s.append(d); }
+    const clear = el('button', 'row', 'Clear this list'); clear.style.cssText = 'border:0;color:var(--muted);justify-content:center'; clear.onclick = () => { ls.set('lastDrive', 'null'); render(); }; s.append(clear);
+  }
+  function render() {
+    let parts;
+    if (drive.on) parts = viewDrive();
+    else if (data.state === 'loading') parts = [el('div', 'top'), emptyNote('Loading your team…', '')];
+    else if (data.state !== 'ok' || !data.profiles.length) parts = viewConnect();
+    else {
+      if (!prof()) ui.pid = data.profiles[0].id;
+      const p = prof(); document.documentElement.style.setProperty('--accent', (p && p.color) || '#1B5A68');
+      const t = team(), n = ui.staff && t && t.nodes.find(x => x.id === ui.staff);
+      parts = n ? viewStaff(n) : ui.tab === 'today' ? viewToday() : ui.tab === 'actions' ? viewActions() : ui.tab === 'recent' ? viewRecent() : viewTeam();
+      if (ui.sheet) parts = parts.concat(sheet());
+      if (ui.filing) parts = parts.concat(fileSheet());
+    }
+    const keepChips = (app.querySelector('.chips') || {}).scrollLeft || 0;
+    const keep = (app.querySelector('.scroll') || {}).scrollTop || 0, key = ui.tab + '|' + (ui.staff || '') + '|' + ui.seg + '|' + ui.pid;
+    app.replaceChildren(...parts);
+    if (render.key === key) { const sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = keep; }
+    const ch = app.querySelector('.chips'); if (ch) ch.scrollLeft = keepChips;
+    render.key = key;
+  }
+  // From the app: the team files as they are in iCloud Drive now.
+  window.phoneData = d => {
+    data = { state: d.state || 'none', profiles: (d.index && d.index.profiles) || [], teams: d.teams || {} };
+    // Changes the Mac says it has applied are finished with (and anything older than two weeks is let go).
+    if (Array.isArray(d.applied)) { const done = new Set(d.applied), n = changes.length; changes = changes.filter(c => !done.has(c.id) && Date.now() - c.at < 14 * 864e5); if (changes.length !== n) saveChanges(); }
+    render();
+  };
+  // Back from Claude. A chat started with Ask is added to that staff member's work.
+  window.phoneChatClosed = info => {
+    const a = ui.asked; ui.asked = null;
+    const url = (info && info.url) || '';
+    if (a && /^https:\/\/claude\.ai\/chat\/[0-9a-f-]{20,}/.test(url)) {
+      const known = Object.values(((data.teams[a.pid] || {}).work) || {}).some(w => [...w.open, ...w.done].some(x => sameUrl(x.url, url))) || changes.some(c => c.type === 'chat' && sameUrl(c.url, url));
+      if (!known) { const name = String((info && info.title) || '').replace(/\s*[-|\u2013]\s*Claude\s*$/i, '').trim() || 'New chat'; changes.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at: Date.now(), pid: a.pid, type: 'chat', staff: a.staff, url: url.replace(/[?#].*$/, ''), name }); saveChanges(); }
+    }
+    render(); send({ do: 'load' });
+  };
+  // Drag a list down and let go to refresh: the phone reads the team again and sends anything waiting.
+  (() => {
+    let y0 = null, pull = 0, tip = null;
+    const sc = e => e.target.closest && e.target.closest('.scroll');
+    app.addEventListener('touchstart', e => { const s2 = sc(e); y0 = s2 && s2.scrollTop <= 0 && !drive.on ? e.touches[0].clientY : null; pull = 0; }, { passive: true });
+    app.addEventListener('touchmove', e => {
+      if (y0 == null) return; pull = e.touches[0].clientY - y0; if (pull < 12) return;
+      if (!tip) { tip = el('div', 'pulltip'); document.body.append(tip); }
+      tip.textContent = pull > 80 ? 'Release to refresh' : 'Pull to refresh'; tip.style.opacity = Math.min(1, pull / 80); tip.style.transform = `translate(-50%, ${Math.min(60, pull / 2)}px)`;
+    }, { passive: true });
+    const end = () => {
+      if (y0 == null) return; const go = pull > 80; y0 = null;
+      if (tip) { if (go) { tip.textContent = 'Refreshing\u2026'; const t = tip; tip = null; setTimeout(() => t.remove(), 900); } else { tip.remove(); tip = null; } }
+      if (go) { if (changes.length) saveChanges(); send({ do: 'load' }); }
+    };
+    app.addEventListener('touchend', end, { passive: true }); app.addEventListener('touchcancel', end, { passive: true });
+  })();
+  render();
+  if (!send({ do: 'load' })) fetch('demo.json').then(r => r.json()).then(window.phoneData).catch(() => window.phoneData({ state: 'none' }));     // in a web browser: sample data, for design checks
+})();
+</script></body></html>

@@ -1,0 +1,31 @@
+# The Xcode project is made from this file by XcodeGen, on GitHub's Mac. Nothing here is secret.
+name: ClaudeNavigatorPhone
+options:
+  bundleIdPrefix: com.dupreez
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  ClaudeNavigatorPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+      - path: Web
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dupreez.claude-navigator-phone
+        PRODUCT_NAME: Chief of Staff
+        MARKETING_VERSION: "0.4.3"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Chief of Staff
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: So you can speak to your staff instead of typing.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: So Drive mode can hear what you say.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.0"
