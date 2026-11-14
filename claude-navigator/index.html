@@ -703,10 +703,10 @@
   .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
   .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
-  .outs-x { margin-left: auto; border: 0; background: none; color: var(--muted); padding: 3px 5px; border-radius: 5px; opacity: 0; } .outs-r:hover .outs-x { opacity: .8; } .outs-x:hover { background: color-mix(in srgb, var(--text) 10%, transparent); opacity: 1; }
+  .outs-x { margin-left: auto; flex: none; border: 0; background: none; color: var(--muted); padding: 3px 5px; border-radius: 5px; opacity: .55; } .outs-x:hover { background: color-mix(in srgb, var(--text) 10%, transparent); opacity: 1; }
   .outs-gone { margin-top: 16px; font-size: 12.5px; color: var(--muted); } .outs-gone .lk { color: var(--muted); border: 0; background: none; font: inherit; padding: 0; text-decoration: underline; } .outs-r.gone { opacity: .7; }
   .outs-r .lk.nm { font-weight: 600; max-width: calc(100% - 44px); vertical-align: middle; } .outs-r .ext { font-style: normal; font-size: 10px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: middle; } .outs-r .lk.path { color: #328276; }
-  .outs-r .where { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
+  .outs-r .where { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; } .outs-r .where > i, .outs-r .where > .out-file { flex: none; } .outs-r .where .sug { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 12px; } .outs-r .where .lk.path { flex: 0 1 auto; min-width: 0; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
   dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
   .outs-list { max-height: 56vh; overflow: auto; margin: 6px 0 12px; }
   .outs-who { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
@@ -8505,10 +8505,13 @@
         for (const h of r.homes) c4.append(link(botPath(h.id) ? `${botPath(h.id)} \u203a ${h.name}` : h.name, 'Show it in this folder', () => { const kid = (h.children || []).find(x => x.type === 'link' && normUrl(x.url || '') === normUrl(r.o.url)); setApp('navigator'); if (kid) revealInFolder(kid.id); else go({ kind: 'folder', id: h.id }); }, 'path'));
       } else {
         const usual = usualPlace(r.st); let best = null; try { best = botLearnedFolder(r.o.name, p) || outSuggest(r.o, r.st, p) || usual || botBestFolder({ name: r.o.name }, p); } catch (e) { best = usual; }
+        // One line, always the same height: where it is suggested to go, and one File button with the choices behind it.
         c4.append(Object.assign(document.createElement('i'), { textContent: 'Not filed' }));
-        if (best) { const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = `File in ${best.name}`; b.addEventListener('click', () => { fileWorkOutput(r.o, best.id, r.st, p); renderCos(); }); c4.append(b); }
-        const e = document.createElement('button'); e.className = 'btn'; e.textContent = best ? 'Elsewhere\u2026' : 'File\u2026';
-        e.addEventListener('click', () => openDialog({ title: `File \u201c${r.o.name}\u201d in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileWorkOutput(r.o, folderId, r.st, p); renderCos(); } })); c4.append(e);
+        const choose = () => openDialog({ title: `File \u201c${r.o.name}\u201d in:`, folderId: (best || usual || p).id, folderOnly: true, onSave: ({ folderId }) => { fileWorkOutput(r.o, folderId, r.st, p); renderCos(); } });
+        const fb = document.createElement('button'); fb.className = 'btn out-file'; fb.textContent = 'File \u25be'; fb.title = best ? `Suggested: ${botPath(best.id) ? botPath(best.id) + ' \u203a ' : ''}${best.name}` : 'Choose the folder it belongs in';
+        fb.addEventListener('click', () => { if (!best) return choose(); const r0 = fb.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [{ label: `File in ${best.name}`, run: () => { fileWorkOutput(r.o, best.id, r.st, p); renderCos(); } }, { label: 'Choose Another Folder\u2026', run: choose }]); });
+        c4.append(fb);
+        if (best) c4.append(Object.assign(document.createElement('span'), { className: 'sug', textContent: `Suggested: ${best.name}`, title: fb.title }));
       }
       const rm = document.createElement('button'); rm.className = 'outs-x'; rm.innerHTML = FICON.hide; rm.title = 'Remove from the outputs. The work stays open, and nothing is deleted in Claude.';
       rm.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k).concat(k).slice(-2000); }, null); toast(`Removed \u201c${r.o.name}\u201d from the outputs`, { label: 'Undo', run: () => cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); }, null) }); });
