@@ -693,8 +693,10 @@
   .outs-page { padding: 12px 18px 30px; max-width: 1180px; }
   .outs-sum { color: var(--muted); font-size: 12.5px; margin: 2px 0 12px; }
   .outs-q { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 170px; color: var(--text); margin-left: 8px; }
-  .outs-r { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.4fr) 110px minmax(220px, 2fr); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
-  .outs-r.wide, .outs-r.head:has(span:nth-child(5)) { grid-template-columns: minmax(180px, 2fr) 140px minmax(130px, 1.3fr) 110px minmax(220px, 2fr); }
+  .outs-tab { container-type: inline-size; }
+  .outs-r { display: grid; grid-template-columns: minmax(110px, 2fr) minmax(80px, 1.3fr) 92px minmax(130px, 1.8fr); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .outs-r.wide, .outs-r.head:has(span:nth-child(5)) { grid-template-columns: minmax(110px, 2fr) minmax(70px, 1fr) minmax(80px, 1.2fr) 92px minmax(130px, 1.8fr); }
+  @container (max-width: 560px) { .outs-r, .outs-r.wide { grid-template-columns: 1fr 1fr; row-gap: 3px; } .outs-r.head { display: none; } .outs-r > span:first-child, .outs-r .where { grid-column: 1 / -1; } }
   .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
   .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
@@ -8338,9 +8340,9 @@
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
       const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
-      const c1 = document.createElement('span'); c1.append(link(r.o.name, 'Open this output', () => go({ kind: 'page', url: r.o.url }), 'nm')); row.appendChild(c1);
+      const c1 = document.createElement('span'); c1.append(link(r.o.name, 'Open this output beside the list', () => cosOpenLink({ name: r.o.name, url: r.o.url }), 'nm')); row.appendChild(c1);
       if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
-      const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it', () => openNode(r.from), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
+      const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it, beside the list', () => cosOpenLink({ name: r.from.name, url: r.from.url }), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
       row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.at ? new Date(r.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }));
       const c4 = document.createElement('span'); c4.className = 'where';
       if (r.homes.length) {
@@ -8962,6 +8964,7 @@
     if (cosUi.tab === 'outputs') {
       const host = document.createElement('div'); host.className = 'cos-proj outs-tab';
       paintOutputs(n, host); page.appendChild(host); cosUi.toFolder = false;
+      if (cosUi.adding) cosSourcePane();          // an output or its chat, open beside the list
       return;
     }
     const wrap = document.createElement('div');
