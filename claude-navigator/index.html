@@ -621,7 +621,7 @@
   .clara-dlg .cl-h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 10px 4px 3px; }
   .clara-dlg .cl-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; font: inherit; text-align: left; padding: 7px 6px; border-radius: 8px; color: var(--text); cursor: default; }
   .clara-dlg .cl-row:hover { background: var(--hover); }
-  .clara-dlg .cl-row .chip { flex: none; min-width: 118px; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 7px; background: color-mix(in srgb, var(--text) 9%, transparent); }
+  .clara-dlg .cl-row .chip { flex: none; width: 152px; box-sizing: border-box; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 3px 7px; background: color-mix(in srgb, var(--text) 9%, transparent); }
   .clara-dlg .cl-row.needs .chip { background: #D9468C; color: #fff; } .clara-dlg .cl-row.booked .chip { background: #328276; color: #fff; }
   .clara-dlg .cl-row .tx { flex: 1; min-width: 0; display: grid; } .clara-dlg .cl-row .tx b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .clara-dlg .cl-row .tx span { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .clara-dlg .cl-row .dt { flex: none; font-size: 11.5px; color: var(--muted); }
@@ -13757,30 +13757,108 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!r.ok) { claraState.err = r.error || 'Could not read Clara’s emails'; continue; }
       for (const m of r.data.value || []) { if (CLARA_DIGEST.test(m.subject || '')) continue; m._acc = a.id; const k = a.id + '|' + (m.conversationId || m.subject); (groups.get(k) || groups.set(k, []).get(k)).push(m); }
     }
-    const items = [];
+    const items = [], all = [];
     for (const [key, list] of groups) {
       list.sort((x, y) => Date.parse(y.receivedDateTime) - Date.parse(x.receivedDateTime));
       const last = list[0], st = claraStage(last, mine);
-      if ((claraMail.cleared || {})[key] >= Date.parse(last.receivedDateTime)) continue;          // you cleared it, and she has not written since
+      const cleared = (claraMail.cleared || {})[key] >= Date.parse(last.receivedDateTime);          // you cleared it, and she has not written since
       const people = new Map(); for (const m of list) for (const z of (m.toRecipients || []).concat(m.ccRecipients || [])) { const ad = addrOf(z); if (ad && !mine.has(ad) && !isClaraAddr(ad)) people.set(ad, (z.emailAddress.name && !/@/.test(z.emailAddress.name) ? z.emailAddress.name : ad)); }
-      items.push({ key, acc: last._acc, conv: last.conversationId || '', title: String(last.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() || '(No subject)', who: [...people.values()].slice(0, 3).join(', '), st, last: Date.parse(last.receivedDateTime), msg: last, count: list.length });
+      const item = { key, acc: last._acc, conv: last.conversationId || '', title: String(last.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() || '(No subject)', who: [...people.values()].slice(0, 3).join(', '), people: [...people].map(([ad, nm]) => ({ ad, nm: String(nm).toLowerCase() })), st, last: Date.parse(last.receivedDateTime), msg: last, count: list.length };
+      all.push(item); if (!cleared) items.push(item);
     }
     const rank = { needs: 0, chasing: 1, offered: 1, going: 1, booked: 2, cancelled: 3 };
     items.sort((a, b) => (rank[a.st.k] - rank[b.st.k]) || (a.st.k === 'booked' ? ((a.st.when ? a.st.when.getTime() : 9e15) - (b.st.when ? b.st.when.getTime() : 9e15)) : b.last - a.last));
-    Object.assign(claraState, { at: Date.now(), items, byConv: new Map(items.filter(x => x.conv).map(x => [x.conv, x])), busy: false });
+    Object.assign(claraState, { at: Date.now(), items, all, byConv: new Map(items.filter(x => x.conv).map(x => [x.conv, x])), busy: false });
     try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); claraStripShow(); } catch (e) { /* not on screen */ }
     return claraState;
   }
-  const claraOpenCount = () => claraState.items.filter(x => ['needs', 'chasing', 'offered', 'going'].includes(x.st.k)).length;
+  // --- Clara's own list ("In-Progress Commands" on her dashboard) is the true record of what she is working on.
+  // The app reads that page (it only reads) and shows it here; her emails are used to open the right thread.
+  const CLARA_TYPE = /^(Schedule|Reschedule|Modify|Cancel|Update|Create|Find)\b.{0,24}\bEvent$/i;
+  function claraParseDash(text) {
+    const lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(l => l && l !== '·');
+    const cards = []; let cur = null, section = '';
+    for (const l of lines) {
+      if (/^(In-Progress|Completed|Past|Recent|Upcoming|Cancelled|Finished|Needs)\b.{0,30}\b(Commands|Events|Attention)$/i.test(l) && l.length < 40 && !CLARA_TYPE.test(l)) { section = l; cur = null; continue; }
+      if (CLARA_TYPE.test(l)) { cur = { type: l, section, rest: [] }; cards.push(cur); continue; }
+      if (cur) cur.rest.push(l);
+    }
+    const out = [];
+    for (const c of cards) {
+      if (c.section && !/in-progress|needs/i.test(c.section)) continue;
+      const r = c.rest.slice(); const it = { type: c.type, status: '', updated: '', act: '', title: '', desc: '', when: '', steps: 0 };
+      const ui = r.findIndex(l => /^Updated\b.*\bago$/i.test(l));
+      if (ui >= 0) { it.status = r.slice(0, ui).join(' '); it.updated = r[ui].replace(/^Updated\s*/i, ''); r.splice(0, ui + 1); } else if (r.length) it.status = r.shift();
+      const pi = r.findIndex(l => /^Progress \(\d+\)$/i.test(l));
+      if (pi >= 0) { it.act = r.slice(0, pi).filter(l => !/\bago$/i.test(l) && !/^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d\d ?[AP]M$/.test(l)).join(' ').slice(0, 160); it.steps = +(/\d+/.exec(r[pi]) || [0])[0]; const dl = r.slice(0, pi).find(l => /^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d\d ?[AP]M$/.test(l)); if (dl) it.when = dl; r.splice(0, pi + 1); }
+      const tail = r.filter(l => !/^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d\d ?[AP]M$/.test(l)); const dl2 = r.find(l => /^[A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d\d ?[AP]M$/.test(l)); if (dl2 && !it.when) it.when = dl2;
+      // (the title and its description are the last two lines of a card, whether or not its progress is opened out)
+      if (tail.length >= 2) { it.title = tail[tail.length - 2]; it.desc = tail[tail.length - 1]; } else if (tail.length === 1) it.title = tail[0];
+      if (/\bago$/i.test(it.title) || /replied$|asked a question$|^Started by/i.test(it.title)) { it.title = it.desc; it.desc = ''; }
+      it.needs = /needs more info|time conflict|needs your|your input|your reply|action required/i.test(it.status);
+      if (it.title || it.status) out.push(it);
+    }
+    return out;
+  }
+  const claraDash = { at: 0, items: null, state: '', busy: false };
+  async function claraDashLoad(force) {
+    if (!isApp || !window.navigatorApp.claraRead || claraDash.busy) return claraDash;
+    if (!force && claraDash.items && Date.now() - claraDash.at < 5 * 60e3) return claraDash;
+    claraDash.busy = true;
+    try {
+      const r = await window.navigatorApp.claraRead(clara.url);
+      const text = (r && r.text) || '';
+      const items = claraParseDash(text);
+      if (items.length || /In-Progress/i.test(text)) { claraDash.items = items; claraDash.state = 'ok'; }
+      else { claraDash.items = null; claraDash.state = /sign in|log in|continue with/i.test(text) || /login|signin|auth/i.test((r && r.url) || '') ? 'signin' : 'unread'; }
+      claraDash.at = Date.now();
+    } catch (e) { claraDash.items = null; claraDash.state = 'unread'; }
+    claraDash.busy = false;
+    try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); } catch (e) { /* not on screen */ }
+    return claraDash;
+  }
+  // The email thread that goes with one of Clara's items: an address in her last activity, or the names in its title.
+  function claraEmailFor(it) {
+    const hay = `${it.act} ${it.title} ${it.desc}`.toLowerCase(), words = new Set((it.title.toLowerCase().match(/[a-z]{4,}/g) || []).filter(w => !['meeting', 'call', 'teams', 'with', 'kevin', 'preez', 'catch', 'event', 'untitled'].includes(w)));
+    let best = null, score = 0;
+    for (const e of claraState.all || claraState.items) {
+      let s = 0;
+      for (const z of e.people || []) { if (z.ad && hay.includes(z.ad)) s += 5; for (const part of z.nm.split(/[\s.@]+/)) if (part.length > 3 && (words.has(part) || hay.includes(' ' + part + ' '))) s += 2; }
+      for (const w of (e.title.toLowerCase().match(/[a-z]{4,}/g) || [])) if (words.has(w)) s += 1;
+      if (s > score) { score = s; best = e; }
+    }
+    return score >= 2 ? best : null;
+  }
+  const claraEmailCount = () => claraState.items.filter(x => ['needs', 'chasing', 'offered', 'going'].includes(x.st.k)).length;
+  const claraOpenCount = () => (claraDash.items ? claraDash.items.length : claraEmailCount());
   const claraWhenText = st => st.when ? st.when.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) + (st.timed ? ', ' + calFmtTime(st.when.getTime()) : '') : '';
   function claraStripShow() { for (const g of document.querySelectorAll('.mail-rh .clara-strip')) { const it = claraState.byConv.get(g.dataset.conv); g.hidden = !it; if (it) g.querySelector('span').textContent = `${it.st.label}${it.st.k === 'booked' && it.st.when ? ': ' + claraWhenText(it.st) : ''}${it.who ? ' · ' + it.who : ''} · last wrote ${new Date(it.last).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`; } }
   // --- 3. The tracker
   function claraPanel() {
     const d = mailDlg('clara-dlg', '<h2>Clara</h2><p class="hint"></p><div class="cl-list"></div><div class="cl-foot"></div><div class="dlg-actions"><button class="btn" data-x="refresh">Check Again</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const paintDash = () => {
+      const list = d.querySelector('.cl-list'); list.replaceChildren();
+      const items = claraDash.items.slice().sort((a, b) => (b.needs ? 1 : 0) - (a.needs ? 1 : 0));
+      d.querySelector('.hint').textContent = items.length ? 'Straight from Clara’s own list of what she is working on. Click one to open its emails; to stop or change one, do it in Clara.' : 'Clara has nothing in progress.';
+      let head = '';
+      for (const it of items) {
+        const grp = it.needs ? 'Needs you' : 'In progress';
+        if (grp !== head) { head = grp; list.appendChild(Object.assign(document.createElement('div'), { className: 'cl-h', textContent: grp })); }
+        const em = claraEmailFor(it), row = document.createElement('button'); row.type = 'button'; row.className = 'cl-row ' + (it.needs ? 'needs' : 'going');
+        row.innerHTML = '<span class="chip"></span><span class="tx"><b></b><span></span></span><span class="dt"></span>';
+        row.querySelector('.chip').textContent = it.status || it.type;
+        row.querySelector('b').textContent = it.title && !/^untitled event$/i.test(it.title) ? it.title : (em ? em.title : it.title || 'Untitled');
+        row.querySelector('.tx span').textContent = [it.type.replace(/ Event$/i, ''), it.when ? `Booked for ${it.when}` : '', it.act, em ? '' : 'no matching email found'].filter(Boolean).join(' \u00b7 ');
+        row.querySelector('.dt').textContent = it.updated;
+        row.addEventListener('click', async () => { d.close(); d.remove(); if (!em) return openNewWindow(clara.url); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(em.msg); });
+        list.appendChild(row);
+      }
+    };
     const paint = () => {
+      if (claraDash.items) { paintDash(); return paintFoot(); }
       const list = d.querySelector('.cl-list'); list.replaceChildren();
       const now = Date.now(), live = claraState.items.filter(x => x.st.k !== 'booked' || !x.st.when || x.st.when.getTime() > now - 864e5), past = claraState.items.length - live.length;
-      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `What Clara is arranging, read from her emails. Click one to open her latest email, or press \u00d7 to clear one you have dealt with.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
+      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `${claraDash.state === 'signin' ? 'Clara\u2019s own list could not be read because you are not signed in to Clara in this app (open the Executive Assistant\u2019s Scheduling tab to sign in). Until then, this is worked out from her emails, so it can include things you have already stopped. ' : claraDash.state === 'unread' ? 'Clara\u2019s own list could not be read just now, so this is worked out from her emails and can include things you have already stopped. ' : ''}What Clara is arranging, read from her emails. Click one to open her latest email, or press \u00d7 to clear one you have dealt with.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
       let head = '';
       for (const it of live) {
         const grp = it.st.k === 'needs' ? 'Needs you' : it.st.k === 'booked' ? 'Booked' : it.st.k === 'cancelled' ? 'Cancelled' : 'In progress';
@@ -13795,6 +13873,9 @@ body { width: max-content !important; min-width: 0 !important; }
         row.addEventListener('click', async () => { d.close(); d.remove(); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(it.msg); });
         list.appendChild(row);
       }
+      paintFoot();
+    };
+    const paintFoot = () => {
       // The Clara folder: Outlook files her copies there by itself, so they never sit in the Inbox.
       const foot = d.querySelector('.cl-foot'); foot.replaceChildren();
       foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'The Clara folder: Outlook files emails you are only copied on (from Clara, and replies to her) into a folder called Clara. Anything she sends to you directly stays in the Inbox.' }));
@@ -13807,8 +13888,9 @@ body { width: max-content !important; min-width: 0 !important; }
       }
     };
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
-    d.querySelector('[data-x="refresh"]').addEventListener('click', async () => { paint(); await claraLoad(true); paint(); });
-    paint(); claraLoad(Date.now() - claraState.at > 60e3).then(paint);
+    d.querySelector('[data-x="refresh"]').addEventListener('click', async () => { d.querySelector('.hint').textContent = 'Reading Clara\u2019s list\u2026'; await Promise.all([claraLoad(true), claraDashLoad(true)]); paint(); });
+    { const ob = document.createElement('button'); ob.className = 'btn'; ob.textContent = 'Open Clara'; ob.addEventListener('click', () => openNewWindow(clara.url)); d.querySelector('[data-x="refresh"]').after(ob); }
+    paint(); if (!claraDash.items) d.querySelector('.hint').textContent = 'Reading Clara\u2019s list\u2026'; Promise.all([claraLoad(Date.now() - claraState.at > 60e3), claraDashLoad(Date.now() - claraDash.at > 60e3)]).then(paint);
   }
   // --- 4. The Clara folder and its two rules (made in Outlook itself, so they work on your phone and when this app is closed)
   function claraFolderSetup(a0, done) {
@@ -13841,7 +13923,7 @@ body { width: max-content !important; min-width: 0 !important; }
       done(`The Clara folder is set up for ${a.email}.${moved ? ` ${moved} email${moved === 1 ? '' : 's'} moved into it.` : ''}`);
     });
   }
-  setTimeout(() => { claraLoad(false); }, 12000); setInterval(() => { if (document.visibilityState === 'visible') claraLoad(false); }, 10 * 60e3);
+  setTimeout(() => { claraLoad(false); claraDashLoad(false); }, 12000); setInterval(() => { if (document.visibilityState === 'visible') claraDashLoad(false); }, 15 * 60e3); setInterval(() => { if (document.visibilityState === 'visible') claraLoad(false); }, 10 * 60e3);
   const ST = (d, extra = '') => `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/>${extra}</svg>`;
   const ST_ICON = {
     staff: ST('M8 8.2a2.7 2.7 0 100-5.4 2.7 2.7 0 000 5.4zM2.8 13.6c.5-2.4 2.6-3.7 5.2-3.7s4.700 1.300 5.200 3.700'),

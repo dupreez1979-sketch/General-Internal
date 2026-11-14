@@ -1635,6 +1635,26 @@ ipcMain.handle('local-listen-start', (e, id, locale, names) => {
 ipcMain.handle('local-listen-stop', (e, id) => (fromOwnWindow(e) ? localAiSay({ op: 'stopListen', id: String(id) }) : false));
 app.on('will-quit', () => { try { if (localAi.proc) localAi.proc.kill(); } catch (e) { /* already gone */ } });
 
+// Clara's own dashboard is where her work really stands. It is read here, signed in as you already are in the app,
+// and only read: nothing on the page is pressed or changed.
+ipcMain.handle('clara-read', async (e, url) => {
+  if (!fromOwnWindow(e)) return null;
+  let u; try { u = new URL(String(url)); } catch (er) { return null; }
+  const test = !app.isPackaged && process.env.NAV_TEST_MS && u.hostname === '127.0.0.1';
+  if (!test && !(u.protocol === 'https:' && /(^|\.)claralabs\.com$/.test(u.hostname))) return null;
+  const win = new BrowserWindow({ show: false, width: 1280, height: 1500, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  win.webContents.setAudioMuted(true);
+  const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 60000);
+  try {
+    await win.loadURL(u.href).catch(() => {});
+    const read = () => win.webContents.executeJavaScript('document.body ? document.body.innerText : ""', true).catch(() => '');
+    let text = '';
+    for (let i = 0; i < 30 && !win.isDestroyed(); i++) { text = String(await read() || ''); if (/Updated .{1,30} ago|In-Progress|No (events|commands)|Sign in|Log in|Continue with/i.test(text)) break; await sleep(500); }
+    for (let i = 0; i < 4 && !win.isDestroyed(); i++) { await win.webContents.executeJavaScript('window.scrollTo(0, document.documentElement.scrollHeight); for (const el of document.querySelectorAll("*")) if (el.scrollHeight > el.clientHeight + 200 && el.clientHeight > 300) el.scrollTop = el.scrollHeight; 1', true).catch(() => {}); await sleep(700); }
+    if (!win.isDestroyed()) text = String(await read() || text);
+    return { text: text.slice(0, 200000), url: win.isDestroyed() ? '' : win.webContents.getURL() };
+  } finally { clearTimeout(guard); if (!win.isDestroyed()) win.destroy(); }
+});
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
