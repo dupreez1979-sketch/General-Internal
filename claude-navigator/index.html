@@ -3357,7 +3357,7 @@
       const m = searchMatcher(state.query);
       items = items.filter(x => m(x.name || ''));
     }
-    return { kind, idx, items: places.sort((a, b) => (a.place === 'w:main' ? -1 : b.place === 'w:main' ? 1 : byName(a, b))).concat(sortItems(items, 'library', { idx })) };
+    return { kind, idx, items: places.sort((a, b) => { const ga = a.place.startsWith('g:'), gb = b.place.startsWith('g:'); return ga !== gb ? (ga ? -1 : 1) : a.place === 'w:main' ? -1 : b.place === 'w:main' ? 1 : byName(a, b); }).concat(sortItems(items, 'library', { idx })) };
   }
 
   function emptyMsg(title, text) {
@@ -3573,7 +3573,7 @@
       r.children[1] && (r.children[1].textContent = KIND_NAME[k]);
       const cols = visibleCols('library');
       const fi = cols.indexOf('filed');
-      if (fi > 0) r.children[fi].textContent = `${x.count} board${x.count === 1 ? '' : 's'}`;
+      if (fi > 0) r.children[fi].textContent = x.place.startsWith('g:') ? `${x.count} workspace${x.count === 1 ? '' : 's'}` : `${x.count} board${x.count === 1 ? '' : 's'}`;
       const ai = cols.indexOf('address');
       if (ai > 0) r.children[ai].textContent = '';
       r.title = `${x.name}: double-click to open`;
@@ -5118,7 +5118,9 @@
   }
   const showingFolder = id => state.loc.kind === 'folder' && state.loc.id === id && !state.query;
 
+  const inMondayList = () => state.loc.kind === 'library' && state.loc.which === 'monday';
   function newFolder(parentId = hereFolder()) {
+    if (arguments.length === 0 && inMondayList()) return mgNew();
     snap();
     const f = Folder('untitled folder');
     insertInto(parentId, f);
@@ -6714,6 +6716,7 @@
     ].filter(Boolean)); });
   $('bNewMenu').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
+    if (inMondayList()) return showMenu(b.left, b.bottom + 4, [{ label: 'New Folder for Workspaces\u2026', icon: 'folder', run: () => mgNew() }, mondayData.connected && mondayData.error !== 'token' ? { label: 'New Board\u2026', run: () => openNewBoard() } : null].filter(Boolean));
     showNewMenu(b.left, b.bottom + 4);
   });
   $('sNewFolder').addEventListener('click', () => newFolder());
@@ -6861,7 +6864,7 @@
   const mgOf = wsId => { const g = mondayGroups.of[wsId]; return g && mondayGroups.groups.find(x => x.id === g) ? g : ''; };
   function mgNew(thenPutIn) {
     openDialog({ title: 'New Folder for Workspaces', name: '', nameOnly: true, noPicker: true, okLabel: 'Create',
-      onSave: ({ name }) => { name = (name || '').trim(); if (!name) return; const g = { id: uid(), name }; mondayGroups.groups.push(g); if (thenPutIn) mondayGroups.of[thenPutIn] = g.id; mgSave(); toast(thenPutIn ? `Made \u201c${name}\u201d and moved the workspace into it` : `Made the folder \u201c${name}\u201d. Right-click a workspace to move it in.`); } });
+      onSave: ({ name }) => { name = (name || '').trim(); if (!name) return; const g = { id: uid(), name }; mondayGroups.groups.push(g); if (thenPutIn) mondayGroups.of[thenPutIn] = g.id; mgSave(); if (!thenPutIn && state.loc.mkey && state.loc.mkey !== 'all') go({ kind: 'library', which: 'monday', mkey: 'all' }); toast(thenPutIn ? `Made \u201c${name}\u201d and moved the workspace into it` : `Made the folder \u201c${name}\u201d. Right-click a workspace to move it in.`); } });
   }
   function mgMenuFor(key) {
     const [t, id] = String(key).split(/:(.*)/s);
