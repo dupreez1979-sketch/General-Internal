@@ -1709,6 +1709,29 @@ ipcMain.handle('clara-read', async (e, url) => {
     return { text: text.slice(0, 200000), url: win.isDestroyed() ? '' : win.webContents.getURL() };
   } finally { clearTimeout(guard); tabKeepReaders.delete(rid); if (!win.isDestroyed()) win.destroy(); }
 });
+// What Clara keeps to remember your sign-in: names and lifetimes only, never the values. For working out why a sign-in is lost.
+ipcMain.handle('clara-signin-info', async e => {
+  if (!fromOwnWindow(e)) return '';
+  const L = [`Claude Navigator ${app.getVersion()}`];
+  try {
+    const all = await session.fromPartition(PARTITION).cookies.get({});
+    const mine = all.filter(c => /clara/i.test(c.domain || ''));
+    L.push(`Cookies for Clara: ${mine.length}`);
+    for (const c of mine.slice(0, 40)) L.push(`  ${c.name} (${c.domain}) ${c.session ? 'ends when the app quits' : 'lasts ' + Math.round((c.expirationDate - Date.now() / 1000) / 3600) + ' h'}${c.httpOnly ? ', httpOnly' : ''}`);
+  } catch (er) { L.push('Cookies: could not read'); }
+  const kept = tabKeepLoad();
+  L.push(`Kept tab sign-ins: ${Object.keys(kept).map(o => `${o} (${Object.keys(kept[o]).join(', ').slice(0, 300)})`).join('; ') || 'none'}`);
+  let pages = 0;
+  for (const wc of webContents.getAllWebContents()) {
+    if (wc.isDestroyed() || !tabKeepOrigin(wc)) continue;
+    pages++;
+    const r = await wc.executeJavaScript(`(async () => { const keys = s => { try { return Object.keys(s).map(k => k + ' [' + String(s.getItem(k) || '').length + ']').join(', ').slice(0, 1200); } catch (e) { return 'blocked'; } }; let dbs = ''; try { dbs = (await indexedDB.databases()).map(d => d.name).join(', '); } catch (e) { dbs = 'unknown'; } return { url: location.origin + location.pathname, signIn: /sign in|log in|continue with/i.test(document.body ? document.body.innerText.slice(0, 3000) : ''), tab: keys(sessionStorage), local: keys(localStorage), dbs }; })()`, true).catch(() => null);
+    if (!r) { L.push('A Clara page could not be read'); continue; }
+    L.push(`Page: ${r.url}${r.signIn ? ' (showing a sign-in screen)' : ''}`, `  Kept in the tab: ${r.tab || 'nothing'}`, `  Kept by the site: ${r.local || 'nothing'}`, `  Databases: ${r.dbs || 'none'}`);
+  }
+  if (!pages) L.push('No Clara page is open. Open the Scheduling tab first.');
+  return L.join('\n');
+});
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.

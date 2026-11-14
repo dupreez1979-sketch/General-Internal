@@ -13980,6 +13980,13 @@ body { width: max-content !important; min-width: 0 !important; }
         const b = document.createElement('button'); b.className = 'btn'; b.textContent = on ? 'Tidy Again' : 'Set Up';
         b.addEventListener('click', () => claraFolderSetup(a, msg => { toast(msg); paint(); })); l.appendChild(b); foot.appendChild(l);
       }
+      if (isApp && window.navigatorApp.claraSignInInfo) {
+        const l = document.createElement('div'); l.className = 'cl-set';
+        l.appendChild(Object.assign(document.createElement('span'), { textContent: 'Having to sign in to Clara again?' }));
+        const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Copy Sign-In Check';
+        b.addEventListener('click', async () => { let t = ''; try { t = await window.navigatorApp.claraSignInInfo(); } catch (e) { /* older app */ } if (!t) return toast('Could not run the check.'); try { await navigator.clipboard.writeText(t); toast('Copied. It lists names only, no passwords or keys. Paste it to Claude.'); } catch (e) { toast('Could not copy it.'); } });
+        l.appendChild(b); foot.appendChild(l);
+      }
     };
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
     d.querySelector('[data-x="refresh"]').addEventListener('click', async () => { d.querySelector('.hint').textContent = 'Reading Clara\u2019s list\u2026'; await Promise.all([claraLoad(true), claraDashLoad(true)]); paint(); });

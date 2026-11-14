@@ -19,6 +19,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   acctAttachmentSave: (id, msgId, attId, name, box, where) => ipcRenderer.invoke('acct-attachment-save', id, msgId, attId, name, box, where),
   testAiUrl: () => ipcRenderer.invoke('test-ai-url'),
   claraRead: url => ipcRenderer.invoke('clara-read', url),
+  claraSignInInfo: () => ipcRenderer.invoke('clara-signin-info'),
   localAiStatus: () => ipcRenderer.invoke('local-ai-status'),
   localAiRun: (id, instructions, prompt) => ipcRenderer.invoke('local-ai-run', id, instructions, prompt),
   localAiCancel: id => ipcRenderer.invoke('local-ai-cancel', id),
