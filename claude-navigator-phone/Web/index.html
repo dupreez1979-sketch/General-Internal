@@ -278,7 +278,7 @@
   const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
   const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
     return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); send({ do: 'pause', seconds: +(ls.get('drivePause') || 4) }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
   function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
@@ -402,6 +402,10 @@
     s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
     s2.append(el('div', 'sec', 'Speed'));
     { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
+    s2.append(el('div', 'sec', 'When your turn ends'));
+    { const cur = +(ls.get('drivePause') || 4); for (const [sec, title, sub] of [[2.5, 'After a short pause', 'About two seconds of silence.'], [4, 'After a pause', 'About four seconds. Room to think mid-sentence.'], [7, 'After a long pause', 'About seven seconds.'], [0, 'Only when I say so', 'It keeps listening until you say “over”, or press Done talking.']]) opt(title, sub, cur === sec, () => { ls.set('drivePause', String(sec)); send({ do: 'pause', seconds: sec }); render(); }); }
+    s2.append(el('p', 'vtip', 'Whichever you choose, finishing with “over” or “that’s all” ends your turn straight away.'));
+    s2.append(el('div', 'sec', 'Talking'));
     { const on = ls.get('driveBarge') !== 'off'; opt('Let me interrupt by speaking', on ? 'On. Start talking, or say stop, and the answer stops.' : 'Off. Press Stop or Reply to cut in.', on, () => { ls.set('driveBarge', on ? 'off' : 'on'); send({ do: 'barge', on: !on }); render(); }); }
     { const on = ls.get('driveLocal') !== 'off'; opt('Answer simple questions on the phone', !drive.local ? 'Not available on this phone, so everything goes to Claude.' : on ? 'On. Things like what is open, or Brief me, are answered at once.' : 'Off. Everything goes to Claude.', on && !!drive.local, () => { ls.set('driveLocal', on ? 'off' : 'on'); render(); }); }
     return [sh, s2];
@@ -417,7 +421,7 @@
     big.innerHTML = mic + '<span></span>'; big.querySelector('span').textContent = label;
     big.onclick = () => { if (drive.state === 'idle') driveListen(8); else if (drive.state === 'listening') send({ do: 'stopListening' }); else driveStop(); };
     const side = el('div', 'dside');
-    if (drive.state === 'listening') side.append(el('div', 'dwho', 'You'), el('div', 'dline', drive.heard || 'Say it…'));
+    if (drive.state === 'listening') side.append(el('div', 'dwho', 'You'), el('div', 'dline', drive.heard || 'Say it… finish with “over”, or just pause'));
     else if (drive.line) side.append(el('div', 'dwho', drive.state === 'idle' ? '' : who.chief ? 'Chief of Staff' : who.name), el('div', 'dline', drive.line.length > 150 ? drive.line.slice(0, 147) + '…' : drive.line));
     mid.append(big, side);
     const foot = el('div', 'dfoot');

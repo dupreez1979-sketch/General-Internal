@@ -21,6 +21,8 @@ final class Drive: NSObject {
     private var monitoring = false           // listening while the phone is speaking, only for an interruption
     private var spoken = Set<String>()       // the words the phone has said this turn (so it does not hear itself as you)
     private var skipWords = 0
+    var pause: Double = 4.0                  // how long a silence ends your turn (0: only when you press Done talking)
+    private let endWords = ["over", "that's all", "that is all", "thats all", "done talking"]
     var names: [String] = []                 // names the hearing should know: your staff and companies
     private var newHearing: AnyObject?       // the newer speech engine, when the phone has it
     private var heard = ""
@@ -85,6 +87,16 @@ final class Drive: NSObject {
         return run >= 3 ? first : nil
     }
 
+    // If what was heard finishes with an end word after other words, the text without it; otherwise nil.
+    private func endsWithEndWord(_ text: String) -> String? {
+        let low = text.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: " .,!?"))
+        for word in endWords where low.hasSuffix(" " + word) {
+            let kept = String(text.trimmingCharacters(in: CharacterSet(charactersIn: " .,!?")).dropLast(word.count)).trimmingCharacters(in: CharacterSet(charactersIn: " .,!?"))
+            if kept.split(separator: " ").count >= 2 { return kept }
+        }
+        return nil
+    }
+
     // What has been heard so far, from either engine.
     private func heardNow(_ full: String) {
         let tokens = full.split(separator: " ")
@@ -100,9 +112,13 @@ final class Drive: NSObject {
         guard text != heard else { return }
         heard = text
         tell("driveHeard", ["text": text, "final": false])
-        DispatchQueue.main.async {      // a pause of a second and a half means you have finished
-            self.quietTimer?.invalidate()
-            self.quietTimer = Timer.scheduledTimer(withTimeInterval: 1.6, repeats: false) { _ in self.stopListening(send: true) }
+        // Your turn ends after a real pause (you choose how long), or sooner if you finish with "over" or "that's all".
+        let ended = endsWithEndWord(text) != nil
+        let wait = ended ? 0.9 : pause
+        DispatchQueue.main.async {
+            self.quietTimer?.invalidate(); self.quietTimer = nil
+            guard wait > 0 else { return }
+            self.quietTimer = Timer.scheduledTimer(withTimeInterval: wait, repeats: false) { _ in self.stopListening(send: true) }
         }
     }
 
@@ -166,7 +182,7 @@ final class Drive: NSObject {
         if #available(iOS 26.0, *) { (newHearing as? NewHearing)?.finish() }
         newHearing = nil
         task?.cancel(); task = nil
-        if send && was { tell("driveHeard", ["text": heard, "final": true]) }
+        if send && was { tell("driveHeard", ["text": endsWithEndWord(heard) ?? heard, "final": true]) }
     }
 
     // MARK: Speaking

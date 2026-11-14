@@ -74,6 +74,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
         case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
         case "barge": drive.bargeIn = (body["on"] as? Bool) ?? true
+        case "pause": drive.pause = max(0, min(15, (body["seconds"] as? Double) ?? 4))
         case "names": drive.names = ((body["list"] as? [String]) ?? []).prefix(80).map { String($0.prefix(60)) }
         case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
         case "voiceTry": drive.say("This is how I will sound when you are driving.")
