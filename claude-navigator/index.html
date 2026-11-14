@@ -634,6 +634,9 @@
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 8px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
   .mail-search { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 6px 10px; width: 220px; color: var(--text); margin-left: 6px; }
   .mail-tools { gap: 6px; }
+  .mail-m.multi { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; box-shadow: inset 3px 0 0 var(--accent); }
+  .mail-bulk { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 7px 10px; background: var(--win); border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .mail-bulk .btn { font-size: 11.5px; padding: 3px 9px; }
   .mail-acts { display: flex; gap: 2px; min-width: 0; overflow: hidden; }
   .mail-acts .tb { color: var(--text); padding: 0 8px; gap: 6px; flex: none; }
   .mail-acts .tb:disabled { opacity: .35; }
@@ -686,6 +689,17 @@
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
   .mail-warn { display: block; width: calc(100% - 20px); margin: 0 10px 8px; padding: 7px 10px; border: 0; border-radius: 8px; background: #99351E; color: #fff; font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+  .outs-tab { display: block; overflow: auto; }
+  .outs-page { padding: 12px 18px 30px; max-width: 1180px; }
+  .outs-sum { color: var(--muted); font-size: 12.5px; margin: 2px 0 12px; }
+  .outs-q { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 170px; color: var(--text); margin-left: 8px; }
+  .outs-r { display: grid; grid-template-columns: minmax(180px, 2fr) minmax(140px, 1.4fr) 110px minmax(220px, 2fr); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .outs-r.wide, .outs-r.head:has(span:nth-child(5)) { grid-template-columns: minmax(180px, 2fr) 140px minmax(130px, 1.3fr) 110px minmax(220px, 2fr); }
+  .outs-r.head { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); border-bottom-color: color-mix(in srgb, var(--text) 18%, transparent); }
+  .outs-r > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .outs-r .mu { color: var(--muted); }
+  .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
+  .outs-r .lk.nm { font-weight: 600; } .outs-r .lk.path { color: #328276; }
+  .outs-r .where { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; white-space: normal; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
   dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
   .outs-list { max-height: 56vh; overflow: auto; margin: 6px 0 12px; }
   .outs-who { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin: 12px 0 5px; }
@@ -1769,10 +1783,10 @@
       <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
     </div>
  <button class="tb" id="splitBtn" data-tb="splitBtn" title="Split view: your folders on the left, Claude or monday.com on the right, so you can drag across without losing your place"><span data-icon="split"></span><span class="t">Split</span></button>
-    <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, artifacts, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
+    <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, outputs, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
     <button class="tb" id="libSelectBtn" data-tb="libSelectBtn" title="Select several with checkboxes" hidden><span data-icon="check"></span><span class="t">Select</span></button>
-    <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show or hide the artifacts under each chat (in All Chats and in your folders)" hidden><span data-icon="attach"></span><span class="t">Artifacts</span></button>
-    <button class="tb" id="subAllBtn" data-tb="subAllBtn" title="Show or hide the artifacts under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
+    <button class="tb" id="libAttachedBtn" data-tb="libAttachedBtn" title="Show or hide the outputs under each chat (in All Chats and in your folders)" hidden><span data-icon="attach"></span><span class="t">Outputs</span></button>
+    <button class="tb" id="subAllBtn" data-tb="subAllBtn" title="Show or hide the outputs under every chat in this list" hidden><span class="ic"></span><span class="t">Expand All</span></button>
     <button class="tb" id="bRefreshLib" data-tb="bRefreshLib" title="Refresh from Claude" hidden><span data-icon="reload"></span></button>
     <button class="tb" id="bReload" data-tb="bReload" title="Reload"><span data-icon="reload"></span></button>
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
@@ -1830,8 +1844,8 @@
 </main>
 <div id="appPop" hidden role="dialog" aria-label="Apps">
   <button class="app-tile" data-app="cos" title="Your AI team: who does what, their work, skills and routines"><span class="app-ic cos"></span><b>Chief of Staff</b></button>
-  <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and artifacts, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
- <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, artifacts and more"><span class="app-ic claude"></span><b>Claude</b></button>
+  <button class="app-tile" data-app="navigator" title="Your folders, Claude chats and outputs, monday.com boards and files"><span class="app-ic nav"></span><b>File Navigator</b></button>
+ <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, outputs and more"><span class="app-ic claude"></span><b>Claude</b></button>
   <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
   <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
   <button class="app-tile" data-app="notes" title="Your Apple Notes (for example your action lists), live from iCloud"><span class="app-ic notes"></span><b>Notes</b></button>
@@ -1929,7 +1943,7 @@
   <form method="dialog" id="linkForm">
     <h2 id="linkDlgTitle">Add Link</h2>
     <label id="lblName">Name:<input id="linkName" placeholder="e.g. Board paper draft"></label>
-    <label id="lblUrl">Address:<input id="linkUrl" placeholder="Paste a Claude chat, project or artifact link" required></label>
+    <label id="lblUrl">Address:<input id="linkUrl" placeholder="Paste a Claude chat, project or output link" required></label>
     <div class="pick">
       <div class="pick-head"><span>Where:</span><span id="pickPath"></span></div>
       <div id="picker" tabindex="0" role="tree" aria-label="Choose a folder"></div>
@@ -2050,7 +2064,7 @@
     word: '#2B5CC7', excel: '#1E7B45', powerpoint: '#C4502A', pdf: '#C9302C', image: '#7A4FC0', video: '#A33B95', audio: '#B36E24', text: '#69717B', archive: '#7C6A55', file: '#69717B',
   };
   const KIND_NAME = {
-    folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Artifact', claude: 'Claude page', link: 'Web link',
+    folder: 'Folder', chat: 'Chat', project: 'Project', artifact: 'Output', claude: 'Claude page', link: 'Web link',
     doc: 'Doc', slides: 'Slides', design: 'Design', dashboard: 'Dashboard', whiteboard: 'Whiteboard', canva: 'Canva design',
     code: 'Code', schedule: 'Schedule', designsystem: 'Design system', skill: 'Claude skill', clara: 'Clara page', monday: 'monday.com board', mondaydoc: 'monday.com doc', mondayws: 'monday.com workspace', mondayfolder: 'monday.com folder',
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
@@ -2250,7 +2264,7 @@
   const LIB_STORE = 'claudeNavigator.library.v1';
   const LIB_FILTER_STORE = 'claudeNavigator.libraryFilter';
   const LIB_TIP_STORE = 'claudeNavigator.libraryTipDone';
-  const LIB_KINDS = { chats: 'All Chats', projects: 'Projects', artifacts: 'Artifacts', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled', skills: 'Skills', monday: 'monday.com' };
+  const LIB_KINDS = { chats: 'All Chats', projects: 'Projects', artifacts: 'Outputs', designsystems: 'Design Systems', design: 'Design', code: 'Code', scheduled: 'Scheduled', skills: 'Skills', monday: 'monday.com' };
   // Shown in the Claude section (Projects and Design are still read: Design feeds Design Systems).
   const SIDEBAR_LIB = ['chats', 'artifacts'];
   const CLAUDE_OTHER = ['designsystems', 'code', 'scheduled', 'skills'];      // under "Other", closed by default
@@ -2523,7 +2537,7 @@
     toast('Undone');
   }
   // Folders start closed; a chat's attached items start shown. The sidebar and the lists both use this.
-  const isOpen = n => !!n.open;     // folders and chats with attached artifacts start closed
+  const isOpen = n => !!n.open;     // folders and chats with attached outputs start closed
   let phoneTimer = null;
   const phoneSoon = () => { clearTimeout(phoneTimer); phoneTimer = setTimeout(() => { try { phonePublish(); } catch (e) { /* starting up */ } }, 3000); };       // the phone's copy follows every change
   function commit() { fileRelatedArtifacts(); save(); if (state.profileId && !activeProfile()) state.profileId = null; applyProfileThemeSafe(); renderAll(); phoneSoon(); }
@@ -2637,7 +2651,7 @@
     const k = kindOf({ type: 'link', url });
     if (k === 'chat') return 'Untitled chat';
     if (k === 'project') return 'Untitled project';
-    if (k === 'artifact') return 'Untitled artifact';
+    if (k === 'artifact') return 'Untitled output';
     try { return new URL(url).hostname.replace(/^www\./, '') || 'Untitled link'; } catch (e) { return 'Untitled link'; }
   }
   // Lookups that would otherwise walk every folder for every row. Rebuilt after any change (see bumpCaches).
@@ -2901,7 +2915,7 @@
       for (const a of lib.related[normUrl(chat.url)] || []) {
         if (filed.has(a) || isDetached(chat.url, a)) continue;
         const [x, k] = known.get(a) || [null, 'artifacts'];
-        const c = Link(x && hasWords(x.name) ? x.name : 'Untitled artifact', (x && x.url) || a);
+        const c = Link(x && hasWords(x.name) ? x.name : 'Untitled output', (x && x.url) || a);
         c.autoName = true;
         const kd = x ? libKind(x, k) : null;
         if (kd && kd !== 'artifact' && G[kd]) c.as = kd;
@@ -2926,7 +2940,7 @@
       }
     });
     if (!moves.length) {
-      const added = fileRelatedArtifacts();     // and bring along artifacts Claude has only just linked to a filed chat
+      const added = fileRelatedArtifacts();     // and bring along outputs Claude has only just linked to a filed chat
       if (added) { save(); renderAll(); }
       return;
     }
@@ -2941,7 +2955,7 @@
     fileRelatedArtifacts();
     save();
     renderAll();
-    toast(moves.length === 1 ? `Attached \u201c${nodeOf(moves[0][0]).name}\u201d to the chat it came from` : `Attached ${moves.length} artifacts to the chats they came from`, true);
+    toast(moves.length === 1 ? `Attached \u201c${nodeOf(moves[0][0]).name}\u201d to the chat it came from` : `Attached ${moves.length} outputs to the chats they came from`, true);
   }
   function removeRelation(chatUrl, itemUrl) {
     const c = normUrl(chatUrl), a = normUrl(itemUrl);
@@ -2964,7 +2978,7 @@
     return [...urls].map(u => {
       const saved = savedLinksFor(u)[0];
       const [x, k] = known.get(u) || [null, 'artifacts'];
-      return { name: (saved && saved.name) || (x && x.name) || 'Untitled artifact', url: (x && x.url) || (saved && saved.url) || u, meta: x && x.meta, list: k };
+      return { name: (saved && saved.name) || (x && x.name) || 'Untitled output', url: (x && x.url) || (saved && saved.url) || u, meta: x && x.meta, list: k };
     });
   }
 
@@ -3068,7 +3082,7 @@
     const anyShut = subTargets.some(t => !t.isOpen());
     b.querySelector('.ic').innerHTML = anyShut ? UI.expandAll : UI.collapseAll;
     b.querySelector('.t').textContent = anyShut ? 'Expand All' : 'Collapse All';
-    b.title = anyShut ? `Show the artifacts under every chat in this list (${subTargets.length} chat${subTargets.length === 1 ? '' : 's'})` : 'Hide the artifacts under every chat in this list';
+    b.title = anyShut ? `Show the outputs under every chat in this list (${subTargets.length} chat${subTargets.length === 1 ? '' : 's'})` : 'Hide the outputs under every chat in this list';
     b.dataset.open = anyShut ? '1' : '0';
   }
   function renderMain() {
@@ -3165,7 +3179,7 @@
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
         const row = listRowFor(n, view, updated);
-        const showKids = state.libShowAttached && !where;   // the Artifacts button switches attached items on and off
+        const showKids = state.libShowAttached && !where;   // the Outputs button switches attached items on and off
         if (n.type === 'link' && n.children && n.children.length && showKids) {
           addDisclosure(row, isOpen(n), `${n.children.length} attached`);
           subTargets.push({ isOpen: () => isOpen(n), set: open => { n.open = open; } });
@@ -3195,7 +3209,7 @@
 
   // ---------- Filters for folder and search lists ----------
   const FF_KINDS = {
-    any: 'All Kinds', folders: 'Folders', chats: 'Chats', artifacts: 'Artifacts (docs, slides, designs\u2026)',
+    any: 'All Kinds', folders: 'Folders', chats: 'Chats', artifacts: 'Outputs (docs, slides, designs\u2026)',
     code: 'Code', projects: 'Projects', files: 'Files on This Mac (Word, PDF, images\u2026)', links: 'Other links',
   };
   const ARTIFACTY = new Set(['artifact', 'doc', 'slides', 'design', 'designsystem', 'dashboard', 'whiteboard']);
@@ -3234,9 +3248,9 @@
       '-',
       ...Object.keys(WHEN).map(k => ({ label: WHEN[k], checked: state.ff.when === k, run: set('when', k) })),
       '-',
-      { label: 'Chats With or Without Artifacts', checked: state.ff.arts === 'any', run: set('arts', 'any') },
-      { label: 'Chats With Artifacts', checked: state.ff.arts === 'with', run: set('arts', 'with') },
-      { label: 'Chats Without Artifacts', checked: state.ff.arts === 'without', run: set('arts', 'without') },
+      { label: 'Chats With or Without Outputs', checked: state.ff.arts === 'any', run: set('arts', 'any') },
+      { label: 'Chats With Outputs', checked: state.ff.arts === 'with', run: set('arts', 'with') },
+      { label: 'Chats Without Outputs', checked: state.ff.arts === 'without', run: set('arts', 'without') },
       '-',
       { label: 'Archived Only', checked: state.ff.archived, run: set('archived', !state.ff.archived) },
       '-',
@@ -3381,7 +3395,7 @@
           t.innerHTML = `${state.libSelectMode && !x.place ? `<input type="checkbox" class="lchk" title="Select"${libSel.has(x.url) ? ' checked' : ''}>` : ''}<div class="big">${x.place ? BIG_FOLDER : bigFile(k)}</div><div class="label"></div>`;
           t.querySelector('.label').textContent = libName(x, kind);
           const rel = kind === 'chats' ? relatedFor(x.url) : [];
-          if (rel.length) { const b = document.createElement('span'); b.className = 'att'; b.textContent = `+${rel.length}`; b.title = `${rel.length} artifact${rel.length === 1 ? '' : 's'} made in this chat (switch to list view to see them)`; t.appendChild(b); }
+          if (rel.length) { const b = document.createElement('span'); b.className = 'att'; b.textContent = `+${rel.length}`; b.title = `${rel.length} output${rel.length === 1 ? '' : 's'} made in this chat (switch to list view to see them)`; t.appendChild(b); }
           t.title = x.place ? `${x.name}: double-click to open` : `${libName(x, kind)}\n${KIND_NAME[k]}${idx.get(normUrl(x.url)) ? `\nIn: ${idx.get(normUrl(x.url)).join(', ')}` : ''}`;
           g.appendChild(t);
         }
@@ -3414,7 +3428,7 @@
         const rel = kind === 'chats' && state.libShowAttached ? relatedFor(x.url) : [];
         const shut = !libExpanded.has(normUrl(x.url));
         if (rel.length) {
-          addDisclosure(row, !shut, `${rel.length} artifact${rel.length === 1 ? '' : 's'}`);
+          addDisclosure(row, !shut, `${rel.length} output${rel.length === 1 ? '' : 's'}`);
           const k = normUrl(x.url);
           subTargets.push({ isOpen: () => libExpanded.has(k), set: open => { if (open) libExpanded.add(k); else libExpanded.delete(k); } });
         }
@@ -3443,7 +3457,7 @@
         if (loose.length) {
           const h = document.createElement('div');
           h.className = 'lsub';
-          h.textContent = `Artifacts not linked to a chat (${loose.length}). Drag one onto its chat above to link them.`;
+          h.textContent = `Outputs not linked to a chat (${loose.length}). Drag one onto its chat above to link them.`;
           l.appendChild(h);
           for (const a of loose) { libRowItems.set(a.url, Object.assign({ list: 'artifacts' }, a)); l.appendChild(libRow(a, 'artifacts', idx)); }
         }
@@ -3634,9 +3648,9 @@
       '-',
       ...Object.keys(WHEN).map(k => ({ label: WHEN[k], checked: state.libWhen === k, run: set('libWhen', k) })),
       kind === 'chats' && '-',
-      kind === 'chats' && { label: 'With or Without Artifacts', checked: state.libArts === 'any', run: set('libArts', 'any') },
-      kind === 'chats' && { label: 'With Artifacts', checked: state.libArts === 'with', run: set('libArts', 'with') },
-      kind === 'chats' && { label: 'Without Artifacts', checked: state.libArts === 'without', run: set('libArts', 'without') },
+      kind === 'chats' && { label: 'With or Without Outputs', checked: state.libArts === 'any', run: set('libArts', 'any') },
+      kind === 'chats' && { label: 'With Outputs', checked: state.libArts === 'with', run: set('libArts', 'with') },
+      kind === 'chats' && { label: 'Without Outputs', checked: state.libArts === 'without', run: set('libArts', 'without') },
       kind === 'chats' && '-',
       kind === 'chats' && { label: 'Starred Only', checked: state.libStarred, run: set('libStarred', !state.libStarred) },
       '-',
@@ -4427,7 +4441,7 @@
     dashboard: { title: 'New dashboard', label: 'Dashboard', icon: 'dashboard', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^(beta\\s*)?dashboard(\\s*beta)?$', section: true, tile: 'Dashboard' },
     whiteboard: { title: 'New whiteboard', label: 'Whiteboard', icon: 'whiteboard', url: ARTIFACTS_PAGE, path: '/artifacts', click: '^(beta\\s*)?whiteboards?(\\s*beta)?$', section: true, tile: 'Whiteboard' },
     project: { title: 'New project', label: 'Project', icon: 'project', url: 'https://claude.ai/projects', path: '/projects', click: '^(\\+\\s*)?(new|create) project$' },
-    artifactChat: { title: 'New artifact', label: 'Artifact in a Chat', icon: 'artifact', url: HOME },
+    artifactChat: { title: 'New output', label: 'Output in a Chat', icon: 'artifact', url: HOME },
   };
   const ARTIFACT_KINDS = new Set(['doc', 'slides', 'design', 'dashboard', 'whiteboard']);
 
@@ -4620,7 +4634,7 @@
     renderToolbar();
     syncSideSel();
     if (kind === 'artifactChat' && designSystemOf(folderId)) useDesignSystemNote(designSystemOf(folderId), (profileOf(folderId) || {}).name || 'This profile');
-    else if (kind === 'artifactChat') toast(`Ask Claude to make your artifact. The chat is saved in ${f} as soon as you send it.`);
+    else if (kind === 'artifactChat') toast(`Ask Claude to make your output. The chat is saved in ${f} as soon as you send it.`);
     else if (kind === 'project') toast(`Name your project and click Create Project. It is saved in ${f}.`);
     else if (ARTIFACT_KINDS.has(kind) && designSystemOf(folderId)) useDesignSystemNote(designSystemOf(folderId), (profileOf(folderId) || {}).name || 'This profile');
     else if (ARTIFACT_KINDS.has(kind)) toast(`Opening ${k.tile}. It is saved in ${f} once Claude creates it.`);
@@ -4696,9 +4710,9 @@
     const chat = ctx.linkId && nodeOf(ctx.linkId);
     if (kind === 'artifact' && chat && kindOf(chat) === 'chat' && !knownItem(url) && !offered.has(normUrl(url))) {
       offered.add(normUrl(url));
-      return toast(`New artifact from this chat. Attach it to \u201c${chat.name}\u201d?`, {
+      return toast(`New output from this chat. Attach it to \u201c${chat.name}\u201d?`, {
         label: 'Attach',
-        run: () => { snap(); const l = Link(realTitle(title) || 'Untitled artifact', url); l.autoName = true; l.as = 'artifact'; insertInto(chat.id, l); commit(); toast(`Attached to \u201c${chat.name}\u201d`, true); },
+        run: () => { snap(); const l = Link(realTitle(title) || 'Untitled output', url); l.autoName = true; l.as = 'artifact'; insertInto(chat.id, l); commit(); toast(`Attached to \u201c${chat.name}\u201d`, true); },
       });
     }
     const f = nodeOf(state.lastFolderId);
@@ -5092,7 +5106,7 @@
       walk(n.children, () => c++);
       const what = n.type === 'folder' ? `the ${c} item${c === 1 ? '' : 's'} inside it` : `its ${c} attached item${c === 1 ? '' : 's'}`;
       if (!confirm(n.type === 'folder'
-        ? `Delete the folder \u201c${n.name}\u201d and ${what}? Chats and artifacts in it stay in Claude.`
+        ? `Delete the folder \u201c${n.name}\u201d and ${what}? Chats and outputs in it stay in Claude.`
         : `Remove \u201c${n.name}\u201d and ${what} from this folder? They stay in Claude.`)) return;
     }
     snap();
@@ -5158,7 +5172,7 @@
         const n = others[0];
         const claudeItem = n.type === 'link' && /claude\.ai\//.test(n.url || '');
         removeNode(n.id);
-        if (claudeItem && !nodeOf(n.id)) toast(`Removed \u201c${n.name}\u201d. Artifacts can only be deleted inside Claude.`, { label: 'Open in Claude', run: () => go({ kind: 'page', url: n.url }) });
+        if (claudeItem && !nodeOf(n.id)) toast(`Removed \u201c${n.name}\u201d. Outputs can only be deleted inside Claude.`, { label: 'Open in Claude', run: () => go({ kind: 'page', url: n.url }) });
         return;
       }
       return removeNodes(others.map(n => n.id));
@@ -5204,7 +5218,7 @@
     let files = 0;
     ids.forEach(id => walk([nodeOf(id)], x => { if (x.type === 'file') files++; }));
     const trashNote = fsState.enabled && files ? ` The ${files} file${files === 1 ? '' : 's'} among them will be moved to the Trash.` : '';
-    if (!asked && (inside || trashNote) && !confirm(`${word} these ${ids.length} items${inside ? `, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders` : ''}?${trashNote} Chats and artifacts stay in Claude.`)) return;
+    if (!asked && (inside || trashNote) && !confirm(`${word} these ${ids.length} items${inside ? `, and the ${inside} item${inside === 1 ? '' : 's'} inside the selected folders` : ''}?${trashNote} Chats and outputs stay in Claude.`)) return;
     snap();
     for (const id of ids) {
       const l = locate(id);
@@ -5581,7 +5595,7 @@
     for (const node of nodes) {
       if (kindOf(node) !== 'chat') continue;
       const extra = relatedFor(node.url).filter(a => !savedLinksFor(a.url).length).map(a => {
-        const l = Link(hasWords(a.name) ? a.name : 'Untitled artifact', a.url);
+        const l = Link(hasWords(a.name) ? a.name : 'Untitled output', a.url);
         const k = libKind(a, a.list);
         if (!['chat', 'project', 'link'].includes(k)) l.as = k;
         l.autoName = true;
@@ -5592,7 +5606,7 @@
     const intoFolder = t.zone === 'into' || !t.id;
     if (intoFolder && t.id && nodeOf(t.id) && nodeOf(t.id).type === 'link') {
       const keep = nodes.filter(attachable);                    // only non-chat items attach to a chat
-      if (!keep.length) { undoStack.pop(); return toast('Only artifacts and other items can be attached to a chat'); }
+      if (!keep.length) { undoStack.pop(); return toast('Only outputs and other items can be attached to a chat'); }
       nodes.length = 0;
       nodes.push(...keep);
     }
@@ -6096,7 +6110,7 @@
         if (!sel.length) return;
         if (which === 'chats') deleteFromClaude(sel);
         else if (which === 'monday') deleteMondayBoards(sel.map(x => x.url));
-        else toast('Artifacts can only be deleted inside Claude. Right-click and choose Open in Claude to Delete.');
+        else toast('Outputs can only be deleted inside Claude. Right-click and choose Open in Claude to Delete.');
         break;
       }
       case 'F2': case 'Enter': {
@@ -6441,7 +6455,7 @@
       let items = [];
       try { items = JSON.parse(e.dataTransfer.getData(LIB_TYPE) || '[]'); } catch (err) { /* ignore */ }
       items = items.filter(x => x.url && !(lib.chats || []).some(c => c.url === x.url));
-      if (!items.length) return toast('Drag artifacts onto a chat to link them');
+      if (!items.length) return toast('Drag outputs onto a chat to link them');
       for (const x of items) {
         lib.detached = (lib.detached || []).filter(p => p !== normUrl(t.libChat) + '|' + normUrl(x.url));
         addRelation(t.libChat, x.url);
@@ -6449,7 +6463,7 @@
       const chat = (lib.chats || []).find(c => c.url === t.libChat);
       saveLib();
       renderMain();
-      return toast(`Linked ${items.length === 1 ? `\u201c${items[0].name}\u201d` : `${items.length} artifacts`} to \u201c${chat ? libName(chat, 'chats') : 'the chat'}\u201d`);
+      return toast(`Linked ${items.length === 1 ? `\u201c${items[0].name}\u201d` : `${items.length} outputs`} to \u201c${chat ? libName(chat, 'chats') : 'the chat'}\u201d`);
     }
     const libData = e.dataTransfer.getData(LIB_TYPE);
     if (libData) {
@@ -7989,7 +8003,7 @@
   // Navigator's own list, toolbar, menus and split view; everything in it is an action, ticked when done.
   // Skills: what they do on request (each a Claude chat or project you go back to). Routines: Claude's
   // scheduled tasks. Each staff member can have a Claude Project, so their chats start with their role.
-  const COS_TABS = [['work', 'Work'], ['skills', 'Skills'], ['routines', 'Routines']];
+  const COS_TABS = [['work', 'Work'], ['outputs', 'Outputs'], ['skills', 'Skills'], ['routines', 'Routines']];
   // A fourth tab, Dashboard, appears once the staff member has one (first, if it is set to open first).
   // Scheduling appears when Clara is attached to them.
   function staffTabs(n) {
@@ -8293,6 +8307,53 @@
       }
     }
     return rows;
+  }
+  // Everything a staff member's work has produced, newest first, with where each one is filed. For the Chief of
+  // Staff: the whole team's.
+  function staffOutputs(n) {
+    const p = activeProfile(), t = cosTeam(), rows = [], seen = new Set();
+    const artBy = new Map((lib.artifacts || []).map(a => [normUrl(a.url || ''), a]));
+    for (const st of (n.chief ? ((t && t.nodes) || []).filter(x => x.kind === 'staff') : [n])) {
+      const f = st.folderId && nodeOf(st.folderId); if (!f) continue;
+      const items = workItems(f).filter(x => x.type === 'link' && !inSkills(x.id));
+      const chats = items.filter(x => /\/chat\//.test(x.url || ''));
+      const add = (o, from, x) => { const key = st.id + '|' + normUrl(o.url || ''); if (!o.url || seen.has(key)) return; seen.add(key);
+        const a = artBy.get(normUrl(o.url)); const at = (a && a.updated && Date.parse(a.updated)) || (x && (x.doneAt || x.added)) || 0;
+        rows.push({ st, o, from, at, homes: companyHomes(o.url, p) }); };
+      for (const x of chats) for (const o of workOutputs(x)) add(o, x, x);                    // what each chat made
+      for (const x of items) if (!/\/chat\//.test(x.url || '')) add({ name: x.name, url: x.url, node: x }, null, x);     // artifacts and documents kept in their work
+    }
+    return rows.sort((a, b) => (b.at || 0) - (a.at || 0));
+  }
+  function paintOutputs(n, host) {
+    const p = activeProfile(), all = staffOutputs(n), f = cosUi.outFilter || '', q = (cosUi.outQ || '').trim().toLowerCase();
+    const rows = all.filter(r => (f === 'loose' ? !r.homes.length : f === 'filed' ? r.homes.length : true) && (!q || (r.o.name + ' ' + (r.from ? r.from.name : '') + ' ' + r.homes.map(h => h.name).join(' ') + ' ' + r.st.name).toLowerCase().includes(q)));
+    host.replaceChildren();
+    const list = document.createElement('div'); list.className = 'outs-page';
+    const loose = all.filter(r => !r.homes.length).length;
+    list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: all.length ? `${all.length} output${all.length === 1 ? '' : 's'}. ${loose ? `${loose} not filed yet.` : 'All filed.'} The company folders keep the outputs; the chats stay with ${n.chief ? 'the staff' : n.name}.` : `Nothing yet. Outputs and documents that come out of ${n.chief ? 'the team\u2019s' : n.name + '\u2019s'} work show here, with where each is saved.` }));
+    const head = document.createElement('div'); head.className = 'outs-r head'; head.innerHTML = `<span>Output</span>${n.chief ? '<span>Staff</span>' : ''}<span>From</span><span>When</span><span>Saved in</span>`; if (rows.length) list.appendChild(head);
+    const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
+    for (const r of rows.slice(0, 400)) {
+      const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
+      const c1 = document.createElement('span'); c1.append(link(r.o.name, 'Open this output', () => go({ kind: 'page', url: r.o.url }), 'nm')); row.appendChild(c1);
+      if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
+      const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it', () => openNode(r.from), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
+      row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.at ? new Date(r.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }));
+      const c4 = document.createElement('span'); c4.className = 'where';
+      if (r.homes.length) {
+        for (const h of r.homes) c4.append(link(botPath(h.id) ? `${botPath(h.id)} \u203a ${h.name}` : h.name, 'Show it in this folder', () => { const kid = (h.children || []).find(x => x.type === 'link' && normUrl(x.url || '') === normUrl(r.o.url)); setApp('navigator'); if (kid) revealInFolder(kid.id); else go({ kind: 'folder', id: h.id }); }, 'path'));
+      } else {
+        const usual = usualPlace(r.st); let best = usual; if (!best) { try { best = botBestFolder({ name: r.o.name }, p); } catch (e) { best = null; } }
+        c4.append(Object.assign(document.createElement('i'), { textContent: 'Not filed' }));
+        if (best) { const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = `File in ${best.name}`; b.addEventListener('click', () => { fileWorkOutput(r.o, best.id, r.st, p); renderCos(); }); c4.append(b); }
+        const e = document.createElement('button'); e.className = 'btn'; e.textContent = best ? 'Elsewhere\u2026' : 'File\u2026';
+        e.addEventListener('click', () => openDialog({ title: `File \u201c${r.o.name}\u201d in:`, folderId: usual ? usual.id : p.id, folderOnly: true, onSave: ({ folderId }) => { fileWorkOutput(r.o, folderId, r.st, p); renderCos(); } })); c4.append(e);
+      }
+      row.appendChild(c4); list.appendChild(row);
+    }
+    if (all.length && !rows.length) list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: 'Nothing matches. Choose All or clear the search.' }));
+    host.appendChild(list);
   }
   function outputsDlg(days = 7, onlyStaff = null, onlyItem = null) {
     const p = activeProfile(); if (!p) return;
@@ -8800,7 +8861,7 @@
       if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
       if (k === 'whiteboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosBoardMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length).length : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -8816,6 +8877,14 @@
       tabBar = bar;
       return bar.querySelector('.tab-tools');
     };
+    if (cosUi.tab === 'outputs') {
+      const tb = newTabBar(n.chief ? 'Outputs from the whole team' : 'Outputs');
+      const seg = document.createElement('div'); seg.className = 'seg';
+      for (const [k, label] of [['', 'All'], ['loose', 'Not Filed'], ['filed', 'Filed']]) { const b = document.createElement('button'); b.className = 'tb' + ((cosUi.outFilter || '') === k ? ' on' : ''); b.innerHTML = `<span class="t">${label}</span>`; b.addEventListener('click', () => { cosUi.outFilter = k; renderCos(); }); seg.appendChild(b); }
+      const q = document.createElement('input'); q.type = 'search'; q.className = 'outs-q'; q.placeholder = 'Search outputs'; q.value = cosUi.outQ || '';
+      q.addEventListener('input', () => { cosUi.outQ = q.value; const host = document.querySelector('.outs-tab'); if (host) paintOutputs(n, host); });
+      tb.append(seg, q);
+    }
     if (cosUi.tab === 'whiteboard' && n.whiteboard) {
       const tb = newTabBar('Whiteboard');
       const btn = (html, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = html; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
@@ -8882,6 +8951,11 @@
       $('browse').dataset.caption = cosUi.tab === 'skills' ? `${n.name}\u2019s skills` : `${n.name}\u2019s work`;
       setTimeout(() => { try { cosPaintActions(); renderToolbar(); } catch (e) { /* not ready */ } }, 0);
       if (cosUi.tab === 'skills' && state.loc.kind === 'folder') cosCheckForNewSkills();
+      return;
+    }
+    if (cosUi.tab === 'outputs') {
+      const host = document.createElement('div'); host.className = 'cos-proj outs-tab';
+      paintOutputs(n, host); page.appendChild(host); cosUi.toFolder = false;
       return;
     }
     const wrap = document.createElement('div');
@@ -9187,7 +9261,7 @@
     host.replaceChildren();
     const head = document.createElement('div');
     head.className = 'cos-src-head';
-    const srcs = [['claude', 'Claude'], ['chats', 'All Chats'], ['artifacts', 'Artifacts'], ...(mondayData.connected ? [['monday', 'monday.com']] : []), ['folders', 'My Folders']];
+    const srcs = [['claude', 'Claude'], ['chats', 'All Chats'], ['artifacts', 'Outputs'], ...(mondayData.connected ? [['monday', 'monday.com']] : []), ['folders', 'My Folders']];
     for (const [k, label] of srcs) {
       const b = document.createElement('button');
       b.className = 'tb' + (cosUi.srcFrom === k ? ' on' : '');
@@ -9212,7 +9286,7 @@
       if (cosUi.srcFrom === 'folders') return renderMain();
       if (isMonday) return mondayRefresh(true);
       refreshLibrary(true);
-      toast('Loading your chats and artifacts from Claude\u2026');
+      toast('Loading your chats and outputs from Claude\u2026');
     });
     const grow = document.createElement('span'); grow.className = 'fgrow';   // pushes search and the frame buttons to the right
     head.append(grow, q, rf, frameCtl('claude'));
@@ -12527,6 +12601,13 @@ body { width: max-content !important; min-width: 0 !important; }
       if (ms) rows.sort(msCmp);
       rows = rows.flatMap(row => row.more.length && mailUi.openThreads[row.k] ? [row, ...row.more.map(y => ({ x: y, sub: true }))] : [row]);
     }
+    { const here = new Set(rows.map(q => q.x.id)); for (const id of [...mailMulti.keys()]) if (!here.has(id)) mailMulti.delete(id); }
+    if (mailMulti.size > 1) {
+      const bar = document.createElement('div'); bar.className = 'mail-bulk';
+      bar.appendChild(Object.assign(document.createElement('b'), { textContent: `${mailMulti.size} selected` }));
+      for (const it of mailBulkItems()) { if (it === '-') continue; const b = document.createElement('button'); b.className = 'btn'; b.textContent = it.label; b.addEventListener('click', it.run); bar.appendChild(b); }
+      list.appendChild(bar);
+    }
     for (const { x, k: tk, more, sub } of rows) {
       const g = mailGroupOf(x.receivedDateTime);
       const grouped = !mailUi.search && !(ms && ms.col !== 'date');          // (the Today, Yesterday headings only make sense in date order)
@@ -12557,13 +12638,28 @@ body { width: max-content !important; min-width: 0 !important; }
         cn.addEventListener('click', e => { e.stopPropagation(); mailUi.openThreads[tk] = !mailUi.openThreads[tk]; mailRenderMain(); });
         if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
+      if (mailMulti.has(x.id)) r.classList.add('multi');
       r.addEventListener('click', e => {
+        // Ctrl-click (Cmd on a Mac) adds or removes one; Shift-click takes everything from the last one you clicked to this one.
+        if (e.metaKey || e.ctrlKey || e.shiftKey) {
+          e.preventDefault();
+          if (!mailMulti.size && mailUi.msg && mailUi.msg.id !== x.id && !mailUi.msgOpen) mailMulti.set(mailUi.msg.id, mailUi.msg);
+          if (e.shiftKey) {
+            const order = rows.map(q => q.x), a = order.findIndex(q => q.id === (mailUi.multiAnchor || (mailUi.msg || {}).id)), b = order.indexOf(x);
+            if (a >= 0 && b >= 0) { if (!(e.metaKey || e.ctrlKey)) mailMulti.clear(); for (let i = Math.min(a, b); i <= Math.max(a, b); i++) mailMulti.set(order[i].id, order[i]); }
+            else mailMulti.set(x.id, x);
+          } else { if (mailMulti.has(x.id)) mailMulti.delete(x.id); else mailMulti.set(x.id, x); mailUi.multiAnchor = x.id; }
+          if (!mailUi.multiAnchor) mailUi.multiAnchor = x.id;
+          return mailRenderMain();
+        }
+        mailUi.multiAnchor = x.id;
+        if (mailMulti.size) { mailMulti.clear(); }
         if (!mailPopped() || e.detail >= 2 || x.isDraft) return mailOpen(x);
         if (mailUi.msg === x && !mailUi.msgOpen) return;
         mailUi.msg = x; mailUi.msgOpen = false; mailUi.msgBody = null; mailRenderMain();          // chosen: the buttons above act on it
       });
       r.title = (r.title ? r.title + '\n' : '') + (mailPopped() ? 'Double-click to open' : '');
-      r.addEventListener('contextmenu', e => { e.preventDefault(); mailMsgMenu(x, e.clientX, e.clientY); });
+      r.addEventListener('contextmenu', e => { e.preventDefault(); if (mailMulti.size > 1 && mailMulti.has(x.id)) return showMenu(e.clientX, e.clientY, mailBulkItems()); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
     }
     if (mailUi.loading) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'Reading…' }));
@@ -12716,7 +12812,17 @@ body { width: max-content !important; min-width: 0 !important; }
   // Take a message out of the list at once (the change is then made in Outlook); it comes back if that fails.
   async function mailAct(m, what, arg) {
     const s = mailState.sel, A = m._acc || s.acc;
-    const drop = () => { mailUi.msgs = (mailUi.msgs || []).filter(x => x !== m); if (mailUi.msg === m) { mailUi.msg = null; mailUi.msgBody = null; } mailRenderMain(); };
+    // When the chosen email goes, the one that takes its place in the list is chosen next (or the one above, at the end).
+    const drop = () => {
+      const was = (mailUi.msgs || []).indexOf(m), chosen = mailUi.msg === m;
+      mailUi.msgs = (mailUi.msgs || []).filter(x => x !== m);
+      if (chosen) {
+        const next = was >= 0 ? (mailUi.msgs[was] || mailUi.msgs[was - 1] || null) : null;
+        mailUi.msg = next; mailUi.msgBody = null; mailUi.msgOpen = false;
+        if (next && !mailPopped() && !mailMulti.size) { mailRenderMain(); return mailOpen(next); }        // with the reading pane showing, it opens too
+      }
+      mailRenderMain();
+    };
     let r;
     if (what === 'delete') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
     else if (what === 'archive') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
@@ -12732,6 +12838,21 @@ body { width: max-content !important; min-width: 0 !important; }
     walkF((mailUi.folders[accId] || {}).list, 0);
     return out;
   }
+  // Several emails chosen at once (Ctrl-click or Shift-click): the same few actions, applied to each.
+  const mailMulti = new Map();
+  async function mailBulk(what, arg) {
+    const list = [...mailMulti.values()]; mailMulti.clear(); mailUi.multiAnchor = null; mailRenderMain();
+    for (const m of list) { try { await mailAct(m, what, arg); } catch (e) { /* carry on with the rest */ } }
+    toast(`${list.length} emails ${what === 'delete' ? 'moved to Deleted Items' : what === 'archive' ? 'archived' : arg ? 'marked as read' : 'marked as unread'}`);
+  }
+  const mailBulkItems = () => [
+    { label: 'Archive', run: () => mailBulk('archive') },
+    { label: 'Delete', run: () => mailBulk('delete') },
+    { label: 'Mark as Read', run: () => mailBulk('read', true) },
+    { label: 'Mark as Unread', run: () => mailBulk('read', false) },
+    '-',
+    { label: 'Clear the Selection', run: () => { mailMulti.clear(); mailUi.multiAnchor = null; mailRenderMain(); } },
+  ];
   function mailMsgMenu(m, x, y) {
     const s = mailState.sel;
     const flagged = m.flag && m.flag.flagStatus === 'flagged';
@@ -14768,7 +14889,7 @@ body { width: max-content !important; min-width: 0 !important; }
     // 4. New Claude artifacts not filed anywhere (made in the last week).
     const filed = new Set(items.map(x => normUrl(x.url || '')));
     const fresh = (lib.artifacts || []).filter(a => a.url && !filed.has(normUrl(a.url)) && a.updated && Date.now() - Date.parse(a.updated) < 7 * 864e5);
-    if (fresh.length) out.push({ type: 'unfiled', key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} artifact${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
+    if (fresh.length) out.push({ type: 'unfiled', key: 'unfiled:' + fresh.map(a => a.url).sort().join(',').slice(0, 400), kind: 'Not filed', text: `${fresh.length} output${fresh.length === 1 ? '' : 's'} made in Claude this week ${fresh.length === 1 ? 'is' : 'are'} not in any folder: ${fresh.slice(0, 3).map(a => `\u201c${a.name}\u201d`).join(', ')}${fresh.length > 3 ? '\u2026' : ''}.`,
       actions: [{ label: 'Ask Where', go: true, run: () => botAsk(`These were made in Claude this week but are not filed in any ${p.name} folder:\n${fresh.slice(0, 12).map(a => `- \u201c${a.name}\u201d (${a.url})`).join('\n')}\nOur company folders are:\n${companyFolderChoices(p).slice(0, 60).map(([, path]) => '- ' + path).join('\n')}\nWhere should each one go, and which staff member does each belong to?`) }] });
     // What you usually act on comes first; kinds you nearly always dismiss are left out (see What I've Learned).
     return out.filter(x => !bot.dismissed.includes(x.key) && botKindState(x.type) !== 'off')
@@ -15013,7 +15134,9 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const n of t.nodes.filter(x => x.kind === 'staff')) {
       const f = n.folderId && nodeOf(n.folderId); if (!f) continue;
       const all = workItems(f).filter(x => x.type === 'link' && !inSkills(x.id));
+      let outs = []; try { outs = staffOutputs(n).filter(r => r.st.id === n.id).slice(0, 80).map(r => { let sug = ''; if (!r.homes.length) { try { const b = usualPlace(n) || botBestFolder({ name: r.o.name }, p); sug = b ? b.id : ''; } catch (e) { /* no guess */ } } return { name: r.o.name, url: r.o.url, from: r.from ? r.from.name : '', at: r.at || 0, filed: r.homes.map(h => h.name), suggest: sug }; }); } catch (e) { outs = []; }
       work[n.id] = {
+        outs,
         open: all.filter(x => !x.done && !inArchive(x.id)).slice(0, 80).map(item),
         done: all.filter(x => x.done && (x.doneAt || 0) > Date.now() - 30 * 864e5).slice(0, 40).map(x => Object.assign(item(x), { doneAt: x.doneAt || 0,
           outputs: workOutputs(x).filter(o => o.url).slice(0, 6).map(o => { const filed = companyHomes(o.url, p).map(h => h.name); let sug = ''; if (!filed.length) { try { const b = usualPlace(n) || botBestFolder({ name: o.name }, p); sug = b ? b.id : ''; } catch (e) { /* no guess */ } } return { name: o.name, url: o.url, filed, suggest: sug }; }) })),
@@ -15575,7 +15698,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const TB_STORE = 'claudeNavigator.toolbar.v1';
   const TB_ITEMS = {
     nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
-    libAttachedBtn: 'Artifacts', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
+    libAttachedBtn: 'Outputs', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
     save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bSendTo: 'Send To (Email or Meeting)', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
   };
   const TB_DEFAULT = Object.keys(TB_ITEMS);
@@ -16572,7 +16695,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     if (removed) save();
     if (kept) setTimeout(() => toast(`Removed the empty Design Systems folders. ${kept} still ${kept === 1 ? 'has' : 'have'} things in ${kept === 1 ? 'it' : 'them'}, so ${kept === 1 ? 'it was' : 'they were'} kept: move what you need, then delete ${kept === 1 ? 'it' : 'them'}.`), 2000);
   }
-  if (!ls.get('claudeNavigator.attachedClosed')) {     // once: chats' attached artifacts now start closed
+  if (!ls.get('claudeNavigator.attachedClosed')) {     // once: chats' attached outputs now start closed
     ls.set('claudeNavigator.attachedClosed', '1');
     walk(state.tree, n => { if (n.type === 'link' && n.children && n.children.length) n.open = false; });
     save();

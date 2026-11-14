@@ -100,14 +100,15 @@
   const sameUrl = (a, b) => String(a || '').replace(/[?#].*$/, '').replace(/\/$/, '') === String(b || '').replace(/[?#].*$/, '').replace(/\/$/, '');
   const workOf = id => {
     const w = ((team() || {}).work || {})[id] || { open: [], done: [] };
-    let open = w.open.slice(), done = w.done.slice();
+    let open = w.open.slice(), done = w.done.slice(), outs = w.outs ? w.outs.slice() : null;
     for (const c of changes) {
       if (c.pid !== ui.pid) continue;
       if (c.type === 'chat' && c.staff === id && ![...open, ...done].some(x => sameUrl(x.url, c.url))) open.unshift({ id: 'new-' + c.id, name: c.name, url: c.url, added: c.at, waiting: true });
       if (c.type === 'done') { const i = open.findIndex(x => x.id === c.item); if (i >= 0) { const [x] = open.splice(i, 1); done.unshift(Object.assign({ outputs: [] }, x, { doneAt: c.at, waiting: true })); } }
+      if (c.type === 'file' && c.staff === id && outs) outs = outs.map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o);
       if (c.type === 'file' && c.staff === id) done = done.map(x => Object.assign({}, x, { outputs: (x.outputs || []).map(o => sameUrl(o.url, c.url) && !o.filed.length ? Object.assign({}, o, { filed: [c.folderName || 'a folder'], waiting: true }) : o) }));
     }
-    return { open, done };
+    return { open, done, outs };
   };
   const icon = { team: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9.5" y="3" width="5" height="5" rx="1.4"/><rect x="3" y="16" width="5" height="5" rx="1.4"/><rect x="16" y="16" width="5" height="5" rx="1.4"/><path d="M12 8v4M5.5 16v-4h13v4"/></svg>',
     actions: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5l1.6 1.6L8.6 5M4 12.5l1.6 1.6 3-3.1M4.6 18.5h.01M12 6.5h8M12 12.5h8M12 18.5h8"/></svg>',
@@ -177,13 +178,13 @@
     top.append(back, el('span', 'grow'), ...(n.chief ? [] : [star]));
     const who = el('div', 'who'), av = el('span', 'av', initials(n.name)); if (n.color) av.style.background = n.color;
     const tx = el('div'); tx.append(el('b', '', n.name), el('span', '', n.role || (prof() || {}).name || '')); who.append(av, tx);
-    const outs = w.done.flatMap(x => (x.outputs || []).map(o => ({ o, x })));
+    const outs = w.outs ? w.outs.map(o => ({ o, x: { name: o.from } })) : w.done.flatMap(x => (x.outputs || []).map(o => ({ o, x })));
     const seg = el('div', 'seg');
     for (const [k, label] of [['open', `Open ${w.open.length || ''}`], ['done', 'Done'], ['outs', 'Outputs']]) { const b = el('button', ui.seg === k ? 'on' : '', label.trim()); b.onclick = () => { ui.seg = k; render(); }; seg.append(b); }
     const s = el('div', 'scroll');
     if (ui.seg === 'open') { w.open.forEach(x => { const r = itemRow(x, x.waiting ? 'Started here. Your Mac will add it.' : '', when(x.added)); if (!x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: n.id, item: x.id }); }; r.prepend(c); } s.append(r); }); if (!w.open.length) s.append(emptyNote('No open work', 'Ask them something to start a piece of work.')); }
     if (ui.seg === 'done') { w.done.forEach(x => s.append(itemRow(x, (x.outputs || []).length ? `${x.outputs.length} output${x.outputs.length === 1 ? '' : 's'}` : 'No output', when(x.doneAt)))); if (!w.done.length) s.append(emptyNote('Nothing finished lately', 'Work finished in the last 30 days shows here.')); }
-    if (ui.seg === 'outs') { for (const { o, x } of outs) { const r = itemRow(o, `From “${x.name}”`); const p = el('span', 'pill' + (o.filed.length ? ' ok' : ''), o.filed.length ? `Filed in ${o.filed[0]}` : 'File\u2026'); if (!o.filed.length) p.onclick = e => { e.stopPropagation(); ui.filing = { o, staff: n.id }; render(); }; r.append(p); s.append(r); } if (!outs.length) s.append(emptyNote('No outputs lately', 'Artifacts and documents from finished work show here.')); }
+    if (ui.seg === 'outs') { for (const { o, x } of outs) { const r = itemRow(o, x.name ? `From “${x.name}”` : '', o.at ? when(o.at) : ''); const p = el('span', 'pill' + (o.filed.length ? ' ok' : ''), o.filed.length ? `Filed in ${o.filed[0]}` : 'File\u2026'); if (!o.filed.length) p.onclick = e => { e.stopPropagation(); ui.filing = { o, staff: n.id }; render(); }; r.append(p); s.append(r); } if (!outs.length) s.append(emptyNote('No outputs yet', 'What comes out of their work shows here, with where each is saved.')); }
     return [top, who, seg, s, askBar(n, true)];
   }
   function viewToday() {
