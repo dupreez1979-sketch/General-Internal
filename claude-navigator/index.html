@@ -696,6 +696,8 @@
   .outs-tab { display: block; overflow: auto; }
   .outs-page { padding: 12px 18px 30px; max-width: 1180px; }
   .outs-sum { color: var(--muted); font-size: 12.5px; margin: 2px 0 12px; }
+  .outs-r.sel { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .outs-bulk { display: flex; align-items: center; gap: 8px; padding: 7px 10px; margin-bottom: 6px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 10%, var(--win)); font-size: 12.5px; } .outs-bulk b { margin-right: 6px; } .outs-bulk button { font-size: 12px; padding: 3px 11px; }
   .outs-q { font: inherit; font-size: 12.5px; background: var(--field); border: 0; border-radius: 7px; padding: 5px 9px; width: 170px; color: var(--text); margin-left: 8px; }
   .outs-tab { container-type: inline-size; }
   .outs-r { display: grid; grid-template-columns: var(--gcols, minmax(110px, 2fr) minmax(80px, 1.3fr) 100px minmax(130px, 1.8fr)); gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
@@ -6103,6 +6105,17 @@
   });
   function libContextMenu(e) {
     const it = e.target.closest('.item.lib');
+    if (it && it.classList.contains('mplace') && libSel.has(it.dataset.key) && libSel.size > 1) {
+      const ids = [...libSel].filter(k => k.startsWith(MONDAY_PLACE + 'w:')).map(k => k.slice(MONDAY_PLACE.length + 2));
+      if (ids.length > 1) return showMenu(e.clientX, e.clientY, [
+        { label: `Move ${ids.length} Workspaces to Folder`, key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+          ...mondayGroups.groups.map(g => ({ label: g.name, icon: 'folder', run: () => { for (const id of ids) mondayGroups.of[id] = g.id; mgSave(); libSel.clear(); toast(`Moved ${ids.length} workspaces into \u201c${g.name}\u201d (in this app only)`); } })),
+          mondayGroups.groups.length ? '-' : null,
+          { label: 'New Folder\u2026', run: () => openDialog({ title: 'New Folder', name: '', nameOnly: true, noPicker: true, okLabel: 'Create', onSave: ({ name }) => { if (!name || !name.trim()) return; const g = { id: uid(), name: name.trim() }; mondayGroups.groups.push(g); for (const id of ids) mondayGroups.of[id] = g.id; mgSave(); libSel.clear(); toast(`Moved ${ids.length} workspaces into \u201c${g.name}\u201d (in this app only)`); } }) },
+        ].filter(Boolean)) },
+        ids.some(id => mgOf(id)) ? { label: 'Take Them Out of Their Folders', run: () => { for (const id of ids) delete mondayGroups.of[id]; mgSave(); libSel.clear(); } } : null,
+      ].filter(Boolean));
+    }
     if (it && it.classList.contains('mplace')) return showMenu(e.clientX, e.clientY, [
       { label: 'Open', key: K.open, run: () => openLib(it.dataset.key) },
       ...(mgMenuFor(it.dataset.key.slice(MONDAY_PLACE.length)).length ? ['-', ...mgMenuFor(it.dataset.key.slice(MONDAY_PLACE.length))] : []),
@@ -8504,8 +8517,31 @@
     const gs = gridSortOf(gkey);
     if (gs) { const get = { name: r => r.o.name, staff: r => r.st.name, from: r => (r.from ? r.from.name : ''), when: r => r.at || 0, where: r => (r.homes.length ? r.homes.map(h => h.name).join(', ') : '\uffff') }[gs.col]; if (get) rows.sort(gridCmp(gs.dir, get)); }
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
-    for (const r of rows.slice(0, 400)) {
-      const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
+    // Select several: Cmd/Ctrl-click adds or removes one, Shift-click takes everything between. A bar then acts on them all.
+    const shown = rows.slice(0, 400), rk = r => r.st.id + '|' + outKey(r.o);
+    const sel = cosUi.outSel = cosUi.outSel || new Set();
+    { const live = new Set(shown.map(rk)); for (const k of [...sel]) if (!live.has(k)) sel.delete(k); }
+    if (sel.size > 1) {
+      const picked = shown.filter(r => sel.has(rk(r))), bar = document.createElement('div'); bar.className = 'outs-bulk';
+      bar.appendChild(Object.assign(document.createElement('b'), { textContent: `${picked.length} selected` }));
+      const bb = (label, cls, run) => { const b = document.createElement('button'); b.className = cls; b.textContent = label; b.addEventListener('click', run); bar.appendChild(b); };
+      const toFile = picked.filter(r => !r.homes.length);
+      if (toFile.length) bb(`File ${toFile.length} in a Folder\u2026`, 'btn-primary', () => openDialog({ title: `File ${toFile.length} outputs in:`, folderId: (usualPlace(toFile[0].st) || p).id, folderOnly: true, onSave: ({ folderId }) => { for (const r of toFile) fileWorkOutput(r.o, folderId, r.st, p); sel.clear(); renderCos(); toast(`Filed ${toFile.length} outputs in ${nodeOf(folderId).name}.`); } }));
+      bb('Remove from the List', 'btn', () => { const t = cosTeam(), ks = picked.map(r => outKey(r.o)); sel.clear(); cosChange(() => { t.outShown = (t.outShown || []).filter(z => !ks.includes(z)); t.outHidden = (t.outHidden || []).filter(z => !ks.includes(z)).concat(ks).slice(-2000); }, null); toast(`Removed ${ks.length} outputs from the list`, { label: 'Undo', run: () => cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => !ks.includes(z)); }, null) }); });
+      bb('Clear', 'btn', () => { sel.clear(); paintOutputs(n, host); });
+      list.insertBefore(bar, list.firstChild);
+    }
+    for (const r of shown) {
+      const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '') + (sel.has(rk(r)) ? ' sel' : '');
+      row.addEventListener('click', e => {
+        const mod = e.metaKey || e.ctrlKey, k = rk(r);
+        if (!mod && !e.shiftKey) { if (e.target.closest('button, a, input')) return; sel.clear(); sel.add(k); cosUi.outAnchor = k; return paintOutputs(n, host); }
+        e.preventDefault(); e.stopPropagation();          // (with a modifier, a click on the name selects; it does not open)
+        if (e.shiftKey && cosUi.outAnchor) { const ks = shown.map(rk), a = ks.indexOf(cosUi.outAnchor), b = ks.indexOf(k); if (a >= 0) { if (!mod) sel.clear(); for (let i = Math.min(a, b); i <= Math.max(a, b); i++) sel.add(ks[i]); } else { sel.add(k); cosUi.outAnchor = k; } }
+        else { if (sel.has(k)) sel.delete(k); else sel.add(k); cosUi.outAnchor = k; }
+        paintOutputs(n, host);
+      }, true);
+      row.addEventListener('mousedown', e => { if (e.shiftKey) e.preventDefault(); });          // (no text selection while Shift-clicking)
       const c1 = document.createElement('span'); if (!r.o.file) c1.append(Object.assign(document.createElement('i'), { className: 'live', innerHTML: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 1.8h5.2L12.5 5v9.2H4z M9 2v3.2h3.3 M6 8.2h4.5 M6 10.8h4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>Live', title: 'A live Claude document or artifact: it opens in Claude and can still be edited there' })); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the file.` : 'Open this output beside the list', () => openOutput(r.o, true), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
       if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
       const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it, beside the list', () => cosOpenLink({ name: r.from.name, url: r.from.url }), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
