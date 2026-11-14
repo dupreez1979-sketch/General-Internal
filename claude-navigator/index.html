@@ -9766,6 +9766,12 @@
     qi.value = cosUi.rq || '';
     const applyQ = () => { const q = (cosUi.rq = qi.value).trim().toLowerCase(); box.querySelectorAll('[data-rname]').forEach(el => { el.hidden = !!q && !el.dataset.rname.toLowerCase().includes(q); }); };
     qi.addEventListener('input', applyQ);
+    if (n.chief) {
+      const staff = ((cosTeam() || {}).nodes || []).filter(z => z.kind === 'staff'), cur = staff.find(z => z.id === cosUi.rStaff);
+      const sb = document.createElement('button'); sb.className = 'tb rt-staff' + (cur ? ' on' : ''); sb.innerHTML = '<span class="t"></span>'; sb.firstChild.textContent = `${cur ? cur.name : 'All Staff'} \u25be`; sb.title = 'Show one staff member\u2019s routines';
+      sb.addEventListener('click', () => { const r0 = sb.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [{ label: 'All Staff', checked: !cur, run: () => { cosUi.rStaff = ''; renderCos(); } }, '-', ...staff.filter(z => cosRoutines(z).length || z === cur).map(z => ({ label: `${z.name} (${cosRoutines(z).length})`, checked: z === cur, run: () => { cosUi.rStaff = z.id; renderCos(); } }))]); });
+      top.append(sb);
+    }
     top.append(shapeSeg, fb, calSeg, nb, sq);
     setTimeout(applyQ, 0);
     const waiting = cosUi.routineWatch && cosUi.routineWatch.staffId === n.id;   // a routine being made with Claude
@@ -9783,26 +9789,31 @@
       box.appendChild(wb);
     }
     const keep = r => flt === 'all' || (flt === 'linked' ? !!r.link : flt === 'unlinked' ? !r.link : flt === 'paused' ? !!r.paused : !r.paused);
-    box.appendChild(cosCalendar(cosRoutines(n).filter(keep).map(r => ({ r, n })), cal));
+    // The Chief of Staff sees every routine in the team (their own included), and can narrow it to one person.
+    const team = n.chief ? ((cosTeam() || {}).nodes || []).filter(z => z.kind === 'staff') : [n];
+    const whoR = n.chief && cosUi.rStaff && team.some(z => z.id === cosUi.rStaff) ? cosUi.rStaff : '';
+    const pairs = team.filter(z => !whoR || z.id === whoR).flatMap(z => cosRoutines(z).filter(keep).map(r => ({ r, n: z })));
+    box.appendChild(cosCalendar(pairs, cal));
     const grid = document.createElement('div');
     grid.className = shape === 'list' ? 'cos-rlist' : 'cos-cards';
-    const rs = cosRoutines(n).filter(keep).sort((a, b) => ((routineNext(a) || 9e15) - (routineNext(b) || 9e15)));
+    const rs = pairs.slice().sort((a, b) => ((routineNext(a.r) || 9e15) - (routineNext(b.r) || 9e15)));
     if (shape === 'list' && rs.length) {
       const statusOf = r => r.missing ? 'Not found in Claude' : r.paused ? 'Paused' : (r.link || r.fromProject) ? 'Active' : 'Not linked';
-      const rv = { name: r => r.name || '', repeats: r => routineWhen(r), next: r => routineNext(r) || 9e15, status: statusOf };
-      const stR = gridSortOf('routines');
+      const rv = { name: x => x.r.name || '', staff: x => x.n.name || '', repeats: x => routineWhen(x.r), next: x => routineNext(x.r) || 9e15, status: x => statusOf(x.r) };
+      const gk = n.chief ? 'routinesTeam' : 'routines', stR = gridSortOf(gk);
       if (stR && rv[stR.col]) rs.sort(gridCmp(stR.dir, rv[stR.col]));
       const hd = document.createElement('div'); hd.className = 'rrow rhd';
-      grid.appendChild(gridHead(hd, grid, 'routines', [{ k: 'name', label: 'Name', def: 'minmax(0, 2fr)', min: 120 }, { k: 'repeats', label: 'Repeats', def: 'minmax(0, 1.6fr)' }, { k: 'next', label: 'Next run', def: 'minmax(0, 1fr)' }, { k: 'status', label: 'Status', def: '90px' }], { canClear: true, usual: { col: 'next', dir: 'asc' }, onSort: renderCos }));
+      grid.appendChild(gridHead(hd, grid, gk, [{ k: 'name', label: 'Name', def: 'minmax(0, 2fr)', min: 120 }, ...(n.chief ? [{ k: 'staff', label: 'Staff', def: 'minmax(0, 1.2fr)' }] : []), { k: 'repeats', label: 'Repeats', def: 'minmax(0, 1.6fr)' }, { k: 'next', label: 'Next run', def: 'minmax(0, 1fr)' }, { k: 'status', label: 'Status', def: '90px' }], { canClear: true, usual: { col: 'next', dir: 'asc' }, onSort: renderCos }));
     }
-    for (const r of rs) {
+    for (const pr of rs) { const r = pr.r, chiefView = !!n.chief; { const n = pr.n;          // (each routine acts for the staff member it belongs to)
       const next = routineNext(r);
       if (shape === 'list') {
         const row = document.createElement('div');
         row.className = 'rcard rrow' + (r.paused ? ' paused' : '');
-        row.dataset.rid = r.id; row.dataset.rname = r.name;
-        row.innerHTML = `<span class="nm">${small('schedule', KIND_COLOUR.schedule)}<b></b></span><span class="wh"></span><span class="nx"></span><span class="st"></span>`;
+        row.dataset.rid = r.id; row.dataset.rname = r.name + ' ' + n.name; row.dataset.sid = n.id;
+        row.innerHTML = `<span class="nm">${small('schedule', KIND_COLOUR.schedule)}<b></b></span>${chiefView ? '<span class="who"></span>' : ''}<span class="wh"></span><span class="nx"></span><span class="st"></span>`;
         row.querySelector('b').textContent = r.name;
+        if (chiefView) row.querySelector('.who').textContent = n.name;
         row.querySelector('.wh').textContent = routineWhen(r);
         row.querySelector('.nx').textContent = next ? fmtNext(next) : '\u2013';
         row.querySelector('.st').textContent = r.missing ? 'Not found in Claude' : r.paused ? 'Paused' : (r.link || r.fromProject) ? 'Active' : 'Not linked';
@@ -9813,7 +9824,7 @@
       }
       const c = document.createElement('div');
       c.className = 'fcard rcard' + (r.paused ? ' paused' : '');
-      c.dataset.rid = r.id; c.dataset.rname = r.name;
+      c.dataset.rid = r.id; c.dataset.rname = r.name + ' ' + n.name; c.dataset.sid = n.id;
       c.innerHTML = `<div class="rhead"><span class="rclock">${small('schedule', KIND_COLOUR.schedule)}</span><b></b><span class="rstate"></span></div><div class="when"></div><p></p><div class="links"></div><div class="last"></div><div class="row2 racts"><button class="tb open">${UI.external}<span class="t">Open</span></button><button class="tb pause"></button><button class="tb del">${UI.trash}<span class="t">Delete</span></button></div>`;
       c.querySelector('b').textContent = r.name;
       // The card is a window onto the task in Claude: a label only when something needs attention.
@@ -9821,7 +9832,7 @@
       c.querySelector('.rstate').textContent = st;
       c.querySelector('.rstate').className = 'rstate ' + (r.paused && !r.missing ? 'off' : 'warn');
       c.querySelector('.rstate').hidden = !st;
-      c.querySelector('.when').textContent = routineWhen(r);
+      c.querySelector('.when').textContent = chiefView ? `${n.name} \u00b7 ${routineWhen(r)}` : routineWhen(r);
       c.querySelector('p').textContent = r.what || '';
       c.querySelector('p').hidden = !r.what;           // Claude's tasks have instructions, not a description: open it to see them
       const links = c.querySelector('.links');
@@ -9842,20 +9853,21 @@
       db.addEventListener('click', () => r.missing ? cosChange(() => { n.routines = cosRoutines(n).filter(x => x !== r); }, `Deleted \u201c${r.name}\u201d`) : cosDeleteRoutine(n, r));
       c.addEventListener('dblclick', e => { if (!e.target.closest('button, .links')) cosOpenRoutine(n, r); });
       grid.appendChild(c);
-    }
+    } }
     if (!rs.length) {
       const e = document.createElement('div');
       e.className = 'cos-empty';
       e.style.marginTop = '20px';
-      e.innerHTML = '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine and make the scheduled task in Claude: its name and schedule are read from there.</span>';
+      e.innerHTML = n.chief ? '<b>No routines to show</b><span>Every routine in the team is listed here, yours and each staff member\u2019s. Choose All Staff or another filter, or make one with New Routine.</span>' : '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine and make the scheduled task in Claude: its name and schedule are read from there.</span>';
       grid.appendChild(e);
     }
     grid.addEventListener('contextmenu', e => {
       const c = e.target.closest('.rcard');
       e.preventDefault();
       if (!c) return showMenu(e.clientX, e.clientY, cosNewRoutineItems(n));
-      const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
-      showMenu(e.clientX, e.clientY, [
+      const owner = team.find(z => z.id === c.dataset.sid) || n;
+      const r = cosRoutines(owner).find(x => x.id === c.dataset.rid); if (!r) return;
+      ((n) => showMenu(e.clientX, e.clientY, [
         (r.link || r.fromProject) && { label: 'Open', key: K.open, run: () => cosOpenRoutine(n, r) },
         r.link && { label: 'Open in New Window', run: () => openNewWindow(r.link.url) },
         r.output && { label: 'Open the Results', run: () => cosOpenLink(r.output) },
@@ -9865,7 +9877,7 @@
         r.link && { label: 'Copy Link', run: () => navigator.clipboard.writeText(r.link.url).then(() => toast('Link copied')) },
         '-',
         { label: 'Delete Routine\u2026', run: () => cosDeleteRoutine(n, r) },
-      ]);
+      ]))(owner);
     });
     // Drag a scheduled task (or the chat where results land) onto a routine card.
     grid.addEventListener('dragover', e => { if (!cosAccepts(e)) return; const c = e.target.closest('.rcard'); grid.querySelectorAll('.drop').forEach(x => x.classList.remove('drop')); if (!c) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; c.classList.add('drop'); });
@@ -9874,7 +9886,7 @@
       const c = e.target.closest('.rcard'); if (!c) return;
       e.preventDefault(); e.stopPropagation();
       const link = cosDroppedLink(e);
-      const r = cosRoutines(n).find(x => x.id === c.dataset.rid);
+      const r = cosRoutines(team.find(z => z.id === c.dataset.sid) || n).find(x => x.id === c.dataset.rid);
       if (!link || !r) return;
       const isTask = /\/scheduled|\/schedule|\/task/.test(link.url) || (lib.scheduled || []).some(t => normUrl(t.url) === normUrl(link.url));
       cosChange(() => { if (isTask) r.link = link; else r.output = link; }, isTask ? `Linked the Claude task “${link.name}”` : `Results of “${r.name}” go to “${link.name}”`);
