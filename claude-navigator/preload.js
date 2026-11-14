@@ -21,6 +21,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   dictationStart: () => ipcRenderer.invoke('dictation-start'),
   pageLayout: id => ipcRenderer.invoke('page-layout', id),
   phonePublish: docs => ipcRenderer.invoke('phone-publish', docs),
+  chatFileOpen: (chatUrl, name) => ipcRenderer.invoke('chat-file-open', chatUrl, name),
   phoneChanges: () => ipcRenderer.invoke('phone-changes'),
   phoneApplied: ids => ipcRenderer.invoke('phone-applied', ids),
   inviteKitGet: (pid) => ipcRenderer.invoke('invite-kit-get', pid),

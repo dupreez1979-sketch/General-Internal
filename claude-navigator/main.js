@@ -970,6 +970,52 @@ ipcMain.handle('project-scheduled', async (_e, url) => {
 });
 
 let libraryRun = null;
+// Opens a file Claude made in a chat (one of the chat's Outputs): fetched from Claude with your sign-in, saved to a
+// temporary folder, and opened in its own app (Excel, Preview, Word). Nothing is kept or changed in Claude.
+const chatFileScript = (conv, name) => `(async () => {
+  const conv = ${JSON.stringify(conv)}, name = ${JSON.stringify(name)}, tried = [];
+  let orgs = [];
+  try { const r = await fetch('/api/organizations', { credentials: 'include', headers: { accept: 'application/json' } }); const x = r.ok ? await r.json() : []; orgs = Array.isArray(x) ? x : (x.data || []); } catch (e) { tried.push('orgs: ' + e.message); }
+  const path = encodeURIComponent('/mnt/user-data/outputs/' + name);
+  for (const o of orgs) {
+    for (const u of ['/api/organizations/' + o.uuid + '/conversations/' + conv + '/wiggle/download-file?path=' + path,
+                     '/api/organizations/' + o.uuid + '/chat_conversations/' + conv + '/wiggle/download-file?path=' + path,
+                     '/api/organizations/' + o.uuid + '/conversations/' + conv + '/files/download?path=' + path]) {
+      try {
+        const r = await fetch(u, { credentials: 'include' });
+        tried.push(r.status);
+        if (!r.ok) continue;
+        const type = r.headers.get('content-type') || '';
+        const buf = new Uint8Array(await r.arrayBuffer());
+        if (!buf.length || buf.length > 80e6 || (/json|html/.test(type) && !/\\.(json|html)$/i.test(name))) continue;
+        let bin = ''; for (let i = 0; i < buf.length; i += 32768) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 32768));
+        return { ok: true, b64: btoa(bin), type };
+      } catch (e) { tried.push(String(e.message || e)); }
+    }
+  }
+  return { ok: false, tried };
+})()`;
+ipcMain.handle('chat-file-open', async (e, chatUrl, name) => {
+  if (!fromOwnWindow(e)) return { ok: false };
+  const m = /^https:\/\/claude\.ai\/chat\/([0-9a-f-]{20,})/i.exec(String(chatUrl || ''));
+  name = String(name || '');
+  if (!m || !name || name.length > 160 || /[\\/\0]|^\./.test(name) || !/\.[A-Za-z0-9]{2,5}$/.test(name)) return { ok: false, why: 'not a file from a chat' };
+  const win = new BrowserWindow({ show: false, width: 1000, height: 700, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+  const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 90000);
+  try {
+    await openHidden(win, 'https://claude.ai/recents');
+    if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { ok: false, why: 'signed out' };
+    const got = await withTimeout(win.webContents.executeJavaScript(chatFileScript(m[1], name), true), 70000, 'Fetching the file');
+    if (!got || !got.ok) return { ok: false, why: 'not found', tried: (got && got.tried) || [] };
+    const dir = path.join(app.getPath('temp'), 'Claude Navigator files', m[1].slice(0, 8));
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, Buffer.from(got.b64, 'base64'));
+    const problem = process.env.NAV_TEST_MS ? '' : await shell.openPath(file);
+    return problem ? { ok: false, why: problem, file } : { ok: true, file };
+  } catch (err) { return { ok: false, why: String(err && err.message || err) }; }
+  finally { clearTimeout(guard); if (!win.isDestroyed()) win.destroy(); }
+});
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 
 // Quick look at the links Claude is showing in the visible pane (its sidebar of recent chats).

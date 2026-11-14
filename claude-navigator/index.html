@@ -4409,6 +4409,7 @@
   function openNode(n, { newWindow = false } = {}) {
     if (!n) return;
     if (n.type === 'folder') return go({ kind: 'folder', id: n.id });
+    if (n.type === 'link' && n.madeFile && /#file=/.test(n.url || '')) return openOutput({ name: n.name, url: n.url, file: n.madeFile }, false);      // a file Claude made in a chat, filed here: opens as the file
     if (n.type === 'file') {                                   // opens in its own app (Word, Excel, Preview...)
       if (!isApp || !n.path) return toast('This file is on your Mac; open it from the desktop app');
       n.opened = Date.now();
@@ -8333,6 +8334,21 @@
     const out = [], w = (list, parent) => (list || []).forEach(n => { if (n.type === 'folder') { if (!n.team) w(n.children, n); } else if (n.type === 'link' && n.url === o.url && parent) out.push(parent); });
     if (p) w(p.children, null); return out;
   }
+  // Opening an output. A file Claude made in a chat opens as the file itself, in its own app; anything else opens in Claude.
+  const outOpening = new Set();
+  async function openOutput(o, beside) {
+    if (!o.file) return beside ? cosOpenLink({ name: o.name, url: o.url }) : go({ kind: 'page', url: o.url });
+    const chat = o.url.split('#')[0];
+    if (!isApp || !window.navigatorApp.chatFileOpen) return beside ? cosOpenLink({ name: o.name, url: chat }) : go({ kind: 'page', url: chat });
+    if (outOpening.has(o.url)) return;
+    outOpening.add(o.url); toast(`Opening \u201c${o.file}\u201d\u2026`);
+    let r = null; try { r = await window.navigatorApp.chatFileOpen(chat, o.file); } catch (e) { r = { ok: false, why: String(e && e.message || e) }; }
+    outOpening.delete(o.url);
+    if (r && r.ok) return toast(`Opened \u201c${o.file}\u201d`);
+    // Claude would not hand the file over: fall back to the chat, where it sits under Outputs in the side panel.
+    toast(r && r.why === 'signed out' ? 'Sign in to Claude first, then try again.' : `Could not fetch \u201c${o.file}\u201d from Claude${r && r.tried && r.tried.length ? ` (${[...new Set(r.tried)].join(', ')})` : ''}. The chat is open instead: the file is under Outputs in its side panel.`);
+    if (beside) cosOpenLink({ name: o.name, url: chat }); else go({ kind: 'page', url: chat });
+  }
   function fileWorkOutput(o, folderId, st, p) {
     if (o.node) return fileIntoCompany([o.node.id], folderId);
     if (!isCompanyFolder(folderId)) return toast('Choose one of the company folders (outside Team).');
@@ -8393,7 +8409,7 @@
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
       const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
-      const c1 = document.createElement('span'); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the chat; the file is under Outputs in its side panel.` : 'Open this output beside the list', () => cosOpenLink({ name: r.o.name, url: r.o.url }), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
+      const c1 = document.createElement('span'); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the file.` : 'Open this output beside the list', () => openOutput(r.o, true), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
       if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
       const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it, beside the list', () => cosOpenLink({ name: r.from.name, url: r.from.url }), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
       row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.at ? new Date(r.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }));
