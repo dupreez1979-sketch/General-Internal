@@ -11645,6 +11645,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (seed && !inst && seed.teams) f('teams').checked = true;
     if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = zYmd(seed.end); f('et').value = zHm(seed.end); } }
+    if (seed && !inst && seed.allday) { f('allday').checked = true; f('allday').dispatchEvent(new Event('change', { bubbles: true })); }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
     setTimeout(kitPaint, 0);
@@ -13676,15 +13677,48 @@ body { width: max-content !important; min-width: 0 !important; }
     }));
   }
   // A meeting from an email: the people on it are invited, its subject is the title, its words go in the notes.
+  // An email into the calendar. The email is read for what it is about: an event you are invited to goes in on the day of
+  // the event with nobody invited (you are the guest); a meeting someone wants to arrange keeps them as the people to invite.
+  // The Mac's own model picks out the details; the app works out the dates itself and checks them against the email.
+  const MEET_FROM_MAIL = 'You read an email and lay out the calendar entry it calls for. Use only what the email says. Answer in exactly this form and nothing else:\nKind: event (he is invited to attend something that others are running), or meeting (he needs to set up a meeting with the sender), or none (there is nothing to put in a calendar)\nTitle: a short title as it would sit in a calendar, without words like Invitation or RE\nDay: the day it happens, copied exactly as the email writes it (not the reply-by date, and not the day the email was sent)\nStart: HH:MM in 24 hour time, or leave empty if no time is given\nEnd: HH:MM in 24 hour time, or leave empty\nWhere: the place, or leave empty\nTeams: yes or no (yes if it is online, a call, or on Teams)\nRSVP: the reply-by date copied exactly as written, or leave empty';
   async function mailToMeeting(m) {
     const A = m._acc || mailState.sel.acc, me = new Set((mailUi.accounts || []).map(a => String(a.email).toLowerCase()));
     toast('Reading the email…');
     const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=from,toRecipients,ccRecipients` });
     const T = await mailTextOf(A, m);
     const who = r.ok ? [r.data.from].concat(r.data.toRecipients || [], r.data.ccRecipients || []).filter(Boolean).map(z => z.emailAddress && z.emailAddress.address).filter(z => z && !me.has(z.toLowerCase())) : [];
-    calGEdit(null, false, null, {
-      title: (m.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim(), att: [...new Set(who)].join(', '), acc: A.split('>')[0],
-      notes: T ? `From the email “${m.subject || ''}” (${mailWho(m.from)}, ${new Date(m.receivedDateTime).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}):\n\n${T.text.slice(0, 1500)}` : '',
+    const sent = new Date(m.receivedDateTime || Date.now()), plain = (m.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim();
+    const fmt = d => d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const said = d => { if (!T || !d) return false; const t = T.text.toLowerCase(); return new RegExp('\\b0?' + d.getDate() + '(st|nd|rd|th)?\\b').test(t) && (t.includes(d.toLocaleDateString('en-AU', { month: 'long' }).toLowerCase()) || t.includes(d.toLocaleDateString('en-AU', { month: 'short' }).toLowerCase()) || new RegExp('\\b0?' + d.getDate() + '/0?' + (d.getMonth() + 1) + '\\b').test(t)); };
+    let kind = '', title = plain.replace(/^\s*(invitation|invite|save the date|reminder)\s*[:\-]\s*/i, ''), day = null, start = null, end = null, loc = '', teams = false, rsvp = '', checks = [];
+    const hm = v => { const mm = /(\d{1,2})[:.](\d\d)/.exec(v || ''); return mm && +mm[1] < 24 ? +mm[1] * 60 + +mm[2] : null; };
+    if (T && T.text.trim() && await localAiReady()) {
+      const got = await new Promise(res => { const run = localAiRun(MEET_FROM_MAIL, `The email was sent on ${fmt(sent)}.\n\n${T.head}\n\n${T.text.slice(0, 3800)}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'slow' }); } }, 12000); });
+      if (got && !got.error && got.text) {
+        const empty = v => !v || /^\(?(leave )?empty\)?\.?$|^(none|n\/a|-)$/i.test(v.trim());
+        const h = {}; for (const line of String(got.text).split(/\r?\n/)) { const mm = /^\s*[*\-]*\s*(Kind|Title|Day|Start|End|Where|Teams|RSVP)\s*\**\s*:\s*(.*)$/i.exec(line); if (mm) h[mm[1].toLowerCase()] = empty(mm[2]) ? '' : mm[2].replace(/\*+$/, '').trim(); }
+        kind = /^event/i.test(h.kind || '') ? 'event' : /^meeting/i.test(h.kind || '') ? 'meeting' : '';
+        const d1 = h.day ? dateFromWords(h.day, sent) : null;
+        if (d1 && said(d1.date)) { day = d1.date; start = hm(h.start); end = hm(h.end); }          // (a date the email does not contain is not trusted)
+        if (h.title) title = h.title.replace(/^["“]|["”]$/g, '');
+        loc = h.where || ''; teams = /^y/i.test(h.teams || '');
+        const rv = h.rsvp ? dateFromWords(h.rsvp, sent) : null; if (rv && said(rv.date)) rsvp = fmt(rv.date);
+      }
+    }
+    // Without the model (or if it found no date): the first date written in the email, and the usual words of an invitation.
+    if (!day && T) { const d2 = dateFromWords(T.text.slice(0, 4000), sent); if (d2 && d2.date >= new Date(sent.getFullYear(), sent.getMonth(), sent.getDate())) { day = d2.date; checks.push(`I took the date to be ${fmt(day)}: check it against the email.`); } }
+    if (!kind) kind = T && /\b(invite you|invitation|join us|rsvp|you are invited|pleased to invite|delighted to invite|save the date|register)\b/i.test(plain + ' ' + T.text.slice(0, 3000)) ? 'event' : 'meeting';
+    if (!rsvp && T) { const mm = /\b(?:rsvp|reply|respond|register)[^.\n]{0,60}?\bby\s+([^.\n]{4,40})/i.exec(T.text); const rv = mm ? dateFromWords(mm[1], sent) : null; if (rv) rsvp = fmt(rv.date); }
+    const allday = !!day && start === null;
+    if (!day) checks.push('No date was found in the email: set the date and time.');
+    else if (allday) checks.push('The email gives no time, so this is an all-day entry. Set the time if you know it.');
+    if (kind === 'event') checks.push('You are the guest at this one, so nobody is invited from here.');
+    if (rsvp) checks.push(`Reply by ${rsvp}.`);
+    const when = day ? new Date(day.getFullYear(), day.getMonth(), day.getDate(), start === null ? 9 : Math.floor(start / 60), start === null ? 0 : start % 60) : null;
+    const until = when && start !== null ? new Date(when.getTime() + ((end !== null && end > start ? end - start : 60) * 60000)) : null;
+    calGEdit(null, false, when, {
+      title: title || plain, att: kind === 'event' ? '' : [...new Set(who)].join(', '), acc: A.split('>')[0], loc, teams, end: until, allday, check: checks.join(' '),
+      notes: T ? `${rsvp ? `RSVP by ${rsvp}.\n\n` : ''}From the email “${m.subject || ''}” (${mailWho(m.from)}, ${sent.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}):\n\n${T.text.slice(0, 1500)}` : '',
       onSaved: (ev, acc) => linkAdd(mailRef(m), { t: 'cal', key: `cal:${acc}|${ev.id}`, acc, id: ev.id, name: ev.subject || m.subject || 'Meeting', at: ev.start && ev.start.dateTime ? ev.start.dateTime.slice(0, 19) + 'Z' : '' }),
     });
   }
