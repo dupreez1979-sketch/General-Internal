@@ -34,6 +34,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         super.init()
         content.add(self, name: "phone")
         drive = Drive(ui: ui, claude: claude)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.drive.restoreModel() }      // a drive that was cut short: put Claude's model back
         ui.scrollView.contentInsetAdjustmentBehavior = .never
         ui.scrollView.bounces = false
         ui.isOpaque = false
@@ -56,6 +57,8 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "stopListening": drive.stopListening(send: true)
         case "say": if let text = body["text"] as? String { drive.say(text) }
         case "hush": drive.hush()
+        case "fastModel": drive.fastModel()
+        case "restoreModel": drive.restoreModel()
         case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
         // The Drive voice: the phone's own, or one from your ElevenLabs account
         case "voiceGet": sendVoice(voices: nil, problem: "")

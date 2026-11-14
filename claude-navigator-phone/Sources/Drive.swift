@@ -124,6 +124,70 @@ final class Drive: NSObject {
         voice.stop()
     }
 
+    // MARK: Claude's model while driving
+
+    // Claude answers with whichever model was used last, and the larger ones think before they speak. For a drive the
+    // app chooses the fastest model in Claude's own model menu, remembers which one was there, and puts it back when
+    // you finish. It works by pressing Claude's menu, so it checks the result and says so if it could not.
+    private let modelKey = "driveModelWas"
+
+    private func modelScript(want: String) -> String {
+        let pattern = (try? JSONSerialization.data(withJSONObject: [want])).flatMap { String(data: $0, encoding: .utf8) } ?? "[\"haiku\"]"
+        return """
+        (async () => {
+          const want = new RegExp(\(pattern)[0], 'i');
+          const sleep = ms => new Promise(r => setTimeout(r, ms));
+          const seen = e => e && e.getClientRects().length > 0;
+          const names = /\\b(Opus|Sonnet|Haiku|Fable|Mythos)\\b/i;
+          const picker = () => { const all = [...document.querySelectorAll('button')].filter(b => seen(b) && names.test(b.innerText || '') && (b.innerText || '').trim().length < 40); return all.find(b => b.getAttribute('aria-haspopup')) || all[all.length - 1] || null; };
+          let p = null;
+          for (let i = 0; i < 40 && !p; i++) { p = picker(); if (!p) await sleep(300); }
+          if (!p) return { ok: false, why: 'no model menu', was: '', now: '' };
+          const was = (p.innerText || '').replace(/\\s+/g, ' ').trim();
+          if (want.test(was)) return { ok: true, was, now: was };
+          const items = () => [...document.querySelectorAll('[role="menuitem"], [role="menuitemradio"], [role="option"], [role="menu"] button, [role="listbox"] button, [role="dialog"] button')].filter(seen);
+          p.click(); await sleep(500);
+          let hit = items().find(i => want.test(i.innerText || ''));
+          if (!hit) { const more = items().find(i => /more models|other models|all models/i.test(i.innerText || '')); if (more) { more.click(); await sleep(500); hit = items().find(i => want.test(i.innerText || '')); } }
+          if (!hit) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); document.body.click(); return { ok: false, why: 'not in the menu', was, now: was }; }
+          hit.click(); await sleep(700);
+          const after = picker(); const now = after ? (after.innerText || '').replace(/\\s+/g, ' ').trim() : '';
+          return { ok: want.test(now), why: want.test(now) ? '' : 'did not change', was, now };
+        })()
+        """
+    }
+
+    private func setModel(want: String, done: @escaping ([String: Any]) -> Void) {
+        claude.callAsyncJavaScript("return await \(modelScript(want: want))", arguments: [:], in: nil, in: .page) { result in
+            let answer = ((try? result.get()) as? [String: Any]) ?? ["ok": false, "why": "no answer", "was": "", "now": ""]
+            DispatchQueue.main.async { done(answer) }
+        }
+    }
+
+    func fastModel() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            self.setModel(want: "haiku") { answer in
+                let ok = (answer["ok"] as? Bool) ?? false, was = (answer["was"] as? String) ?? "", now = (answer["now"] as? String) ?? ""
+                if ok && !was.isEmpty && was != now && UserDefaults.standard.string(forKey: self.modelKey) == nil { UserDefaults.standard.set(was, forKey: self.modelKey) }
+                self.tell("driveModel", ["ok": ok, "was": was, "now": now, "why": (answer["why"] as? String) ?? "", "step": "fast"])
+            }
+        }
+    }
+
+    // Puts back the model that was there before the drive. Also tried when the app next opens, in case a drive was cut short.
+    func restoreModel() {
+        guard let was = UserDefaults.standard.string(forKey: modelKey), !was.isEmpty else { return }
+        let words = was.split(separator: " ").prefix(2).map { NSRegularExpression.escapedPattern(for: String($0)) }.joined(separator: "\\s*")
+        if claude.url == nil, let home = URL(string: "https://claude.ai/new") { claude.load(URLRequest(url: home)) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.setModel(want: words) { answer in
+                let ok = (answer["ok"] as? Bool) ?? false
+                if ok { UserDefaults.standard.removeObject(forKey: self.modelKey) }
+                self.tell("driveModel", ["ok": ok, "was": was, "now": (answer["now"] as? String) ?? "", "why": (answer["why"] as? String) ?? "", "step": "restore"])
+            }
+        }
+    }
+
     // MARK: Asking Claude
 
     // Puts the words into Claude's message box and sends them. Returns "sent", "none" (no box yet) or "empty".
