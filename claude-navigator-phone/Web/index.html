@@ -34,6 +34,13 @@
   .seg button.on { background:var(--win); color:var(--ink); font-weight:650; box-shadow:0 1px 3px rgba(0,0,0,.12); }
   .row { display:flex; align-items:center; gap:10px; width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:none; font:inherit; color:var(--ink); padding:13px 6px; min-height:52px; }
   .row .nm { flex:1; min-width:0; } .row .nm span { display:block; font-size:13px; color:var(--muted); }
+  .pins { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px 6px; padding:10px 2px 4px; }
+  .pin { border:0; background:none; font:inherit; color:var(--muted); font-size:13.5px; display:flex; flex-direction:column; align-items:center; gap:7px; padding:0; min-width:0; }
+  .pin .av { width:76px; height:76px; font-size:26px; position:relative; box-shadow:0 6px 16px rgba(0,0,0,.14); }
+  .pin .av i { position:absolute; top:-2px; right:-2px; min-width:24px; height:24px; padding:0 6px; border-radius:12px; background:var(--win); color:var(--accent); font-style:normal; font-size:13px; font-weight:700; display:grid; place-items:center; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .pin > span:last-child { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .pin:active { opacity:.6; }
+  .ibtn.on { color:#E0A800; }
   .chk { width:26px; height:26px; border-radius:50%; border:2px solid var(--muted); opacity:.6; flex:none; }
   .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
   .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
@@ -61,6 +68,10 @@
   const initials = n => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
   const when = t => { if (!t) return ''; const d = new Date(t), n = new Date(), days = Math.floor((new Date(n.getFullYear(), n.getMonth(), n.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
     return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? d.toLocaleDateString('en-AU', { weekday: 'short' }) : d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }); };
+  // Favourite staff, kept on this phone for each profile: they sit as big circles under the Chief of Staff.
+  let pins = {}; try { pins = JSON.parse(ls.get('pins') || '{}') || {}; } catch (e) { pins = {}; }
+  const pinned = () => pins[ui.pid] || [];
+  const togglePin = id => { const l = pinned().slice(), i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id); pins[ui.pid] = l.slice(0, 9); ls.set('pins', JSON.stringify(pins)); render(); };
   const team = () => data.teams[ui.pid] || null;
   const prof = () => data.profiles.find(p => p.id === ui.pid) || null;
   // What you have done here that the Mac has not picked up yet. Shown straight away, and sent to the Mac through iCloud.
@@ -119,6 +130,16 @@
     if (!t) { s.append(emptyNote('No team in this profile yet', 'Set the team up in Chief of Staff on your Mac. It appears here on its own.')); return [topBar(true), el('h1', '', 'Team'), s, tabs()]; }
     const byId = id => t.nodes.find(x => x.id === id), chief = t.nodes.find(x => x.chief);
     if (chief) s.append(staffCard(chief, true));
+    const favs = pinned().map(byId).filter(n => n && n.kind === 'staff' && !n.chief);
+    if (favs.length) {
+      const row = el('div', 'pins');
+      for (const n of favs) {
+        const w = workOf(n.id), b = el('button', 'pin'), av = el('span', 'av', initials(n.name)); if (n.color) av.style.background = n.color;
+        if (w.open.length) av.append(el('i', '', String(w.open.length)));
+        b.append(av, el('span', '', n.name)); b.onclick = () => { ui.staff = n.id; ui.seg = 'open'; render(); }; row.append(b);
+      }
+      s.append(row);
+    }
     const deptOf = n => { let p = byId(n.parent), guard = 0; while (p && guard++ < 20) { if (p.kind === 'dept') return p; p = byId(p.parent); } return null; };
     const groups = new Map();
     for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const d = deptOf(n), k = d ? d.id : ''; if (!groups.has(k)) groups.set(k, { name: d ? d.name : 'Team', list: [] }); groups.get(k).list.push(n); }
@@ -131,7 +152,8 @@
   }
   function viewStaff(n) {
     const w = workOf(n.id), top = el('div', 'top'), back = el('button', 'ibtn', '‹'); back.onclick = () => { ui.staff = null; render(); };
-    top.append(back, el('span', 'grow'));
+    const isPin = pinned().includes(n.id), star = el('button', 'ibtn' + (isPin ? ' on' : ''), isPin ? '\u2605' : '\u2606'); star.title = isPin ? 'Remove from favourites' : 'Add to favourites'; star.onclick = () => togglePin(n.id);
+    top.append(back, el('span', 'grow'), ...(n.chief ? [] : [star]));
     const who = el('div', 'who'), av = el('span', 'av', initials(n.name)); if (n.color) av.style.background = n.color;
     const tx = el('div'); tx.append(el('b', '', n.name), el('span', '', n.role || (prof() || {}).name || '')); who.append(av, tx);
     const outs = w.done.flatMap(x => (x.outputs || []).map(o => ({ o, x })));
