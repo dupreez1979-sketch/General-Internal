@@ -47,6 +47,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         switch what {
         case "load": sendData()
         case "pick": pickFolder()
+        case "save": if let text = body["json"] as? String { saveChanges(text) }
         case "chat":
             guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
                   let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") else { return }
@@ -59,7 +60,10 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
 
     func chatClosed() {
         chatOpen = false
-        ui.evaluateJavaScript("window.phoneChatClosed && window.phoneChatClosed()", completionHandler: nil)
+        // Where the chat ended up, so a chat started here can be added to that staff member's work.
+        let info: [String: Any] = ["url": claude.url?.absoluteString ?? "", "title": claude.title ?? ""]
+        let text = (try? JSONSerialization.data(withJSONObject: info)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        ui.evaluateJavaScript("window.phoneChatClosed && window.phoneChatClosed(\(text))", completionHandler: nil)
     }
 
     // MARK: The team files
@@ -101,8 +105,22 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
                     if let team = self.read(folder.appendingPathComponent(file)) { teams[id] = team }
                 }
                 out = ["state": teams.isEmpty ? "empty" : "ok", "index": index, "teams": teams]
+                if let done = self.read(folder.appendingPathComponent("mac-applied.json")) as? [String: Any], let ids = done["ids"] { out["applied"] = ids }
             }
             DispatchQueue.main.async { self.deliver(out) }
+        }
+    }
+
+    // What you did on the phone, for the Mac to pick up: written beside the team files.
+    func saveChanges(_ text: String) {
+        guard let folder = folderURL(), let data = text.data(using: .utf8) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let ok = folder.startAccessingSecurityScopedResource()
+            defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+            var problem: NSError?
+            NSFileCoordinator().coordinate(writingItemAt: folder.appendingPathComponent("phone-changes.json"), options: .forReplacing, error: &problem) { at in
+                try? data.write(to: at, options: .atomic)
+            }
         }
     }
 
