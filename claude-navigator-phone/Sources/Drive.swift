@@ -17,6 +17,9 @@ final class Drive: NSObject {
     private var task: SFSpeechRecognitionTask?
     let voice = Voice()
     let local = Local()
+    let chimes = Chime()
+    private var sayAfter = Date.distantPast       // speech waits for a sound that has just started
+    private var hushes = 0
     var bargeIn = true                       // you can interrupt a spoken answer by speaking
     private var monitoring = false           // listening while the phone is speaking, only for an interruption
     private var spoken = Set<String>()       // the words the phone has said this turn (so it does not hear itself as you)
@@ -194,7 +197,20 @@ final class Drive: NSObject {
         if bargeIn && !listening && SFSpeechRecognizer.authorizationStatus() == .authorized && AVAudioSession.sharedInstance().recordPermission == .granted {
             startListening(wait: 0, monitor: true)          // so you can interrupt by speaking
         }
-        voice.say(text)          // pieces are spoken one after another, in order
+        let wait = sayAfter.timeIntervalSinceNow
+        if wait > 0 {
+            let mine = hushes
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait) { if mine == self.hushes { self.voice.say(text) } }
+        } else {
+            voice.say(text)          // pieces are spoken one after another, in order
+        }
+    }
+
+    // A short sound for what just happened. Anything spoken straight after waits for it.
+    func chime(_ name: String) {
+        audio()
+        chimes.play(name)
+        sayAfter = Date().addingTimeInterval(name == "ready" || name == "made" ? 0.6 : 0.45)
     }
 
     // Opens Claude ahead of the first question, so the page is ready when you speak.
@@ -202,6 +218,8 @@ final class Drive: NSObject {
 
     func hush() {
         askID += 1
+        hushes += 1
+        sayAfter = Date.distantPast
         answerTimer?.invalidate(); answerTimer = nil
         stopListening(send: false)
         voice.stop()

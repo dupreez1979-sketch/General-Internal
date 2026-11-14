@@ -67,6 +67,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "stopListening": drive.stopListening(send: true)
         case "say": if let text = body["text"] as? String { drive.say(text) }
         case "hush": drive.hush()
+        case "chime": if let name = body["name"] as? String { drive.chime(name) }
         case "fastModel": drive.fastModel()
         case "restoreModel": drive.restoreModel()
         case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
