@@ -13920,7 +13920,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!staff) return toast(`${prof.name} has no staff yet. Add an Executive Assistant in Chief of Staff first.`);
     const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', calHelpClose);
     const el = document.createElement('div'); el.className = 'cal-view cal-help'; el.style.setProperty('--ev', prof.color || CAL_COLOUR);
-    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. When you stop talking, the invite is laid out.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. Press Dictate, say the meeting, and stop: the invite is laid out when you finish.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. It listens as soon as this opens. Say the meeting and pause as long as you like. Done stops the listening so you can check your words; nothing is made until you press Make the Invite.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
     Object.assign(calHelp, { el, shade, prof, staff });
     document.body.append(shade, el);          // (over the whole app, so drawing the calendar again never disturbs the chat)
     popMovable(el, el.querySelector('.cv-bar'), 'calHelp', null);
@@ -13947,7 +13947,7 @@ body { width: max-content !important; min-width: 0 !important; }
     el.classList.toggle('nochat', !!calState.helpNoChat);
     bar(); load();
     setTimeout(() => say.focus(), 100);
-    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { quiet: 2500, tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { if (t && say.value.trim() && calHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
+    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { const then = calHelp.goAfter; calHelp.goAfter = false; if (then && t && say.value.trim() && calHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
     const status = t => { out.replaceChildren(Object.assign(document.createElement('div'), { className: 'ch-st', textContent: t })); };
     const show = async found => {
       status('Looking up the people in your contacts\u2026');
@@ -13989,6 +13989,7 @@ body { width: max-content !important; min-width: 0 !important; }
       return true;
     };
     const go = async () => {
+      if (dict.on && dict.on.box === say) { calHelp.goAfter = true; return dictStop(); }          // still listening: finish that first, then this runs by itself
       const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the meeting first.'); }
       if (el.querySelector('.ch-go').disabled) return;
       el.querySelector('.ch-go').disabled = true;
@@ -14029,6 +14030,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     el.querySelector('.ch-go').addEventListener('click', go);
     say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
+    setTimeout(() => { if (calHelp.el === el && !dict.on) el.querySelector('.ch-mic').click(); }, 300);          // listening as it opens
   }
   const CAL_MIC = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="5.8" y="1.8" width="4.4" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2.2M5.8 14.2h4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   async function chatSendTo(x, y) {
@@ -14394,6 +14396,23 @@ body { width: max-content !important; min-width: 0 !important; }
     localAi.at = Date.now();
     return localAi.ok;
   }
+  // A plain report on whether this Mac's model and speech engine are answering, to read or copy.
+  async function localAiCheck() {
+    const L = [`Claude Navigator ${typeof APP_VERSION === 'string' ? APP_VERSION : ''}`.trim()];
+    let st = null; try { st = await window.navigatorApp.localAiStatus(); } catch (e) { st = { ok: false, reason: String(e) }; }
+    L.push(`Model: ${st && st.ok ? 'available' : 'not available' + (st && st.reason ? ' (' + st.reason + ')' : '')}`);
+    if (st && st.ok) {
+      const t0 = Date.now();
+      const r = await new Promise(res => { const run = localAiRun('Answer in five words or fewer.', 'Say hello to Kevin.', x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'no answer in 15 seconds' }); } }, 15000); });
+      L.push(r.error ? `Writing test: failed (${r.error})` : `Writing test: “${String(r.text || '').slice(0, 60)}” in ${((Date.now() - t0) / 1000).toFixed(1)} seconds`);
+      if (!r.error) { localAi.ok = true; }
+    }
+    L.push(`Last dictation: ${dict.last || 'none yet this session'}`);
+    const d = document.createElement('dialog'); d.className = 'ai-check'; d.innerHTML = '<h2>On-Mac check</h2><pre style="white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0 0 14px"></pre><div class="dlg-actions"><button class="btn" data-x="copy">Copy</button><span style="flex:1"></span><button class="btn-primary" data-x="ok">Close</button></div>';
+    d.querySelector('pre').textContent = L.join('\n');
+    d.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; if (x.dataset.x === 'copy') { navigator.clipboard.writeText(L.join('\n')).catch(() => {}); toast('Copied.'); } else { d.close(); d.remove(); } });
+    document.body.appendChild(d); d.showModal();
+  }
   function localAiRun(instructions, prompt, on) {
     const r = { id: 'd' + Date.now().toString(36) + (++localAi.n), text: '', done: false, error: '', on, since: Date.now() };
     r.cancel = () => { if (r.done) return; r.done = true; r.cancelled = true; localAi.runs.delete(r.id); try { window.navigatorApp.localAiCancel(r.id); } catch (e) { /* gone */ } };
@@ -14438,6 +14457,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (S.finished) return; S.finished = true;
     clearInterval(S.timer); localAi.runs.delete(S.id);
     const pill = dictPill(); let text = (S.heard || '').replace(/\s+/g, ' ').trim();
+    dict.last = `${S.listening ? 'started' : 'did not start'}, ${dictWords(text).length} words in ${Math.round((Date.now() - S.since) / 1000)} s${S.err ? ', error: ' + S.err : ''}${S.endedBy ? ', ended by ' + S.endedBy : ''}`;
     // Tidy what was said (punctuation, capitals, "um"), on the Mac. Kept only if it has not changed your words.
     if (S.opts.tidy !== false && dictWords(text).length >= 8 && await localAiReady()) {
       pill.querySelector('.t').textContent = 'Tidying…'; pill.querySelector('button').hidden = true;
@@ -14447,12 +14467,12 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     dictPut(S, text, true);
     pill.remove(); if (dict.on === S) dict.on = null;
-    if (S.mic) S.mic.classList.remove('rec');
+    if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; }
     if (!text && !S.quietEnd) toast('Did not hear anything. Check the microphone, then try again.');
     if (S.opts.onDone) { try { S.opts.onDone(text); } catch (e) { /* the box has gone */ } }
   }
   function dictStop() {
-    const S = dict.on; if (!S || S.stopping) return; S.stopping = true;
+    const S = dict.on; if (!S || S.stopping) return; S.stopping = true; S.endedBy = S.endedBy || 'you';
     try { window.navigatorApp.localListenStop(S.id); } catch (e) { /* gone */ }
     dictPill().querySelector('.t').textContent = 'Finishing…';
     setTimeout(() => dictFinish(S), 2500);                 // (the last words normally arrive well before this)
@@ -14473,31 +14493,31 @@ body { width: max-content !important; min-width: 0 !important; }
       S.pre = v.slice(0, a); S.post = v.slice(z); S.sep = S.pre && !/\s$/.test(S.pre) ? ' ' : '';
     }
     const fallback = async why => {
-      if (S.finished) return; S.finished = true; clearInterval(S.timer); localAi.runs.delete(S.id); dictPill().remove(); if (dict.on === S) dict.on = null; if (S.live) { S.live.remove(); S.live = null; } if (S.mic) S.mic.classList.remove('rec');
+      if (S.finished) return; S.finished = true; clearInterval(S.timer); localAi.runs.delete(S.id); dictPill().remove(); if (dict.on === S) dict.on = null; if (S.live) { S.live.remove(); S.live = null; } if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; }
       if (/microphone/i.test(why || '')) return toast('Allow the microphone for Claude Navigator: System Settings, Privacy & Security, Microphone.');
       if (!(await old())) toast('Click in the box and press your Mac’s dictation key (or Fn twice).');
     };
     S.on = x => {
       if (S.finished) return;
-      if (x.error && !x.listening) return fallback(x.error);
+      if (x.error && !x.listening) { dict.last = 'did not start: ' + x.error; return fallback(x.error); }
       if (x.note === 'downloading') dictPill().querySelector('.t').textContent = 'Getting the speech engine ready (first time only)…';
-      if (x.listening && !S.listening) { S.listening = true; S.lastAt = Date.now(); if (!S.stopping) dictPill().querySelector('.t').textContent = 'Listening. Say it, then press Done.'; }
+      if (x.listening && !S.listening) { S.listening = true; S.lastAt = Date.now(); if (!S.stopping) dictPill().querySelector('.t').textContent = 'Listening. Take your time; press Done when you have finished.'; }
       if (typeof x.heard === 'string' && x.heard !== S.heard) { S.heard = x.heard; S.lastAt = Date.now(); if (!S.finished) dictPut(S, S.heard.replace(/\s+/g, ' ').trim(), false); }
-      if (x.done || x.error) dictFinish(S);
+      if (x.error) { S.err = x.error; S.endedBy = S.endedBy || 'an error'; toast('Dictation stopped: the speech engine reported a problem. What it heard has been kept.'); }
+      if (x.done || x.error) { S.endedBy = S.endedBy || 'the engine'; dictFinish(S); }
     };
     // the same shape the helper's other answers use
     localAi.runs.set(S.id, { id: S.id, on: r => S.on(r) });
     let ok = false; try { ok = await window.navigatorApp.localListenStart(S.id, 'en-AU', dictNames()); } catch (e) { /* older app */ }
     if (!ok) { localAi.runs.delete(S.id); if (S.live) S.live.remove(); return old(); }
-    dict.on = S; if (S.mic) S.mic.classList.add('rec');
+    dict.on = S; if (S.mic) { S.mic.classList.add('rec'); const sp = S.mic.querySelector('span'); if (sp) { S.micWas = sp.textContent; sp.textContent = 'Done'; } }
     const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
-    const quiet = opts.quiet || 12000;
     S.timer = setInterval(() => {
       if (S.stopping || S.finished) return;
       if (!box.isConnected) { S.quietEnd = true; return dictStop(); }
       if (!S.listening) { if (Date.now() - S.since > 25000) fallback('no answer'); return; }
       const idle = Date.now() - S.lastAt;
-      if (S.heard ? idle > quiet : idle > 15000) dictStop();
+      if (idle > 180000) { S.endedBy = 'three silent minutes'; dictStop(); }
     }, 400);
     return true;
   }
@@ -14590,7 +14610,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!acc) return toast('Add a mail account first.');
     const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', mailHelpClose);
     const el = document.createElement('div'); el.className = 'cal-view cal-help nochat mail-helper';
-    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What email do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Email Emma and Raj to say the board meeting has moved to Monday the 14th at 4:30, and ask them to confirm by Friday."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the email. When you stop talking, it is written and opened.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Write the Email</button></div><p class="ch-note">Nothing is sent. The email opens for you to check and change, and only you can press Send. Press Dictate, say it, and stop: it is written when you finish.</p><div class="ch-out"></div></div></div>`;
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What email do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Email Emma and Raj to say the board meeting has moved to Monday the 14th at 4:30, and ask them to confirm by Friday."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the email. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Write the Email</button></div><p class="ch-note">Nothing is sent. The email opens for you to check and change, and only you can press Send. It listens as soon as this opens. Say it and pause as long as you like. Done stops the listening so you can check your words; nothing is written until you press Write the Email.</p><div class="ch-out"></div></div></div>`;
     Object.assign(mailHelp, { el, shade });
     document.body.append(shade, el);
     popMovable(el, el.querySelector('.cv-bar'), 'mailHelp', null);
@@ -14607,6 +14627,7 @@ body { width: max-content !important; min-width: 0 !important; }
       else if (words) mailDraftWith(C, null);          // (the Mac's model is not there: Claude writes it from your words)
     };
     const go = async () => {
+      if (dict.on && dict.on.box === say) { mailHelp.goAfter = true; return dictStop(); }          // still listening: finish that first, then this runs by itself
       const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the email first.'); }
       if (goB.disabled) return; goB.disabled = true;
       try {
@@ -14614,7 +14635,7 @@ body { width: max-content !important; min-width: 0 !important; }
           status('Writing it on your Mac…');
           const P = localDraftParts({ acc: acc.id }, null, words, []);
           const ins = `${P.ins}\n\nThe words were dictated, so read past small slips. Answer in exactly this form and nothing else:\nTo: the people it is to, their names exactly as said, separated by semicolons (leave empty if not said)\nCc: the people to copy in, or leave empty\nSubject: a short, plain subject line\nBody:\nthe email itself`;
-          const r = await new Promise(res => { const run = localAiRun(ins, `What he said:\n${words.slice(0, 3000)}`, x => { if (x.done) res(x); }); setTimeout(() => { run.cancel(); res({ error: 'slow' }); }, 20000); });
+          const r = await new Promise(res => { const run = localAiRun(ins, `What he said:\n${words.slice(0, 3000)}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); localAi.ok = false; localAi.at = Date.now(); res({ error: 'slow' }); } }, 12000); });
           if (mailHelp.el !== el) return;
           const txt = r && !r.error ? String(r.text || '') : '', bi = txt.search(/^\s*Body\s*:/mi);
           if (bi >= 0) {
@@ -14632,12 +14653,19 @@ body { width: max-content !important; min-width: 0 !important; }
           }
         }
         if (mailHelp.el !== el) return;
-        await open({ text: words }, words, false);
+        // The Mac's model did not lay it out: still work out who it is to from your words, and have the email written from them.
+        const who = /^\s*(?:please\s+)?(?:(?:send|write|draft|do)\s+)?(?:an?\s+)?e-?mail\s+(?:to\s+)?(.+?)\s+(?:to\s+(?:say|tell|ask|let|confirm|thank|check|see)|about|saying|asking|regarding|that|and\s+(?:say|tell|ask|let))\b/i.exec(words);
+        status('Looking up the people in your contacts…');
+        const to2 = who ? await mailFindPeople(acc.id, who[1]) : { found: [], missing: [] };
+        if (mailHelp.el !== el) return;
+        await open({ to: to2.found.join(', '), text: words }, words, false);
+        if (to2.missing.length) toast(`No address found for ${to2.missing.join(', ')}. Add ${to2.missing.length === 1 ? 'it' : 'them'} in To.`);
       } finally { goB.disabled = false; }
     };
-    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { quiet: 3000, tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { if (t && say.value.trim() && mailHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac’s dictation key (or Fn twice).'); });
+    el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { const then = mailHelp.goAfter; mailHelp.goAfter = false; if (then && t && say.value.trim() && mailHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac’s dictation key (or Fn twice).'); });
     goB.addEventListener('click', go);
     say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
+    setTimeout(() => { if (mailHelp.el === el && !dict.on) el.querySelector('.ch-mic').click(); }, 300);          // listening as it opens
   }
   async function mailDraftLocal(C, m, opt = {}) {
     const bar = C.el.querySelector('.mc-draft'), acc = mailAccById(C.acc) || {};
@@ -14657,7 +14685,16 @@ body { width: max-content !important; min-width: 0 !important; }
       else if (text) { if (untouched()) put(text, r.done); else if (r.done) held = text; }
       paint();
     };
-    const adopt = (r, retry) => { run = C.draftRun = r; err = ''; r.on = x => take(x, retry); take(r, retry); paint(); };
+    const adopt = (r, retry) => {
+      run = C.draftRun = r; err = ''; r.on = x => take(x, retry); take(r, retry); paint();
+      clearTimeout(C.draftWatch);
+      C.draftWatch = setTimeout(() => {          // never left spinning: no words after ten seconds means the Mac's model is not answering
+        if (!alive() || run !== r || r.done || r.text) return;
+        r.cancel(); localAi.ok = false; localAi.at = Date.now(); localAi.why = 'no answer';
+        if (opt.auto) { bar.hidden = true; return; }
+        err = 'no answer'; paint();
+      }, Math.max(1500, 10000 - (Date.now() - (r.since || Date.now()))));
+    };
     const write = (how, extra, cut) => {
       lastAsk = how || ''; held = '';
       const P = localDraftParts(C, T, extra === undefined ? typed : extra, toList, cut);
@@ -14680,7 +14717,8 @@ body { width: max-content !important; min-width: 0 !important; }
       if (err) {
         bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: /guardrail|unsafe|refus/i.test(err) ? 'Your Mac’s model would not write this one.' : 'Your Mac could not write this one.' }));
         const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Ask Claude Instead'; b.addEventListener('click', () => toClaude(false)); bar.appendChild(b);
-        bar.appendChild(link('Try again', 'Ask your Mac again', () => { base = C.userText(); write('', typed); }));
+        bar.appendChild(link('Try again', 'Ask your Mac again', () => { base = C.userText(); localAi.ok = null; write('', typed); }));
+        bar.appendChild(link('Check my Mac…', 'See whether your Mac’s model and speech engine are answering', () => localAiCheck()));
         return;
       }
       if (held) { bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: 'A draft is ready. You typed while it was being written, so it has not replaced your words.' })); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Put the Draft In'; b.addEventListener('click', () => { put(held, true); paint(); }); bar.appendChild(b); }
