@@ -4962,7 +4962,7 @@
       }
       // Names read from the documents' own pages, for those the chat gave no name: used in the lists and on anything already filed.
       for (const [u, cands] of r.titles || []) {
-        const name = (cands || []).map(realTitle).find(t => t && !/^(document|doc|artifact)$/i.test(t));
+        const name = (cands || []).map(realTitle).find(t => t && !/^(document|doc|artifact|claude artifact)$/i.test(t) && !OUT_GHOST.test(t));
         const have = (lib.artifacts || []).find(x => normUrl(x.url) === normUrl(u));
         if (!name || !have || !have.untitled) continue;
         const old = have.name; have.name = name; delete have.untitled;
@@ -8432,10 +8432,14 @@
   }
   // Working files are kept off the outputs list by themselves: web pages, pictures of every kind, data files and Markdown notes.
   // They sit with the ones you removed (under "removed from this list"), and Put Back brings any of them back for good.
+  // Entries with no real name of their own: a page that only calls itself "Claude Artifact", or the name of one of Claude's tools
+  // picked up by mistake. They are not documents you made, so they are kept off the list as well.
+  const OUT_GHOST = { test: v => /^(claude artifact|artifact|claude|untitled( artifact)?)$/i.test(v) || /^([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]+)+|\w+__\w+)$/.test(v) };
   const OUT_HIDE_EXT = /\.(html?|png|jpe?g|gif|webp|svg|bmp|tiff?|heic|ico|json|md|markdown)$/i;
   const outRemoved = () => {
     const t = cosTeam(), s = new Set((t && t.outHidden) || []), back = new Set((t && t.outShown) || []), has = s.has.bind(s);
-    s.has = k => has(k) || (typeof k === 'string' && !back.has(k) && k.includes('#file=') && OUT_HIDE_EXT.test((() => { try { return decodeURIComponent(k.split('#file=')[1] || ''); } catch (e) { return ''; } })()));
+    const ghosts = new Set((lib.artifacts || []).filter(a => a.url && OUT_GHOST.test(String(a.name || '').trim())).map(a => normUrl(a.url)));
+    s.has = k => has(k) || (typeof k === 'string' && !back.has(k) && ghosts.has(k)) || (typeof k === 'string' && !back.has(k) && k.includes('#file=') && OUT_HIDE_EXT.test((() => { try { return decodeURIComponent(k.split('#file=')[1] || ''); } catch (e) { return ''; } })()));
     return s;
   };
   function workOutputs(x, withRemoved) {
@@ -8515,7 +8519,8 @@
     return rows.sort((a, b) => (b.at || 0) - (a.at || 0));
   }
   function paintOutputs(n, host) {
-    const p = activeProfile(), every = staffOutputs(n), f = cosUi.outFilter || '', q = (cosUi.outQ || '').trim().toLowerCase();
+    const who = n.chief && cosUi.outStaff && (cosTeam().nodes || []).some(z => z.id === cosUi.outStaff) ? cosUi.outStaff : '';
+    const p = activeProfile(), every = staffOutputs(n).filter(r => !who || r.st.id === who), f = cosUi.outFilter || '', q = (cosUi.outQ || '').trim().toLowerCase();
     const hidden = every.filter(r => r.past).length, all = cosUi.outPast ? every : every.filter(r => !r.past);
     const match = r => (!q || (r.o.name + ' ' + (r.from ? r.from.name : '') + ' ' + r.homes.map(h => h.name).join(' ') + ' ' + r.st.name).toLowerCase().includes(q));
     const rows = all.filter(r => (f === 'loose' ? !r.homes.length : f === 'filed' ? r.homes.length : true) && (!q || (r.o.name + ' ' + (r.from ? r.from.name : '') + ' ' + r.homes.map(h => h.name).join(' ') + ' ' + r.st.name).toLowerCase().includes(q)));
@@ -9123,6 +9128,13 @@
     };
     if (cosUi.tab === 'outputs') {
       const tb = newTabBar(n.chief ? 'Outputs from the whole team' : 'Outputs');
+      let staffB = null;
+      if (n.chief) {          // filter the whole team's outputs down to one person
+        const staff = ((cosTeam() || {}).nodes || []).filter(z => z.kind === 'staff'), cur = staff.find(z => z.id === cosUi.outStaff), counts = new Map();
+        for (const r of staffOutputs(n)) if (cosUi.outPast || !r.past) counts.set(r.st.id, (counts.get(r.st.id) || 0) + 1);
+        staffB = document.createElement('button'); staffB.className = 'tb outs-staff' + (cur ? ' on' : ''); staffB.innerHTML = '<span class="t"></span>'; staffB.firstChild.textContent = `${cur ? cur.name : 'All Staff'} \u25be`; staffB.title = 'Show one staff member\u2019s outputs';
+        staffB.addEventListener('click', () => { const r0 = staffB.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [{ label: 'All Staff', checked: !cur, run: () => { cosUi.outStaff = ''; renderCos(); } }, '-', ...staff.filter(z => counts.get(z.id) || z === cur).map(z => ({ label: `${z.name} (${counts.get(z.id) || 0})`, checked: z === cur, run: () => { cosUi.outStaff = z.id; renderCos(); } }))]); });
+      }
       const seg = document.createElement('div'); seg.className = 'seg';
       for (const [k, label] of [['', 'All'], ['loose', 'Not Filed'], ['filed', 'Filed']]) { const b = document.createElement('button'); b.className = 'tb' + ((cosUi.outFilter || '') === k ? ' on' : ''); b.innerHTML = `<span class="t">${label}</span>`; b.addEventListener('click', () => { cosUi.outFilter = k; renderCos(); }); seg.appendChild(b); }
       const q = document.createElement('input'); q.type = 'search'; q.className = 'outs-q'; q.placeholder = 'Search outputs'; q.value = cosUi.outQ || '';
@@ -9135,6 +9147,7 @@
       const rf = document.createElement('button'); rf.className = 'tb'; rf.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">${lib.busy ? 'Reading Claude\u2026' : 'Refresh from Claude'}</span>`; rf.disabled = !!lib.busy;
       rf.title = 'Read your chats in Claude again for the documents, artifacts and files they made';
       rf.addEventListener('click', () => { toast('Reading your chats in Claude for their outputs. This can take a few minutes.'); refreshLibrary(true).then(() => { try { if (cosUi.tab === 'outputs') renderCos(); } catch (e) { /* moved on */ } }); setTimeout(() => { try { renderCos(); } catch (e) { /* moved on */ } }, 200); });
+      if (staffB) tb.append(staffB);
       tb.append(seg, past, rf, q);
     }
     if (cosUi.tab === 'whiteboard' && n.whiteboard) {

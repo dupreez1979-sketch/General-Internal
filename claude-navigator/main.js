@@ -603,7 +603,7 @@ const relationsScript = (chats, artifacts) => `(async () => {
       while ((lm = madeLink.exec(flat)) && seenIds.size < 80) {
         const id = lm[1]; if (seenIds.has(id)) continue; seenIds.add(id);
         const from = Math.max(0, lm.index - 3000), win = flat.slice(from, lm.index + 500); let best = '', bestD = 1e9, nm; nameNear.lastIndex = 0;
-        while ((nm = nameNear.exec(win))) { const d = Math.abs(from + nm.index - lm.index); let val = nm[1]; try { val = JSON.parse('"' + nm[1] + '"'); } catch (e) { /* as written */ } if (!/\\s/.test(val) && (/[_:\\/]/.test(val) || val === val.toLowerCase())) continue;      // a tool's or a setting's name, not a title
+        while ((nm = nameNear.exec(win))) { const d = Math.abs(from + nm.index - lm.index); let val = nm[1]; try { val = JSON.parse('"' + nm[1] + '"'); } catch (e) { /* as written */ } if (!/\\s/.test(val) && (/[_:\\/]/.test(val) || val === val.toLowerCase() || /^[A-Z][a-z0-9]+([A-Z][a-z0-9]+)+$/.test(val))) continue;      // a tool's or a setting's name, not a title
           if (d < bestD) { bestD = d; best = val; } }
         out.made.push([c.url, 'https://claude.ai/artifact/' + id, String(best || '').slice(0, 160)]);
       } }
