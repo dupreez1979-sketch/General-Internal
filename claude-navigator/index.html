@@ -8951,22 +8951,28 @@
   // the tabs), Clara and their dashboard.
   function cosProjectMenu(x, y, n) {
     const P = n.claudeProject;
-    showMenu(x, y, [
-      P && { label: 'Open Their Claude Project', run: () => cosOpenLink(P) },
-      P && { label: 'Open It in a New Window', run: () => openNewWindow(P.url) },
-      P && { label: 'Update Its Instructions\u2026', run: () => { cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); } },
-      P && P.name !== cosProjectName(n) && { label: `Copy the Standard Name (${cosProjectName(n)})`, run: () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => {}); toast(`Copied \u201c${cosProjectName(n)}\u201d. Paste it as the project\u2019s name in Claude.`); } },
-      P && { label: 'Choose Another Project', key: '\u25B8', run: () => { cosFreshProjects(); showMenu(lastMenuX, lastMenuY, [
-        ...(lib.projects || []).filter(pr => normUrl(pr.url) !== normUrl(P.url)).slice(0, 40).map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => { cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; delete n.instructionsAt; }, `${n.name} now uses \u201c${pr.name}\u201d`); cosStartSetup(n); } })),
-        '-', { label: 'Refresh from Claude (for a project made just now)', run: () => { cosUi.projectsReadAt = 0; cosFreshProjects(() => toast('Your Claude projects are read again. Open the list once more.')); toast('Reading your projects from Claude\u2026'); } }]); } },
-      P && { label: 'Make a New Project for Them\u2026', run: () => { if (!confirm(`Make a new Claude Project for ${n.name}? Their current project stays in Claude.`)) return; cosChange(() => { delete n.claudeProject; delete n.instructionsAt; }, null); cosStartSetup(n); } },
-      P && { label: 'Unlink the Project', run: () => cosChange(() => { delete n.claudeProject; delete n.instructionsAt; }, `Unlinked ${n.name}\u2019s Claude Project`) },
-      !P && { label: 'Set Up Their Claude Project\u2026', run: () => cosStartSetup(n) },
+    // The less common project choices sit one step back, behind Change the Project.
+    const change = () => { cosFreshProjects(); showMenu(lastMenuX, lastMenuY, [
+      { label: 'Use Another Project', key: '▸', run: () => showMenu(lastMenuX, lastMenuY, [
+        ...(lib.projects || []).filter(pr => normUrl(pr.url) !== normUrl(P.url)).slice(0, 40).map(pr => ({ label: pr.name || 'Untitled project', icon: 'project', run: () => { cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; delete n.instructionsAt; }, `${n.name} now uses “${pr.name}”`); cosStartSetup(n); } })),
+        '-', { label: 'Refresh from Claude (for a project made just now)', run: () => { cosUi.projectsReadAt = 0; cosFreshProjects(() => toast('Your Claude projects are read again. Open the list once more.')); toast('Reading your projects from Claude…'); } }]) },
+      { label: 'Make a New Project for Them…', run: () => { if (!confirm(`Make a new Claude Project for ${n.name}? Their current project stays in Claude.`)) return; cosChange(() => { delete n.claudeProject; delete n.instructionsAt; }, null); cosStartSetup(n); } },
+      { label: 'Unlink the Project', run: () => cosChange(() => { delete n.claudeProject; delete n.instructionsAt; }, `Unlinked ${n.name}’s Claude Project`) },
       '-',
-      ...cosClaraItems(n),
-      '-',
-      n.dashboard ? { label: 'Dashboard\u2026', key: '\u25B8', run: () => cosDashMenu(lastMenuX, lastMenuY, n) } : { label: 'Add a Dashboard\u2026', run: () => cosDashMenu(lastMenuX, lastMenuY, n) },
-      n.whiteboard ? { label: 'Whiteboard\u2026', key: '\u25B8', run: () => cosBoardMenu(lastMenuX, lastMenuY, n) } : { label: 'Add a Whiteboard\u2026', run: () => cosBoardMenu(lastMenuX, lastMenuY, n) },
+      { label: 'Open the Project in a New Window', run: () => openNewWindow(P.url) },
+      P.name !== cosProjectName(n) ? { label: `Copy the Standard Name (${cosProjectName(n)})`, run: () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => {}); toast(`Copied “${cosProjectName(n)}”. Paste it as the project’s name in Claude.`); } } : null,
+    ].filter(Boolean)); };
+    showMenu(Math.max(8, x - 180), y, [
+      { head: 'Their Claude Project' },
+      P && { label: 'Open the Project', sub: `Where ${n.name} works in Claude. It opens beside the team.`, svg: ST_ICON.folder, tint: '#1B5A68', run: () => cosOpenLink(P) },
+      P && { label: 'Update Its Instructions', sub: 'Give Claude this person’s role and how you work again, after you change them.', svg: ST_ICON.doc, tint: '#2B5797', run: () => { cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); } },
+      P && { label: 'Change the Project…', sub: 'Use another project, make a new one, or unlink it.', svg: ST_ICON.details, tint: '#7A8288', run: change },
+      !P && { label: 'Set Up Their Claude Project', sub: `Make or choose the project ${n.name} works in. Needed before you can ask them anything.`, svg: ST_ICON.folder, tint: '#1B5A68', run: () => cosStartSetup(n) },
+      { head: 'Extra tabs' },
+      n.clara ? { label: 'Clara (Scheduling)', sub: 'Attached. Ask Clara to schedule something, or detach her.', svg: ST_ICON.cal, tint: '#D9468C', run: () => showMenu(lastMenuX, lastMenuY, cosClaraItems(n)) }
+        : { label: 'Attach Clara', sub: 'Your scheduling assistant. Adds a Scheduling tab with her dashboard.', svg: ST_ICON.cal, tint: '#D9468C', run: () => claraFromDialog(n) },
+      { label: n.dashboard ? 'Dashboard' : 'Add a Dashboard', sub: n.dashboard ? 'Change, replace or remove their dashboard.' : 'A live page of figures or status, made in Claude, as its own tab.', svg: ST_ICON.board, tint: '#6C5CE7', run: () => cosDashMenu(lastMenuX, lastMenuY, n) },
+      { label: n.whiteboard ? 'Whiteboard' : 'Add a Whiteboard', sub: n.whiteboard ? 'Open, change or remove their whiteboard.' : 'A board for notes and sketches, as its own tab.', svg: ST_ICON.snip, tint: '#B36E24', run: () => cosBoardMenu(lastMenuX, lastMenuY, n) },
     ].filter(x => x !== false && x !== 0 && x !== null && x !== undefined));
   }
 
