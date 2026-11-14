@@ -8319,19 +8319,21 @@
       const chats = items.filter(x => /\/chat\//.test(x.url || ''));
       const add = (o, from, x) => { const key = st.id + '|' + normUrl(o.url || ''); if (!o.url || seen.has(key)) return; seen.add(key);
         const a = artBy.get(normUrl(o.url)); const at = (a && a.updated && Date.parse(a.updated)) || (x && (x.doneAt || x.added)) || 0;
-        rows.push({ st, o, from, at, homes: companyHomes(o.url, p) }); };
+        rows.push({ st, o, from, at, homes: companyHomes(o.url, p), past: !!(x && x.done) }); };          // past: the work it came from is finished
       for (const x of chats) for (const o of workOutputs(x)) add(o, x, x);                    // what each chat made
       for (const x of items) if (!/\/chat\//.test(x.url || '')) add({ name: x.name, url: x.url, node: x }, null, x);     // artifacts and documents kept in their work
     }
     return rows.sort((a, b) => (b.at || 0) - (a.at || 0));
   }
   function paintOutputs(n, host) {
-    const p = activeProfile(), all = staffOutputs(n), f = cosUi.outFilter || '', q = (cosUi.outQ || '').trim().toLowerCase();
+    const p = activeProfile(), every = staffOutputs(n), f = cosUi.outFilter || '', q = (cosUi.outQ || '').trim().toLowerCase();
+    const hidden = every.filter(r => r.past).length, all = cosUi.outPast ? every : every.filter(r => !r.past);
+    const match = r => (!q || (r.o.name + ' ' + (r.from ? r.from.name : '') + ' ' + r.homes.map(h => h.name).join(' ') + ' ' + r.st.name).toLowerCase().includes(q));
     const rows = all.filter(r => (f === 'loose' ? !r.homes.length : f === 'filed' ? r.homes.length : true) && (!q || (r.o.name + ' ' + (r.from ? r.from.name : '') + ' ' + r.homes.map(h => h.name).join(' ') + ' ' + r.st.name).toLowerCase().includes(q)));
     host.replaceChildren();
     const list = document.createElement('div'); list.className = 'outs-page';
     const loose = all.filter(r => !r.homes.length).length;
-    list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: all.length ? `${all.length} output${all.length === 1 ? '' : 's'}. ${loose ? `${loose} not filed yet.` : 'All filed.'} The company folders keep the outputs; the chats stay with ${n.chief ? 'the staff' : n.name}.` : `Nothing yet. Outputs and documents that come out of ${n.chief ? 'the team\u2019s' : n.name + '\u2019s'} work show here, with where each is saved.` }));
+    list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: all.length ? `${all.length} output${all.length === 1 ? '' : 's'}${cosUi.outPast ? ', including finished work' : ' from current work'}. ${loose ? `${loose} not filed yet.` : 'All filed.'}${!cosUi.outPast && hidden ? ` ${hidden} more from finished work: press Past Work to see them.` : ''}` : hidden && !cosUi.outPast ? `Nothing from current work. ${hidden} output${hidden === 1 ? '' : 's'} from finished work: press Past Work to see ${hidden === 1 ? 'it' : 'them'}.` : `Nothing yet. Outputs and documents that come out of ${n.chief ? 'the team\u2019s' : n.name + '\u2019s'} work show here, with where each is saved.` }));
     const head = document.createElement('div'); head.className = 'outs-r head'; head.innerHTML = `<span>Output</span>${n.chief ? '<span>Staff</span>' : ''}<span>From</span><span>When</span><span>Saved in</span>`; if (rows.length) list.appendChild(head);
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
@@ -8352,7 +8354,7 @@
       }
       row.appendChild(c4); list.appendChild(row);
     }
-    if (all.length && !rows.length) list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: 'Nothing matches. Choose All or clear the search.' }));
+    if (!rows.length && (all.length || q)) { const more = !cosUi.outPast && q ? every.filter(r => r.past && match(r)).length : 0; list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: more ? `Nothing in current work matches. ${more} in finished work: press Past Work.` : 'Nothing matches. Choose All or clear the search.' })); }
     host.appendChild(list);
   }
   function outputsDlg(days = 7, onlyStaff = null, onlyItem = null) {
@@ -8861,7 +8863,7 @@
       if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
       if (k === 'whiteboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosBoardMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length).length : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length && !r.past).length : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -8883,7 +8885,11 @@
       for (const [k, label] of [['', 'All'], ['loose', 'Not Filed'], ['filed', 'Filed']]) { const b = document.createElement('button'); b.className = 'tb' + ((cosUi.outFilter || '') === k ? ' on' : ''); b.innerHTML = `<span class="t">${label}</span>`; b.addEventListener('click', () => { cosUi.outFilter = k; renderCos(); }); seg.appendChild(b); }
       const q = document.createElement('input'); q.type = 'search'; q.className = 'outs-q'; q.placeholder = 'Search outputs'; q.value = cosUi.outQ || '';
       q.addEventListener('input', () => { cosUi.outQ = q.value; const host = document.querySelector('.outs-tab'); if (host) paintOutputs(n, host); });
-      tb.append(seg, q);
+      // Outputs from finished work are kept out of the way until you ask for them.
+      const past = document.createElement('button'); past.className = 'tb' + (cosUi.outPast ? ' on' : ''); past.innerHTML = '<span class="t">Past Work</span>';
+      past.title = cosUi.outPast ? 'Showing outputs from finished work too. Click to hide them.' : 'Also show outputs from work that is finished';
+      past.addEventListener('click', () => { cosUi.outPast = !cosUi.outPast; renderCos(); });
+      tb.append(seg, past, q);
     }
     if (cosUi.tab === 'whiteboard' && n.whiteboard) {
       const tb = newTabBar('Whiteboard');
