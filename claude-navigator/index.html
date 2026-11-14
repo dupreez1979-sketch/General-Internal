@@ -941,7 +941,7 @@
   .cal-ev:hover { background: color-mix(in srgb, var(--ev) 32%, var(--win)); }
   .cal-ev.free { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--ev) 12%, var(--win)) 0 6px, var(--win) 6px 10px); }
   .cal-week { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .cal-wk-head, .cal-allday { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--line); }
+  .cal-wk-head, .cal-allday { display: grid; grid-template-columns: var(--gut, 56px) repeat(var(--cols), minmax(0, 1fr)); flex: none; border-bottom: 1px solid var(--line); }
   .cal-dh { padding: 6px 10px; display: flex; flex-direction: column; align-items: flex-start; gap: 0; font-size: 12px; color: var(--muted); cursor: pointer; border-left: 1px solid var(--line); }
   .cal-dh b { font-size: 19px; color: var(--text); font-weight: 600; line-height: 1.15; }
   .cal-dh.today span { color: var(--accent); font-weight: 600; }
@@ -952,8 +952,11 @@
   .cal-ev.ad, .cal-ev.mc { padding: 2px 6px; white-space: nowrap; text-overflow: ellipsis; }
   .cal-scroll { flex: 1; overflow-y: auto; min-height: 0; }
   .cal-wk-head, .cal-allday { padding-right: var(--cal-sbw, 0px); }
-  .cal-grid { display: grid; grid-template-columns: 56px repeat(var(--cols), minmax(0, 1fr)); position: relative; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 46px); }
+  .cal-grid { display: grid; grid-template-columns: var(--gut, 56px) repeat(var(--cols), minmax(0, 1fr)); position: relative; background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px 46px); }
   .cal-gut { position: relative; }
+  .cal-gut span.z { right: auto; color: var(--muted); opacity: .8; font-size: 10px; width: 38px; text-align: right; padding: 0 3px 0 0; background: var(--win); }
+  .cal-zh { display: flex; align-items: flex-end; justify-content: flex-end; gap: 0; padding: 0 8px 5px 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; color: var(--muted); cursor: context-menu; }
+  .cal-zh i { font-style: normal; width: 42px; text-align: right; flex: none; } .cal-zh i.me { width: auto; flex: 1; color: var(--text); }
   .cal-gut span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 10.5px; color: var(--muted); background: var(--win); padding: 0 2px; }
   .cal-col { position: relative; border-left: 1px solid var(--line); }
   .cal-col.wkend, .cal-dh.wkend, .cal-md.wkend, .cal-adc.wkend { background: color-mix(in srgb, var(--text) 4.5%, transparent); }
@@ -10569,14 +10572,33 @@ body { width: max-content !important; min-width: 0 !important; }
     c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); calMenu(inst, e.clientX, e.clientY); });
     return c;
   }
+  // Extra time zones down the left of the calendar (up to three), chosen by right-clicking the time column.
+  const TZ_SHORT = { Sydney: 'SYD', Melbourne: 'MEL', Brisbane: 'BNE', Adelaide: 'ADL', Darwin: 'DRW', Perth: 'PER', Hobart: 'HBA', Auckland: 'AKL', Hong_Kong: 'HKG', Singapore: 'SIN', Tokyo: 'TYO', London: 'LON', Paris: 'PAR', New_York: 'NYC', Chicago: 'CHI', Los_Angeles: 'LAX', UTC: 'UTC' };
+  const tzShort = tz => TZ_SHORT[tz.split('/').pop()] || tz.split('/').pop().replace(/_/g, '').slice(0, 3).toUpperCase();
+  const calZones = () => (Array.isArray(calState.zones) ? calState.zones : []).slice(0, 3);
+  function calZoneMenu(x, y) {
+    const have = calZones(), local = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const set = list => { calState.zones = list.slice(0, 3); calSave(); calRender(); };
+    showMenu(x, y, [
+      ...have.map(tz => ({ label: `Remove ${tzCity(tz)} (${tzShort(tz)})`, run: () => set(have.filter(z => z !== tz)) })),
+      have.length ? '-' : null,
+      have.length < 3 ? { label: 'Add a Time Zone', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, TZ_COMMON.filter(tz => tz !== local && !have.includes(tz)).map(tz => ({ label: `${tzCity(tz)} (${tzShort(tz)})`, run: () => set(have.concat(tz)) }))) } : { label: 'Three time zones is the most. Remove one to add another.', disabled: true },
+      have.length > 1 ? { label: 'Remove All', run: () => set([]) } : null,
+    ].filter(Boolean));
+  }
   function calWeek(from, to, list) {
     const days = []; for (let d = from; d < to; d = calAddDays(d, 1)) days.push(d);
     const H = 46;                                          // pixels per hour
     const wrap = document.createElement('div'); wrap.className = 'cal-week';
     wrap.style.setProperty('--cols', days.length);
     const today = calDayStart(new Date()).getTime();
+    const zones = calZones(), localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    wrap.style.setProperty('--gut', (56 + zones.length * 42) + 'px');
     const hd = document.createElement('div'); hd.className = 'cal-wk-head';
-    hd.appendChild(document.createElement('span'));
+    const zh = document.createElement('span'); zh.className = 'cal-zh'; zh.title = 'Right-click to add or remove a time zone';
+    if (zones.length) { for (const tz of zones) zh.appendChild(Object.assign(document.createElement('i'), { textContent: tzShort(tz), title: tzLabel(tz, days[0].getTime()) })); zh.appendChild(Object.assign(document.createElement('i'), { className: 'me', textContent: tzShort(localTz), title: 'Your own time' })); }
+    zh.addEventListener('contextmenu', e => { e.preventDefault(); calZoneMenu(e.clientX, e.clientY); });
+    hd.appendChild(zh);
     for (const d of days) { const c = document.createElement('div'); c.className = 'cal-dh' + (d.getTime() === today ? ' today' : '') + (d.getDay() % 6 === 0 ? ' wkend' : ''); c.innerHTML = `<span>${d.toLocaleDateString('en-AU', { weekday: 'short' })}</span><b>${d.getDate()}</b>`; c.addEventListener('click', () => { calUi.date = d; calState.view = 'day'; calSave(); calRender(); }); c.title = 'Show this day'; hd.appendChild(c); }
     wrap.appendChild(hd);
     // All-day meetings (and ones that run over midnight for a day or more) along the top.
@@ -10593,7 +10615,12 @@ body { width: max-content !important; min-width: 0 !important; }
     const sbw = () => { if (sc.parentNode) sc.parentNode.style.setProperty('--cal-sbw', (sc.offsetWidth - sc.clientWidth) + 'px'); };
     requestAnimationFrame(sbw); setTimeout(sbw, 300);
     const grid = document.createElement('div'); grid.className = 'cal-grid'; grid.style.height = (24 * H) + 'px';
-    const gut = document.createElement('div'); gut.className = 'cal-gut';
+    const gut = document.createElement('div'); gut.className = 'cal-gut'; gut.title = 'Right-click to add or remove a time zone';
+    gut.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); calZoneMenu(e.clientX, e.clientY); });
+    zones.forEach((tz, zi) => { for (let h = 0; h < 24; h++) {            // the same moment, on the clock in that place
+      const ms = new Date(days[0].getFullYear(), days[0].getMonth(), days[0].getDate(), h).getTime(), hm = tzWall(ms, tz).hm, hh = +hm.slice(0, 2), mm = hm.slice(3, 5);
+      const l = document.createElement('span'); l.className = 'z'; l.style.top = (h * H) + 'px'; l.style.left = (2 + zi * 42) + 'px';
+      l.textContent = h ? `${hh % 12 || 12}${mm !== '00' ? ':' + mm : ''}${hh < 12 ? 'a' : 'p'}` : ''; gut.appendChild(l); } });
     for (let h = 0; h < 24; h++) { const l = document.createElement('span'); l.style.top = (h * H) + 'px'; l.textContent = h ? new Date(2000, 0, 1, h).toLocaleTimeString('en-AU', { hour: 'numeric' }).replace(/\s?([ap])\.?m\.?/i, (_, x) => ' ' + x.toLowerCase() + 'm') : ''; gut.appendChild(l); }
     grid.appendChild(gut);
     for (const d of days) {
@@ -11140,7 +11167,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const tzCity = tz => tz === 'UTC' ? 'UTC' : tz.split('/').pop().replace(/_/g, ' ');
   const tzLabel = (tz, ms) => { let long = ''; try { long = (new Intl.DateTimeFormat('en-AU', { timeZone: tz, timeZoneName: 'long' }).formatToParts(new Date(ms)).find(x => x.type === 'timeZoneName') || {}).value || ''; } catch (e) { /* unknown zone */ } return tz === 'UTC' ? 'UTC' : `${tzCity(tz)} time (${long && !/^GMT/.test(long) ? long + ', ' : ''}${tzUtc(tz, ms)})`; };
   const tzTime = (ms, tz) => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', timeZone: tz }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm');
-  const TZ_COMMON = ['Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Adelaide', 'Australia/Darwin', 'Australia/Perth', 'Australia/Hobart', 'Pacific/Auckland', 'Asia/Singapore', 'Asia/Tokyo', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'UTC'];
+  const TZ_COMMON = ['Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Adelaide', 'Australia/Darwin', 'Australia/Perth', 'Australia/Hobart', 'Pacific/Auckland', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Tokyo', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'UTC'];
   const tzDefault = pid => (calState.tzBy && calState.tzBy[pid || '_']) || calTz();
   const calYmd = d => `${d.getFullYear()}-${calPad(d.getMonth() + 1)}-${calPad(d.getDate())}`;
   const calHm = d => `${calPad(d.getHours())}:${calPad(d.getMinutes())}`;
