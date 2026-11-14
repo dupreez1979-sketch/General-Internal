@@ -112,7 +112,7 @@
   }
   function tabs() {
     const t = el('div', 'tabs');
-    for (const [k, label] of [['team', 'Team'], ['actions', 'Actions'], ['today', 'Today']]) { const b = el('button', ui.tab === k ? 'on' : ''); b.innerHTML = icon[k] + '<span></span>'; b.querySelector('span').textContent = label; b.onclick = () => { ui.tab = k; ui.staff = null; render(); }; t.append(b); }
+    for (const [k, label] of [['team', 'Team'], ['actions', 'Actions'], ['today', 'Today'], ['recent', 'Recent']]) { const b = el('button', ui.tab === k ? 'on' : ''); b.innerHTML = icon[k] + '<span></span>'; b.querySelector('span').textContent = label; b.onclick = () => { ui.tab = k; ui.staff = null; render(); }; t.append(b); }
     return t;
   }
   function askBar(n, last) {
@@ -183,9 +183,8 @@
     const t = team(), s = el('div', 'scroll'), all = [];
     const staff = t ? t.nodes.filter(x => x.kind === 'staff') : [], byId = id => t.nodes.find(x => x.id === id);
     const deptOf = n => { let p = byId(n.parent), guard = 0; while (p && guard++ < 20) { if (p.kind === 'dept') return p; p = byId(p.parent); } return null; };
-    const done = ui.actSeg === 'done';          // (this tab took over from Recent: finished work is its second view)
-    for (const n of staff) { const w = workOf(n.id); (done ? w.done : w.open).forEach(x => all.push({ x, n })); }
-    all.sort((a, b) => ((done ? b.x.doneAt : b.x.added) || 0) - ((done ? a.x.doneAt : a.x.added) || 0));
+    for (const n of staff) workOf(n.id).open.forEach(x => all.push({ x, n }));
+    all.sort((a, b) => (b.x.added || 0) - (a.x.added || 0));
     const f = ui.actFilter || '', fav = pinned();
     const chips = el('div', 'chips');
     const chip = (key, label, count, color) => { const b = el('button', 'chip' + (f === key ? ' on' : '')); if (color) { const d = el('span', 'dot'); d.style.background = color; b.append(d); } b.append(document.createTextNode(label)); if (count != null) b.append(el('i', '', String(count))); b.onclick = () => { ui.actFilter = f === key && key ? '' : key; render(); }; chips.append(b); };
@@ -197,14 +196,12 @@
     for (const n of order) { const c = all.filter(r => r.n.id === n.id).length; if (c) chip('s:' + n.id, n.name, c, n.color); }
     const shown = all.filter(r => !f || (f === 'fav' ? fav.includes(r.n.id) : f.startsWith('d:') ? (deptOf(r.n) || {}).id === f.slice(2) : r.n.id === f.slice(2)));
     for (const r of shown.slice(0, 200)) {
-      const row = itemRow(r.x, r.x.waiting && !done ? `${r.n.name} \u00b7 started here` : r.n.name, when(done ? r.x.doneAt : r.x.added));
-      if (!r.x.waiting && !done) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); if (r.n.color) c.style.borderColor = r.n.color; c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: r.n.id, item: r.x.id }); }; row.prepend(c); }
+      const row = itemRow(r.x, r.x.waiting ? `${r.n.name} \u00b7 started here` : r.n.name, when(r.x.added));
+      if (!r.x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); if (r.n.color) c.style.borderColor = r.n.color; c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: r.n.id, item: r.x.id }); }; row.prepend(c); }
       s.append(row);
     }
-    if (!shown.length) s.append(emptyNote(all.length ? 'Nothing here' : done ? 'Nothing finished lately' : 'No open actions', all.length ? 'Choose All to see everyone\u2019s.' : done ? 'Work finished in the last 30 days shows here.' : 'Open work from every staff member shows here.'));
-    const seg = el('div', 'seg');
-    for (const [k, label] of [['open', 'Open'], ['done', 'Done lately']]) { const b = el('button', (done ? 'done' : 'open') === k ? 'on' : '', label); b.onclick = () => { ui.actSeg = k; render(); }; seg.append(b); }
-    return [topBar(true), el('h1', '', 'Actions'), seg, chips, s, tabs()];
+    if (!shown.length) s.append(emptyNote(all.length ? 'Nothing open here' : 'No open actions', all.length ? 'Choose All to see everyone\u2019s.' : 'Open work from every staff member shows here.'));
+    return [topBar(true), el('h1', '', 'Actions'), chips, s, tabs()];
   }
   function viewRecent() {
     const t = team(), s = el('div', 'scroll'), all = [];
