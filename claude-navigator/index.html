@@ -706,7 +706,8 @@
   .outs-r .lk { border: 0; background: none; font: inherit; color: inherit; padding: 0; text-align: left; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; } .outs-r .lk:hover { text-decoration: underline; }
   .outs-x { margin-left: auto; flex: none; border: 0; background: none; color: var(--muted); padding: 3px 5px; border-radius: 5px; opacity: .55; } .outs-x:hover { background: color-mix(in srgb, var(--text) 10%, transparent); opacity: 1; }
   .outs-gone { margin-top: 16px; font-size: 12.5px; color: var(--muted); } .outs-gone .lk { color: var(--muted); border: 0; background: none; font: inherit; padding: 0; text-decoration: underline; } .outs-r.gone { opacity: .7; }
-  .outs-r .lk.nm { font-weight: 600; max-width: calc(100% - 44px); vertical-align: middle; } .outs-r .ext { font-style: normal; font-size: 10px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: middle; } .outs-r .lk.path { color: #328276; }
+  .outs-r .live { display: inline-flex; align-items: center; gap: 4px; font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; background: #1B5A68; border-radius: 4px; padding: 1px 6px 1px 5px; margin-right: 8px; vertical-align: middle; }
+  .outs-r .lk.nm { font-weight: 600; max-width: calc(100% - 96px); vertical-align: middle; } .outs-r .ext { font-style: normal; font-size: 10px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 6px; vertical-align: middle; } .outs-r .lk.path { color: #328276; }
   .outs-r .where { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; white-space: nowrap; } .outs-r .where > i, .outs-r .where > .out-file { flex: none; } .outs-r .where .sug { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 12px; } .outs-r .where .lk.path { flex: 0 1 auto; min-width: 0; } .outs-r .where i { font-style: normal; color: #B36E24; font-size: 12px; } .outs-r .where button.btn, .outs-r .where button.btn-primary { font-size: 11.5px; padding: 3px 9px; }
   dialog.outs-dlg { width: 680px; background: var(--win); color: var(--text); }
   .outs-list { max-height: 56vh; overflow: auto; margin: 6px 0 12px; }
@@ -8401,7 +8402,14 @@
     for (const [k, v] of [...m]) if (!v.sure) m.delete(k);          // unsure: it shows under every chat that has it, and you can remove it by hand
     outOwnersAt = stamp; outOwners = m; return m;
   }
-  const outRemoved = () => { const t = cosTeam(); return new Set((t && t.outHidden) || []); };
+  // Working files are kept off the outputs list by themselves: web pages, pictures of every kind, and data files.
+  // They sit with the ones you removed (under "removed from this list"), and Put Back brings any of them back for good.
+  const OUT_HIDE_EXT = /\.(html?|png|jpe?g|gif|webp|svg|bmp|tiff?|heic|ico|json)$/i;
+  const outRemoved = () => {
+    const t = cosTeam(), s = new Set((t && t.outHidden) || []), back = new Set((t && t.outShown) || []), has = s.has.bind(s);
+    s.has = k => has(k) || (typeof k === 'string' && !back.has(k) && k.includes('#file=') && OUT_HIDE_EXT.test((() => { try { return decodeURIComponent(k.split('#file=')[1] || ''); } catch (e) { return ''; } })()));
+    return s;
+  };
   function workOutputs(x, withRemoved) {
     const gone = withRemoved ? new Set() : outRemoved();
     if (!/\/chat\//.test(x.url || '')) {
@@ -8498,7 +8506,7 @@
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     for (const r of rows.slice(0, 400)) {
       const row = document.createElement('div'); row.className = 'outs-r' + (n.chief ? ' wide' : '');
-      const c1 = document.createElement('span'); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the file.` : 'Open this output beside the list', () => openOutput(r.o, true), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
+      const c1 = document.createElement('span'); if (!r.o.file) c1.append(Object.assign(document.createElement('i'), { className: 'live', innerHTML: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 1.8h5.2L12.5 5v9.2H4z M9 2v3.2h3.3 M6 8.2h4.5 M6 10.8h4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></svg>Live', title: 'A live Claude document or artifact: it opens in Claude and can still be edited there' })); c1.append(link(r.o.name, r.o.file ? `${r.o.file}: a file Claude made in this chat. Click to open the file.` : 'Open this output beside the list', () => openOutput(r.o, true), 'nm')); if (r.o.ext) c1.append(Object.assign(document.createElement('i'), { className: 'ext', textContent: r.o.ext })); row.appendChild(c1);
       if (n.chief) row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.st.name }));
       const c2 = document.createElement('span'); if (r.from) c2.append(link(r.from.name, 'Open the chat that made it, beside the list', () => cosOpenLink({ name: r.from.name, url: r.from.url }), 'mu')); else c2.className = 'mu'; row.appendChild(c2);
       row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.at ? new Date(r.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }));
@@ -8516,7 +8524,7 @@
         if (best) c4.append(Object.assign(document.createElement('span'), { className: 'sug', textContent: `Suggested: ${best.name}`, title: fb.title }));
       }
       const rm = document.createElement('button'); rm.className = 'outs-x'; rm.innerHTML = FICON.hide; rm.title = 'Remove from the outputs. The work stays open, and nothing is deleted in Claude.';
-      rm.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k).concat(k).slice(-2000); }, null); toast(`Removed \u201c${r.o.name}\u201d from the outputs`, { label: 'Undo', run: () => cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); }, null) }); });
+      rm.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); const was = (t.outShown || []).includes(k); cosChange(() => { t.outShown = (t.outShown || []).filter(z => z !== k); t.outHidden = (t.outHidden || []).filter(z => z !== k).concat(k).slice(-2000); }, null); toast(`Removed \u201c${r.o.name}\u201d from the outputs`, { label: 'Undo', run: () => cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); if (was) t.outShown = (t.outShown || []).concat(k); }, null) }); });
       c4.appendChild(rm);
       row.appendChild(c4); list.appendChild(row);
     }
@@ -8526,7 +8534,7 @@
       const more = document.createElement('div'); more.className = 'outs-gone';
       const tg = link(cosUi.outShowRemoved ? `Hide the ${removed.length} removed` : `${removed.length} removed from this list. Show`, 'Outputs you took off this list', () => { cosUi.outShowRemoved = !cosUi.outShowRemoved; paintOutputs(n, host); }); more.appendChild(tg);
       if (cosUi.outShowRemoved) for (const r of removed) { const row = document.createElement('div'); row.className = 'outs-r gone'; row.appendChild(Object.assign(document.createElement('span'), { textContent: r.o.name })); row.appendChild(Object.assign(document.createElement('span'), { className: 'mu', textContent: r.from ? r.from.name : '' }));
-        const back = document.createElement('button'); back.className = 'btn'; back.textContent = 'Put Back'; back.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); }, null); }); const sp = document.createElement('span'); sp.className = 'where'; sp.appendChild(back); row.append(document.createElement('span'), sp); more.appendChild(row); }
+        const back = document.createElement('button'); back.className = 'btn'; back.textContent = 'Put Back'; back.addEventListener('click', () => { const t = cosTeam(), k = outKey(r.o); cosChange(() => { t.outHidden = (t.outHidden || []).filter(z => z !== k); t.outShown = (t.outShown || []).filter(z => z !== k).concat(k).slice(-2000); }, null); }); const sp = document.createElement('span'); sp.className = 'where'; sp.appendChild(back); row.append(document.createElement('span'), sp); more.appendChild(row); }
       list.appendChild(more);
     }
     if (!rows.length && (all.length || q)) { const more = !cosUi.outPast && q ? every.filter(r => r.past && match(r)).length : 0; list.appendChild(Object.assign(document.createElement('p'), { className: 'outs-sum', textContent: more ? `Nothing in current work matches. ${more} in finished work: press Past Work.` : 'Nothing matches. Choose All or clear the search.' })); }
