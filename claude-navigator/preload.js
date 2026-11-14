@@ -21,7 +21,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   localAiStatus: () => ipcRenderer.invoke('local-ai-status'),
   localAiRun: (id, instructions, prompt) => ipcRenderer.invoke('local-ai-run', id, instructions, prompt),
   localAiCancel: id => ipcRenderer.invoke('local-ai-cancel', id),
-  localListenStart: (id, locale) => ipcRenderer.invoke('local-listen-start', id, locale),
+  localListenStart: (id, locale, names) => ipcRenderer.invoke('local-listen-start', id, locale, names),
   localListenStop: id => ipcRenderer.invoke('local-listen-stop', id),
   onLocalAi: fn => ipcRenderer.on('local-ai', (_e, msg) => fn(msg)),
   dictationStart: () => ipcRenderer.invoke('dictation-start'),

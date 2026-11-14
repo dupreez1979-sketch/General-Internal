@@ -71,7 +71,7 @@ final class Listener: @unchecked Sendable {
     var stopped = false
     init(id: String) { self.id = id }
 
-    func start(localeId: String) {
+    func start(localeId: String, names: [String]) {
         let id = self.id
         task = Task {
             do {
@@ -107,6 +107,11 @@ final class Listener: @unchecked Sendable {
                 }
                 engine.prepare()
                 try engine.start()
+                if !names.isEmpty {          // names it should know: your staff, companies and the people you write to
+                    let context = AnalysisContext()
+                    context.contextualStrings[.general] = names
+                    try await analyzer.setContext(context)
+                }
                 try await analyzer.start(inputSequence: stream)
                 if self.stopped { self.stop() }
                 emit(["id": id, "listening": true])
@@ -159,7 +164,7 @@ struct NavDraft {
                 if #available(macOS 26.0, *) {
                     for (_, l) in listeners { (l as? Listener)?.stop() }
                     let l = Listener(id: id); listeners = [id: l]
-                    l.start(localeId: o["locale"] as? String ?? "en-AU")
+                    l.start(localeId: o["locale"] as? String ?? "en-AU", names: (o["names"] as? [String]) ?? [])
                 } else { emit(["id": id, "error": "macOS is too old"]) }
                 continue
             }

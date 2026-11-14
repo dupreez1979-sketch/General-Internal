@@ -1625,10 +1625,10 @@ ipcMain.handle('local-ai-run', (e, id, instructions, prompt) => {
 });
 ipcMain.handle('local-ai-cancel', (e, id) => { if (!fromOwnWindow(e)) return false; localAi.owners.delete(String(id)); return localAiSay({ op: 'cancel', id: String(id) }); });
 // Dictation through the same helper (the Mac's newer speech engine: no chime, words as you say them).
-ipcMain.handle('local-listen-start', (e, id, locale) => {
+ipcMain.handle('local-listen-start', (e, id, locale, names) => {
   if (!fromOwnWindow(e) || typeof id !== 'string' || !id || id.length > 60) return false;
   localAi.owners.set(id, e.sender);
-  const ok = localAiSay({ op: 'listen', id, locale: /^[a-z]{2}(-[A-Za-z]{2,4})?$/.test(String(locale)) ? String(locale) : 'en-AU' });
+  const ok = localAiSay({ op: 'listen', id, locale: /^[a-z]{2}(-[A-Za-z]{2,4})?$/.test(String(locale)) ? String(locale) : 'en-AU', names: (Array.isArray(names) ? names : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 100).map(x => x.trim().slice(0, 60)) });
   if (!ok) localAi.owners.delete(id);
   return ok;
 });
