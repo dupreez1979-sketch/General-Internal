@@ -5889,6 +5889,7 @@
     if (row.dataset.action === 'monday-connect') return openMondayConnect();
     if (row.dataset.action === 'monday-all') return go({ kind: 'library', which: 'monday', mkey: 'all' });
     if (row.dataset.action === 'monday-new') return openNewBoard();
+    if (row.dataset.action === 'monday-group') return go({ kind: 'library', which: 'monday', mkey: 'g:' + row.dataset.gid });
     if (row.dataset.action === 'monday-open') {
       if (e.target.closest('.twisty')) return toggleMondayOpen(row.dataset.key);
       return go({ kind: 'library', which: 'monday', mkey: row.dataset.key });
@@ -5944,6 +5945,8 @@
       showNewMenu(e.clientX, e.clientY);
       return;
     }
+    if (row && row.dataset.action === 'monday-group') return showMenu(e.clientX, e.clientY, [{ label: 'Open', run: () => go({ kind: 'library', which: 'monday', mkey: 'g:' + row.dataset.gid }) }, '-', ...mgMenuFor('g:' + row.dataset.gid)]);
+    if (row && row.dataset.action === 'monday-all') return showMenu(e.clientX, e.clientY, [{ label: 'Open', run: () => go({ kind: 'library', which: 'monday', mkey: 'all' }) }, { label: 'New Folder for Workspaces\u2026', run: () => mgNew() }, '-', { label: 'Refresh from monday.com', run: () => mondayRefresh(true) }]);
     if (row && (row.dataset.action === 'sys-monday' || row.dataset.action === 'monday-all' || row.dataset.action === 'monday-new' || row.classList.contains('monday-node') || row.classList.contains('monday-board') || row.dataset.action === 'monday-connect')) {
       if (row.classList.contains('monday-board')) {
         const url = row.dataset.url;
@@ -6078,10 +6081,11 @@
     const it = e.target.closest('.item.lib');
     if (it && it.classList.contains('mplace')) return showMenu(e.clientX, e.clientY, [
       { label: 'Open', key: K.open, run: () => openLib(it.dataset.key) },
+      ...(mgMenuFor(it.dataset.key.slice(MONDAY_PLACE.length)).length ? ['-', ...mgMenuFor(it.dataset.key.slice(MONDAY_PLACE.length))] : []),
       '-',
-      { label: 'New Board Here\u2026', run: () => { const mkey = it.dataset.key.slice(MONDAY_PLACE.length); openNewBoard({ at: mkey }); } },
+      /^g:/.test(it.dataset.key.slice(MONDAY_PLACE.length)) ? null : { label: 'New Board Here\u2026', run: () => { const mkey = it.dataset.key.slice(MONDAY_PLACE.length); openNewBoard({ at: mkey }); } },
       { label: 'Refresh from monday.com', run: () => mondayRefresh(true) },
-    ]);
+    ].filter(x => x !== null));
     if (it && !libSel.has(it.dataset.key)) { libSel.clear(); libSel.add(it.dataset.key); libAnchor = it.dataset.key; applyLibSel(); }
     const sel = it ? selectedLibItems() : [];
     const one = sel.length === 1 ? sel[0] : null;
@@ -6106,6 +6110,7 @@
       '-',
       { label: 'Select All', key: K.mod + 'A', run: () => { libKeys().forEach(k => libSel.add(k)); applyLibSel(); } },
       state.loc.which === 'monday' ? { label: 'New Board\u2026', run: () => openNewBoard() } : null,
+      state.loc.which === 'monday' && (state.loc.mkey || 'all') === 'all' ? { label: 'New Folder for Workspaces\u2026', run: () => mgNew() } : null,
       { label: state.loc.which === 'monday' ? 'Refresh from monday.com' : 'Refresh from Claude', run: () => state.loc.which === 'monday' ? mondayRefresh(true) : refreshLibrary(true) },
     ]);
   }
@@ -6752,6 +6757,13 @@
       c.title = 'Boards';
       all.appendChild(c);
     }
+    for (const g of mondayGroups.groups) {
+      const n = (mondayData.workspaces || []).filter(w => mgOf(w.id) === g.id).length;
+      const r = row('lib-action', 2, small('folder', KIND_COLOUR.folder || 'currentColor'), g.name, `${n} workspace${n === 1 ? '' : 's'} you put in this folder. Right-click to rename or remove it.`);
+      r.dataset.action = 'monday-group'; r.dataset.gid = g.id;
+      if (state.loc.kind === 'library' && state.loc.which === 'monday' && state.loc.mkey === 'g:' + g.id) { r.classList.add('selected'); all.classList.remove('selected'); }
+      const c = document.createElement('span'); c.className = 'count'; c.textContent = n; c.title = 'Workspaces'; r.appendChild(c);
+    }
     if (mondayData.error) row('lib-action', 1, '', `Could not refresh: ${mondayData.error}`, mondayData.error);
   }
   // ----- Renaming and deleting boards in monday.com (from the lists and from your folders) -----
@@ -6801,6 +6813,34 @@
     toast(res.failed.length ? `Deleted ${res.deleted.length} of ${n}. ${res.failed.length} could not be deleted (${res.failed[0].status}).` : `Deleted ${n} board${n === 1 ? '' : 's'} in monday.com`);
   }
 
+  // Your own folders for monday.com workspaces. They exist only in this app, to shorten a long list of workspaces:
+  // nothing is moved or changed in monday.com itself.
+  const MGROUPS = 'claudeNavigator.mondayGroups.v1';
+  let mondayGroups = (() => { try { const g = JSON.parse(ls.get(MGROUPS) || '{}'); return { groups: Array.isArray(g.groups) ? g.groups : [], of: g.of && typeof g.of === 'object' ? g.of : {} }; } catch (e) { return { groups: [], of: {} }; } })();
+  const mgSave = () => { ls.set(MGROUPS, JSON.stringify(mondayGroups)); renderSide(); if (state.loc.kind === 'library' && state.loc.which === 'monday') renderMain(); };
+  const mgOf = wsId => { const g = mondayGroups.of[wsId]; return g && mondayGroups.groups.find(x => x.id === g) ? g : ''; };
+  function mgNew(thenPutIn) {
+    openDialog({ title: 'New Folder for Workspaces', name: '', nameOnly: true, noPicker: true, okLabel: 'Create',
+      onSave: ({ name }) => { name = (name || '').trim(); if (!name) return; const g = { id: uid(), name }; mondayGroups.groups.push(g); if (thenPutIn) mondayGroups.of[thenPutIn] = g.id; mgSave(); toast(thenPutIn ? `Made \u201c${name}\u201d and moved the workspace into it` : `Made the folder \u201c${name}\u201d. Right-click a workspace to move it in.`); } });
+  }
+  function mgMenuFor(key) {
+    const [t, id] = String(key).split(/:(.*)/s);
+    if (t === 'g') { const g = mondayGroups.groups.find(x => x.id === id); if (!g) return [];
+      return [
+        { label: 'Rename Folder\u2026', run: () => openDialog({ title: 'Rename Folder', name: g.name, nameOnly: true, noPicker: true, okLabel: 'Rename', onSave: ({ name }) => { if (name && name.trim()) { g.name = name.trim(); mgSave(); } } }) },
+        { label: 'Remove Folder (Its Workspaces Go Back to the List)', run: () => { mondayGroups.groups = mondayGroups.groups.filter(x => x !== g); for (const w of Object.keys(mondayGroups.of)) if (mondayGroups.of[w] === id) delete mondayGroups.of[w]; mgSave(); if (state.loc.mkey === key) go({ kind: 'library', which: 'monday', mkey: 'all' }); } },
+      ]; }
+    if (t !== 'w') return [];
+    const cur = mgOf(id);
+    return [
+      { label: 'Move to Folder', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+        ...mondayGroups.groups.filter(g => g.id !== cur).map(g => ({ label: g.name, icon: 'folder', run: () => { mondayGroups.of[id] = g.id; mgSave(); toast(`Moved into \u201c${g.name}\u201d (in this app only)`); } })),
+        mondayGroups.groups.length ? '-' : null,
+        { label: 'New Folder\u2026', run: () => mgNew(id) },
+      ].filter(Boolean)) },
+      cur ? { label: 'Take Out of Its Folder', run: () => { delete mondayGroups.of[id]; mgSave(); } } : null,
+    ].filter(Boolean);
+  }
   // monday.com rows for the shared list: workspaces and folders (opened by double-click) and boards.
   const MONDAY_PLACE = 'navigator-monday:';
   function mondayEntries(key, flat) {
@@ -6810,12 +6850,14 @@
     if (flat) {
       const [t, id] = String(key).split(/:(.*)/s);
       if (t === 'all') return boards.map(board);
+      if (t === 'g') { const mine = new Set((mondayData.workspaces || []).filter(w => mgOf(w.id) === id).map(w => w.id)); return boards.filter(b => mine.has(b.workspace)).map(board); }
       if (t === 'w') return boards.filter(b => b.workspace === id).map(board);
       const below = new Set([id]);
       for (let grew = true; grew;) { grew = false; for (const f of folders) if (f.parent && below.has(f.parent) && !below.has(f.id)) { below.add(f.id); grew = true; } }
       return boards.filter(b => below.has(b.folder)).map(board);
     }
     const out = [];
+    for (const g of place.groups || []) out.push({ name: g.name, url: MONDAY_PLACE + 'g:' + g.id, place: 'g:' + g.id, count: g.count, meta: `${g.count} workspace${g.count === 1 ? '' : 's'}` });
     for (const w of place.workspaces || []) out.push({ name: w.name, url: MONDAY_PLACE + 'w:' + w.id, place: 'w:' + w.id, count: boards.filter(b => b.workspace === w.id).length });
     for (const f of place.folders) out.push({ name: f.name, url: MONDAY_PLACE + 'f:' + f.id, place: 'f:' + f.id, count: boards.filter(b => b.folder === f.id).length });
     return out.concat(place.boards.map(board));
@@ -6828,11 +6870,18 @@
     const ALL = { key: 'all', name: 'All Workspaces' };
     if (t === 'all') {
       const ws = (mondayData.workspaces || []).filter(w => boards.some(b => b.workspace === w.id) || folders.some(f => f.workspace === w.id));
-      return { name: ALL.name, path: [], workspaces: ws, folders: [], boards: [] };
+      const groups = mondayGroups.groups.map(g => ({ id: g.id, name: g.name, count: ws.filter(w => mgOf(w.id) === g.id).length }));
+      return { name: ALL.name, path: [], groups, workspaces: ws.filter(w => !mgOf(w.id)), folders: [], boards: [] };
+    }
+    if (t === 'g') {                                   // one of your own folders of workspaces
+      const g = mondayGroups.groups.find(x => x.id === id);
+      const ws = (mondayData.workspaces || []).filter(w => mgOf(w.id) === id && (boards.some(b => b.workspace === w.id) || folders.some(f => f.workspace === w.id)));
+      return { name: g ? g.name : 'Folder', path: [ALL], workspaces: ws, folders: [], boards: [] };
     }
     if (t === 'w') {
       const w = (mondayData.workspaces || []).find(x => x.id === id);
-      return { name: w ? w.name : 'Workspace', path: [ALL], workspace: id, folders: folders.filter(f => f.workspace === id && !f.parent),
+      const wg = mondayGroups.groups.find(x => x.id === mgOf(id));
+      return { name: w ? w.name : 'Workspace', path: wg ? [ALL, { key: 'g:' + wg.id, name: wg.name }] : [ALL], workspace: id, folders: folders.filter(f => f.workspace === id && !f.parent),
         boards: boards.filter(b => b.workspace === id && (!b.folder || !known.has(b.folder))) };
     }
     const f = folders.find(x => x.id === id);
