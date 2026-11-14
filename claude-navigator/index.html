@@ -1145,8 +1145,22 @@
   .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
   .dict-float[hidden] { display: none; }
   .dict-float.rec, .dict-b.rec, .ch-mic.rec { background: #c4353f !important; color: #fff !important; }
-  #dictPill { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 2147483000; display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 999px; background: #1d1d1f; color: #fff; font-size: 13px; box-shadow: 0 8px 28px rgba(0,0,0,.3); -webkit-app-region: no-drag; }
-  #dictPill i { width: 10px; height: 10px; border-radius: 50%; background: #ff4c5c; animation: dictpulse 1s ease-in-out infinite; }
+
+  /* The moving bars: one element for "listening" (live), "you are speaking" (loud), "working" (busy) and "speaking back" (talk). */
+  .wave { display: inline-flex; align-items: center; gap: 3px; height: 22px; flex: none; }
+  .wave i { display: block; width: 3px; height: calc(var(--h) * 100%); min-height: 3px; border-radius: 3px; background: var(--c); transform: scaleY(.3); animation: wavemove 1.15s ease-in-out infinite; animation-delay: var(--d); }
+  .wave.loud i { animation-duration: .55s; animation-name: waveloud; }
+  .wave.busy i { animation: wavebusy 1.3s ease-in-out infinite; animation-delay: var(--b); transform: scaleY(.3); }
+  .wave.talk i { animation-duration: .8s; animation-name: waveloud; }
+  .wave.still i { animation: none; transform: scaleY(.18); }
+  @keyframes wavemove { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(.7); } }
+  @keyframes waveloud { 0%, 100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
+  @keyframes wavebusy { 0%, 100% { transform: scaleY(.25); opacity: .45; } 50% { transform: scaleY(.6); opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .wave i { animation: none !important; transform: scaleY(.6); } }
+  #dictPill { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 2147483000; display: flex; align-items: center; gap: 12px; padding: 9px 10px 9px 16px; border-radius: 999px; background: color-mix(in srgb, var(--win) 82%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); border: 1px solid var(--line); color: var(--text); font-size: 13px; box-shadow: 0 10px 34px rgba(0,0,0,.18); -webkit-app-region: no-drag; max-width: min(640px, 92vw); }
+  #dictPill .wave { height: 28px; gap: 3.5px; } #dictPill .wave i { width: 3.5px; }
+  #dictPill .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+  .mc-draft .wave { height: 14px; gap: 2px; } .mc-draft .wave i { width: 2px; }
   @keyframes dictpulse { 50% { opacity: .3; } }
   #dictPill .btn { font-size: 12px; padding: 3px 12px; border-radius: 999px; }
   .dict-live { background: color-mix(in srgb, var(--accent) 14%, transparent); border-radius: 3px; }
@@ -14988,7 +15002,22 @@ body { width: max-content !important; min-width: 0 !important; }
   // ----- Dictation on this Mac, with its newer speech engine: no chime, no bubble, words as you say them -----
   // (If the engine is not there, the Mac's ordinary dictation starts instead.)
   const dict = { on: null };
-  const dictPill = () => { let p = document.getElementById('dictPill'); if (!p) { p = document.createElement('div'); p.id = 'dictPill'; p.innerHTML = '<i></i><span class="t"></span><button type="button" class="btn">Done</button>'; p.querySelector('button').addEventListener('mousedown', e => e.preventDefault()); p.querySelector('button').addEventListener('click', () => dictStop()); } return p; };
+
+  // The moving bars (see .wave): waveEl(15) for a pill, fewer bars for a small spot. Set its state with waveSet(el, 'live' | 'loud' | 'busy' | 'talk' | 'still').
+  function waveEl(n, state) {
+    const w = document.createElement('span'); w.className = 'wave ' + (state || 'live'); w.setAttribute('aria-hidden', 'true');
+    const mid = (n - 1) / 2, mix = (a, b, t) => Math.round(a + (b - a) * t);
+    for (let i = 0; i < n; i++) {
+      const far = mid ? Math.abs(i - mid) / mid : 0, b = document.createElement('i');
+      b.style.setProperty('--h', (0.2 + 0.8 * Math.exp(-far * far * 2.6)).toFixed(2));
+      b.style.setProperty('--c', `rgb(${mix(88, 110, far)}, ${mix(214, 130, far)}, ${mix(196, 245, far)})`);          // teal in the middle, soft blue at the ends
+      b.style.setProperty('--d', (-((i * 37) % 100) / 100 * 1.15).toFixed(2) + 's'); b.style.setProperty('--b', (i * 0.09).toFixed(2) + 's');
+      w.appendChild(b);
+    }
+    return w;
+  }
+  const waveSet = (w, state) => { if (w) w.className = 'wave ' + state; };
+  const dictPill = () => { let p = document.getElementById('dictPill'); if (!p) { p = document.createElement('div'); p.id = 'dictPill'; p.innerHTML = '<span class="t"></span><button type="button" class="btn">Done</button>'; p.prepend(waveEl(15, 'busy')); p.querySelector('button').addEventListener('mousedown', e => e.preventDefault()); p.querySelector('button').addEventListener('click', () => dictStop()); } return p; };
   addEventListener('keydown', e => { if (e.key === 'Escape' && dict.on) { e.preventDefault(); e.stopPropagation(); dictStop(); } }, true);
   function dictPut(S, text, last) {
     const b = S.box, t = text ? S.sep + text : '';
@@ -15036,7 +15065,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function dictStop() {
     const S = dict.on; if (!S || S.stopping) return; S.stopping = true; S.endedBy = S.endedBy || 'you'; chime('heard');
     try { window.navigatorApp.localListenStop(S.id); } catch (e) { /* gone */ }
-    dictPill().querySelector('.t').textContent = 'Finishing…';
+    dictPill().querySelector('.t').textContent = 'Finishing…'; clearTimeout(S.waveT); waveSet(dictPill().querySelector('.wave'), 'busy');
     setTimeout(() => dictFinish(S), 2500);                 // (the last words normally arrive well before this)
   }
   async function dictate(box, opts = {}) {
@@ -15064,8 +15093,8 @@ body { width: max-content !important; min-width: 0 !important; }
       if (S.finished) return;
       if (x.error && !x.listening) { dict.last = 'did not start: ' + x.error; return fallback(x.error); }
       if (x.note === 'downloading') dictPill().querySelector('.t').textContent = 'Getting the speech engine ready (first time only)…';
-      if (x.listening && !S.listening) { S.listening = true; chime('listen'); S.lastAt = Date.now(); if (!S.stopping) dictPill().querySelector('.t').textContent = 'Listening. Take your time; press Done when you have finished.'; }
-      if (typeof x.heard === 'string' && x.heard !== S.heard) { S.heard = x.heard; S.lastAt = Date.now(); if (!S.finished) dictPut(S, S.heard.replace(/\s+/g, ' ').trim(), false); }
+      if (x.listening && !S.listening) { S.listening = true; chime('listen'); waveSet(dictPill().querySelector('.wave'), 'live'); S.lastAt = Date.now(); if (!S.stopping) dictPill().querySelector('.t').textContent = 'Listening. Take your time; press Done when you have finished.'; }
+      if (typeof x.heard === 'string' && x.heard !== S.heard) { S.heard = x.heard; S.lastAt = Date.now(); if (!S.stopping) { const wv = dictPill().querySelector('.wave'); waveSet(wv, 'loud'); clearTimeout(S.waveT); S.waveT = setTimeout(() => { if (!S.stopping && !S.finished) waveSet(wv, 'live'); }, 900); } if (!S.finished) dictPut(S, S.heard.replace(/\s+/g, ' ').trim(), false); }
       if (x.error) { S.err = x.error; S.endedBy = S.endedBy || 'an error'; toast('Dictation stopped: the speech engine reported a problem. What it heard has been kept.'); }
       if (x.done || x.error) { S.endedBy = S.endedBy || 'the engine'; dictFinish(S); }
     };
@@ -15074,7 +15103,7 @@ body { width: max-content !important; min-width: 0 !important; }
     let ok = false; try { ok = await window.navigatorApp.localListenStart(S.id, 'en-AU', dictNames()); } catch (e) { /* older app */ }
     if (!ok) { localAi.runs.delete(S.id); if (S.live) S.live.remove(); return old(); }
     dict.on = S; if (S.mic) { S.mic.classList.add('rec'); const sp = S.mic.querySelector('span'); if (sp) { S.micWas = sp.textContent; sp.textContent = 'Done'; } }
-    const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
+    const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; waveSet(pill.querySelector('.wave'), 'busy'); pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
     S.timer = setInterval(() => {
       if (S.stopping || S.finished) return;
       if (!box.isConnected) { S.quietEnd = true; return dictStop(); }
@@ -15277,7 +15306,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!alive()) return;
       bar.hidden = false; bar.replaceChildren();
       const busy = run && !run.done;
-      if (busy && !run.text) { bar.insertAdjacentHTML('beforeend', '<i class="spin"></i>'); bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: 'Writing on your Mac…' })); return; }
+      if (busy && !run.text) { bar.appendChild(waveEl(7, 'busy')); bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: 'Writing on your Mac…' })); return; }
       if (err) {
         bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: /guardrail|unsafe|refus/i.test(err) ? 'Your Mac’s model would not write this one.' : 'Your Mac could not write this one.' }));
         const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Ask Claude Instead'; b.addEventListener('click', () => toClaude(false)); bar.appendChild(b);
