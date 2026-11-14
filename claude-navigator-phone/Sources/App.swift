@@ -67,6 +67,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "stopListening": drive.stopListening(send: true)
         case "say": if let text = body["text"] as? String { drive.say(text) }
         case "hush": drive.hush()
+        case "copy": if let text = body["text"] as? String { UIPasteboard.general.string = text }
         case "chime": if let name = body["name"] as? String { drive.chime(name) }
         case "fastModel": drive.fastModel()
         case "restoreModel": drive.restoreModel()

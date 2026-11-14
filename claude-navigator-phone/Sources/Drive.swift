@@ -332,6 +332,7 @@ final class Drive: NSObject {
         askID += 1
         let mine = askID
         answerTimer?.invalidate()
+        tell("driveTrace", ["k": "ask", "want": url.path, "at": claude.url?.path ?? "none", "loading": claude.isLoading])
         if !same(claude.url, url) { claude.load(URLRequest(url: url)); tell("driveStage", ["stage": "opening"]) }
         var tries = 0
         func trySend() {
@@ -340,7 +341,10 @@ final class Drive: NSObject {
             self.tell("driveStage", ["stage": tries == 1 ? "typing" : "retyping", "n": tries])
             claude.callAsyncJavaScript("return await \(sendScript(prompt))", arguments: [:], in: nil, in: .page) { result in
                 guard mine == self.askID else { return }
+                var failure = ""
+                if case .failure(let error) = result { failure = String(error.localizedDescription.prefix(120)) }
                 let outcome = (try? result.get()) as? String ?? "none"
+                self.tell("driveTrace", ["k": "send", "try": tries, "outcome": outcome, "error": failure, "at": self.claude.url?.path ?? "none", "host": self.claude.url?.host ?? "", "loading": self.claude.isLoading])
                 if outcome == "sent" { self.tell("driveStage", ["stage": "sent"]); self.watch(nonce: nonce, id: mine) }
                 else if tries < 8 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { trySend() } }
                 else { self.tell("driveAnswer", ["text": "", "done": true, "problem": outcome == "none" ? "Claude did not open. Check you are signed in." : "Claude did not take the question."]) }
@@ -374,6 +378,7 @@ final class Drive: NSObject {
             self.claude.evaluateJavaScript(read) { value, _ in
                 guard id == self.askID, let raw = value as? String, let data = raw.data(using: .utf8), let page = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
                 let after = (page["after"] as? String) ?? "", busy = (page["busy"] as? Bool) ?? false, latest = (page["last"] as? String) ?? ""
+                if ticks % 12 == 1 { self.tell("driveTrace", ["k": "watch", "tick": ticks, "busy": busy, "after": after.count, "say": after.contains("[[SAY]]"), "latest": latest.count, "at": self.claude.url?.path ?? "none"]) }
                 if busy && !everBusy { self.tell("driveStage", ["stage": "working"]) }
                 if ticks == 25 && !busy && !everBusy && after.isEmpty { self.tell("driveStage", ["stage": "unseen"]) }       // ten seconds on and the question is not on Claude's page
                 if busy { everBusy = true; quiet = 0 } else { quiet += 1 }
