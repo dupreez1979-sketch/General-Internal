@@ -8,14 +8,14 @@ import Speech
 import WebKit
 import UIKit
 
-final class Drive: NSObject, AVSpeechSynthesizerDelegate {
+final class Drive: NSObject {
     private let ui: WKWebView
     private let claude: WKWebView
     private let engine = AVAudioEngine()
     private let recogniser = SFSpeechRecognizer(locale: Locale(identifier: "en-AU")) ?? SFSpeechRecognizer()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
-    private let voice = AVSpeechSynthesizer()
+    let voice = Voice()
     private var heard = ""
     private var quietTimer: Timer?
     private var giveUpTimer: Timer?
@@ -27,7 +27,7 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
         self.ui = ui
         self.claude = claude
         super.init()
-        voice.delegate = self
+        voice.onFinished = { [weak self] in self?.tell("driveSpoke", [:]) }
     }
 
     private func tell(_ function: String, _ payload: [String: Any]) {
@@ -57,7 +57,7 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
 
     private func startListening(wait: Double) {
         stopListening(send: false)
-        voice.stopSpeaking(at: .immediate)
+        voice.stop()
         guard let recogniser = recogniser, recogniser.isAvailable else { return tell("driveHeard", ["text": "", "final": true, "problem": "Speech recognition is not available right now."]) }
         audio()
         let request = SFSpeechAudioBufferRecognitionRequest()
@@ -111,19 +111,17 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
     func say(_ text: String) {
         stopListening(send: false)
         audio()
-        let words = AVSpeechUtterance(string: text)
-        words.voice = AVSpeechSynthesisVoice(language: "en-AU")
-        words.rate = AVSpeechUtteranceDefaultSpeechRate
-        voice.speak(words)
+        voice.say(text)          // pieces are spoken one after another, in order
     }
 
-    func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) { tell("driveSpoke", [:]) }
+    // Opens Claude ahead of the first question, so the page is ready when you speak.
+    func warm(url: URL) { if !same(claude.url, url) { claude.load(URLRequest(url: url)) } }
 
     func hush() {
         askID += 1
         answerTimer?.invalidate(); answerTimer = nil
         stopListening(send: false)
-        voice.stopSpeaking(at: .immediate)
+        voice.stop()
     }
 
     // MARK: Asking Claude
@@ -181,7 +179,7 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
                 else { self.tell("driveAnswer", ["text": "", "done": true, "problem": outcome == "none" ? "Claude did not open. Check you are signed in." : "Claude did not take the question."]) }
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { trySend() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { trySend() }
     }
 
     // Reads Claude's page until the spoken answer (between [[SAY]] and [[END]]) is complete.
@@ -192,10 +190,10 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
         var last = ""
         var steady = 0
         answerTimer?.invalidate()
-        answerTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        answerTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] timer in
             guard let self = self, id == self.askID else { timer.invalidate(); return }
             ticks += 1
-            if ticks > 90 { timer.invalidate(); return self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude has not answered yet. The question is in the chat."]) }
+            if ticks > 240 { timer.invalidate(); return self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude has not answered yet. The question is in the chat."]) }
             self.claude.evaluateJavaScript(read) { value, _ in
                 guard id == self.askID, let after = value as? String, let start = after.range(of: "[[SAY]]") else { return }
                 let rest = String(after[start.upperBound...])
@@ -205,9 +203,10 @@ final class Drive: NSObject, AVSpeechSynthesizerDelegate {
                     self.tell("driveAnswer", ["text": String(rest[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines), "done": true, "url": address])
                 } else {
                     let now = rest.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if now != last && !now.isEmpty { self.tell("driveAnswer", ["text": now, "done": false, "url": address]) }      // what has arrived so far
                     steady = now == last ? steady + 1 : 0
                     last = now
-                    if steady >= 6 && !now.isEmpty {       // it stopped without the closing mark: take what is there
+                    if steady >= 15 && !now.isEmpty {       // it stopped without the closing mark: take what is there
                         timer.invalidate()
                         self.tell("driveAnswer", ["text": now, "done": true, "url": address])
                     }

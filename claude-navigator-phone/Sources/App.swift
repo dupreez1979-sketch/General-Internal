@@ -56,6 +56,31 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "stopListening": drive.stopListening(send: true)
         case "say": if let text = body["text"] as? String { drive.say(text) }
         case "hush": drive.hush()
+        case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
+        // The Drive voice: the phone's own, or one from your ElevenLabs account
+        case "voiceGet": sendVoice(voices: nil, problem: "")
+        case "voiceSet":
+            let voice = drive.voice
+            if let mode = body["mode"] as? String, mode == "phone" || mode == "eleven" { voice.mode = mode }
+            if let id = body["voiceID"] as? String { voice.voiceID = id; voice.voiceName = (body["voiceName"] as? String) ?? "" }
+            if body["forgetKey"] as? Bool == true { voice.key = nil; voice.mode = "phone" }
+            sendVoice(voices: nil, problem: "")
+        case "voiceKey":
+            // The key is typed into a box the phone itself shows, so it never passes through the page.
+            let alert = UIAlertController(title: "ElevenLabs key", message: "Paste your ElevenLabs API key. It is kept in this phone's Keychain.", preferredStyle: .alert)
+            alert.addTextField { field in field.isSecureTextEntry = true; field.placeholder = "API key" }
+            alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+            alert.addAction(UIAlertAction(title: "Save", style: .default) { _ in
+                guard let typed = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines), !typed.isEmpty else { return }
+                self.drive.voice.listVoices(key: typed) { list, problem in
+                    if problem.isEmpty { self.drive.voice.key = typed; self.drive.voice.mode = "eleven" }
+                    self.sendVoice(voices: list, problem: problem)
+                }
+            })
+            topController()?.present(alert, animated: true)
+        case "voiceList":
+            guard let key = drive.voice.key else { return sendVoice(voices: [], problem: "Add your ElevenLabs key first.") }
+            drive.voice.listVoices(key: key) { list, problem in self.sendVoice(voices: list, problem: problem) }
         case "ask":
             guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
                   let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai"),
@@ -69,6 +94,21 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
             chatOpen = true
         default: break
         }
+    }
+
+    private func topController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        var top = scenes.first?.keyWindow?.rootViewController
+        while let next = top?.presentedViewController { top = next }
+        return top
+    }
+
+    private func sendVoice(voices: [[String: String]]?, problem: String) {
+        let voice = drive.voice
+        var payload: [String: Any] = ["mode": voice.mode, "hasKey": voice.key != nil, "voiceID": voice.voiceID, "voiceName": voice.voiceName, "phoneVoice": voice.phoneVoiceNote, "problem": problem]
+        if let voices = voices { payload["voices"] = voices }
+        guard let json = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: json, encoding: .utf8) else { return }
+        ui.evaluateJavaScript("window.driveVoice && window.driveVoice(\(text))", completionHandler: nil)
     }
 
     func chatClosed() {

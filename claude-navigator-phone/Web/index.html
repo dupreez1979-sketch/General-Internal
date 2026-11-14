@@ -60,6 +60,7 @@
   .dfoot { flex:none; display:flex; gap:10px; padding:0 14px 14px; } .dbtn { flex:1; min-width:0; border:0; background:#18242a; color:#f4f6f7; font:inherit; font-weight:650; font-size:16px; border-radius:18px; padding:20px 8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .dbtn.stop { background:#3a2326; color:#ffb3b8; } .dbtn:active, .dbig:active { opacity:.7; }
   @media (orientation: landscape) { .dmid { flex-direction:row; gap:6%; padding:0 6%; } .dbig { --d:min(36vw, 60vh); font-size:clamp(14px, 2.3vw, 20px); gap:4px; padding:5%; } .dbig svg { width:24%; } .dmid { padding-top:0; padding-bottom:0; } .dfoot .dbtn { padding:14px 8px; } .dside { text-align:left; flex:1; } }
   .pulltip { position:fixed; top:calc(env(safe-area-inset-top) + 4px); left:50%; transform:translate(-50%, 0); z-index:30; background:var(--ink); color:var(--win); font-size:13px; font-weight:650; border-radius:999px; padding:7px 14px; pointer-events:none; }
+  .vtip { font-size:13px; color:var(--muted); margin:2px 6px 12px; line-height:1.4; }
   .chk { width:26px; height:26px; border-radius:50%; border:2px solid var(--muted); opacity:.6; flex:none; }
   .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
   .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
@@ -275,11 +276,11 @@
   const chiefOf = () => { const t = team(); return t && t.nodes.find(x => x.chief); };
   const staffNamed = text => { const t = team(); if (!t) return null; const low = ' ' + text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ') + ' ';
     return t.nodes.filter(x => x.kind === 'staff' && !x.chief).sort((a, b) => b.name.length - a.name.length).find(n => low.includes(' ' + n.name.toLowerCase() + ' ')) || null; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null }); send({ do: 'awake', on: true }); render(); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); render(); }
   function driveEnd() { send({ do: 'hush' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
-  function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
-  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; render(); }
+  function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
+  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; drive.stream = null; render(); }
   const snapshot = () => { const t = team(), L = []; if (!t) return '';
     for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
     const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
@@ -311,22 +312,55 @@
   }
   window.driveHeard = h => { if (!drive.on) return; if (h.problem) { drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
   // After an answer it listens again for a moment, so you can carry on without touching the screen.
-  window.driveSpoke = () => { if (!drive.on || drive.state !== 'speaking') return; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+  window.driveSpoke = () => { if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
+    drive.stream = null; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+  // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
+  // not kept waiting for the whole answer.
   window.driveAnswer = a => {
-    if (!drive.on || drive.state !== 'thinking') return; clearTimeout(drive.timer);
-    const pend = drive.pending; drive.pending = null;
-    if (a.problem || !a.text) return driveSay(a.problem || 'There was no answer.', 'idle');
-    const t = team(), n = pend && t && t.nodes.find(x => x.id === pend.target);
-    if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
-      const url = a.url.replace(/[?#].*$/, '');
-      if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', staff: n.id, url, name: 'From the drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+    if (!drive.on || !drive.pending) return;
+    const pend = drive.pending;
+    if (a.problem || (a.done && !a.text)) { clearTimeout(drive.timer); drive.pending = null; drive.stream = null; return driveSay(a.problem || 'There was no answer.', 'idle'); }
+    if (!a.text) return;
+    clearTimeout(drive.timer);
+    const t = team(), n = t && t.nodes.find(x => x.id === pend.target);
+    if (!drive.stream || drive.stream.own !== pend) drive.stream = { own: pend, said: 0, left: 0, done: false };
+    const st = drive.stream, text = a.text.replace(/\s+/g, ' ').trim();
+    let upTo = text.length;
+    if (!a.done) { const m = /^[\s\S]*[.!?](?=\s|$)/.exec(text); upTo = m ? m[0].length : 0; }
+    const piece = text.slice(st.said, upTo).trim();
+    if (piece && upTo > st.said) { st.said = upTo; st.left++; drive.state = 'speaking'; drive.after = 'listen'; drive.line = text; send({ do: 'say', text: piece }); }
+    if (a.done) {
+      st.done = true; drive.pending = null; drive.line = text;
+      if (n && /^https:\/\/claude\.ai\/chat\//.test(a.url || '')) {
+        const url = a.url.replace(/[?#].*$/, '');
+        if (!drive.chats[n.id]) { drive.chats[n.id] = url; if (!changes.some(c => c.type === 'chat' && sameUrl(c.url, url))) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'chat', staff: n.id, url, name: 'From the drive: ' + pend.text.slice(0, 60) }); saveChanges(); } }
+      }
+      drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend.text, answer: text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
+      if (st.left <= 0) { drive.stream = null; driveListen(6); return; }
     }
-    drive.log.push({ kind: 'talk', who: n ? n.name : 'Claude', text: pend ? pend.text : '', answer: a.text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: n ? drive.chats[n.id] : '' });
-    driveSay(a.text);
+    render();
   };
+  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (v.voices) drive.voiceList = v.voices; if (v.problem) drive.voiceProblem = v.problem; else drive.voiceProblem = ''; if (drive.on) render(); };
+  function voiceSheet() {
+    const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { drive.voiceOpen = false; render(); };
+    const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
+    const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
+    opt('The phone’s own voice', v.phoneVoice ? `${v.phoneVoice}. Free, and works with no signal.` : 'Free, and works with no signal.', v.mode !== 'eleven', () => send({ do: 'voiceSet', mode: 'phone' }));
+    const tip = el('p', 'vtip', 'For a much better free voice: iPhone Settings, Accessibility, Spoken Content, Voices, English (Australia), then download a Premium or Enhanced voice. Drive uses the best one installed.'); s2.append(tip);
+    if (!v.hasKey) opt('An ElevenLabs voice', 'More natural. Uses your ElevenLabs account, which charges for what is spoken. Tap to add your key.', false, () => send({ do: 'voiceKey' }));
+    else {
+      opt('An ElevenLabs voice', v.voiceName ? `Using ${v.voiceName}.` : 'Choose a voice below.', v.mode === 'eleven' && !!v.voiceID, () => { if (v.voiceID) send({ do: 'voiceSet', mode: 'eleven' }); send({ do: 'voiceList' }); });
+      if (!drive.voiceList) send({ do: 'voiceList' });
+      for (const x of (drive.voiceList || []).slice(0, 60)) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); if (x.note) nm.append(el('span', '', x.note)); r.append(nm); if (x.id === v.voiceID) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voiceSet', mode: 'eleven', voiceID: x.id, voiceName: x.name }); s2.append(r); }
+      const f = el('button', 'row', 'Forget my ElevenLabs key'); f.style.cssText = 'border:0;color:var(--muted)'; f.onclick = () => { drive.voiceList = null; send({ do: 'voiceSet', forgetKey: true }); }; s2.append(f);
+    }
+    if (drive.voiceProblem) s2.append(el('p', 'vtip', drive.voiceProblem));
+    return [sh, s2];
+  }
   function viewDrive() {
     const d = el('div', 'drive ' + drive.state), who = drive.who || chiefOf() || { name: 'Chief of Staff', chief: true };
     const bar = el('div', 'dbar'); bar.append(el('b', '', 'Drive'), el('span', 'dprof', (prof() || {}).name || ''), el('span', 'grow'));
+    const vb = el('button', 'dend', 'Voice'); vb.onclick = () => { drive.voiceOpen = true; send({ do: 'voiceGet' }); render(); }; bar.append(vb);
     const end = el('button', 'dend', 'Finish'); end.onclick = driveEnd; bar.append(end);
     const mid = el('div', 'dmid'), big = el('button', 'dbig');
     const label = { idle: who.chief ? 'Talk to your Chief of Staff' : `Talk to the ${who.name}`, listening: 'Listening', thinking: 'Thinking', speaking: who.chief ? 'Chief of Staff' : who.name }[drive.state];
@@ -342,7 +376,7 @@
       const fav = pinned().map(id => (team() || { nodes: [] }).nodes.find(x => x.id === id)).filter(Boolean)[0]; if (fav) fb(fav.name, () => { drive.who = fav; driveListen(8); }); }
     else if (drive.state === 'listening') { fb('Cancel', driveStop, 'stop'); fb('Done talking', () => send({ do: 'stopListening' })); }
     else { fb('Stop', driveStop, 'stop'); if (drive.state === 'speaking') { fb('Say again', () => driveSay(drive.line)); fb('Reply', () => { send({ do: 'hush' }); driveListen(8); }); } }
-    d.append(bar, mid, foot); return [d];
+    d.append(bar, mid, foot); return drive.voiceOpen ? [d, ...voiceSheet()] : [d];
   }
   function lastDriveCards(s) {
     let ld = null; try { ld = JSON.parse(ls.get('lastDrive') || 'null'); } catch (e) { ld = null; }
