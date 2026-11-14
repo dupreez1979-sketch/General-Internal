@@ -610,8 +610,14 @@
   .mail-rh .clara-strip { order: 8; display: flex; align-items: center; gap: 8px; margin-top: 4px; padding: 6px 10px; border: 0; border-radius: 8px; background: color-mix(in srgb, #D9468C 10%, var(--win)); font: inherit; font-size: 12.5px; color: var(--text); text-align: left; cursor: default; }
   .mail-rh .clara-strip[hidden] { display: none; } .mail-rh .clara-strip:hover { background: color-mix(in srgb, #D9468C 17%, var(--win)); }
   .mail-rh .clara-strip b { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #D9468C; }
-  dialog.clara-dlg { width: min(640px, 94vw); }
-  .clara-dlg .cl-list { display: grid; gap: 2px; max-height: 52vh; overflow: auto; margin: 6px 0 10px; }
+  dialog.clara-dlg { width: min(680px, 94vw); height: min(720px, 90vh); resize: both; overflow: hidden; min-width: 420px; min-height: 320px; max-width: 98vw; max-height: 96vh; }
+  dialog.clara-dlg[open] { display: flex; flex-direction: column; }
+  .clara-dlg h2, .clara-dlg .hint, .clara-dlg .cl-foot, .clara-dlg .dlg-actions { flex: none; }
+  dialog.clara-dlg p.hint { margin: 0 0 4px !important; padding: 0 !important; text-indent: 0; text-align: left; float: none; position: static; }
+  .clara-dlg .cl-list { flex: 1 1 auto; min-height: 80px; display: block; overflow: auto; margin: 6px 0 10px; }
+  .clara-dlg .cl-row .clr { flex: none; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; color: var(--muted); font-size: 15px; line-height: 1; }
+  .clara-dlg .cl-row .clr:hover { background: color-mix(in srgb, var(--text) 12%, transparent); color: var(--text); }
+  .clara-dlg .cl-why { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
   .clara-dlg .cl-h { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 10px 4px 3px; }
   .clara-dlg .cl-row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; font: inherit; text-align: left; padding: 7px 6px; border-radius: 8px; color: var(--text); cursor: default; }
   .clara-dlg .cl-row:hover { background: var(--hover); }
@@ -13010,7 +13016,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
       if (mailMulti.has(x.id)) r.classList.add('multi');
-      if (isClaraAddr(addrOf(x.from)) && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const fl = r.querySelector('.fl'); if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }
+      if (isClaraAddr(addrOf(x.from)) && !CLARA_DIGEST.test(x.subject || '') && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const fl = r.querySelector('.fl'); if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }
       r.addEventListener('click', e => {
         // Ctrl-click (Cmd on a Mac) adds or removes one; Shift-click takes everything from the last one you clicked to this one.
         if (e.metaKey || e.ctrlKey || e.shiftKey) {
@@ -13687,6 +13693,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const claraMail = (() => { try { return Object.assign({ how: 'teams', folders: {} }, JSON.parse(ls.get(CLARA_MAIL) || '{}')); } catch (e) { return { how: 'teams', folders: {} }; } })();
   const claraMailSave = () => ls.set(CLARA_MAIL, JSON.stringify(claraMail));
   const claraAddr = () => String(clara.email || '').trim().toLowerCase();
+  const CLARA_DIGEST = /^\s*((re|fw|fwd)\s*:\s*)*(your (schedule|agenda|day|week)\b|your (daily|weekly) (summary|schedule|digest|brief)|(daily|weekly) (summary|digest|brief)|welcome to clara|test\s*$)/i;
   const isClaraAddr = a => !!a && !!claraAddr() && String(a).trim().toLowerCase() === claraAddr();
   const addrOf = z => String(((z || {}).emailAddress || {}).address || '').toLowerCase();
   // --- 1. Bring in Clara, on an email you are writing
@@ -13748,12 +13755,13 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const a of accs) {
       const r = await mailApi(a.id, { path: `/me/messages?$filter=${encodeURIComponent(`receivedDateTime ge ${since} and from/emailAddress/address eq '${claraAddr().replace(/'/g, "''")}'`)}&$orderby=receivedDateTime desc&$top=100&$select=id,subject,conversationId,receivedDateTime,toRecipients,ccRecipients,bodyPreview,isRead` });
       if (!r.ok) { claraState.err = r.error || 'Could not read Clara’s emails'; continue; }
-      for (const m of r.data.value || []) { m._acc = a.id; const k = a.id + '|' + (m.conversationId || m.subject); (groups.get(k) || groups.set(k, []).get(k)).push(m); }
+      for (const m of r.data.value || []) { if (CLARA_DIGEST.test(m.subject || '')) continue; m._acc = a.id; const k = a.id + '|' + (m.conversationId || m.subject); (groups.get(k) || groups.set(k, []).get(k)).push(m); }
     }
     const items = [];
     for (const [key, list] of groups) {
       list.sort((x, y) => Date.parse(y.receivedDateTime) - Date.parse(x.receivedDateTime));
       const last = list[0], st = claraStage(last, mine);
+      if ((claraMail.cleared || {})[key] >= Date.parse(last.receivedDateTime)) continue;          // you cleared it, and she has not written since
       const people = new Map(); for (const m of list) for (const z of (m.toRecipients || []).concat(m.ccRecipients || [])) { const ad = addrOf(z); if (ad && !mine.has(ad) && !isClaraAddr(ad)) people.set(ad, (z.emailAddress.name && !/@/.test(z.emailAddress.name) ? z.emailAddress.name : ad)); }
       items.push({ key, acc: last._acc, conv: last.conversationId || '', title: String(last.subject || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').trim() || '(No subject)', who: [...people.values()].slice(0, 3).join(', '), st, last: Date.parse(last.receivedDateTime), msg: last, count: list.length });
     }
@@ -13772,7 +13780,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const paint = () => {
       const list = d.querySelector('.cl-list'); list.replaceChildren();
       const now = Date.now(), live = claraState.items.filter(x => x.st.k !== 'booked' || !x.st.when || x.st.when.getTime() > now - 864e5), past = claraState.items.length - live.length;
-      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `What Clara is arranging, read from her emails (${clara.email}). Click one to open her latest email.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
+      d.querySelector('.hint').textContent = claraState.busy && !claraState.items.length ? 'Reading Clara’s emails…' : claraState.err && !claraState.items.length ? `Could not read Clara’s emails: ${claraState.err}` : live.length ? `What Clara is arranging, read from her emails. Click one to open her latest email, or press \u00d7 to clear one you have dealt with.${past ? ` ${past} already held are left out.` : ''}` : `Nothing in progress. When you copy Clara in on an email, the meeting shows here.`;
       let head = '';
       for (const it of live) {
         const grp = it.st.k === 'needs' ? 'Needs you' : it.st.k === 'booked' ? 'Booked' : it.st.k === 'cancelled' ? 'Cancelled' : 'In progress';
@@ -13783,18 +13791,18 @@ body { width: max-content !important; min-width: 0 !important; }
         row.querySelector('b').textContent = it.title;
         row.querySelector('.tx span').textContent = [it.who, `${it.count} email${it.count === 1 ? '' : 's'} from Clara`].filter(Boolean).join(' · ');
         row.querySelector('.dt').textContent = new Date(it.last).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-        row.title = String(it.msg.bodyPreview || '').slice(0, 300);
+        { const x = document.createElement('span'); x.className = 'clr'; x.textContent = '\u00d7'; x.setAttribute('role', 'button'); x.setAttribute('aria-label', 'Clear from this list'); x.addEventListener('click', e => { e.stopPropagation(); (claraMail.cleared = claraMail.cleared || {})[it.key] = it.last; claraMailSave(); claraState.items = claraState.items.filter(z => z !== it); claraState.byConv.delete(it.conv); paint(); try { document.querySelectorAll('.clara-btn .n').forEach(n => { const c = claraOpenCount(); n.textContent = c || ''; n.hidden = !c; }); } catch (er) { /* not on screen */ } }); row.appendChild(x); }
         row.addEventListener('click', async () => { d.close(); d.remove(); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(it.msg); });
         list.appendChild(row);
       }
       // The Clara folder: Outlook files her copies there by itself, so they never sit in the Inbox.
       const foot = d.querySelector('.cl-foot'); foot.replaceChildren();
+      foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'The Clara folder: Outlook files emails you are only copied on (from Clara, and replies to her) into a folder called Clara. Anything she sends to you directly stays in the Inbox.' }));
       const accs = (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared);
       for (const a of accs) {
         const on = !!claraMail.folders[a.id], l = document.createElement('div'); l.className = 'cl-set';
         l.appendChild(Object.assign(document.createElement('span'), { textContent: on ? `${a.email}: Clara’s copies go to the Clara folder.` : `${a.email}: Clara’s copies still arrive in the Inbox.` }));
         const b = document.createElement('button'); b.className = on ? 'btn' : 'btn-primary'; b.textContent = on ? 'Tidy the Inbox Again' : 'Set Up the Clara Folder';
-        b.title = 'Makes a folder called Clara and two Outlook rules: emails from Clara that you are only copied on, and replies to Clara that you are copied on, go there. Anything Clara sends to you directly stays in the Inbox. Emails already in the Inbox are moved too.';
         b.addEventListener('click', () => claraFolderSetup(a, msg => { toast(msg); paint(); })); l.appendChild(b); foot.appendChild(l);
       }
     };
