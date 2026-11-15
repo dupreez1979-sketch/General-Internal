@@ -559,7 +559,6 @@
   #spSplit { flex: none; height: 0; position: relative; z-index: 7; }
   #spSplit::after { content: ""; position: absolute; left: 0; right: 0; top: -5px; height: 10px; cursor: row-resize; }
   #spSplit:hover::after { background: linear-gradient(0deg, transparent 4px, var(--accent) 4px, var(--accent) 6px, transparent 6px); }
-  .dock-lay { margin-top: auto; }
   #spNav { flex: 0 0 var(--sp-nav-w, 210px); overflow: auto; border-right: 1px solid var(--line); padding: 4px 6px; background: color-mix(in srgb, var(--tint, #8a8f98) 5%, var(--win)); }
   #spNav[hidden] { display: none; }
   #spNavRs { flex: none; width: 0; position: relative; }
@@ -1593,7 +1592,7 @@
   .cos-list { flex: 1; overflow: auto; padding: 14px 18px; }
   .cos-list .crow { display: grid; grid-template-columns: var(--gcols, minmax(220px, 2fr) 2fr 1.2fr 1.2fr); gap: 10px; align-items: center; padding: 7px 10px; border-radius: 7px; font-size: 13px; }
   .cos-list .crow.h { color: var(--muted); font-size: 11.5px; font-weight: 600; border-bottom: 1px solid var(--line); border-radius: 0; }
-  .cos-list .crow:not(.h):hover { background: var(--hover); }
+  .cos-list .crow:not(.h):hover { background: var(--hover); } .cos-list .crow.sel { background: var(--sel); } .cos-list .crow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .cos-list .crow.sel { background: var(--sel); }
   .cos-list .cn { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .cos-list .cn .av { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center; color: #fff; font-size: 9.5px; font-weight: 700; }
@@ -4074,17 +4073,28 @@
       rz.addEventListener('mousedown', e => {
         if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
         const x0 = e.clientX, w0 = h.getBoundingClientRect().width; document.body.classList.add('col-resizing', 'resizing');
-        const move = ev => { (gridW[key] = gridW[key] || {})[c.k] = Math.max(c.min || 60, Math.min(900, Math.round(w0 + ev.clientX - x0))); host.style.setProperty('--gcols', gridTemplate(key, cols)); };
+        const move = ev => { (gridW[key] = gridW[key] || {})[c.k] = Math.max(c.min || 60, Math.min(c.max || 900, Math.round(w0 + ev.clientX - x0))); host.style.setProperty('--gcols', gridTemplate(key, cols)); if (opts.onResize) opts.onResize(gridW[key]); };
         const stop = () => { removeEventListener('mousemove', move); removeEventListener('mouseup', stop); document.body.classList.remove('col-resizing', 'resizing'); ls.set(GRID_COLS, JSON.stringify(gridW)); h._dragged = true; setTimeout(() => { h._dragged = false; }, 250); };
         addEventListener('mousemove', move); addEventListener('mouseup', stop);
       });
       rz.addEventListener('click', e => e.stopPropagation());
-      rz.addEventListener('dblclick', e => { e.stopPropagation(); if (gridW[key]) { delete gridW[key][c.k]; ls.set(GRID_COLS, JSON.stringify(gridW)); } host.style.setProperty('--gcols', gridTemplate(key, cols)); });
+      rz.addEventListener('dblclick', e => { e.stopPropagation(); if (gridW[key]) { delete gridW[key][c.k]; ls.set(GRID_COLS, JSON.stringify(gridW)); } host.style.setProperty('--gcols', gridTemplate(key, cols)); if (opts.onResize) opts.onResize(gridW[key] || {}); });
       h.appendChild(rz);
       headEl.appendChild(h);
     }
     return headEl;
   }
+  // Rows of the standard lists take the keyboard: Tab reaches a list, the up and down arrows move through it, and
+  // Return opens the row (the same as a double-click).
+  new MutationObserver(() => { clearTimeout(gridKeys.t); gridKeys.t = setTimeout(() => { for (const r of document.querySelectorAll('.cos-list .crow:not(.h):not([tabindex])')) r.tabIndex = 0; }, 120); }).observe(document.body, { childList: true, subtree: true });
+  function gridKeys(e) {
+    const r = e.target && e.target.classList && e.target.classList.contains('crow') && !e.target.classList.contains('h') ? e.target : null; if (!r || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'Enter') { e.preventDefault(); r.dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); if (!r.classList.contains('go') && !r.title) r.click(); return; }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const all = [...r.parentElement.querySelectorAll('.crow:not(.h)')].filter(x => !x.hidden && x.offsetParent), i = all.indexOf(r), n = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
+    if (n) { e.preventDefault(); n.focus(); for (const z of r.parentElement.querySelectorAll('.crow.sel')) z.classList.remove('sel'); n.classList.add('sel'); n.scrollIntoView({ block: 'nearest' }); }
+  }
+  document.addEventListener('keydown', gridKeys);
   const gridCmp = (dir, get) => (a, b) => { const x = get(a), y = get(b); const c = typeof x === 'number' && typeof y === 'number' ? x - y : String(x || '').localeCompare(String(y || ''), undefined, { numeric: true, sensitivity: 'base' }); return dir === 'desc' ? -c : c; };
   function listHeader(view) {
     const head = document.createElement('div');
@@ -6883,7 +6893,7 @@
         const f = folderId && nodeOf(folderId);
         if (!f) return;
         const text = folderRefText(f);
-        navigator.clipboard.writeText(text).catch(() => {});
+        navigator.clipboard.writeText(text).catch(() => toast('That could not be copied. Try again.'));
         // The Claude pane can be briefly not ready (for example just after the dialog closes): try for a few seconds.
         let tries = 0;
         const put = () => {
@@ -8679,7 +8689,7 @@
     commit(); toast(`Filed “${o.name}” in ${nodeOf(folderId).name}.${st ? ` The chat stays with ${st.name}.` : ''}`, true);
   }
   const ASK_FINAL = 'Please give me the final version of this work as its own output (an artifact or a document, with a clear title) so it can be filed in the company folders.';
-  const askFinal = x => { navigator.clipboard.writeText(ASK_FINAL).catch(() => {}); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); };
+  const askFinal = x => { navigator.clipboard.writeText(ASK_FINAL).catch(() => toast('That could not be copied. Try again.')); openNode(x); toast('The chat is open and the request is copied: paste it and send.'); };
   // Finished work and where its outputs are: one staff member's, or the whole team's, over the last so many days.
   function outputsReview(p, days, onlyStaff, ignored) {
     const t = cosTeam(), rows = [], since = Date.now() - days * 864e5;
@@ -8876,7 +8886,7 @@
   }
   function cosAsk(n) {
     const t = cosTeam();
-    navigator.clipboard.writeText(cosBrief(n, t)).catch(() => {});
+    navigator.clipboard.writeText(cosBrief(n, t)).catch(() => toast('That could not be copied. Try again.'));
     const url = n.claudeProject && n.claudeProject.url || HOME;
     if (cosUi.tab === 'work' && cosUi.page) startInProject(url);
     else { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); startInProject(url); }
@@ -8926,7 +8936,7 @@
     return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, outputLine, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
-    navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => {});
+    navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => toast('That could not be copied. Try again.'));
     toast(`${n.name}\u2019s project instructions are copied. Paste them into the project\u2019s Instructions in Claude.`);
   }
   // Project names say whose they are, so they make sense in Claude's own list: "NCTI · Staff · Board Secretary".
@@ -9036,7 +9046,7 @@
       const f = document.createElement('div'); f.className = 'cos-field';
       const l = document.createElement('div'); l.className = 'lb'; l.textContent = label;
       const v = document.createElement(tall ? 'pre' : 'div'); v.className = 'val'; v.textContent = value;
-      const c = btn('Copy', () => { navigator.clipboard.writeText(value).catch(() => {}); c.textContent = 'Copied'; setTimeout(() => { c.textContent = 'Copy'; }, 1500); });
+      const c = btn('Copy', () => { navigator.clipboard.writeText(value).catch(() => toast('That could not be copied. Try again.')); c.textContent = 'Copied'; setTimeout(() => { c.textContent = 'Copy'; }, 1500); });
       c.classList.add('cp');
       const row = document.createElement('div'); row.className = 'vrow'; row.append(v, c);
       f.append(l, row); d.appendChild(f); return f;
@@ -9080,7 +9090,7 @@
     return box;
   }
   function cosSetUpProject(n) {
-    navigator.clipboard.writeText(cosProjectName(n)).catch(() => {});
+    navigator.clipboard.writeText(cosProjectName(n)).catch(() => toast('That could not be copied. Try again.'));
     cosUi.setupFor = n.id; cosUi.page = n.id;
     const p = activeProfile();
     cosCreate('project', { what: `${n.name}`, onLink: link => {
@@ -9089,7 +9099,7 @@
       m.claudeProject = link;
       cosUi.setupFor = m.id; cosUi.adding = true;
       // Next: the instructions (their role and where the company files are), filled in for you to save.
-      setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => {}); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(m))); toast(`Project made. Now check ${m.name}\u2019s instructions in Claude and click Save.`); }, 1200);
+      setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => toast('That could not be copied. Try again.')); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(m))); toast(`Project made. Now check ${m.name}\u2019s instructions in Claude and click Save.`); }, 1200);
     } });
     cosFill(FILL_PROJECT(cosProjectName(n), cosProjectAbout(n)));
   }
@@ -9106,7 +9116,7 @@
       { label: 'Unlink the Project', run: () => cosChange(() => { delete n.claudeProject; delete n.instructionsAt; }, `Unlinked ${n.name}’s Claude Project`) },
       '-',
       { label: 'Open the Project in a New Window', run: () => openNewWindow(P.url) },
-      P.name !== cosProjectName(n) ? { label: `Copy the Standard Name (${cosProjectName(n)})`, run: () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => {}); toast(`Copied “${cosProjectName(n)}”. Paste it as the project’s name in Claude.`); } } : null,
+      P.name !== cosProjectName(n) ? { label: `Copy the Standard Name (${cosProjectName(n)})`, run: () => { navigator.clipboard.writeText(cosProjectName(n)).catch(() => toast('That could not be copied. Try again.')); toast(`Copied “${cosProjectName(n)}”. Paste it as the project’s name in Claude.`); } } : null,
     ].filter(Boolean)); };
     showMenu(Math.max(8, x - 180), y, [
       { head: 'Their Claude Project' },
@@ -9173,7 +9183,7 @@
   }
   function cosNewDashboard(n) {
     const nid = n.id;
-    navigator.clipboard.writeText(`A dashboard for ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+    navigator.clipboard.writeText(`A dashboard for ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => toast('That could not be copied. Try again.'));
     cosCreate('dashboard', { what: `${n.name}\u2019s dashboard`, onLink: link => {
       const m = cosNode(cosTeam(), nid);
       if (!m) return;
@@ -9191,7 +9201,7 @@
     const use = (name, url) => cosChange(() => { n.whiteboard = { name: name || 'Whiteboard', url }; cosUi.tab = 'whiteboard'; cosUi.toFolder = true; }, `${n.name} now has a whiteboard`);
     const make = () => {
       const nid = n.id;
-      navigator.clipboard.writeText(`A whiteboard for brainstorming with ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => {});
+      navigator.clipboard.writeText(`A whiteboard for brainstorming with ${n.name}${n.role ? ` (${n.role})` : ''}`).catch(() => toast('That could not be copied. Try again.'));
       cosCreate('whiteboard', { what: `${n.name}\u2019s whiteboard`, onLink: link => { const m = cosNode(cosTeam(), nid); if (!m) return; m.whiteboard = { name: link.name, url: link.url }; cosUi.page = nid; cosUi.tab = 'whiteboard'; cosUi.adding = false; cosUi.dashKeep = true; } });
     };
     const addRows = [
@@ -9217,7 +9227,7 @@
       x.board && { label: x.board.archived ? 'Open the Archived Whiteboard' : 'Open the Whiteboard', run: () => itemBoardOpen(id) },
       x.board && '-',
       { label: x.board ? 'Make a New Whiteboard with Claude\u2026' : 'Make a Whiteboard with Claude\u2026', run: () => {
-        navigator.clipboard.writeText(`A whiteboard for \u201c${x.name}\u201d: start with the ideas so far, to keep building on`).catch(() => {});
+        navigator.clipboard.writeText(`A whiteboard for \u201c${x.name}\u201d: start with the ideas so far, to keep building on`).catch(() => toast('That could not be copied. Try again.'));
         cosCreate('whiteboard', { what: `\u201c${x.name}\u201d`, onLink: link => { const m = nodeOf(id); if (!m) return; snap(); m.board = { name: link.name, url: link.url, added: Date.now() }; commit(); } });
       } },
       curArt && { label: 'Use the Page Open Now', run: () => itemBoardSet(id, realTitle(state.pageTitle), cur) },
@@ -9569,11 +9579,11 @@
     if (!it) return;
     const c = teamCtxOf(id), staff = c && staffNodeOf(c.staff);
     if (kindOf(it) === 'skill') {
-      navigator.clipboard.writeText(`Use my “${it.name}” skill. `).catch(() => {});
+      navigator.clipboard.writeText(`Use my “${it.name}” skill. `).catch(() => toast('That could not be copied. Try again.'));
       startInProject(staff && staff.claudeProject ? staff.claudeProject.url : HOME);
       toast(`A new chat is open${staff && staff.claudeProject ? ` in ${staff.name}’s Claude Project` : ''}. Paste to use “${it.name}”, then say what you need.`);
     } else {
-      if (it.prompt) navigator.clipboard.writeText(it.prompt).catch(() => {});
+      if (it.prompt) navigator.clipboard.writeText(it.prompt).catch(() => toast('That could not be copied. Try again.'));
       openNode(it);
       if (it.prompt) toast('Opened. Its instructions are copied: paste them to start.');
     }
@@ -10642,7 +10652,7 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: 'Rename or Change Link\u2026', run: () => notesAdd(n) },
         { label: 'Open in Web Browser', run: () => openExternal(n.url) },
         { label: 'Copy the Page Layout (to Help Tidy This View)', run: async () => { const v = notesViews.get(n.id); let t = ''; try { t = v ? await window.navigatorApp.pageLayout(v.getWebContentsId()) : ''; } catch (er) { /* older app */ }
-          if (!t) return toast('Open the note first, then try again.'); navigator.clipboard.writeText(t).catch(() => {}); toast('Copied. It lists the page\u2019s parts and sizes only, none of your words. Paste it to Claude.'); } },
+          if (!t) return toast('Open the note first, then try again.'); navigator.clipboard.writeText(t).catch(() => toast('That could not be copied. Try again.')); toast('Copied. It lists the page\u2019s parts and sizes only, none of your words. Paste it to Claude.'); } },
         '-',
         { label: 'Remove from Here', run: () => { notesState.list = notesState.list.filter(x => x !== n); const v = notesViews.get(n.id); if (v) v.remove(); notesViews.delete(n.id); notesSave(); notesRender(); toast(`Removed \u201c${n.name}\u201d from here. The note itself is untouched.`, true); } },
       ]); });
@@ -12411,7 +12421,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (x === 'close') return d.close();
       if (x === 'again') return paint();
       if (x === 'log') return window.navigatorApp.mailLogShow();
-      if (x === 'copy') { navigator.clipboard.writeText(report()).catch(() => {}); return toast('Report copied. Paste it into a message.'); }
+      if (x === 'copy') { navigator.clipboard.writeText(report()).catch(() => toast('That could not be copied. Try again.')); return toast('Report copied. Paste it into a message.'); }
       if (x === 'pause') { await window.navigatorApp.mailIndexPause(!(H && H.index.paused)); toast(H && H.index.paused ? 'Search indexing is back on' : 'Search indexing is paused'); paint(); mailHealthCheck(); }
     });
   }
@@ -13140,17 +13150,16 @@ body { width: max-content !important; min-width: 0 !important; }
     const wide = popped && !inSide;
     if (wide) {
       const ch = document.createElement('div'); ch.className = 'mail-cols';
-      const ms0 = mailUi.sort || { col: 'date', dir: 'desc' };
-      ch.appendChild(document.createElement('span'));
-      for (const [k, label] of [['from', 'From'], ['subject', 'Subject'], ['date', 'Date']]) {
-        const h = document.createElement('span'); h.className = 'hc' + (ms0.col === k ? ' sorted' : ''); h.textContent = label;
-        h.title = ms0.col === k ? `Sorted by ${label}. Click to reverse.` : `Click to sort the messages shown by ${label}.`;
-        if (ms0.col === k) { const a = document.createElement('span'); a.className = 'sa'; a.innerHTML = ms0.dir === 'asc' ? UI.sortUp : UI.sortDown; h.appendChild(a); }
-        h.addEventListener('click', () => { mailUi.sort = ms0.col === k ? { col: k, dir: ms0.dir === 'asc' ? 'desc' : 'asc' } : { col: k, dir: k === 'date' ? 'desc' : 'asc' }; if (mailUi.sort.col === 'date' && mailUi.sort.dir === 'desc') mailUi.sort = null; mailRenderMain(); });
-        ch.appendChild(h);
-      }
+      // The same headings as every other list: click one to sort by it, again to reverse, a third time for newest first;
+      // drag a heading's edge to set its width. (The width you had set for From before is kept.)
+      if (mailState.w && mailState.w.from && !(gridW.mailWide || {}).from) (gridW.mailWide = gridW.mailWide || {}).from = mailState.w.from;
+      const mcols = [{ k: 'pre', label: '', def: '62px', sort: false }, { k: 'from', label: 'From', def: '250px', min: 120, max: 520 }, { k: 'subject', label: 'Subject', def: 'minmax(0, 1fr)' }, { k: 'date', label: 'Date', def: 'var(--mail-date-w, 104px)' }];
+      const fromW = w => document.documentElement.style.setProperty('--mail-from-w', (((w || gridW.mailWide || {}).from) || 250) + 'px');
+      gridHead(ch, ch, 'mailWide', mcols, { canClear: true, usual: { col: 'date', dir: 'desc' }, onSort: () => mailRenderMain(), onResize: fromW });
+      ch.style.gridTemplateColumns = 'var(--gcols)'; fromW();
+      for (const k of ['pre', 'subject', 'date']) { const z = ch.querySelector(`.hc[data-col="${k}"] .rz`); if (z) z.remove(); }
+      { const st = gridSortOf('mailWide'); mailUi.sort = st && !(st.col === 'date' && st.dir === 'desc') ? { col: st.col, dir: st.dir } : null; }
       col.appendChild(ch);
-      const fromH = dragWidth(ch.children[1], 'from', '--mail-from-w', 120, 520); fromH.classList.add('rz'); fromH.classList.remove('drag-w');
       // The line between Subject and Date sets the width of Date.
       const dz = document.createElement('i'); dz.className = 'rz'; dz.title = 'Drag to resize. Double-click to reset.';
       dz.addEventListener('mousedown', e => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); const x0 = e.clientX, w0 = ch.children[3].getBoundingClientRect().width; dz.classList.add('on'); document.body.classList.add('resizing');
@@ -13165,7 +13174,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const list = document.createElement('div'); list.className = 'mail-list';
     if (mailUi.err) list.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: mailUi.err }));
     const sent = s && acc && ((mailUi.folders[acc.id] || {}).list || []).some(f => f.id === s.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'));
-    if (wide && sent) { const fh0 = col.querySelector('.mail-cols .hc'); if (fh0 && fh0.firstChild) fh0.firstChild.textContent = 'To'; }          // (in Sent and Drafts the column is who it went to)
+    if (wide && sent) { const fh0 = col.querySelector('.mail-cols .hc[data-col="from"]'); if (fh0 && fh0.firstChild) fh0.firstChild.textContent = 'To'; }          // (in Sent and Drafts the column is who it went to)
     mailUi.shutGroups = mailUi.shutGroups || {};
     let group = null;
     const shown = (mailUi.msgs || []).filter(x => !mailUi.onlyUnread || !x.isRead || (m && x.id === m.id));
@@ -15200,7 +15209,7 @@ body { width: max-content !important; min-width: 0 !important; }
     L.push(`Last dictation: ${dict.last || 'none yet this session'}`);
     const d = document.createElement('dialog'); d.className = 'ai-check'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } }); d.innerHTML = '<h2>On-Mac check</h2><pre style="white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0 0 14px"></pre><div class="dlg-actions"><button class="btn" data-x="copy">Copy</button><span style="flex:1"></span><button class="btn-primary" data-x="ok">Close</button></div>';
     d.querySelector('pre').textContent = L.join('\n');
-    d.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; if (x.dataset.x === 'copy') { navigator.clipboard.writeText(L.join('\n')).catch(() => {}); toast('Copied.'); } else { d.close(); d.remove(); } });
+    d.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; if (x.dataset.x === 'copy') { navigator.clipboard.writeText(L.join('\n')).catch(() => toast('That could not be copied. Try again.')); toast('Copied.'); } else { d.close(); d.remove(); } });
     document.body.appendChild(d); d.showModal();
   }
   function localAiRun(instructions, prompt, on) {
@@ -16120,36 +16129,6 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     sp.addEventListener('dblclick', () => { sideState.h2 = 0; sideSave(); sideMount(); });
   })();
-  // Layouts: which app is in the middle and which are beside it, saved under a name and brought back in one click.
-  const LAY_KEY = 'claudeNavigator.layouts.v1';
-  const layList = () => { try { const l = JSON.parse(ls.get(LAY_KEY) || 'null'); if (Array.isArray(l)) return l; } catch (e) { /* the starters */ }
-    return [{ name: 'Filing Chats', main: 'claude', a: 'folders' }, { name: 'Inbox', main: 'mail', a: 'cal', b: 'cos' }, { name: 'Planning', main: 'cal', a: 'mail', b: 'notes' }, { name: 'Writing with Claude', main: 'claude', a: 'mail', b: 'cal' }]; };
-  const laySave = l => ls.set(LAY_KEY, JSON.stringify(l));
-  function layApply(L) {
-    setApp(L.main);
-    // (In Claude and File Navigator, your folders open as the app's own left-hand panel, which chats can be dragged into.)
-    const native = [L.a, L.b].includes('folders') && dockNative('folders');
-    if (native) { try { if (L.main === 'claude') go({ kind: 'library', which: 'chats' }); setSplit(true); } catch (e) { /* starting up */ } }
-    const rest = [L.a, L.b].filter(k => k && !(native && k === 'folders'));
-    sideState.app = rest[0] || null; sideState.app2 = rest[1] || null; sideState.nav = false;
-    if (L.w) sideState.w = L.w; if (L.h2 !== undefined) sideState.h2 = L.h2 || 0;
-    sideSave(); sideMount(); sideStart();
-    toast(`${L.name}: ${[L.main, L.a, L.b].filter(Boolean).map(k => APP_NAMES[k === 'folders' ? 'navigator' : k] || k).join(', ')}`);
-  }
-  function layMenu(x, y) {
-    const l = layList();
-    showMenu(x, y, [
-      ...l.map(L => ({ label: L.name, key: [L.main, L.a, L.b].filter(Boolean).map(k => (APP_NAMES[k === 'folders' ? 'navigator' : k] || k).split(' ')[0]).join(' + '), run: () => layApply(L) })),
-      l.length ? '-' : null,
-      { label: 'Keep What Is Open Now as a Layout…', run: () => {
-        askText('A name for this layout', '', nm => {
-          const L = { name: nm.slice(0, 40), main: appKey(), a: sideState.app || null, b: sideState.app2 || null, w: sideState.w || 0, h2: sideState.h2 || 0 };
-          laySave(l.filter(z => z.name.toLowerCase() !== L.name.toLowerCase()).concat(L)); toast(`Kept as “${L.name}”`);
-        }, 'Keep');
-      } },
-      l.length ? { label: 'Remove a Layout', key: '▸', run: () => showMenu(x, y, l.map(L => ({ label: L.name, run: () => { laySave(l.filter(z => z !== L)); toast(`Removed “${L.name}”`); } }))) } : null,
-    ].filter(Boolean), { above: true });
-  }
   // Chief of Staff beside another app: the team at a glance, and each person's open actions. (Building the team,
   // skills, routines and dashboards stay in the full app, which Open Full or a person's "Open Their Page" takes you to.)
   const sideCos = { staff: null };
@@ -16560,7 +16539,7 @@ body { width: max-content !important; min-width: 0 !important; }
         await new Promise(r => setTimeout(r, 250));
       }
       return 'none';
-    })()`).then(r => { if (r !== 'ok') { navigator.clipboard.writeText(text).catch(() => {}); toast('The question is copied: paste it into the Chief of Staff chat.'); } }).catch(() => {});
+    })()`).then(r => { if (r !== 'ok') { navigator.clipboard.writeText(text).catch(() => toast('That could not be copied. Try again.')); toast('The question is copied: paste it into the Chief of Staff chat.'); } }).catch(() => {});
   }
   // Fill the Chief of Staff chat with a question (you check it and send it).
   // A question from a suggestion: asked of Claude, and answered in the panel.
@@ -16795,7 +16774,10 @@ body { width: max-content !important; min-width: 0 !important; }
   setTimeout(fastLoad, 2500);
   const API_PRICE = { fast: [0.10, 0.50], smart: [2, 10] };       // US dollars per million tokens in and out
   const fastCap = () => +(ls.get('claudeNavigator.apiCap') || 30);          // the most to spend in a month, in US dollars
-  const fastOn = () => fastS.hasKey && ls.get('claudeNavigator.fastApi') !== 'off' && fastCost(fastNow()) < fastCap();
+  // The limit is for the Mac and the phone together: the phone reports what it has spent this month with its changes.
+  const phoneSpend = () => { try { const u = JSON.parse(ls.get('claudeNavigator.phoneUse') || '{}') || {}; return u.m === new Date().toISOString().slice(0, 7) ? +u.cost || 0 : 0; } catch (e) { return 0; } };
+  const fastSpent = () => fastCost(fastNow()) + phoneSpend();
+  const fastOn = () => fastS.hasKey && ls.get('claudeNavigator.fastApi') !== 'off' && fastSpent() < fastCap();
   // One call to Claude's API. `tier` is 'fast' (Haiku) or 'smart' (Sonnet); the use is counted either way.
   // ---------- One memory of you ----------
   // What the app knows about you, that a model should know, is gathered in ONE place and handed to EVERY question
@@ -16817,6 +16799,12 @@ body { width: max-content !important; min-width: 0 !important; }
     if (M.notes.length > 80) M.notes.splice(0, M.notes.length - 80);
     memSave(); return !had;
   }
+  // What arrives from the phone's file to be remembered is held here until you say Keep: it is not in the memory,
+  // and no answer or draft sees it, before that.
+  const MEM_ASK = 'claudeNavigator.memPending.v1';
+  const memPending = () => { try { const l = JSON.parse(ls.get(MEM_ASK) || '[]'); return Array.isArray(l) ? l : []; } catch (e) { return []; } };
+  const memPendingSave = l => { try { ls.set(MEM_ASK, JSON.stringify(l.slice(-40))); } catch (e) { /* full */ } };
+  function memAsk(text, pid) { text = String(text || '').replace(/\s+/g, ' ').trim().slice(0, 240); if (text.length < 6) return; const l = memPending(); if (!l.some(x => x.pid === pid && memKey(x.text) === memKey(text))) { l.push({ text, pid, at: Date.now() }); memPendingSave(l); } }
   function forget(text, pid) { const M = memOf(pid), n = M.notes.length; M.notes = M.notes.filter(x => memKey(x.text) !== memKey(text)); memSave(); return M.notes.length < n; }
   // Your name: what you typed under "About me", else the name on the mail account. Never written into the code.
   function meFull(acc) {
@@ -16930,10 +16918,10 @@ body { width: max-content !important; min-width: 0 !important; }
     const gl = d.querySelector('.gl'), inp = d.querySelector('input'), q = x => d.querySelector(`[data-x="${x}"]`);
     const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
     const paint = extra => { gl.replaceChildren(); const u = fastNow(), on = ls.get('claudeNavigator.fastApi') !== 'off';
-      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)} of your US$${fastCap()} limit.${fastCost(u) >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Switched off: nothing is sent to the API.'); line('Fast answers use the fast model (Haiku). Email drafts and \u201cThink harder\u201d use the fuller one (Sonnet). No other model is ever used.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
+      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)} on this Mac${phoneSpend() ? ' and US$' + phoneSpend().toFixed(2) + ' on your phone' : ''}, of your US$${fastCap()} limit for both together.${fastSpent() >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Off: nothing is sent to the API.'); line('Fast answers use the fast model (Haiku). Email drafts and \u201cThink harder\u201d use the fuller one (Sonnet). No other model is ever used.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
       else line('No key saved yet. Paste yours below. It is encrypted with this Mac\u2019s Keychain and cannot be read back.');
       if (extra) line(extra[0], extra[1]);
-      q('off').hidden = q('test').hidden = q('tog').hidden = q('cap').hidden = !fastS.hasKey; q('cap').textContent = `Monthly Limit: US$${fastCap()}`; q('cap').title = 'The most the app will spend through the API in a month. Press to change.'; q('tog').textContent = on ? 'Switch Off' : 'Switch On'; inp.placeholder = fastS.hasKey ? 'Paste a new key to replace it' : 'sk-ant-\u2026'; };
+      q('off').hidden = q('test').hidden = q('tog').hidden = q('cap').hidden = !fastS.hasKey; q('cap').textContent = `Monthly Limit: US$${fastCap()}`; q('cap').title = 'The most the Mac and the phone together will spend through the API in a month. Press to change.'; q('tog').textContent = on ? 'Turn Off' : 'Turn On'; inp.placeholder = fastS.hasKey ? 'Paste a new key to replace it' : 'sk-ant-\u2026'; };
     q('go').addEventListener('click', async () => { const k = inp.value.trim(); if (!k) return inp.focus(); const ok = await window.navigatorApp.apiKeySet(k); inp.value = ''; fastS.keyBad = false; await fastLoad(); paint(ok ? ['Saved.', 'good'] : ['It could not be saved.', 'bad']); });
     q('off').addEventListener('click', async () => { await window.navigatorApp.apiKeySet(''); await fastLoad(); paint(['The key has been removed from this Mac.', '']); });
     q('tog').addEventListener('click', () => { ls.set('claudeNavigator.fastApi', ls.get('claudeNavigator.fastApi') !== 'off' ? 'off' : 'on'); paint(); });
@@ -17340,7 +17328,9 @@ body { width: max-content !important; min-width: 0 !important; }
       const n = left(g), act = granDone.has(g.id) ? c('done', 'Dealt with') : n < 0 ? c('mu', 'Reading\u2026') : n ? c('todo', `${n} to give out`) : c('mu', (gran.notes.get(g.id) || { actions: [] }).actions.length ? 'All given out' : 'None');
       r.append(c('mt', g.title), c('mu', `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(g.at)}`), c('mu', who(g)), co, act);
       r.dataset.q = `${g.title} ${g.people.join(' ')} ${coName(g)}`.toLowerCase();
-      r.addEventListener('click', () => granMeetingDlg(g));
+      r.title = 'Double-click to open the notes';
+      r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); });
+      r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; granMeetingDlg(g); });
       l.appendChild(r); rows.push(r);
     }
     const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : 'No meetings here. Try a longer time, or another profile, in the list on the left.' }); l.appendChild(none);
@@ -17396,7 +17386,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const st = gridSortOf(key); if (st && vals[st.col]) items = items.slice().sort(gridCmp(st.dir, vals[st.col]));
       const rows = [], heads = [];
       const addRow = it => { const r = document.createElement('div'); r.className = 'crow'; const cs = cells(it); r.append(...cs); r.dataset.q = cs.slice(0, 3).map(c => c.textContent).join(' ').toLowerCase(); r.dataset.g = groupOf(it);
-        if (onRow) { r.classList.add('go'); r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; onRow(it); }); }
+        if (onRow) { r.classList.add('go'); r.title = 'Double-click to open'; r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); }); r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; onRow(it); }); }
         l.appendChild(r); rows.push(r); };
       if (grouped) for (const [gid, label] of groups) {
         const mine = items.filter(it => groupOf(it) === gid); if (!mine.length) continue;
@@ -17733,10 +17723,18 @@ body { width: max-content !important; min-width: 0 !important; }
     const keep = () => { M.name = nameIn.value.trim().slice(0, 80); M.about = about.value.slice(0, 2000); memSave(); };
     nameIn.addEventListener('change', keep); about.addEventListener('change', keep); d.addEventListener('close', keep);
     me.append(nameIn, about);
+    const askEl = mk('div', {}, 'margin:10px 0 0'); me.appendChild(askEl);
+    const asks = () => { askEl.replaceChildren(); const mine = memPending().filter(x => x.pid === memPid()); if (!mine.length) return;
+      askEl.appendChild(mk('h4', { textContent: 'From your phone, waiting for your say-so' }, 'margin:6px 0'));
+      for (const n of mine) { const r = mk('div', {}, 'display:flex;gap:8px;align-items:baseline;padding:4px 0;font-size:13px'); r.appendChild(mk('span', { textContent: n.text }, 'flex:1'));
+        const done = keep => { memPendingSave(memPending().filter(x => !(x.pid === n.pid && x.at === n.at && x.text === n.text))); if (keep) remember('told', n.text, n.pid); asks(); notes(); };
+        const kb = mk('button', { type: 'button', className: 'btn-primary', textContent: 'Keep' }, 'font-size:12px;padding:2px 9px'); kb.addEventListener('click', () => done(true));
+        const db = mk('button', { type: 'button', className: 'btn', textContent: 'Discard' }, 'font-size:12px;padding:2px 9px'); db.addEventListener('click', () => done(false));
+        r.append(kb, db); askEl.appendChild(r); } };
     const listEl = mk('div', {}, 'margin:10px 0 4px'); me.appendChild(listEl);
     const notes = () => { listEl.replaceChildren(); if (!M.notes.length) return; listEl.appendChild(mk('h4', { textContent: 'What it remembers' }, 'margin:6px 0'));
       for (const n of M.notes.slice().reverse()) { const r = mk('div', {}, 'display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px'); r.appendChild(mk('span', { textContent: n.text }, 'flex:1')); const b = mk('button', { type: 'button', className: 'btn', textContent: 'Forget' }, 'font-size:12px;padding:2px 9px'); b.addEventListener('click', () => { forget(n.text); notes(); }); r.appendChild(b); listEl.appendChild(r); } };
-    notes();
+    notes(); asks();
   }
   function cosBotRender() {
     const el = $('cosBot');
@@ -17968,6 +17966,7 @@ body { width: max-content !important; min-width: 0 !important; }
       nodes: t.nodes.map(n => ({ id: n.id, kind: n.kind, name: n.name, role: n.role || '', color: n.color || '', parent: n.parent || null, chief: !!n.chief, project: n.claudeProject ? { name: n.claudeProject.name || '', url: n.claudeProject.url || '' } : null })),
       work, folders: companyFolderChoices(p).slice(0, 120) };
     try { doc.me = whoIAm(p.id, true); } catch (e) { /* no memory yet */ }
+    try { doc.spend = { m: new Date().toISOString().slice(0, 7), mac: Math.round(fastCost(fastNow()) * 100) / 100, cap: fastCap() }; } catch (e) { /* the phone uses the usual limit */ }
     try { if (botAdvice.items && botAdvice.key === p.id + '|' + new Date().toDateString()) doc.advice = { at: botAdvice.at, items: botAdvice.items.slice(0, 3).map(i => ({ title: i.title, why: i.why })) }; } catch (e) { /* none today */ }
     if (active) { doc.today = botSuggestions().slice(0, 20).map(sg => ({ type: sg.type, kind: sg.kind, text: sg.text, name: sg.name || '' })); doc.todayAt = Date.now(); }
     return doc;
@@ -17981,15 +17980,16 @@ body { width: max-content !important; min-width: 0 !important; }
     try {
       const got = await window.navigatorApp.phoneChanges();
       const list = (got && Array.isArray(got.changes)) ? got.changes : [];
+      try { if (got && got.use && typeof got.use.m === 'string') ls.set('claudeNavigator.phoneUse', JSON.stringify({ m: got.use.m.slice(0, 7), cost: Math.max(0, Math.min(1000, +got.use.cost || 0)), n: +got.use.n || 0 })); } catch (e) { /* counted next time */ }
       let applied = []; try { applied = JSON.parse(ls.get(PHONE_APPLIED) || '[]'); } catch (e) { applied = []; }
       const seen = new Set(applied), fresh = list.filter(c => c && typeof c.id === 'string' && !seen.has(c.id)).slice(0, 100);
       if (!fresh.length) { if (list.length && !phoneMerge.told) { phoneMerge.told = true; window.navigatorApp.phoneApplied(applied); } return; }
       let chats = 0, dones = 0, files = 0, drives = 0, notes = 0;
-      let held = 0;
+      let held = 0, asked = 0;
       for (const c of fresh) { let ok = false;
         try {
           const p = profiles().find(x => x.id === c.pid), t = p && (cos.teams || {})[p.id], st = t && t.nodes.find(x => x.id === c.staff);
-          if (c.type === 'remember') { if (p && c.text) { remember('told', c.text, p.id); ok = true; } }
+          if (c.type === 'remember') { if (p && c.text) { memAsk(c.text, p.id); asked++; ok = true; } }
           else if (c.type === 'chat' && p && st && /^https:\/\/claude\.ai\/chat\//.test(c.url || '')) { ok = true;
             const f = staffFolder(st, p);
             if (f && !workItems(f).some(x => normUrl(x.url || '') === normUrl(c.url))) {
@@ -18001,7 +18001,8 @@ body { width: max-content !important; min-width: 0 !important; }
           } else if (c.type === 'note' && p && st && c.text) { ok = true;
             // A note said in Drive: an action on that person's list. Opening it starts a chat with the note already typed.
             const f = staffFolder(st, p), name = String(c.text).slice(0, 300);
-            if (f && !workItems(f).some(x => !x.done && x.name === name)) { insertInto(f.id, Object.assign(Link(name, 'https://claude.ai/new?q=' + encodeURIComponent(name)), { fromPhone: true, fromNote: true })); notes++; }
+const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due = /^\d{4}-\d{2}-\d{2}$/.test(c.due || '') ? c.due : '';
+            if (f && !workItems(f).some(x => !x.done && x.name === name)) { insertInto(f.id, Object.assign(Link(name, 'https://claude.ai/new?q=' + encodeURIComponent(name + (why ? '\n\nBackground: ' + why : ''))), { fromPhone: true, fromNote: true }, why ? { why } : {}, due ? { due } : {})); notes++; }
           } else if (c.type === 'done') {
             const n = nodeOf(c.item); if (n) ok = true; if (n && n.type === 'link' && !n.done) { toggleDone(n.id); dones++; }
           } else if (c.type === 'file' && p && /^https:\/\/claude\.ai\//.test(c.url || '') && isCompanyFolder(c.folder) && profileOf(c.folder) === p) { ok = true;
@@ -18018,6 +18019,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (held) startNote(`phone: ${held} change${held === 1 ? '' : 's'} could not be placed yet`);
       const bits = [chats && `${chats} new chat${chats === 1 ? '' : 's'}`, drives && `${drives} conversation${drives === 1 ? '' : 's'} from your drive, kept in the Archive`, notes && `${notes} note${notes === 1 ? '' : 's'} turned into action${notes === 1 ? '' : 's'}`, dones && `${dones} marked done`, files && `${files} output${files === 1 ? '' : 's'} filed`].filter(Boolean);
       if (bits.length) toast(`From your phone: ${bits.join(', ')}.`);
+      if (asked) toast(`Your phone asked me to remember ${asked === 1 ? 'something' : asked + ' things'}. Have a look before I keep ${asked === 1 ? 'it' : 'them'}.`, { label: 'Look', run: botLearnedDlg });
       phoneSoon();
     } catch (e) { console.error('Phone', e); } finally { phoneMerging = false; }
   }

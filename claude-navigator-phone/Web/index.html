@@ -129,7 +129,7 @@
   const prof = () => data.profiles.find(p => p.id === ui.pid) || null;
   // What you have done here that the Mac has not picked up yet. Shown straight away, and sent to the Mac through iCloud.
   let changes = []; try { changes = JSON.parse(ls.get('changes') || '[]'); } catch (e) { changes = []; }
-  const saveChanges = () => { ls.set('changes', JSON.stringify(changes)); send({ do: 'save', json: JSON.stringify({ v: 1, changes }) }); };
+  const saveChanges = () => { ls.set('changes', JSON.stringify(changes)); let use = null; try { const u = useNow(); use = { m: u.m, cost: Math.round(useCost(u) * 1000) / 1000, n: u.n }; } catch (e) { /* sent next time */ } send({ do: 'save', json: JSON.stringify({ v: 1, changes, use }) }); };
   const change = c => { changes.push(Object.assign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at: Date.now(), pid: ui.pid }, c)); saveChanges(); render(); };
   const sameUrl = (a, b) => String(a || '').replace(/[?#].*$/, '').replace(/\/$/, '') === String(b || '').replace(/[?#].*$/, '').replace(/\/$/, '');
   const workOf = id => {
@@ -239,12 +239,12 @@
     const viaApi = () => {
       if (!apiOn()) return cannot();
       const id = 'home' + newId(), p = prof(); e.src = 'api'; render();
-      const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal on his phone.\n\nBe brief. The first line is the answer itself in one short sentence: if he asks for a time, a name or a number, give just that. Then, only if it truly helps, at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nQuestions asking for your advice, priorities or a plan are always answered, from the notes: never refuse those. You know only the team notes below and what has been said in this conversation. Only when he asks for a specific fact you have not been given, such as what an email, a file, a calendar entry or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: the staff member's name | the action in a few words\n\nWhere the team is up to right now:\n${snapshot()}`;
+      const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal on his phone.\n\nBe brief. The first line is the answer itself in one short sentence: if he asks for a time, a name or a number, give just that. Then, only if it truly helps, at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nQuestions asking for your advice, priorities or a plan are always answered, from the notes: never refuse those. You know only the team notes below and what has been said in this conversation. Only when he asks for a specific fact you have not been given, such as what an email, a file, a calendar entry or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: action | the staff member's name exactly as given | the action in a few words | the background they need in one sentence | the date it is due as YYYY-MM-DD, only if a date was said (otherwise leave this off)\n\nWhere the team is up to right now:\n${snapshot()}`;
       const timer = setTimeout(() => { if (waits[id]) { delete waits[id]; e.keep = true; done('That took too long to answer. Try again, or put it on a list for later.', 'none'); } }, mailOn() ? 45000 : 20000);
       waits[id] = a => { clearTimeout(timer); delete waits[id]; if (a && (a.in || a.out)) useAdd(a.in, a.out); if (a && a.status === 401) fast.keyBad = true;
         if (a && a.error) { e.keep = true; return done(`The fast model could not answer just now (${String(a.error).slice(0, 80)}). Try again, or put it on a list for later.`, 'none'); }
         let text2 = a ? String(a.text || '').trim() : ''; if (!text2 || /\bLOOKUP\b/.test(text2)) return cannot();
-        text2 = text2.replace(/\n?\s*DO:\s*([^\n]+)\s*$/i, (m0, l) => { const f = l.split('|').map(x => x.trim()), st = staffNamed(f[0] || ''); if (st && !st.chief && f[1]) e.act = { staff: st.id, who: st.name, text: f[1].slice(0, 200) }; return ''; }).replace(/\s*[—–]\s*/g, ', ').trim();
+        text2 = text2.replace(/\n?\s*DO:\s*([^\n]+)\s*$/i, (m0, l) => { const a2 = doLine(l); if (a2) e.act = a2; return ''; }).replace(/\s*[—–]\s*/g, ', ').trim();
         home.turns = home.turns.concat([{ role: 'user', text: said }, { role: 'assistant', text: text2 }]).slice(-8); e.ms = a.ms; e.used = a.used || []; done(text2, 'api'); };
       send({ do: 'apiAsk', id, system, turns: home.turns.slice(-6).concat([{ role: 'user', text: said }]), max: 320 });
     };
@@ -308,7 +308,7 @@
       if (!e.busy) {
         const foot = el('div', 'hsrc'); foot.append(el('span', '', e.src === 'phone' ? 'Read from the team’s lists' : e.src === 'granola' ? 'Answered from your meetings' : e.src === 'api' ? `Answered by Claude’s fast model${e.ms ? ' in ' + (e.ms / 1000).toFixed(1) + ' s' : ''}${(e.used || []).length ? ', after looking at ' + e.used.join(' and ') : ''}` : 'Not answered'));
         const link = (label, run) => { const b = el('button', '', label); b.onclick = run; foot.append(b); };
-        if (e.act && !e.act.did) link(`Put It on the ${e.act.who}’s List`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.act.staff, text: e.act.text }); saveChanges(); e.act.did = true; chime('made'); render(); });
+        if (e.act && !e.act.did) link(`Put It on the ${e.act.who}’s List`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.act.staff, text: e.act.text, why: e.act.why || '', due: e.act.due || '' }); saveChanges(); e.act.did = true; chime('made'); render(); });
         if (e.act && e.act.did) foot.append(el('span', 'ok', `On the ${e.act.who}’s list`));
         if (e.keep && !e.kept) link(e.target.chief ? 'Put It on My Chief of Staff’s List' : `Put It on the ${e.target.name}’s List`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.target.id, text: ('Asked on the phone: ' + e.q).slice(0, 300) }); saveChanges(); e.kept = true; chime('made'); render(); });
         if (e.kept) foot.append(el('span', 'ok', `On ${e.target.chief ? 'your Chief of Staff' : 'the ' + e.target.name}’s list`));
@@ -471,8 +471,12 @@
   const useAdd = (i, o) => { const u = useNow(); u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; ls.set('apiUse', JSON.stringify(u)); };
   const useCost = u => (u.in * 0.10 + u.out * 0.50) / 1e6;          // US dollars: the fast model's price per million tokens in and out
   const apiLimit = () => +(ls.get('apiDaily') || 150);
-  const apiCap = () => +(ls.get('apiCap') || 10);          // the most to spend in a month from this phone, in US dollars
-  const apiOn = () => fast.hasKey && ls.get('driveApi') !== 'off' && (useNow().dn || 0) < apiLimit() && useCost(useNow()) < apiCap();
+  // One monthly limit for the Mac and this phone together. The Mac holds the setting and says what it has spent;
+  // this phone reports its own spending back with its changes.
+  const spendOf = () => { try { const t = team(); return (t && t.spend) || {}; } catch (e) { return {}; } };
+  const apiCap = () => +spendOf().cap || 30;
+  const macSpent = () => (spendOf().m === new Date().toISOString().slice(0, 7) ? +spendOf().mac || 0 : 0);
+  const apiOn = () => fast.hasKey && ls.get('driveApi') !== 'off' && (useNow().dn || 0) < apiLimit() && useCost(useNow()) + macSpent() < apiCap();
   const granOn = () => fast.granola && ls.get('driveGran') !== 'off';
   const MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|talked? about|spoke (to|with|about)|catch[- ]?up|granola|last time|what did .{1,40} say)\b/;
   const joinUp = items => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items.slice(-1));
@@ -526,7 +530,7 @@
   function driveApiAsk(said, target) {
     const id = newId(), p = prof(); drive.apiAsk = { id, said, target }; dnote('lane', { lane: 'api' });
     drive.state = 'thinking'; drive.who = target; drive.stage = ''; drive.line = 'Thinking…'; render();
-    const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal aloud while he drives.\n\nSay the answer itself first, in one short sentence: if he asks for a time, a name or a number, say just that. Add at most one or two more short sentences, only if they truly help. At most 40 words. Plain spoken sentences: no lists, no headings, no symbols, no dashes joining clauses. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nYou know only the team notes below and what has been said in this conversation. If the question needs anything else, such as what an email, a file, a calendar entry, a budget or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: the staff member's name | the action in a few words\n\nWhere the team is up to right now:\n${snapshot()}`;
+    const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal aloud while he drives.\n\nSay the answer itself first, in one short sentence: if he asks for a time, a name or a number, say just that. Add at most one or two more short sentences, only if they truly help. At most 40 words. Plain spoken sentences: no lists, no headings, no symbols, no dashes joining clauses. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nYou know only the team notes below and what has been said in this conversation. If the question needs anything else, such as what an email, a file, a calendar entry, a budget or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: action | the staff member's name exactly as given | the action in a few words | the background they need in one sentence | the date it is due as YYYY-MM-DD, only if a date was said (otherwise leave this off)\n\nWhere the team is up to right now:\n${snapshot()}`;
     drive.turns = drive.turns || {}; const turns = (drive.turns[target.id] || []).slice(-6).concat([{ role: 'user', text: said }]);
     send({ do: 'apiAsk', id, system, turns, max: 220 });
     clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.apiAsk && drive.apiAsk.id === id) { drive.apiAsk = null; driveFallback(said, target, 'api (no answer in time)'); } }, mailOn() ? 40000 : 15000);
@@ -543,7 +547,7 @@
     drive.turns[q.target.id] = (drive.turns[q.target.id] || []).concat([{ role: 'user', text: q.said }, { role: 'assistant', text }]).slice(-8);
     drive.log.push({ kind: 'talk', who: q.target.name || 'Claude', text: q.said, answer: (a.used || []).length ? '' : text.split(/(?<=[.!?])\s/)[0].slice(0, 140), url: '' });
     chime('ready'); driveSay(text);
-    if (act) window.driveDo({ lines: ['action | ' + act] });
+    if (act) window.driveDo({ lines: [act] });
   };
   // Run Checks: tries each part for real and writes one report to paste. It holds times and yes or no only:
   // no key, no question, no answer, nothing from a meeting.
@@ -601,7 +605,7 @@
     const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
     const low = said.toLowerCase();
     if (drive.confirmAct) { const c = drive.confirmAct; drive.confirmAct = null;
-      if (/^(yes|yep|yeah|do it|please do|sure|ok|okay|add it)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: c.staff, text: c.text }); saveChanges(); drive.log.push({ kind: 'note', who: c.who, text: c.text }); chime('made'); return driveSay(`Added to the ${c.who}\u2019s list.`); }
+      if (/^(yes|yep|yeah|do it|please do|sure|ok|okay|add it)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: c.staff, text: c.text, why: c.why || '', due: c.due || '' }); saveChanges(); drive.log.push({ kind: 'note', who: c.who, text: c.text }); chime('made'); return driveSay(`Added to the ${c.who}\u2019s list.`); }
       if (/^(no|nope|nah|leave it|not now|don\u2019t|dont|do not)\b/.test(low)) return driveSay('Left as it is.'); }          // (anything else is taken as your next request)
     if (drive.confirm) { const c = drive.confirm; drive.confirm = null; if (/^(yes|yep|yeah|do it|confirm|correct|please do)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'done', staff: c.staff, item: c.item }); saveChanges(); drive.log.push({ kind: 'done', who: c.who, text: c.name }); chime('made'); return driveSay(`Done. ${c.name} is marked as finished.`); } return driveSay('Left as it is.'); }
     if (drive.noteNext || (/^(note|note for later|make a note|remember)\b/.test(low) && !REMEMBER.test(said))) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } return driveNote(note); }
@@ -638,7 +642,10 @@
     // Claude named a next step for someone: offer it aloud before listening again.
     if (drive.offer && drive.after !== 'idle') { const o = drive.offer; drive.offer = null; drive.confirmAct = o; return driveSay(`Shall I put that on the ${o.who}\u2019s list? Say yes or no.`); }
     if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
-  window.driveDo = d => { if (!drive.on) return; for (const l of (d && d.lines) || []) { const f = String(l).split('|').map(x => x.trim()); if ((f[0] || '').toLowerCase() !== 'action' || !f[2]) continue; const st = staffNamed(f[1] || ''); if (!st || st.chief) continue; if (drive.state === 'speaking') drive.offer = { staff: st.id, who: st.name, text: f[2].slice(0, 200) }; return; } };
+  // A next-step line from the model, in the form the Mac uses too: action | who | what | background | due date.
+  // (The older short form, who | what, is still read.)
+  function doLine(l) { const f = String(l).split('|').map(x => x.trim()); if (/^action$/i.test(f[0] || '')) f.shift(); const st = staffNamed(f[0] || ''); if (!st || st.chief || !f[1]) return null; const dm = f.length > 2 ? /\d{4}-\d{2}-\d{2}/.exec(f[f.length - 1]) : null; return { staff: st.id, who: st.name, text: f[1].slice(0, 200), why: f.slice(2, dm ? -1 : undefined).filter(Boolean).join(', ').slice(0, 300), due: dm ? dm[0] : '' }; }
+  window.driveDo = d => { if (!drive.on) return; for (const l of (d && d.lines) || []) { const a2 = doLine(l); if (!a2) continue; if (drive.state === 'speaking') drive.offer = a2; return; } };
   // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
   // not kept waiting for the whole answer.
   // Claude is taking a while (usually because it is looking through files): say so, so the wait is not silent.
@@ -698,9 +705,9 @@
     if (fast.hasKey) { s2.append(el('div', 'sec', 'Fast answers'));
       const on = ls.get('driveApi') !== 'off';
         opt('Use Claude’s fast model', on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${useCost(u).toFixed(2)}. Today: ${u.dn || 0} of ${lim}.` : 'Off. Nothing is sent to the API.', on, () => { ls.set('driveApi', on ? 'off' : 'on'); render(); });
-      opt('Limits', `US$${apiCap()} a month and ${lim} questions a day. Tap to ${ui.setLimits ? 'hide' : 'change'}.`, false, () => { ui.setLimits = !ui.setLimits; render(); });
+      opt('Limits', `US$${apiCap()} a month with your Mac, and ${lim} questions a day here. Tap to ${ui.setLimits ? 'hide' : 'see'}.`, false, () => { ui.setLimits = !ui.setLimits; render(); });
       if (ui.setLimits) {
-        opt(`Most in one month: US$${apiCap()}`, `So far this month: about US$${useCost(u).toFixed(2)}. Past the limit, the API is left alone until next month. Tap to change.`, false, () => { const steps = [5, 10, 30]; ls.set('apiCap', String(steps[(steps.indexOf(apiCap()) + 1) % steps.length])); render(); });
+        opt(`Most in one month: US$${apiCap()}, shared with your Mac`, `So far this month: about US$${useCost(u).toFixed(2)} on this phone and US$${macSpent().toFixed(2)} on your Mac. Past the limit, the API is left alone until next month. Change the limit on your Mac, in Chief of Staff Settings.`, false, () => {});
         opt(`Most in one day: ${lim} questions`, 'Past this, the API is left alone until tomorrow. Tap to change.', false, () => { const steps = [50, 150, 400]; ls.set('apiDaily', String(steps[(steps.indexOf(lim) + 1) % steps.length])); render(); });
       } }
     s2.append(el('div', 'sec', 'Voice'));
