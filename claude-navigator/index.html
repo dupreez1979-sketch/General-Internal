@@ -415,6 +415,19 @@
   body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead, body.side-off #main > #meetPanel > .meet-head { padding-left: 76px !important; }
   .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: max(76px, calc(148px - var(--dock-w, 0px))) !important; }
   body.cos-mode.side-off #bar { padding-left: 10px !important; }
+  /* ---- Step 7: forms and sheets ---- */
+  /* Fields and buttons are one height and one corner; labels are plain words in a right-aligned column, with no colon. */
+  dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), dialog select { min-height: var(--control-h); border: 1px solid var(--line); border-radius: var(--r-control); padding: 4px 8px; font-size: var(--fs-body); }
+  dialog textarea { border: 1px solid var(--line); border-radius: var(--r-control); font-size: var(--fs-body); }
+  dialog textarea:focus-visible { outline: none; box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 40%, transparent); }
+  dialog .dlg-actions .btn, dialog .dlg-actions .btn-primary { min-height: var(--control-h); font-size: var(--fs-body); }
+  dialog .dlg-actions { align-items: center; }
+  /* A button that destroys something is red and stands apart, on the left. */
+  dialog .dlg-actions .btn.danger { color: var(--danger-ink); margin-right: auto; }
+  dialog .dlg-actions .btn.danger ~ .btn.left { margin-right: 0; }
+  /* "Nothing here" reads the same everywhere: quiet text, left in a list, centred in an empty pane. */
+  .al-none, .cal-none, .empty-note, .gma-none, #spCos .sc-empty, .sc-none, .sm-none { color: var(--muted); font-size: var(--fs-body); line-height: 1.5; padding: 14px 10px !important; text-align: left; }
+  .act-empty, .bot-empty, .empty-hint { color: var(--muted); font-size: var(--fs-body); line-height: 1.5; padding: 30px 12px !important; text-align: center; }
   /* The links at the foot of a sidebar are ordinary links, not greyed out. */
   .mailnav button.add, .calnav button.add, #notesSide button.add { color: var(--text) !important; } .mailnav button.add svg, .calnav button.add svg, #notesSide button.add svg { color: var(--muted); }
   .mailnav button.add:hover, .calnav button.add:hover, #notesSide button.add:hover { background: var(--hover); }
@@ -442,8 +455,8 @@
   .cal-search { font: inherit; font-size: var(--fs-caption); background-color: var(--field); border: 0; border-radius: var(--r-control); padding: 6px 10px; width: 180px; color: var(--text); margin-left: 6px; outline: none; }
   .cal-search:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
   /* Mail: the folder's name sits in the toolbar. */
-  .mail-tools > .cal-title { margin-left: 4px; flex: 0 1 auto; min-width: 40px; overflow: hidden; text-overflow: ellipsis; }
-  .mail-tools > .mail-sub { flex: 0 6 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-tools > .cal-title { margin-left: 4px; flex: 0 0 auto; }
+  .mail-tools > .mail-sub { flex: 0 100 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cos-head .hsub { font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; margin-right: 6px; }
   .cos-head .seg .tb, #viewSeg .tb { padding: 0 10px; } .cos-head .seg .tb.on .t, #viewSeg .tb.on .t { font-weight: var(--fw-bold); }
   /* Folders: the list's own switches live under More. (They stay in the page, out of sight, so More can press them.) */
@@ -2227,7 +2240,7 @@
       <li>Choose <b>My access tokens</b>, then <b>Show</b> and <b>Copy</b>.</li>
       <li>Paste it here.</li>
     </ol>
-    <label>API token:<input id="mondayToken" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your monday.com API token"></label>
+    <label>API token<input id="mondayToken" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your monday.com API token"></label>
     <div id="mondayMsg" class="mdl-msg" role="status"></div>
     <div class="dlg-actions">
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
@@ -2239,10 +2252,10 @@
 <dialog id="mbDlg">
   <form method="dialog" id="mbForm">
     <h2>New monday.com Board</h2>
-    <label>Name:<input id="mbName" placeholder="e.g. Regional tour 2027" required></label>
-    <label>Workspace:<select id="mbWs"></select></label>
-    <label>Folder:<select id="mbFolder"></select></label>
-    <label>Who can see it:<select id="mbKind">
+    <label>Name<input id="mbName" placeholder="e.g. Regional tour 2027" required></label>
+    <label>Workspace<select id="mbWs"></select></label>
+    <label>Folder<select id="mbFolder"></select></label>
+    <label>Who can see it<select id="mbKind">
       <option value="public">Everyone in the workspace (main board)</option>
       <option value="private">Only people I invite (private)</option>
       <option value="share">Shareable with guests</option>
@@ -2258,18 +2271,18 @@
 <dialog id="profileDlg">
   <form method="dialog">
     <h2 id="profileDlgTitle">New Profile</h2>
-    <label>Name:<input id="profileName" placeholder="e.g. Monkey Baa" required></label>
+    <label>Name<input id="profileName" placeholder="e.g. Monkey Baa" required></label>
     <div class="psec">Appearance</div>
-    <div class="prow"><span>Colour:</span><div class="swatches" id="profileSwatches"></div></div>
-    <div class="prow"><span>Tint:</span><div class="seg" id="profileTint">
+    <div class="prow"><span>Colour</span><div class="swatches" id="profileSwatches"></div></div>
+    <div class="prow"><span>Tint</span><div class="seg" id="profileTint">
       <button type="button" class="tb" data-tint="subtle" title="A light wash of colour">Subtle</button>
       <button type="button" class="tb" data-tint="medium" title="A clear wash of colour">Medium</button>
       <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
     </div></div>
-    <div class="prow"><span>Preview:</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
+    <div class="prow"><span>Preview</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
     <div class="psec">Design system<span>For what you make with Claude in this profile, and the app’s own look</span></div>
-    <div class="prow"><span>Design system:</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
-    <div class="prow" id="lookRow" hidden><span>Look:</span><div class="look-pick">
+    <div class="prow"><span>Design system</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
+    <div class="prow" id="lookRow" hidden><span>Look</span><div class="look-pick">
       <div class="look-top"><button type="button" class="btn" id="lookRead">Read Colours and Fonts</button><span class="ds-note" id="lookNote"></span></div>
       <div id="lookBody" hidden>
         <div class="look-line"><span>Main colour</span><div class="swatches" id="lookMain"></div></div>
@@ -2280,7 +2293,7 @@
       </div>
     </div></div>
     <div class="psec" id="profileMailHead">Mail and calendar<span>The accounts that belong to this profile, and how you sign off from each. These apply straight away.</span></div>
-    <div class="prow" id="profileMailRow" hidden><span>Accounts:</span><div class="pmail" id="profileMail"></div></div>
+    <div class="prow" id="profileMailRow" hidden><span>Accounts</span><div class="pmail" id="profileMail"></div></div>
     <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     <div class="dlg-actions">
       <button type="button" class="btn left" id="profileDelete" title="Delete this profile and everything in it">Delete Profile…</button>
@@ -2293,10 +2306,10 @@
 <dialog id="linkDlg">
   <form method="dialog" id="linkForm">
     <h2 id="linkDlgTitle">Add Link</h2>
-    <label id="lblName">Name:<input id="linkName" placeholder="e.g. Board paper draft"></label>
-    <label id="lblUrl">Address:<input id="linkUrl" placeholder="Paste a Claude chat, project or output link" required></label>
+    <label id="lblName">Name<input id="linkName" placeholder="e.g. Board paper draft"></label>
+    <label id="lblUrl">Address<input id="linkUrl" placeholder="Paste a Claude chat, project or output link" required></label>
     <div class="pick">
-      <div class="pick-head"><span>Where:</span><span id="pickPath"></span></div>
+      <div class="pick-head"><span>Where</span><span id="pickPath"></span></div>
       <div id="picker" tabindex="0" role="tree" aria-label="Choose a folder"></div>
       <div class="pick-foot"><button type="button" class="btn" id="pickNew" title="Make a new folder inside the selected one">New Folder</button></div>
     </div>
@@ -12840,10 +12853,29 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailHtml = text => mailEsc(String(text || '').trim()).replace(/\r?\n/g, '<br>');
   // (When Settings is showing a section, the sheet is drawn in place there instead of opening on top: mailDlg.into
   //  names where, for the next sheet only. Closing such a sheet redraws its section, so it shows the new state.)
+  // One set of rules for every sheet, applied as it opens: labels are plain words, the main button is last, Cancel sits
+  // just before it, and a button that destroys something is red and apart on the left.
+  function sheetTidy(d) {
+    try {
+      for (const el of d.querySelectorAll('label, .prow > span:first-child, .row > span:first-child, .row > label, .lab')) {
+        const t = [...el.childNodes].find(x => x.nodeType === 3 && x.textContent.trim());
+        if (t && /:\s*$/.test(t.textContent) && t.textContent.trim().length < 34) t.textContent = t.textContent.replace(/:(\s*)$/, '$1');
+      }
+      for (const bar of d.querySelectorAll('.dlg-actions')) {
+        const bs = [...bar.children].filter(b => b.tagName === 'BUTTON' && !b.hidden);
+        for (const b of bs) if (!b.classList.contains('btn-primary') && /^(Delete|Remove|Forget|Disconnect)\b/.test(b.textContent.trim())) b.classList.add('danger');
+        const main = bs.filter(b => b.classList.contains('btn-primary')).pop();
+        const cancel = bs.find(b => !b.classList.contains('btn-primary') && /^(Cancel|Close|Not Now|Done)$/.test(b.textContent.trim()));
+        if (main && bar.lastElementChild !== main) bar.appendChild(main);
+        if (main && cancel && cancel.nextElementSibling !== main) bar.insertBefore(cancel, main);
+      }
+    } catch (e) { /* the sheet opens as it was built */ }
+  }
+  (() => { const show = HTMLDialogElement.prototype.showModal; HTMLDialogElement.prototype.showModal = function () { sheetTidy(this); const r = show.apply(this, arguments); setTimeout(() => sheetTidy(this), 0); return r; }; })();
   const mailDlg = (cls, html) => {
     const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg ' + cls; d.innerHTML = html;
     const into = mailDlg.into; mailDlg.into = null;
-    if (into && into.host && into.host.isConnected) { d.classList.add('dlg-in'); d.setAttribute('open', ''); d.close = () => {}; d.remove = () => { if (d.isConnected) setTimeout(into.again, 0); }; into.host.replaceChildren(d); return d; }
+    if (into && into.host && into.host.isConnected) { d.classList.add('dlg-in'); d.setAttribute('open', ''); d.close = () => {}; d.remove = () => { if (d.isConnected) setTimeout(into.again, 0); }; into.host.replaceChildren(d); setTimeout(() => sheetTidy(d), 0); return d; }
     document.body.appendChild(d); d.addEventListener('close', () => d.remove()); d.showModal(); return d;
   };
   function askText(title, start, done, okLabel = 'Save') {
