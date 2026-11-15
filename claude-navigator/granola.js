@@ -149,7 +149,10 @@ async function start() {
   await post({ jsonrpc: '2.0', method: 'notifications/initialized' }).catch(() => {});
 }
 async function tools() { await start(); const { result } = await post({ jsonrpc: '2.0', id: ++rpcId, method: 'tools/list', params: {} }); return (result && result.tools) || []; }
+// The app only ever reads. Granola's connection can also change things (folders, notes); those are refused here.
+const READ_ONLY = new Set(['query_granola_meetings', 'list_meetings', 'list_meeting_folders', 'get_meetings', 'get_meeting_transcript', 'get_account_info', 'search_meetings', 'search_transcripts', 'get_meeting_attachment']);
 async function call(name, args) {
+  if (!READ_ONLY.has(name)) throw new Error('The app only reads from Granola');
   await start();
   const { result } = await post({ jsonrpc: '2.0', id: ++rpcId, method: 'tools/call', params: { name, arguments: args || {} } });
   const text = ((result && result.content) || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
