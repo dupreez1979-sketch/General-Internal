@@ -16836,6 +16836,7 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
+        { label: 'Copy Granola Check', run: async () => { let t = ''; try { t = await window.navigatorApp.granolaCheck(); } catch (e) { /* older app */ } if (!t) return toast('Could not run the check.'); try { await navigator.clipboard.writeText(t); toast('Copied. It lists file names, field names and counts only, no meeting content. Paste it to Claude.'); } catch (e) { toast('Could not copy it.'); } } },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });

@@ -1734,6 +1734,51 @@ ipcMain.handle('clara-signin-info', async e => {
   if (!pages) L.push('No Clara page is open. Open the Scheduling tab first.');
   return L.join('\n');
 });
+// What Granola keeps on this Mac: file names, sizes, and the shape of its data (field names, counts and lengths).
+// Never any meeting content, titles, names or sign-in values. For working out how the app can read meeting notes.
+ipcMain.handle('granola-check', async e => {
+  if (!fromOwnWindow(e)) return '';
+  const L = [`Claude Navigator ${app.getVersion()}: Granola check (names, counts and lengths only; no meeting content)`];
+  const home = app.getPath('home'), tidy = p => p.replace(home, '~');
+  try { const pl = fs.readFileSync('/Applications/Granola.app/Contents/Info.plist', 'utf8'), m = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl); L.push(`Granola app: installed${m ? ', version ' + m[1] : ''}`); } catch (er) { L.push('Granola app: not found in Applications'); }
+  const dir = process.env.NAV_TEST_GRANOLA && !app.isPackaged ? process.env.NAV_TEST_GRANOLA : path.join(app.getPath('appData'), 'Granola');
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch (er) { L.push(`Granola’s folder: not found (${tidy(dir)}): ${er.code || 'could not open'}`); return L.join('\n'); }
+  L.push(`Granola’s folder: ${tidy(dir)}, ${names.length} items`);
+  const field = k => /^[A-Za-z_][A-Za-z0-9_.-]{0,40}$/.test(k) && !/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(k);
+  const kind = v => v === null ? 'empty' : Array.isArray(v) ? `list of ${v.length}` : typeof v === 'string' ? `text(${v.length})` : typeof v === 'object' ? `group of ${Object.keys(v).length}` : typeof v;
+  const out = []; const say = (d, t) => { if (out.length < 260) out.push('  '.repeat(d) + t); };
+  // the fields a set of like things share, with how long their text usually is; and the span of any dates
+  const shape = (items, d) => {
+    const objs = items.filter(x => x && typeof x === 'object' && !Array.isArray(x)).slice(0, 40); if (!objs.length) { if (items.length) say(d, `each: ${kind(items[0])}`); const lists = items.filter(Array.isArray).slice(0, 20); if (lists.length) { say(d, `each a list, about ${Math.round(lists.reduce((a, x) => a + x.length, 0) / lists.length)} long`); shape([].concat(...lists.map(x => x.slice(0, 10))), d + 1); } return; }
+    const F = {};
+    for (const o of objs) for (const [k, v] of Object.entries(o)) { if (!field(k)) continue; const f = F[k] = F[k] || { n: 0, kinds: new Set(), len: 0, sub: [] }; f.n++; f.kinds.add(v === null ? 'empty' : Array.isArray(v) ? 'list' : typeof v); if (typeof v === 'string') f.len = Math.max(f.len, v.length); if (Array.isArray(v)) f.len = Math.max(f.len, v.length); if (v && typeof v === 'object' && f.sub.length < 6) f.sub.push(v); }
+    for (const [k, f] of Object.entries(F).slice(0, 60)) { say(d, `${k}: ${[...f.kinds].join('/')}${f.len ? ' up to ' + f.len : ''}${f.n < objs.length ? ` (in ${f.n} of ${objs.length})` : ''}`); if (d < 9 && f.sub.length) { const lists = f.sub.filter(Array.isArray); if (lists.length) shape([].concat(...lists.map(x => x.slice(0, 10))), d + 1); else if (f.sub.every(x => Object.keys(x).every(field)) ) shape(f.sub, d + 1); else say(d + 1, `${Object.keys(f.sub[0]).length} entries`); } }
+    const dates = []; for (const o of items.slice(0, 5000)) if (o && typeof o === 'object') for (const k of ['created_at', 'updated_at', 'start', 'start_time', 'date']) { const t = typeof o[k] === 'string' ? Date.parse(o[k]) : NaN; if (!isNaN(t)) { dates.push(t); break; } }
+    if (dates.length) say(d, `dates from ${new Date(Math.min(...dates)).toISOString().slice(0, 10)} to ${new Date(Math.max(...dates)).toISOString().slice(0, 10)}`);
+  };
+  const walk = (v, d, name) => {
+    if (typeof v === 'string' && d < 6 && v.length > 1 && /^[{\[]/.test(v)) { try { const inner = JSON.parse(v); say(d, `${name}: text holding data (${v.length} characters)`); return walk(inner, d + 1, 'inside'); } catch (er) { /* plain text */ } }
+    if (Array.isArray(v)) { say(d, `${name}: list of ${v.length}`); return shape(v, d + 1); }
+    if (v && typeof v === 'object') {
+      const keys = Object.keys(v);
+      if (keys.length > 40 || (keys.length > 3 && keys.filter(field).length < keys.length / 2)) { say(d, `${name}: ${keys.length} entries`); return shape(Object.values(v), d + 1); }
+      say(d, `${name}: group of ${keys.length}`);
+      if (d < 8) for (const k of keys) { if (!field(k)) continue; const x = v[k]; if (x && typeof x === 'object' || (typeof x === 'string' && x.length > 200 && /^[{\[]/.test(x))) walk(x, d + 1, k); else say(d + 1, `${k}: ${kind(x)}`); }
+      return;
+    }
+    say(d, `${name}: ${kind(v)}`);
+  };
+  for (const n of names.slice(0, 80)) {
+    let st; try { st = fs.statSync(path.join(dir, n)); } catch (er) { continue; }
+    const secret = /token|auth|supabase|credential|cookie|session|key/i.test(n);
+    L.push(`  ${n}${st.isDirectory() ? '/' : ''}  ${st.isDirectory() ? '' : Math.round(st.size / 1024) + ' KB'}  changed ${new Date(st.mtimeMs).toISOString().slice(0, 10)}${secret ? '  (sign-in file: not opened)' : ''}`);
+    if (st.isDirectory() || secret || !/\.json$/i.test(n) || st.size > 400e6 || st.size < 2) continue;
+    try { const data = JSON.parse(await fs.promises.readFile(path.join(dir, n), 'utf8')); out.length = 0; walk(data, 2, 'contents'); L.push(...out); }
+    catch (er) { L.push(`    could not be read as data: ${String(er.message || er).slice(0, 80)}`); }
+  }
+  return L.join('\n').slice(0, 60000);
+});
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
