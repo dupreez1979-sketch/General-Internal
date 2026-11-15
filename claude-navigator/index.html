@@ -16631,7 +16631,7 @@ body { width: max-content !important; min-width: 0 !important; }
     try { if (granReviewDue()) { const n = granOpenCount(p); out.push({ h: 'Weekly review', items: [
       { ic: 'meet', title: 'Go through this week\u2019s meeting actions', sub: n ? `${n} to give out or dismiss` : 'Give out what needs doing, dismiss the rest', go: 'Review', run: granReviewOpen },
       { ic: 'meet', title: 'Not now', sub: 'Ask me again in three hours', go: 'Later', run: () => { ls.set(GRAN_REVIEW, JSON.stringify({ week: granWeek(Date.now()), later: Date.now() + 3 * 3600e3 })); cosBotRender(); } },
-      { ic: 'meet', title: 'Skip this week', sub: 'The Meeting Actions tab is always there', go: 'Skip', run: () => { granReviewDone(); cosBotRender(); } }] }); } } catch (e) { /* Granola not ready */ }
+      { ic: 'meet', title: 'Skip this week', sub: 'The Actions tab is always there', go: 'Skip', run: () => { granReviewDone(); cosBotRender(); } }] }); } } catch (e) { /* Granola not ready */ }
     if (today.length) out.push({ h: 'Today', items: today });
     const tomorrow = [];
     try {
@@ -17056,11 +17056,13 @@ body { width: max-content !important; min-width: 0 !important; }
         const raw = r && !r.error && r.stop !== 'tool_use' ? String(r.text || '').trim() : '';
         if (raw && !/\bLOOKUP\b/.test(raw) && botS.conv.includes(e)) {
           const acts = [], keep = [];
-          const fromMeet = used.has('your meetings'), noted = [];
-          for (const l of raw.split('\n')) { const km = /^\s*REMEMBER:\s*(.+)$/i.exec(l); if (km) { if (!fromMeet && noted.length < 2 && remember('noted', km[1])) noted.push(km[1].trim()); continue; } const m = /^\s*DO:\s*(.+)$/i.exec(l); if (!m) { if (l.trim()) keep.push(l.trim()); continue; } const f = m[1].split('|').map(x => x.trim()), k = (f[0] || '').toLowerCase(); if (acts.length >= 3) continue; if (k === 'action' && f[2]) { const dm = f.length > 3 ? /\d{4}-\d{2}-\d{2}/.exec(f[f.length - 1]) : null; acts.push({ k, who: f[1], text: f[2], why: f.slice(3, dm ? -1 : undefined).filter(Boolean).join(', '), due: dm ? dm[0] : '' }); } else if (k === 'email' && f[1]) acts.push({ k, who: f[1], subject: f[2] || '', text: f[3] || '' }); else if (k === 'meeting' && f[1]) acts.push({ k, text: f.slice(1).join(', ') }); }
+          // Nothing is kept from an answer that drew on a meeting (now, or in the turns it was given), and nothing an
+          // email or other outside text said is ever taken as something to remember: only what you say yourself.
+          const fromMeet = used.has('your meetings') || botS.turns.slice(-6).some(x => x.m === 1), fromOutside = used.size > 0 || !!(e.ctx && e.ctx.kind === 'mail'), noted = [];
+          for (const l of raw.split('\n')) { const km = /^\s*REMEMBER:\s*(.+)$/i.exec(l); if (km) { if (!fromMeet && !fromOutside && noted.length < 2 && remember('noted', km[1])) noted.push(km[1].trim()); continue; } const m = /^\s*DO:\s*(.+)$/i.exec(l); if (!m) { if (l.trim()) keep.push(l.trim()); continue; } const f = m[1].split('|').map(x => x.trim()), k = (f[0] || '').toLowerCase(); if (acts.length >= 3) continue; if (k === 'action' && f[2]) { const dm = f.length > 3 ? /\d{4}-\d{2}-\d{2}/.exec(f[f.length - 1]) : null; acts.push({ k, who: f[1], text: f[2], why: f.slice(3, dm ? -1 : undefined).filter(Boolean).join(', '), due: dm ? dm[0] : '' }); } else if (k === 'email' && f[1]) acts.push({ k, who: f[1], subject: f[2] || '', text: f[3] || '' }); else if (k === 'meeting' && f[1]) acts.push({ k, text: f.slice(1).join(', ') }); }
           const opens = []; let shown = keep.join('\n').replace(/\s*\[([me])(\d+)\]/g, (m0, k, n) => { const x = refs[+n - 1]; if (x && !opens.includes(x) && opens.length < 5) opens.push(x); return ''; }).replace(/\s*\[(?:evt|not|doc|mtg)_[A-Za-z0-9]+\]/g, '');
           e.a = shown.replace(/\s*[\u2014\u2013]\s*/g, ', '); e.acts = acts; e.ms = r.ms; e.opens = opens;
-          botS.turns = botS.turns.concat([{ role: 'user', text, m: fromMeet }, { role: 'assistant', text: e.a, m: fromMeet }]).slice(-8); botTurnsSave();
+          botS.turns = botS.turns.concat([{ role: 'user', text, m: used.has('your meetings') ? 1 : fromMeet ? 2 : 0 }, { role: 'assistant', text: e.a, m: used.has('your meetings') ? 1 : fromMeet ? 2 : 0 }]).slice(-8); botTurnsSave();
           if (noted.length) e.a += noted.map(x => `\n- Noted for next time: ${x.replace(/\s+/g, ' ').slice(0, 160)}`).join('');
           return finish();
         }
@@ -17361,7 +17363,7 @@ body { width: max-content !important; min-width: 0 !important; }
       r.addEventListener('click', () => granMeetingDlg(g));
       l.appendChild(r); rows.push(r);
     }
-    const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : 'No meetings here. Try a longer time, or another company, in the list on the left.' }); l.appendChild(none);
+    const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : 'No meetings here. Try a longer time, or another profile, in the list on the left.' }); l.appendChild(none);
     const filter = () => { const q = find.value.trim().toLowerCase(); meetUi.q = find.value; let k = 0; for (const r of rows) { const ok = !q || q.split(/\s+/).every(w => r.dataset.q.includes(w)); r.hidden = !ok; if (ok) k++; } none.hidden = !!k; sub.textContent = `${q ? k + ' of ' : ''}${list.length} meeting${list.length === 1 ? '' : 's'}`; };
     find.addEventListener('input', filter); filter();
     P.appendChild(l);
@@ -17479,7 +17481,7 @@ body { width: max-content !important; min-width: 0 !important; }
         rows, { action: r => r.a, meeting: r => r.g.title, when: r => r.g.at },
         r => {
           const mk = [link(r.g.title, 'Open this meeting’s notes', () => granMeetingDlg(r.g))];
-          if (!granProfOf(r.g) && profiles().length > 1) { const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'gwhich'; wb.textContent = 'Which profile?'; wb.title = 'This meeting could belong to any of your companies. Say which, and it is remembered for the people who were in it.'; wb.addEventListener('click', e => { const q = e.currentTarget.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(z => ({ label: z.name, dot: z.color, run: () => { granProfSet(r.g, z.id); renderCos(); } }))); }); mk.push(wb); }
+          if (!granProfOf(r.g) && profiles().length > 1) { const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'gwhich'; wb.textContent = 'Which profile?'; wb.title = 'This meeting could belong to any of your profiles. Say which, and it is remembered for the people who were in it.'; wb.addEventListener('click', e => { const q = e.currentTarget.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(z => ({ label: z.name, dot: z.color, run: () => { granProfSet(r.g, z.id); renderCos(); } }))); }); mk.push(wb); }
           const sel = document.createElement('select'); sel.title = 'Put this on a staff member’s list of actions';
           sel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Give to…' }));
           for (const st of people) sel.appendChild(Object.assign(document.createElement('option'), { value: st.id, textContent: st.name }));
@@ -17949,7 +17951,7 @@ body { width: max-content !important; min-width: 0 !important; }
     h('For the Chief of Staff chat');
     ln(dir ? `This, and an overview of the whole team (every staff member's role, work, skills and routines), is kept up to date in ${dir}/.chief-of-staff, and the Chief of Staff reads it.`
       : 'Turn on Keep Folders on This Mac (Navigator\u2019s \u2026 menu) so this, and an overview of the whole team, is kept where the Chief of Staff chat can read it.', []);
-    if (lines.length) ln('Start learning again from nothing.', [['Forget All', () => { if (!confirm('Forget everything the Chief of Staff helper has learned for this profile?')) return; const t = cosTeam(); if (t) { t.learn = { kinds: {}, folders: {}, notFolders: {}, since: Date.now() }; saveCos(); cosNotesSoon(); cosBotRender(); } }]]);
+    if (lines.length) ln('Start learning again from nothing.', [['Forget All', () => { if (!confirm('Forget everything your Chief of Staff has learned for this profile?')) return; const t = cosTeam(); if (t) { t.learn = { kinds: {}, folders: {}, notFolders: {}, since: Date.now() }; saveCos(); cosNotesSoon(); cosBotRender(); } }]]);
     list.appendChild(box);
   }
   // ----- The Chief of Staff's reference files (read by the chat) -----

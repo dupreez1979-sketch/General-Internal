@@ -97,7 +97,7 @@ final class FastClaude {
                 var body: [String: Any] = [
                     "model": FastClaude.model,
                     "max_tokens": max(64, min(600, maxTokens)),
-                    "system": String(system.prefix(9000)),
+                    "system": String(system.prefix(20000)),
                     "messages": messages,
                     "thinking": ["type": "disabled"],             // a spoken answer wants speed, not deliberation
                     "output_config": ["effort": "low"],

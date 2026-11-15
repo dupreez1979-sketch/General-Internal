@@ -788,7 +788,7 @@
   window.phoneData = d => {
     data = { state: d.state || 'none', profiles: (d.index && d.index.profiles) || [], teams: d.teams || {} };
     // Changes the Mac says it has applied are finished with (and anything older than two weeks is let go).
-    if (Array.isArray(d.applied)) { const done = new Set(d.applied), n = changes.length; changes = changes.filter(c => !done.has(c.id) && Date.now() - c.at < 14 * 864e5); if (changes.length !== n) saveChanges(); }
+    if (Array.isArray(d.applied)) { const done = new Set(d.applied), n = changes.length; changes = changes.filter(c => !done.has(c.id) && Date.now() - c.at < 90 * 864e5); if (changes.length !== n) saveChanges(); }
     render();
   };
   // Back from Claude. A chat started with Ask is added to that staff member's work.

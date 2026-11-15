@@ -181,14 +181,17 @@ const queueOf = id => { const l = laneOf(id); return { busy: l.busy, waiting: l.
 // THE SEND LOCK. Nothing that asks through graph() can send, reply to or forward mail: those requests are refused
 // here. An email leaves only through send() below, which main.js lets through only straight after a real click on
 // the Send button in the app's own window. Drafting helpers, Claude's pages and anything automatic have no way past.
-const SENDS = /\/(send|sendmail|reply|replyall|forward)\/?(\?.*)?$/i;
+// (Graph also accepts the long form of an action, as in /microsoft.graph.sendMail, and a $batch can carry one inside
+// it: both are refused as well.)
+const SENDS = /(?:[\/.](send|sendmail|reply|replyall|forward)|\/\$batch)\/?(\?.*)?$/i;
+const sendPath = p => { let x = String(p || '').split('#')[0]; try { x = decodeURIComponent(x); } catch (e) { /* tested as it stands */ } return SENDS.test(x); };
 function graph(id, req) {
-  if (req && SENDS.test(String(req.path || '').split('#')[0])) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
+  if (req && sendPath(req.path)) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
   return inLane(id, () => graphNow(id, req, false), false);
 }
 // The same, for background reading: lowest priority, and it gives way at once when Microsoft says slow down.
 function graphBg(id, req) {
-  if (req && SENDS.test(String(req.path || '').split('#')[0])) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
+  if (req && sendPath(req.path)) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
   return inLane(id, () => graphNow(id, req, true), true);
 }
 function send(id, msgId, box) {
