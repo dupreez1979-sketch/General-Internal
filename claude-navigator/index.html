@@ -17620,6 +17620,9 @@ body { width: max-content !important; min-width: 0 !important; }
     return true;
   }
   const meetCoOk = (g, co) => !co || (co === '?' ? !granProfOf(g) : granProfOf(g) === co);
+  // Meetings follow the profile you are in. The list can also show the meetings no profile has claimed yet, or every profile's.
+  // (meetUi.co: '' = the profile you are in, '?' = not assigned, '*' = all profiles.)
+  const meetCo = () => meetUi.co === '?' ? '?' : meetUi.co === '*' ? '' : (state.profileId || '');
   const meetShowOk = (g, show) => show === 'all' || (show === 'done' ? granDone.has(g.id) : !granDone.has(g.id) && granLeft(g.id, gran.notes.get(g.id)) > 0);
   let meetTimer = null;
   const meetSoon = () => { clearTimeout(meetTimer); meetTimer = setTimeout(() => { try { if (meetOn() && !document.querySelector('#meetPanel input:focus')) meetRender(); } catch (e) { /* not showing */ } }, 400); };
@@ -17630,16 +17633,17 @@ body { width: max-content !important; min-width: 0 !important; }
     const pick = (k, v) => () => { meetUi[k] = v; meetSave(); meetRender(); };
     const base = (w, c, sh) => gran.list.filter(g => meetIn(g, w) && meetCoOk(g, c) && meetShowOk(g, sh)).length;
     head('When');
-    for (const [k, label] of MEET_WHEN) item(label, base(k, meetUi.co, meetUi.show), meetUi.when === k, pick('when', k));
+    for (const [k, label] of MEET_WHEN) item(label, base(k, meetCo(), meetUi.show), meetUi.when === k, pick('when', k));
     const ps = profiles();
     if (ps.length > 1) {
       head('Profile');
-      item('All profiles', base(meetUi.when, '', meetUi.show), !meetUi.co, pick('co', ''));
-      for (const z of ps) item(z.name, base(meetUi.when, z.id, meetUi.show), meetUi.co === z.id, pick('co', z.id), z.color || '#999');
-      item('Not sure which', base(meetUi.when, '?', meetUi.show), meetUi.co === '?', pick('co', '?'), '#B36E24');
+      const ap = activeProfile();
+      if (ap) item(ap.name, base(meetUi.when, ap.id, meetUi.show), meetUi.co !== '?' && meetUi.co !== '*', pick('co', ''), ap.color || '#999');
+      item('Not assigned', base(meetUi.when, '?', meetUi.show), meetUi.co === '?', pick('co', '?'), '#B36E24');
+      item('All profiles', base(meetUi.when, '', meetUi.show), meetUi.co === '*' || (!ap && meetUi.co !== '?'), pick('co', '*'));
     }
     head('Show');
-    for (const [k, label] of MEET_SHOW) item(label, base(meetUi.when, meetUi.co, k), meetUi.show === k, pick('show', k));
+    for (const [k, label] of MEET_SHOW) item(label, base(meetUi.when, meetCo(), k), meetUi.show === k, pick('show', k));
   }
   function meetRender() {
     const P = $('meetPanel'); if (!P || !meetOn()) return;
@@ -17653,7 +17657,7 @@ body { width: max-content !important; min-width: 0 !important; }
     head.appendChild(Object.assign(document.createElement('span'), { style: 'flex:1' }));
     if (!main) {          // beside another app there is no sidebar: the same choices sit in the bar
       sel(MEET_WHEN, meetUi.when, v => { meetUi.when = v; meetSave(); meetRender(); }, 'When');
-      if (profiles().length > 1) sel([['', 'All profiles'], ...profiles().map(z => [z.id, z.name]), ['?', 'Not sure which']], meetUi.co, v => { meetUi.co = v; meetSave(); meetRender(); }, 'Profile');
+      if (profiles().length > 1) sel([...(activeProfile() ? [['', activeProfile().name]] : []), ['?', 'Not assigned'], ['*', 'All profiles']], meetUi.co === '?' || meetUi.co === '*' ? meetUi.co : activeProfile() ? '' : '*', v => { meetUi.co = v; meetSave(); meetRender(); }, 'Profile');
       sel(MEET_SHOW, meetUi.show, v => { meetUi.show = v; meetSave(); meetRender(); }, 'Show');
     }
     const re = document.createElement('button'); re.type = 'button'; re.className = 'tb'; re.innerHTML = UI.more; re.title = 'More: read the meetings from Granola again, Granola settings';
@@ -17666,7 +17670,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const empty = (text, btnLabel, run) => { const e = document.createElement('div'); e.className = 'meet-empty'; e.appendChild(Object.assign(document.createElement('div'), { textContent: text })); if (btnLabel) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-primary'; b.textContent = btnLabel; b.addEventListener('click', run); e.appendChild(b); } P.appendChild(e); };
     if (!gran.on) { sub.textContent = ''; find.hidden = re.hidden = true; if (!gran.at && !gran.busy) { granLoad(false).then(() => meetRender()).catch(() => {}); return empty('Checking Granola\u2026'); } return empty('Connect Granola and your recorded meetings are listed here, with their notes and the actions to give out.', 'Connect Granola\u2026', () => granolaDlg()); }
     if (gran.err && !gran.list.length) return empty(`The meetings could not be read: ${gran.err}`, 'Try Again', () => granLoad(true).then(() => meetRender()));
-    const list = gran.list.filter(g => meetIn(g, meetUi.when) && meetCoOk(g, meetUi.co) && meetShowOk(g, meetUi.show));
+    if (meetUi.co !== '?' && meetUi.co !== '*') meetUi.co = '';          // (an older choice of one named profile now means the profile you are in)
+    const list = gran.list.filter(g => meetIn(g, meetUi.when) && meetCoOk(g, meetCo()) && meetShowOk(g, meetUi.show));
     // read the notes of meetings not read yet (two at a time), so the Actions column fills in
     list.filter(g => !gran.notes.get(g.id) && !g.reading).slice(0, 2).forEach(g => { g.reading = true; granNotes(g.id).catch(() => null).then(() => { g.reading = false; meetSoon(); }); });
     const who = g => g.people.map(z => z.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '').replace(/\S+@\S+/g, m => m.split('@')[0])).filter(Boolean).slice(0, 5).join(', ');
@@ -17693,9 +17698,14 @@ body { width: max-content !important; min-width: 0 !important; }
       r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; granMeetingDlg(g); });
       l.appendChild(r); rows.push(r);
     }
-    const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : 'No meetings here. Try a longer time, or another profile, in the list on the left.' }); l.appendChild(none);
+    const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : meetUi.co === '?' ? 'Every meeting here has a profile.' : 'No meetings here. Try a longer time, or Not assigned or All profiles, in the list on the left.' }); l.appendChild(none);
     const filter = () => { const q = find.value.trim().toLowerCase(); meetUi.q = find.value; let k = 0; for (const r of rows) { const ok = !q || q.split(/\s+/).every(w => r.dataset.q.includes(w)); r.hidden = !ok; if (ok) k++; } none.hidden = !!k; sub.textContent = `${q ? k + ' of ' : ''}${list.length} meeting${list.length === 1 ? '' : 's'}`; };
     find.addEventListener('input', filter); filter();
+    { const loose = profiles().length > 1 && meetUi.co === '' && activeProfile() ? gran.list.filter(g => meetIn(g, meetUi.when) && !granProfOf(g)).length : 0;
+      if (loose) { const nb = document.createElement('div'); nb.className = 'banner'; nb.innerHTML = '<b></b><span class="d"></span><button class="btn">Show Them</button>';
+        nb.querySelector('b').textContent = `${loose} meeting${loose === 1 ? ' is' : 's are'} not assigned to a profile`;
+        nb.querySelector('.d').textContent = `${loose === 1 ? 'It is' : 'They are'} not in this list. Say which profile ${loose === 1 ? 'it belongs' : 'they belong'} to and the app remembers it for those people.`;
+        nb.querySelector('button').addEventListener('click', () => { meetUi.co = '?'; meetSave(); meetRender(); }); P.appendChild(nb); } }
     P.appendChild(l);
   }
   // ----- Actions from meetings, in the Chief of Staff's own tab -----
@@ -19476,6 +19486,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
     if (!quiet) { tidyTree(null); tidyFresh = true; }
     renderAll();
     if (currentApp === 'cos') renderCos();
+    try { if (currentApp === 'meet' || sideHas('meet')) meetRender(); } catch (e) { /* starting up */ }
     try { if (mailOn()) mailStart(false); } catch (e) { /* starting up */ }
     try { if (calOn()) calRender(); } catch (e) { /* starting up */ }          // (the meeting helper, invite designs and new meetings follow the profile)
     if (!quiet) toast(state.profileId ? `Profile: ${activeProfile().name}` : 'All Profiles');
