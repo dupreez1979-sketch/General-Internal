@@ -1100,6 +1100,7 @@ let folderSync = null;
 function startSync(root) {
   if (folderSync) folderSync.unwatch();
   folderSync = new FolderSync(root);
+  folderSync.cacheFile = path.join(app.getPath('userData'), 'link-cache.json');
   try { folderSync.ensureRoot(); folderSync.watch(() => send('fs-changed')); } catch (e) { /* reported when the app next reads the folder */ }
 }
 ipcMain.handle('fs-status', () => {
@@ -1155,13 +1156,24 @@ ipcMain.handle('fs-choose-root', async () => {
   const r = await dialog.showOpenDialog(mainWindow, { title: 'Choose where your folders live', properties: ['openDirectory', 'createDirectory'], defaultPath: app.getPath('documents') });
   return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
 });
+// Reading the folder never holds the app up, and two requests at once share one reading.
+let scanning = null;
 ipcMain.handle('fs-scan', () => {
   if (!folderSync) return null;
-  try {
-    const out = folderSync.scan();
-    if (!folderSync.watcher && !folderSync.poll) folderSync.watch(() => send('fs-changed'));   // folder is back: watch it again
-    return out;
-  } catch (e) { return { error: e.code === 'EPERM' || e.code === 'EACCES' ? 'no-access' : (e.code || e.message) }; }
+  if (scanning && scanning.of === folderSync) return scanning.p;
+  const fsync = folderSync;
+  const p = (async () => {
+    try {
+      const out = await fsync.scanAsync();
+      const st = fsync.lastScan || {};
+      if (st.ms > 1500) mark(`folder read: ${st.entries} items in ${st.folders} folders, ${st.linksRead} link files opened`, st.ms);
+      if (fsync === folderSync && !fsync.watcher && !fsync.poll) fsync.watch(() => send('fs-changed'));   // folder is back: watch it again
+      return out;
+    } catch (e) { return { error: e.code === 'EPERM' || e.code === 'EACCES' ? 'no-access' : (e.code || e.message) }; }
+    finally { if (scanning && scanning.p === p) scanning = null; }
+  })();
+  scanning = { of: fsync, p };
+  return p;
 });
 ipcMain.handle('fs-apply', async (_e, payload) => {
   if (!folderSync) return null;
@@ -1171,16 +1183,16 @@ ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(f
 // The Chief of Staff's reference files, kept by the app in a hidden folder in each company folder (the folder
 // sync skips hidden folders): a live overview of the team, and what the Chief of Staff has learned.
 const COS_NOTE_NAMES = ['Team overview.md', 'What the Chief of Staff has learned.md'];
-ipcMain.handle('fs-cos-notes', (_e, profileRel, files) => {
+ipcMain.handle('fs-cos-notes', async (_e, profileRel, files) => {
   if (!folderSync || typeof profileRel !== 'string' || !profileRel || /(^|[\\/])\.\.([\\/]|$)/.test(profileRel) || !files || typeof files !== 'object') return false;
   try {
     const dir = folderSync.abs(path.join(profileRel, '.chief-of-staff'));
-    fs.mkdirSync(dir, { recursive: true });
+    await fs.promises.mkdir(dir, { recursive: true });
     for (const [name, text] of Object.entries(files)) {
       if (!COS_NOTE_NAMES.includes(name) || typeof text !== 'string' || text.length > 2e6) continue;
       const f = path.join(dir, name);
-      let old = null; try { old = fs.readFileSync(f, 'utf8'); } catch (e) { /* new */ }
-      if (old !== text) fs.writeFileSync(f, text);
+      let old = null; try { old = await fs.promises.readFile(f, 'utf8'); } catch (e) { /* new */ }
+      if (old !== text) await fs.promises.writeFile(f, text);
     }
     return dir;
   } catch (e) { return false; }
@@ -1610,41 +1622,43 @@ ipcMain.handle('page-layout', async (e, id) => {
 // to your other devices. No server, and nothing leaves your Apple account. Written only when something changed.
 function phoneDir() {
   const base = process.env.NAV_TEST_PHONE_DIR || (isMac ? path.join(app.getPath('home'), 'Library', 'Mobile Documents', 'com~apple~CloudDocs') : '');
+  if (phoneDir.ok === base) return path.join(base, 'Claude Navigator Phone');      // (asked once: iCloud can be slow to answer)
   try { if (!base || !fs.statSync(base).isDirectory()) return ''; } catch (e) { return ''; }      // iCloud Drive is not switched on
+  phoneDir.ok = base;
   return path.join(base, 'Claude Navigator Phone');
 }
-ipcMain.handle('phone-publish', (e, docs) => {
+ipcMain.handle('phone-publish', async (e, docs) => {
   if (!fromOwnWindow(e) || !docs || typeof docs !== 'object') return { ok: false };
   const dir = phoneDir();
   if (!dir) return { ok: false, why: 'no-icloud' };
   try {
-    fs.mkdirSync(dir, { recursive: true });
-    const put = (name, text) => { const f = path.join(dir, name); let old = null; try { old = fs.readFileSync(f, 'utf8'); } catch (e2) { /* new */ } if (old === text) return; fs.writeFileSync(f + '.tmp', text); fs.renameSync(f + '.tmp', f); };
+    await fs.promises.mkdir(dir, { recursive: true });
+    const put = async (name, text) => { const f = path.join(dir, name); let old = null; try { old = await fs.promises.readFile(f, 'utf8'); } catch (e2) { /* new */ } if (old === text) return; await fs.promises.writeFile(f + '.tmp', text); await fs.promises.rename(f + '.tmp', f); };
     const index = [];
     for (const [pid, doc] of Object.entries(docs).slice(0, 40)) {
       if (!doc || typeof doc !== 'object' || !/^[A-Za-z0-9_-]{1,60}$/.test(pid)) continue;
       const name = `team-${pid}.json`;
-      if (!doc.today) { try { const was = JSON.parse(fs.readFileSync(path.join(dir, name), 'utf8')); if (was && was.today) { doc.today = was.today; doc.todayAt = was.todayAt; } } catch (e2) { /* none yet */ } }
+      if (!doc.today) { try { const was = JSON.parse(await fs.promises.readFile(path.join(dir, name), 'utf8')); if (was && was.today) { doc.today = was.today; doc.todayAt = was.todayAt; } } catch (e2) { /* none yet */ } }
       const text = JSON.stringify(doc);
       if (text.length > 4e6) continue;
-      put(name, text);
+      await put(name, text);
       index.push({ id: pid, name: String((doc.profile || {}).name || ''), color: String((doc.profile || {}).color || ''), file: name });
     }
-    put('index.json', JSON.stringify({ v: 1, profiles: index }));
+    await put('index.json', JSON.stringify({ v: 1, profiles: index }));
     return { ok: true, dir };
   } catch (err) { return { ok: false, why: String(err && err.message || err) }; }
 });
 // What you did on the phone (a new chat, an action ticked done, an output filed) arrives as a small file in the same
 // iCloud Drive folder. The Mac reads it, applies each change once, and notes which ones it has applied.
-ipcMain.handle('phone-changes', (e) => {
+ipcMain.handle('phone-changes', async (e) => {
   if (!fromOwnWindow(e)) return null;
   const dir = phoneDir(); if (!dir) return null;
-  try { const t = fs.readFileSync(path.join(dir, 'phone-changes.json'), 'utf8'); return t.length < 2e6 ? JSON.parse(t) : null; } catch (err) { return null; }
+  try { const t = await fs.promises.readFile(path.join(dir, 'phone-changes.json'), 'utf8'); return t.length < 2e6 ? JSON.parse(t) : null; } catch (err) { return null; }
 });
-ipcMain.handle('phone-applied', (e, ids) => {
+ipcMain.handle('phone-applied', async (e, ids) => {
   if (!fromOwnWindow(e) || !Array.isArray(ids)) return false;
   const dir = phoneDir(); if (!dir) return false;
-  try { const f = path.join(dir, 'mac-applied.json'); fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f + '.tmp', JSON.stringify({ v: 1, ids: ids.filter(x => typeof x === 'string').slice(-800) })); fs.renameSync(f + '.tmp', f); return true; } catch (err) { return false; }
+  try { const f = path.join(dir, 'mac-applied.json'); await fs.promises.mkdir(dir, { recursive: true }); await fs.promises.writeFile(f + '.tmp', JSON.stringify({ v: 1, ids: ids.filter(x => typeof x === 'string').slice(-800) })); await fs.promises.rename(f + '.tmp', f); return true; } catch (err) { return false; }
 });
 ipcMain.handle('dictation-start', () => { if (!isMac) return false; try { Menu.sendActionToFirstResponder('startDictation:'); return true; } catch (e) { return false; } });
 // A profile's invite design (logo, shapes, fonts, colours) is a file kept on this Mac only, never in the app itself.

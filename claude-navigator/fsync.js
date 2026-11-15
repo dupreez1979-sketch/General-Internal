@@ -28,6 +28,15 @@ function linkFileContents(url) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n<plist version="1.0">\n<dict>\n\t<key>URL</key>\n\t<string>${esc}</string>\n</dict>\n</plist>\n`;
 }
 
+const linkUrl = text => {
+  const m = /<string>([\s\S]*?)<\/string>/.exec(text) || /^URL=(.*)$/m.exec(text);
+  if (!m) return '';
+  const url = m[1].trim().replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  return /^https?:\/\//i.test(url) ? url : '';       // web links only: never file:, javascript: or app links
+};
+// At most this many file-system requests at once: enough to be quick on a slow (cloud) folder, without flooding it.
+const gate = (max => { let n = 0; const q = []; const next = () => { if (n < max && q.length) { n++; q.shift()(); } }; return fn => new Promise((res, rej) => { q.push(() => fn().then(res, rej).finally(() => { n--; next(); })); next(); }); })(24);
+
 function readLinkFile(file) {
   try {
     const text = fs.readFileSync(file, 'utf8');
@@ -102,6 +111,49 @@ class FolderSync {
       }
     };
     walk(this.root, null);
+    return out;
+  }
+
+  // The same list as scan(), read without ever holding the app up: a folder kept in iCloud or OneDrive can take
+  // seconds to answer each question, and minutes in all. Link files are only opened again when they have changed.
+  async scanAsync() {
+    await fs.promises.readdir(this.root);     // (throws if the folder cannot be read, exactly as scan() does)
+    if (!this.links) { this.links = new Map(); try { for (const [k, v] of JSON.parse(await fs.promises.readFile(this.cacheFile, 'utf8'))) this.links.set(k, v); } catch (e) { /* none kept yet */ } }
+    const stats = { entries: 0, folders: 0, linksRead: 0, started: Date.now() }, seen = new Set();
+    const walk = async (dir, parentRel) => {
+      let entries = [];
+      try { entries = await gate(() => fs.promises.readdir(dir, { withFileTypes: true })); } catch (e) { return { list: [], unreadable: true }; }
+      stats.folders++;
+      entries = entries.filter(e => !(e.name.startsWith('.') || e.name === 'Icon\r' || e.name === 'desktop.ini' || e.name === 'Thumbs.db'));
+      entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      const parts = await Promise.all(entries.map(async e => {
+        const abs = path.join(dir, e.name), rel = this.rel(abs);
+        let st; try { st = await gate(() => fs.promises.lstat(abs)); } catch (err) { return null; }
+        if (st.isSymbolicLink()) return null;
+        stats.entries++;
+        const ext = path.extname(e.name).toLowerCase(), ino = String(st.ino), mtime = st.mtime.toISOString();
+        if (st.isDirectory()) {
+          if (/\.(app|pages|numbers|key|rtfd|bundle|photoslibrary)$/i.test(e.name)) return { list: [{ rel, parentRel, kind: 'file', name: e.name, ext, ino, size: 0, mtime }] };
+          const sub = await walk(abs, rel);
+          return { list: [{ rel, parentRel, kind: 'dir', name: e.name, ino, mtime }].concat(sub.list), unreadable: sub.unreadable };
+        }
+        if (LINK_EXTS.includes(ext)) {
+          const key = `${ino}|${st.mtimeMs}|${st.size}`; seen.add(rel);
+          let c = this.links.get(rel);
+          if (!c || c.key !== key) { let url = ''; try { url = linkUrl(await gate(() => fs.promises.readFile(abs, 'utf8'))); } catch (err) { /* unreadable: no link */ } c = { key, url }; this.links.set(rel, c); stats.linksRead++; this.linksDirty = true; }
+          return { list: [{ rel, parentRel, kind: 'link', name: e.name.slice(0, -ext.length), url: c.url, ino, mtime }] };
+        }
+        return { list: [{ rel, parentRel, kind: 'file', name: e.name, ext, ino, size: st.size, mtime }] };
+      }));
+      const list = []; let unreadable = false;
+      for (const p of parts) { if (!p) continue; for (const x of p.list) list.push(x); if (p.unreadable) unreadable = true; }
+      return { list, unreadable };
+    };
+    const top = await walk(this.root, null), out = top.list;
+    if (top.unreadable) out.unreadable = true;
+    for (const k of [...this.links.keys()]) if (!seen.has(k)) { this.links.delete(k); this.linksDirty = true; }
+    if (this.linksDirty && this.cacheFile) { this.linksDirty = false; fs.promises.writeFile(this.cacheFile, JSON.stringify([...this.links])).catch(() => {}); }
+    stats.ms = Date.now() - stats.started; this.lastScan = stats;
     return out;
   }
 
@@ -247,7 +299,9 @@ class FolderSync {
         if (wait > 0) { timer = setTimeout(fire, wait + 100); return; }
         if (this.onChange) this.onChange();
       };
-      this.watcher = fs.watch(this.root, { recursive: true }, () => {
+      this.watcher = fs.watch(this.root, { recursive: true }, (_ev, name) => {
+        // The app's own hidden notes (and any other hidden file) are not part of your folders: no need to look again.
+        if (name && String(name).split(/[\\/]/).some(part => part.startsWith('.'))) return;
         clearTimeout(timer);
         timer = setTimeout(fire, 600);
       });
