@@ -105,7 +105,13 @@
   // from the Voice sheet when something goes wrong. Long text is cut to its first words.
   const dtrace = [];
   const dnote = (k, d) => { try { const cut = v => typeof v === 'string' && v.length > 70 ? v.slice(0, 70) + '… (' + v.length + ')' : v, o = {}; for (const x in (d || {})) if (x !== 'instructions' && x !== 'list' && x !== 'turns' && x !== 'system' && x !== 'steps') o[x] = /Gran$/.test(k) && x === 'text' ? '(' + String(d[x]).length + ' characters, not kept)' : cut(d[x]); dtrace.push(new Date().toISOString().slice(11, 23) + ' ' + k + ' ' + JSON.stringify(o)); if (dtrace.length > 500) dtrace.splice(0, 100); } catch (e) { /* the log is never in the way */ } };
-  const send = m => { if (m && /^(listen|stopListening|say|hush|ask|warm|fastModel|restoreModel|localAsk|chime|apiAsk|granAsk|granConnect)$/.test(m.do)) dnote('> ' + m.do, Object.assign({}, m, { do: undefined }, m.do === 'say' && m.quiet ? { text: '(' + String(m.text).length + ' characters from a meeting, not kept)' } : {}, m.do === 'granAsk' ? { text: '(your question, ' + String(m.text).length + ' characters)' } : {})); try { window.webkit.messageHandlers.phone.postMessage(m); return true; } catch (e) { return false; } };
+  // What the Mac knows about you (your own words, your staff, what you asked it to remember) comes across with the
+  // team, and is added here to EVERY question that goes to Claude through your API key. Anything you ask it to
+  // remember on the phone is used at once and travels back to the Mac, which keeps it.
+  const REMEMBER = /^(?:please\s+)?(?:remember(?!\s+to\b)|keep in mind|note that|for next time)[,:]?\s+(?:that\s+)?(.{6,})$/i;
+  const meBlock = () => { try { const t = team(), mine = changes.filter(c => c.type === 'remember' && c.pid === ui.pid).map(c => '- ' + c.text); return [(t && t.me) || '', mine.length ? 'He has just asked you, on his phone, to remember:\n' + mine.join('\n') : ''].filter(Boolean).join('\n\n'); } catch (e) { return ''; } };
+  const send = m => { if (m && m.do === 'apiAsk' && m.system && !m.raw) { const me = meBlock(); if (me) m = Object.assign({}, m, { system: m.system + '\n\n' + me }); }
+    if (m && /^(listen|stopListening|say|hush|ask|warm|fastModel|restoreModel|localAsk|chime|apiAsk|granAsk|granConnect)$/.test(m.do)) dnote('> ' + m.do, Object.assign({}, m, { do: undefined }, m.do === 'say' && m.quiet ? { text: '(' + String(m.text).length + ' characters from a meeting, not kept)' } : {}, m.do === 'granAsk' ? { text: '(your question, ' + String(m.text).length + ' characters)' } : {})); try { window.webkit.messageHandlers.phone.postMessage(m); return true; } catch (e) { return false; } };
   const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private */ } } };
   let data = { state: 'loading', profiles: [], teams: {} };
   const ui = { tab: 'today', pid: ls.get('pid') || '', staff: null, seg: 'open', sheet: false };
@@ -196,6 +202,8 @@
     for (const g of groups.values()) { s.append(el('div', 'sec', g.name)); g.list.forEach(n => s.append(staffCard(n, false))); }
     return [topBar(true), el('h1', '', 'Team'), s, tabs()];
   }
+  const dueOf = x => { if (!x || !x.due) return ''; const d = new Date(x.due + 'T00:00:00'), n = new Date(); n.setHours(0, 0, 0, 0); const days = Math.round((d - n) / 864e5); return days < 0 ? `Overdue by ${-days} day${days === -1 ? '' : 's'}` : days === 0 ? 'Due today' : days === 1 ? 'Due tomorrow' : 'Due ' + d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }); };
+  const subOf = x => [dueOf(x), x.from || ''].filter(Boolean).join(' \u00b7 ');
   function itemRow(x, sub, right) {
     const r = el('button', 'row'), nm = el('div', 'nm', x.name); if (sub) nm.append(el('span', '', sub));
     r.append(nm); if (right) r.append(el('small', '', right)); r.onclick = () => { ui.asked = null; chat(x.url, x.name); }; return r;
@@ -210,7 +218,7 @@
     const seg = el('div', 'seg');
     for (const [k, label] of [['open', `Open ${w.open.length || ''}`], ['done', 'Done'], ['outs', 'Outputs']]) { const b = el('button', ui.seg === k ? 'on' : '', label.trim()); b.onclick = () => { ui.seg = k; render(); }; seg.append(b); }
     const s = el('div', 'scroll');
-    if (ui.seg === 'open') { w.open.forEach(x => { const r = itemRow(x, x.waiting ? 'Started here. Your Mac will add it.' : '', when(x.added)); if (!x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: n.id, item: x.id }); }; r.prepend(c); } s.append(r); }); if (!w.open.length) s.append(emptyNote('No open work', 'Ask them something to start a piece of work.')); }
+    if (ui.seg === 'open') { w.open.forEach(x => { const r = itemRow(x, x.waiting ? 'Started here. Your Mac will add it.' : subOf(x), when(x.added)); if (/^Overdue/.test(dueOf(x))) { const sp = r.querySelector('.nm span'); if (sp) sp.style.color = '#D9534F'; } if (!x.waiting) { const c = el('span', 'chk'); c.setAttribute('role', 'button'); c.onclick = e => { e.stopPropagation(); change({ type: 'done', staff: n.id, item: x.id }); }; r.prepend(c); } s.append(r); }); if (!w.open.length) s.append(emptyNote('No open work', 'Ask them something to start a piece of work.')); }
     if (ui.seg === 'done') { w.done.forEach(x => s.append(itemRow(x, (x.outputs || []).length ? `${x.outputs.length} output${x.outputs.length === 1 ? '' : 's'}` : 'No output', when(x.doneAt)))); if (!w.done.length) s.append(emptyNote('Nothing finished lately', 'Work finished in the last 30 days shows here.')); }
     if (ui.seg === 'outs') { for (const { o, x } of outs) { const r = itemRow(o, x.name ? `From “${x.name}”` : '', o.at ? when(o.at) : ''); const p = el('span', 'pill' + (o.filed.length ? ' ok' : ''), o.filed.length ? `Filed in ${o.filed[0]}` : 'File\u2026'); if (!o.filed.length) p.onclick = e => { e.stopPropagation(); ui.filing = { o, staff: n.id }; render(); }; r.append(p); s.append(r); } if (!outs.length) s.append(emptyNote('No outputs yet', 'What comes out of their work shows here, with where each is saved.')); }
     return [top, who, seg, s, askBar(n, true)];
@@ -259,6 +267,10 @@
     chip('Brief me', () => homeAsk('Brief me')); chip('Who is on what', () => homeAsk('Who is on what'));
     if (granOn()) chip('Meetings', () => homeAsk('What was decided or agreed in my meetings this week?'));
     chip('What should I focus on', () => homeAsk('What should I focus on today?'));
+    // what the Chief of Staff would put first today (judged on your Mac, which can see your calendar and email)
+    const adv = t && t.advice && new Date(t.advice.at).toDateString() === new Date().toDateString() ? (t.advice.items || []) : [];
+    if (adv.length && !home.conv.length) { s.append(el('div', 'sec', 'What I would do today'));
+      adv.forEach((i, n) => { const r = el('button', 'row'), nm = el('div', 'nm', `${n + 1}. ${i.title}`); if (i.why) nm.append(el('span', '', i.why)); r.append(nm); r.append(el('small', '', 'Help')); r.onclick = () => homeAsk(`Help me with this, which you put ${['first', 'second', 'third'][n]} for today: ${i.title}.${i.why ? ' (' + i.why + ')' : ''} What is the first step, and can a staff member take any of it?`); s.append(r); }); }
     // the answers, newest first
     for (const e of home.conv.slice().reverse()) {
       s.append(el('div', 'hq', e.q));
@@ -391,7 +403,7 @@
   function driveSay(text, then, quiet) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send(quiet ? { do: 'say', text, quiet: true } : { do: 'say', text })) { drive.state = 'idle'; render(); } }
   function driveStop() { dnote('stopped by you', { was: drive.state, stage: drive.stage || '' }); const was = drive.state; send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; if (was === 'thinking') { drive.line = 'Stopped. Tap to talk.'; chime('no'); } drive.pending = null; drive.stream = null; drive.ackLeft = 0; drive.localAsk = null; drive.granAsk = null; drive.apiAsk = null; render(); }
   const snapshot = () => { const t = team(), L = []; if (!t) return '';
-    for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
+    for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name + (x.due || x.from ? ' (' + [dueOf(x).toLowerCase(), x.from ? 'from ' + x.from + ((x.people || []).length ? ' with ' + x.people.join(', ') : '') : ''].filter(Boolean).join(', ') + ')' : '')).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
     const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
     return L.join('\n').slice(0, 5000); };
   // Drive never types into a Claude page you cannot see. When a question needs what a Claude project holds, it says
@@ -437,6 +449,7 @@
     const t = team(); if (!t) return false;
     const staff = t.nodes.filter(x => x.kind === 'staff' && !x.chief);
     const out = (text, who) => { if (sink) { sink(text, who); return true; } dnote('lane', { lane: 'instant' }); drive.log.push({ kind: 'talk', who: 'On your phone', text: said, answer: text.slice(0, 140), url: '' }); if (who) drive.who = who; chime('ready'); driveSay(text); return true; };
+    { const km = REMEMBER.exec(said); if (km) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'remember', text: km[1].replace(/\s+/g, ' ').slice(0, 240) }); saveChanges(); return out('I will remember that.'); } }
     if (/^(brief me|what needs (me|my attention)|what do i need to (do|know)|anything (for me|i need))\b/.test(low)) { const td = (t.today || []).map(x => x.text).filter(Boolean); return td.length ? out(`${td.length === 1 ? 'One thing needs' : td.length + ' things need'} you. ${td.slice(0, 4).join(' ')}${td.length > 4 ? ' The rest is on your phone.' : ''}`) : false; }
     if (/\b(who is on what|who('?s| is) (doing|working on) what|where is (everyone|the team) up to|team (status|update))\b/.test(low)) { if (!staff.length) return false; const parts = staff.map(n => { const o = workOf(n.id).open.length; return `the ${n.name} has ${o || 'nothing'} open`; }); const line = joinUp(parts); return out(line.charAt(0).toUpperCase() + line.slice(1) + '.'); }
     if (named && !named.chief && /\b(open|outstanding|on (his|her|their|the) (list|plate)|working on|up to|to-?do|have on|got on)\b/.test(low) && !/\b(should|why|how|advice|advise|think|recommend|budget|email|file)\b/.test(low)) { const o = workOf(named.id).open.filter(x => !x.waiting).map(x => x.name); return out(o.length ? `The ${named.name} has ${o.length} open: ${joinUp(o.slice(0, 5))}${o.length > 5 ? ', and ' + (o.length - 5) + ' more' : ''}.` : `Nothing is open for the ${named.name}.`, named); }
