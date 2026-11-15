@@ -18,6 +18,7 @@ final class Drive: NSObject {
     let voice = Voice()
     let local = Local()
     let api = FastClaude()            // Claude's API, the fast model only
+    let mail = FastMicrosoft()        // your email and calendar, read only
     let gran = FastGranola()          // Granola, asked directly about meetings
     let chimes = Chime()
     private var sayAfter = Date.distantPast       // speech waits for a sound that has just started
@@ -45,6 +46,7 @@ final class Drive: NSObject {
         local.tell = { [weak self] function, payload in self?.tell(function, payload) }
         api.tell = { [weak self] function, payload in self?.tell(function, payload) }
         gran.tell = { [weak self] function, payload in self?.tell(function, payload) }
+        mail.tell = { [weak self] function, payload in self?.tell(function, payload) }
         voice.onFinished = { [weak self] in
             guard let self = self else { return }
             if self.monitoring && !self.voice.hasMore { self.stopListening(send: false) }

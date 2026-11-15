@@ -44,12 +44,12 @@ final class FastClaude {
     static let model = "claude-haiku-5-5"
     private static let keyName = "anthropic-api-key"
     var tell: ((String, [String: Any]) -> Void)?
-    private var task: URLSessionDataTask?
+    private var job: Task<Void, Never>?
     private var current = ""
 
     var hasKey: Bool { !(Keep.get(FastClaude.keyName) ?? "").isEmpty }
 
-    func cancel() { task?.cancel(); task = nil; current = "" }
+    func cancel() { job?.cancel(); job = nil; current = "" }
 
     // The key is typed into a system box with hidden text, and goes straight to the Keychain.
     func askForKey(from top: UIViewController?, done: @escaping () -> Void) {
@@ -67,7 +67,9 @@ final class FastClaude {
     }
 
     // One short question, one short answer. `turns` are the last few things said, oldest first: [["role": "user", "text": "…"], …].
-    func ask(id: String, system: String, turns: [[String: String]], maxTokens: Int) {
+    // When an email account is signed in on this phone, the model may look at email and the calendar (read only)
+    // before it answers: at most three rounds of lookups, then it must answer.
+    func ask(id: String, system: String, turns: [[String: String]], maxTokens: Int, mail: FastMicrosoft? = nil) {
         cancel()
         guard let key = Keep.get(FastClaude.keyName), !key.isEmpty, let url = URL(string: "https://api.anthropic.com/v1/messages") else {
             tell?("driveApi", ["id": id, "error": "no key"]); return
@@ -81,45 +83,77 @@ final class FastClaude {
         guard let first = messages.first, (first["role"] as? String) == "user", (messages.last?["role"] as? String) == "user" else {
             tell?("driveApi", ["id": id, "error": "nothing to ask"]); return
         }
-        let body: [String: Any] = [
-            "model": FastClaude.model,
-            "max_tokens": max(64, min(600, maxTokens)),
-            "system": String(system.prefix(6000)),
-            "messages": messages,
-            "thinking": ["type": "disabled"],             // a spoken answer wants speed, not deliberation
-            "output_config": ["effort": "low"],
-        ]
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 25
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue("2026-10-21", forHTTPHeaderField: "anthropic-version")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let lookups = mail != nil && mail!.connected
+        mail?.resetRefs()
         current = id
         let started = Date()
         let tell = self.tell
-        task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-            DispatchQueue.main.async {
-                guard let self = self, self.current == id else { return }
-                self.current = ""
+        let start = messages
+        job = Task { @MainActor [weak self] in
+            var messages = start
+            var totalIn = 0, totalOut = 0
+            var used: [String] = []
+            for round in 0..<4 {
+                var body: [String: Any] = [
+                    "model": FastClaude.model,
+                    "max_tokens": max(64, min(600, maxTokens)),
+                    "system": String(system.prefix(9000)),
+                    "messages": messages,
+                    "thinking": ["type": "disabled"],             // a spoken answer wants speed, not deliberation
+                    "output_config": ["effort": "low"],
+                ]
+                if lookups { body["tools"] = FastMicrosoft.tools }
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.timeoutInterval = 25
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.setValue(key, forHTTPHeaderField: "x-api-key")
+                request.setValue("2026-10-21", forHTTPHeaderField: "anthropic-version")
+                request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+                var data = Data()
+                var status = 0
+                do {
+                    let (got, response) = try await URLSession.shared.data(for: request)
+                    data = got; status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                } catch {
+                    guard let me = self, me.current == id else { return }
+                    me.current = ""
+                    tell?("driveApi", ["id": id, "error": String(error.localizedDescription.prefix(160)), "ms": Int(Date().timeIntervalSince(started) * 1000)]); return
+                }
+                guard let me = self, me.current == id else { return }
                 let ms = Int(Date().timeIntervalSince(started) * 1000)
-                if let error = error { tell?("driveApi", ["id": id, "error": String(error.localizedDescription.prefix(160)), "ms": ms]); return }
-                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-                let json = (data.flatMap { try? JSONSerialization.jsonObject(with: $0) }) as? [String: Any] ?? [:]
+                let json = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any]) ?? [:]
                 if status != 200 {
+                    me.current = ""
                     let said = ((json["error"] as? [String: Any])?["message"] as? String) ?? "the API answered \(status)"
-                    tell?("driveApi", ["id": id, "error": String(said.prefix(200)), "status": status, "ms": ms]); return
+                    tell?("driveApi", ["id": id, "error": String(said.prefix(200)), "status": status, "ms": ms, "in": totalIn, "out": totalOut]); return
                 }
                 let blocks = (json["content"] as? [[String: Any]]) ?? []
-                let text = blocks.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }.joined(separator: "\n")
                 let usage = (json["usage"] as? [String: Any]) ?? [:]
+                totalIn += (usage["input_tokens"] as? Int) ?? 0; totalOut += (usage["output_tokens"] as? Int) ?? 0
                 let stop = (json["stop_reason"] as? String) ?? ""
-                if stop == "refusal" || text.isEmpty { tell?("driveApi", ["id": id, "error": stop == "refusal" ? "declined" : "empty answer", "ms": ms, "in": (usage["input_tokens"] as? Int) ?? 0, "out": (usage["output_tokens"] as? Int) ?? 0]); return }
-                tell?("driveApi", ["id": id, "text": text, "ms": ms, "in": (usage["input_tokens"] as? Int) ?? 0, "out": (usage["output_tokens"] as? Int) ?? 0, "model": (json["model"] as? String) ?? ""])
+                if stop == "tool_use", lookups, let mail = mail, round < 3 {
+                    var results: [[String: Any]] = []
+                    for block in blocks where (block["type"] as? String) == "tool_use" {
+                        let name = (block["name"] as? String) ?? ""
+                        let out = await mail.run(name, (block["input"] as? [String: Any]) ?? [:])
+                        guard me.current == id else { return }
+                        let what = name == "calendar" ? "your calendar" : "your email"
+                        if !used.contains(what) { used.append(what) }
+                        results.append(["type": "tool_result", "tool_use_id": (block["id"] as? String) ?? "", "content": String(out.prefix(8000))])
+                    }
+                    if round >= 1 { results.append(["type": "text", "text": "Answer now with what you have. Do not use any more tools."]) }
+                    messages.append(["role": "assistant", "content": blocks])
+                    messages.append(["role": "user", "content": results])
+                    continue
+                }
+                me.current = ""
+                let text = blocks.filter { ($0["type"] as? String) == "text" }.compactMap { $0["text"] as? String }.joined(separator: "\n")
+                if stop == "refusal" || stop == "tool_use" || text.isEmpty { tell?("driveApi", ["id": id, "error": stop == "refusal" ? "declined" : stop == "tool_use" ? "too many lookups" : "empty answer", "ms": ms, "in": totalIn, "out": totalOut]); return }
+                tell?("driveApi", ["id": id, "text": text, "ms": ms, "in": totalIn, "out": totalOut, "model": (json["model"] as? String) ?? "", "used": used])
+                return
             }
         }
-        task?.resume()
     }
 }
 
