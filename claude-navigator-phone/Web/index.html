@@ -391,6 +391,12 @@
     const md = /^(mark|tick) (.+?) (as )?(done|finished|complete)/.exec(low);
     if (md) { const t = team(); let hit = null; const want = md[2].replace(/^the /, ''); if (t) for (const n of t.nodes.filter(x => x.kind === 'staff')) for (const x of workOf(n.id).open) { const nm = x.name.toLowerCase(); if (!x.waiting && (nm.includes(want) || want.includes(nm))) hit = hit || { staff: n.id, who: n.name, item: x.id, name: x.name }; }
       if (hit) { drive.confirm = hit; return driveSay(`Mark ${hit.name}, with the ${hit.who}, as done? Say yes or no.`); } return driveSay('I could not find an open action with that name.'); }
+    // "Hey Chief of Staff" (or "back to the Chief of Staff", or just "go back") on its own: go back there at once, on the phone, and listen.
+    { const bare = low.replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(), chief = chiefOf();
+      if (chief && (/^((hey|hi|hello|ok|okay|right|so|now|please) )*((go|switch|change|take me|get me|put me|pass me) )?(back )?(to |with |on )?(the |my )?(chief of staffs?|chief|chiefs office)( please| again| now)*$/.test(bare) || /^((hey|ok|okay|please) )*(go|switch|take me) back( please| now)*$/.test(bare))) {
+        const was = drive.who; drive.who = chief; dnote('back to chief', { from: was && was.name });
+        try { send({ do: 'warm', url: askUrl(chief) }); } catch (e) { /* opened when you ask */ }
+        return driveSay(was && !was.chief ? 'Back with your Chief of Staff.' : 'Chief of Staff here.'); } }
     const named = staffNamed(said), back = /chief of staff/.test(low);
     const target = named && !named.chief ? named : back ? chiefOf() : named || drive.who || chiefOf();       // "ask the Chief of Staff to ask the Finance Officer" goes straight to the Finance Officer
     if (!target) return driveSay('There is no team in this profile yet.', 'idle');
