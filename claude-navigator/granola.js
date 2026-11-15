@@ -127,7 +127,7 @@ async function post(body, again) {
   const t = await token();
   const headers = { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream', Authorization: 'Bearer ' + t };
   if (session) { if (session.id) headers['Mcp-Session-Id'] = session.id; headers['MCP-Protocol-Version'] = session.version; }
-  const r = await timed(endpoint(), { method: 'POST', headers, body: JSON.stringify(body) }, 60);
+  const r = await timed(endpoint(), { method: 'POST', headers, body: JSON.stringify(body) }, body.params && body.params.name === 'query_granola_meetings' ? 150 : 60);
   note(`${body.method} -> ${r.status}`);
   if (r.status === 401 && !again) { access = null; const s = load(); delete s.access; delete s.until; return post(body, true); }
   if (r.status === 404 && session && !again && body.method !== 'initialize') { session = null; await start(); return post(body, true); }

@@ -329,7 +329,7 @@
   .bot-big .said { font-size: 15px; font-weight: 600; max-width: 320px; line-height: 1.35; } .bot-big .h { color: var(--muted); font-size: 12px; }
   .bot-conv { padding: 12px; display: grid; gap: 8px; }
   .bot-conv .bq { justify-self: end; max-width: 86%; background: var(--accent); color: var(--accent-text, #fff); border-radius: 14px 14px 4px 14px; padding: 7px 12px; font-size: 13px; overflow-wrap: anywhere; }
-  .bot-conv .ba { justify-self: start; max-width: 96%; background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 13px; line-height: 1.45; display: flex; align-items: center; gap: 9px; overflow-wrap: anywhere; } .bot-conv .ba.fail { background: var(--field); color: var(--muted); } .bot-conv .ba .w { color: var(--muted); font-size: 12px; } .bot-conv .ba .wave { height: 16px; gap: 2px; } .bot-conv .ba .wave i { width: 2.5px; }
+  .bot-conv .ba { white-space: pre-wrap; justify-self: start; max-width: 96%; background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 13px; line-height: 1.45; display: flex; align-items: center; gap: 9px; overflow-wrap: anywhere; } .bot-conv .ba.fail { background: var(--field); color: var(--muted); } .bot-conv .ba .w { color: var(--muted); font-size: 12px; } .bot-conv .ba .wave { height: 16px; gap: 2px; } .bot-conv .ba .wave i { width: 2.5px; }
   .bot-conv .bsrc { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center; font-size: 11.5px; color: var(--muted); padding: 0 4px; } .bot-conv .bsrc button { font: inherit; font-size: 11.5px; border: 0; background: none; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; }
   .bot-conv .bacts { display: grid; gap: 6px; margin: 2px 0 8px; }
   .bot-conv .bact { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; border: 1px solid var(--line); border-radius: 11px; padding: 7px 10px; background: var(--win); color: var(--text); cursor: pointer; } .bot-conv .bact:hover { border-color: var(--accent); } .bot-conv .bact.pri { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
@@ -351,6 +351,11 @@
   dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
   dialog.gran-dlg .gtr { white-space: pre-wrap; color: var(--text); }
   .cal-pop .gran-b { justify-self: start; margin-top: 4px; }
+  .app-ic.mini.meet { background: #328276; }
+  dialog.gran-list .gsearch { flex: none; font: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; margin: 0 0 8px; }
+  dialog.gran-list .grow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; border: 0; background: none; color: var(--text); padding: 7px 6px; border-radius: 8px; cursor: pointer; } dialog.gran-list .grow:hover { background: var(--hover); }
+  dialog.gran-list .grow .t { flex: none; width: 64px; color: var(--muted); font-size: 12px; } dialog.gran-list .grow .tx { flex: 1; min-width: 0; display: grid; } dialog.gran-list .grow .tx b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } dialog.gran-list .grow .tx span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog.gran-list .grow .st { flex: none; font-size: 11.5px; color: var(--muted); } dialog.gran-list .grow .st.todo { color: #B36E24; font-weight: 600; } dialog.gran-list .grow .clr { flex: none; color: var(--muted); font-size: 16px; padding: 0 6px; } dialog.gran-list .grow .clr:hover { color: var(--text); }
   .bot-list .brow .ic.meet { background: color-mix(in srgb, #6FC483 22%, transparent); color: #328276; }
   dialog.bot-learn-dlg { width: min(520px, 92vw); } dialog.bot-learn-dlg .bl { max-height: 60vh; overflow: auto; margin: 6px 0 12px; }
   .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 10px; }
@@ -11203,7 +11208,7 @@ body { width: max-content !important; min-width: 0 !important; }
     let x = r.right + 8 - pr0.left; if (x + w > pr0.width - 8) x = Math.max(8, r.left - w - 8 - pr0.left);
     let y = Math.max(8, Math.min(r.top - pr0.top, pr0.height - h - 8));
     Object.assign(pop.style, { left: x + 'px', top: y + 'px' });
-    calUi.pop = pop; calUi.popHover = !!hover;
+    calUi.pop = pop; calUi.popHover = !!hover; calUi.popInst = inst; try { if (bot.open && !hover) cosBotSoon(); } catch (er) { /* starting up */ }
     pop.addEventListener('mouseenter', () => clearTimeout(calUi.outT)); pop.addEventListener('mouseleave', calHoverOut);
     pop.addEventListener('mousedown', () => { calUi.popHover = false; });
   }
@@ -11345,7 +11350,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
     }
   }
-  function calClosePop() { if (calUi.pop) { calUi.pop.remove(); calUi.pop = null; } }
+  function calClosePop() { if (calUi.pop) { calUi.pop.remove(); calUi.pop = null; calUi.popInst = null; } }
   function calLinkify(el, text) {
     const re = /(https?:\/\/[^\s<>"')\]]+)/g; let last = 0, m;
     while ((m = re.exec(text))) {
@@ -12424,6 +12429,7 @@ body { width: max-content !important; min-width: 0 !important; }
   setInterval(mailPoll, 60e3); setTimeout(mailPoll, 6000);
   async function mailOpen(m) {
     try { if (bot.open) setTimeout(cosBotSoon, 400); } catch (e) { /* starting up */ }
+    try { granMemory([((m.from || {}).emailAddress || {}).address]); } catch (e) { /* Granola not connected */ }
     const s = mailState.sel, A = m._acc || (mailState.sel || {}).acc;
     if (m.isDraft) return mailCompose('draft', m);
     mailUi.msg = m; mailUi.msgOpen = true; mailUi.popMin = false; mailUi.msgBody = null; mailRenderMain();
@@ -15048,8 +15054,8 @@ body { width: max-content !important; min-width: 0 !important; }
     ].filter(Boolean).join('\n\n');
     const body = T ? T.text.slice(0, cut || 4200) : '';
     const prompt = T
-      ? `The email to reply to:\n${T.head}\n\n${body}\n\n${typed ? `What ${first} wants to say (build the reply on this):\n${typed.slice(0, 1200)}\n\n` : ''}Write the reply ${first} would most likely send.`
-      : `Write the email ${first} describes.\n\n${(C.fields && C.fields().body.subject) ? `Subject: ${C.fields().body.subject}\n\n` : ''}What he wants to say:\n${(typed || '').slice(0, 2500)}`;
+      ? `The email to reply to:\n${T.head}\n\n${body}\n\n${typed ? `What ${first} wants to say (build the reply on this):\n${typed.slice(0, 1200)}\n\n` : ''}Write the reply ${first} would most likely send.${granMemoryLine(toAddrs, first)}`
+      : `Write the email ${first} describes.\n\n${(C.fields && C.fields().body.subject) ? `Subject: ${C.fields().body.subject}\n\n` : ''}What he wants to say:\n${(typed || '').slice(0, 2500)}${granMemoryLine(toAddrs, first)}`;
     return { ins, prompt, body };
   }
   // ----- Dictation on this Mac, with its newer speech engine: no chime, no bubble, words as you say them -----
@@ -15676,12 +15682,13 @@ body { width: max-content !important; min-width: 0 !important; }
       // One click makes an app the main one; a double click opens it beside the main one (or closes it there).
       b.addEventListener('click', e => {
         if (k === 'actions') return dockClick(k, e);
+        if (k === 'meetings') return granListDlg();
         if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
         if (e.detail >= 2) { if (dockIsMain(k)) return toast(`${label} is the main app. Double-click another app to open that beside it.`); return dockClick(k, e); }
         dockTimer = setTimeout(() => { if (!dockIsMain(k)) dockMain(k); }, 240);
       });
-      if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
+      if (k !== 'actions' && k !== 'meetings') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
     const hid = appHidden();
@@ -15694,6 +15701,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
       mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' && !isMain ? `All your Claude chats, to drag into folders: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}` : (isMain ? `${label} is the main app` : `${label}: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
+    if (gran.on) mk('meetings', 'Meetings', '<span class="app-ic mini meet"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 11.5V8M6.3 13V4M9.7 12V6.5M13 10.5V8.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span>', false, 'Meetings: Granola\u2019s notes and actions from the last 30 days', false);
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
       const on = !fr('actions').hidden;
@@ -16323,7 +16331,12 @@ body { width: max-content !important; min-width: 0 !important; }
   function botCtx() {
     try {
       if (currentApp === 'mail' && mailUi.msg) { const m = mailUi.msg, from = (m.from || {}).emailAddress || {}; return { kind: 'mail', label: m.subject || '(no subject)', msg: m, text: `An email I have open. From: ${from.name || ''} <${from.address || ''}>. Subject: ${m.subject || ''}. It says: ${String(m.bodyPreview || '').slice(0, 600)}` }; }
-      if (currentApp === 'cal') return { kind: 'cal', label: 'Your calendar', text: 'I am looking at my calendar.' };
+      if (currentApp === 'cal') {
+        const i = calUi.pop && calUi.popInst, when = x => `${new Date(x.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(x.start)} to ${calFmtTime(x.end)}`;
+        if (i && i.ev) return { kind: 'cal', inst: i, label: i.ev.title || 'Meeting', text: `A meeting in my calendar: \u201c${i.ev.title || ''}\u201d, ${when(i)}${i.ev.location ? ', at ' + i.ev.location : ''}${(i.ev.attendees || []).length ? '. Invited: ' + i.ev.attendees.slice(0, 12).join(', ') : ''}.` };
+        const a = new Date(calUi.date); a.setHours(0, 0, 0, 0); const day = calVisible(a, new Date(a.getTime() + 864e5)).filter(x => !x.allDay).slice(0, 12);
+        return { kind: 'cal', label: a.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }), text: `I am looking at my calendar for ${a.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}. That day: ${day.length ? day.map(x => `${calFmtTime(x.start)} ${(x.ev && x.ev.title) || 'Meeting'}`).join('; ') : 'nothing booked'}.` };
+      }
       const c = botCurrent(); if (c) return { kind: 'work', label: c.name, text: `I am looking at “${c.name}”${c.url ? ` (${c.url})` : ''}.` };
     } catch (e) { /* nothing in front */ }
     return null;
@@ -16337,9 +16350,19 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const i of calVisible(a, b)) { if (i.allDay || i.end < now) continue; today.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: (i.ev && i.ev.location) ? String(i.ev.location).slice(0, 60) : (i.start <= now ? 'On now' : ''), go: 'Open', run: () => setApp('cal') }); if (today.length >= 4) break; }
     } catch (e) { /* no calendar yet */ }
     if (today.length) out.push({ h: 'Today', items: today });
+    const tomorrow = [];
+    try {
+      const a = new Date(); a.setHours(0, 0, 0, 0); a.setDate(a.getDate() + 1); const b = new Date(a.getTime() + 864e5);
+      for (const i of calVisible(a, b)) { if (i.allDay) continue; const last = granLastTime(i); tomorrow.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: last ? `Last time: ${new Date(last.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}. Click for those notes.` : '', go: last ? 'Prep' : 'Open', run: last ? () => granMeetingDlg(last, 'Last time') : () => setApp('cal') }); if (tomorrow.length >= 4) break; }
+    } catch (e) { /* no calendar yet */ }
+    if (tomorrow.length) out.push({ h: 'Tomorrow', items: tomorrow });
     const needs = [];
     try { const cn = claraDash.items ? claraDashLive().filter(x => x.needs) : claraState.items.filter(x => x.st.k === 'needs'); if (cn.length) needs.push({ ic: 'warn', title: cn.length === 1 ? 'Clara needs you on one meeting' : `Clara needs you on ${cn.length} meetings`, sub: String(cn[0].title || '').slice(0, 70), go: 'Open', run: () => claraPanel() }); } catch (e) { /* Clara not set up */ }
-    try { const n = mailBadgeCount(); if (n) needs.push({ ic: 'mail', title: `${n} unread email${n === 1 ? '' : 's'} in your Inbox`, sub: '', go: 'See', run: () => setApp('mail') }); } catch (e) { /* no mail yet */ }
+    try {
+      const w = mailWait.items, n = mailBadgeCount();
+      if (w.length) { const o = w[0], who = ((o.from || {}).emailAddress || {}).name || 'someone'; needs.push({ ic: 'mail', title: `${w.length} email${w.length === 1 ? '' : 's'} may be waiting on your reply`, sub: `Oldest: ${who}, ${new Date(o.receivedDateTime).toLocaleDateString('en-AU', { weekday: 'long' })}${n ? ` \u00b7 ${n} unread` : ''}`, go: 'See', run: () => mailWaitDlg() }); }
+      else if (n) needs.push({ ic: 'mail', title: `${n} unread email${n === 1 ? '' : 's'} in your Inbox`, sub: '', go: 'See', run: () => setApp('mail') });
+    } catch (e) { /* no mail yet */ }
     if (needs.length) out.push({ h: 'Needs you', items: needs });
     const met = [];
     try {
@@ -16363,6 +16386,12 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       if (counts.length) team.push({ ic: 'team', title: 'Open actions', sub: counts.slice(0, 6).join(' · '), go: 'Team', run: () => setApp('cos') });
       if (phone) team.push(phone);
+      // Routines that were due since yesterday evening: their results are waiting to be read.
+      try {
+        const since = new Date(); since.setDate(since.getDate() - (since.getHours() < 12 ? 1 : 0)); since.setHours(since.getHours() < 12 ? 17 : 0, 0, 0, 0);
+        const due = []; for (const st of t.nodes.filter(x => x.kind === 'staff')) for (const r of st.routines || []) { const nx = routineNext(r, since); if (nx && nx.getTime() <= now) due.push({ st, r }); }
+        if (due.length) team.push({ ic: 'ok', title: due.length === 1 ? `\u201c${due[0].r.name}\u201d was due to run` : `${due.length} routines were due to run`, sub: due.slice(0, 3).map(x => x.r.name).join(' \u00b7 '), go: due.length === 1 ? 'Open' : 'See', run: () => { if (due.length === 1) return cosOpenRoutine(due[0].st, due[0].r); setApp('cos'); openStaff(due[0].st.id); cosUi.tab = 'routines'; renderCos(); } });
+      } catch (e) { /* no routines */ }
     }
     if (team.length) out.push({ h: 'The team', items: team });
     return out;
@@ -16379,6 +16408,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return L.join('\n').slice(0, 3500);
   }
   function botSpeak(text) { try { if (ls.get('claudeNavigator.sounds') === 'off' || !text) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 900)); u.lang = 'en-AU'; speechSynthesis.speak(u); } catch (e) { /* no voice */ } }
+  const BOT_MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|said|talked? about|spoke|catch[- ]?up|granola|last time|prep(are)? me)\b/i;
   const BOT_FACT = /\b(what|who|which|where|when|how many|anything|is there|are there|status|up to|open|working on|brief me)\b/i, BOT_THINK = /\b(should|advice|advise|recommend|write|draft|why|think|plan|idea|suggest|find out|search|look up|notes|granola|email|explain|compare)\b/i;
   async function botAskNew(text, opt = {}) {
     text = String(text || '').trim(); if (!text) return;
@@ -16386,7 +16416,19 @@ body { width: max-content !important; min-width: 0 !important; }
     botS.conv.push(e); if (botS.conv.length > 12) botS.conv.shift();
     bot.open = true; botS.chat = false; saveBot(); cosBotRender();
     const finish = () => { e.busy = false; chime(e.fail ? 'no' : 'ready'); cosBotRender(); if (e.voice && !e.fail) botSpeak(e.a); };
-    if (!opt.claude && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text)) {
+    // A question about what was said or decided in meetings goes straight to Granola.
+    if (!opt.claude && gran.on && BOT_MEET.test(text) && window.navigatorApp.granolaAsk) {
+      e.src = 'granola'; botPaintConv();
+      try {
+        const r = await window.navigatorApp.granolaAsk(`${text}${e.ctx ? '\n\nContext: ' + e.ctx.text : ''}`);
+        if (r && r.ok && r.text && botS.conv.includes(e)) {
+          const ids = []; const clean = granText(r.text).replace(/\[\[?\d+\]?\]\((https:\/\/notes\.granola\.ai\/d\/([\w-]+))[^)]*\)/g, (m0, u, id) => { if (!ids.includes(id)) ids.push(id); return ''; }).replace(/<[^>]+>/g, '').replace(/[ \t]+([.,;:])/g, '$1').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+          e.a = clean.slice(0, 1800); e.cites = ids.slice(0, 4); return finish();
+        }
+      } catch (er) { /* Claude answers instead */ }
+      if (!botS.conv.includes(e)) return;
+    }
+    if (!opt.claude && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text) && !(gran.on && BOT_MEET.test(text))) {
       try {
         if (await localAiReady()) {
           const ins = 'You are a chief of staff answering your principal. Answer only from the team notes you are given. One to three short plain sentences. No lists, no symbols, no dashes. Name the staff member and the items. Never say anything was sent or booked. If the notes do not hold the answer, or the question asks you to think, advise, write or find something out, reply with exactly the one word CLAUDE.';
@@ -16462,12 +16504,13 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const e of botS.conv) {
       host.appendChild(Object.assign(document.createElement('div'), { className: 'bq', textContent: e.q }));
       const a = document.createElement('div'); a.className = 'ba' + (e.fail ? ' fail' : '');
-      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude…' : 'Checking…' })); } else a.textContent = e.a;
+      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude\u2026' : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else a.textContent = e.a;
       host.appendChild(a);
       if (e.busy) continue;
       const src = document.createElement('div'); src.className = 'bsrc';
-      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.src === 'mac' ? 'Answered on your Mac' : 'Answered by Claude' }));
+      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : 'Answered by Claude' }));
       const lnk = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', run); src.appendChild(b); };
+      if (e.src === 'granola') { (e.cites || []).forEach((id, i) => { const g = gran.list.find(x => x.id === id); lnk(g ? `\u25C9 ${g.title.slice(0, 28)}${g.title.length > 28 ? '\u2026' : ''}` : `Source ${i + 1}`, () => (g ? granMeetingDlg(g) : openExternal('https://notes.granola.ai/d/' + id))); }); lnk('Ask Claude instead', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
       if (e.src === 'claude') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
       if (!e.fail) lnk('Read aloud', () => botSpeak(e.a));
@@ -16529,7 +16572,7 @@ body { width: max-content !important; min-width: 0 !important; }
       gran.at = Date.now();
     } catch (e) { gran.err = String(e && e.message || e); }
     gran.busy = false;
-    try { cosBotSoon(); } catch (e) { /* starting up */ }
+    try { cosBotSoon(); dockRender(); } catch (e) { /* starting up */ }
     return gran;
   }
   // The notes for one meeting: Granola's summary, and your own notes if you typed any.
@@ -16569,7 +16612,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return gran.list.find(g => g.at < inst.start - 3600e3 && g.title.toLowerCase().trim() === title) || null;
   }
   function granMeetingDlg(g, lead) {
-    const d = mailDlg('gran-dlg', '<h2></h2><p class="hint"></p><div class="gbody"><div class="gwait"></div></div><div class="dlg-actions"><button class="btn" data-x="tr">Transcript</button><button class="btn" data-x="open">Open in Granola</button><span style="flex:1"></span><button class="btn" data-x="dealt"></button><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('gran-dlg', '<h2></h2><p class="hint"></p><div class="gbody"><div class="gwait"></div></div><div class="dlg-actions"><button class="btn" data-x="tr">Transcript</button><button class="btn" data-x="fu" title="Start an email to the people who were there, with what was agreed. Nothing is sent until you press Send.">Draft Follow-Up</button><button class="btn" data-x="open">Open in Granola</button><span style="flex:1"></span><button class="btn" data-x="dealt"></button><button class="btn-primary" data-x="close">Done</button></div>');
     d.querySelector('h2').textContent = (lead ? lead + ': ' : '') + g.title;
     d.querySelector('.hint').textContent = `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(g.at)}${g.people.length ? ' · ' + g.people.map(p => p.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '')).slice(0, 5).join(', ') : ''}`;
     const body = d.querySelector('.gbody'), wait = t => { body.replaceChildren(); const w = document.createElement('div'); w.className = 'gwait'; w.appendChild(waveEl(9, 'busy')); w.appendChild(Object.assign(document.createElement('span'), { textContent: t })); body.appendChild(w); };
@@ -16605,11 +16648,113 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!r || !r.ok || !t) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: r && !r.ok ? `The transcript could not be read: ${r.status}` : 'There is no transcript for this meeting.' }));
       body.appendChild(Object.assign(document.createElement('div'), { className: 'gtr', textContent: granText(String(t).replace(/<[^>]+>/g, '')).slice(0, 60000) }));
     });
+    d.querySelector('[data-x="fu"]').addEventListener('click', async () => { d.close(); d.remove(); document.querySelectorAll('dialog.gran-list').forEach(x => { x.close(); x.remove(); }); bot.open = false; saveBot(); cosBotRender(); await granFollowUp(g); });
     const ob = d.querySelector('[data-x="open"]'); ob.hidden = !g.url; ob.addEventListener('click', () => openExternal(g.url));
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
     showNotes();
   }
   setTimeout(() => granLoad(false), 9000); setInterval(() => { if (document.visibilityState === 'visible') granLoad(false); }, 15 * 60e3);
+  // ----- Meeting memory: the notes from your last meeting with the people an email is to, for a draft to lean on -----
+  const granAddrs = g => (g.people.join(' ').toLowerCase().match(/[^\s()<>,;]+@[^\s()<>,;]+\.[a-z]{2,}/g) || []);
+  function granMemory(addrs) {
+    if (!gran.on) return null;
+    const want = new Set((addrs || []).map(a => String(a).toLowerCase()).filter(a => a && !isClaraAddr(a) && !(mailUi.accounts || []).some(x => String(x.email || '').toLowerCase() === a)));
+    if (!want.size) return null;
+    const g = gran.list.find(x => granAddrs(x).some(a => want.has(a))); if (!g) return null;
+    const n = gran.notes.get(g.id);
+    if (!n) { if (!g.asked) { g.asked = true; granNotes(g.id).catch(() => {}); } return null; }
+    return n.text ? { g, text: n.text } : null;
+  }
+  const granMemoryLine = (addrs, first) => { const m = granMemory(addrs); return m ? `\n\nBackground only: notes from ${first}’s last meeting with them (“${m.g.title}”, ${new Date(m.g.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}). Use them only where they help, and never quote them at length:\n${m.text.slice(0, 1200)}` : ''; };
+  // ----- A follow-up email after a meeting: to the people who were there, with what was agreed. A draft: you send it. -----
+  async function granFollowUp(g) {
+    const n = await granNotes(g.id);
+    try { setApp('mail'); } catch (e) { /* already there */ }
+    const s = mailState.sel, acc = (s && s.acc === '*' ? mailVisible()[0] : mailAccOf()) || mailVisible()[0]; if (!acc) return toast('Add a mail account first.');
+    const mine = new Set((mailUi.accounts || []).map(x => String(x.email || '').toLowerCase())), to = [...new Set(granAddrs(g))].filter(a => !mine.has(a) && !isClaraAddr(a) && !/^allstaff@|^all@|^everyone@/.test(a));
+    const first = (acc.name || '').split(/\s+/)[0] || '';
+    const text = [`Hi ${to.length === 1 ? (g.people.find(p => p.toLowerCase().includes(to[0])) || '').replace(/\s*\(.*$/, '').split(/\s+/)[0] || 'there' : 'all'},`, '', `Thank you for your time ${new Date(g.at).toDateString() === new Date().toDateString() ? 'today' : 'on ' + new Date(g.at).toLocaleDateString('en-AU', { weekday: 'long' })}.${n.actions && n.actions.length ? ' Here is what we agreed:' : ''}`, ...(n.actions || []).map(a => `- ${a}`), '', 'Let me know if I have missed anything.', '', first].join('\n');
+    await mailCompose('new', null, { acc: acc.id, to: to.join(', '), subject: `Follow up: ${g.title}`.slice(0, 150), text });
+  }
+  // ----- Meetings: every recorded meeting from the last 30 days, and which still have actions to give out -----
+  function granListDlg() {
+    if (!gran.on) return granolaDlg();
+    const d = mailDlg('gran-dlg gran-list', '<h2>Meetings</h2><p class="hint">Recorded by Granola in the last 30 days. Click one for its notes and actions.</p><input type="search" class="gsearch" placeholder="Find a meeting or a person"><div class="gbody"></div><div class="dlg-actions"><button class="btn" data-x="re">Check Again</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const body = d.querySelector('.gbody'), q = d.querySelector('.gsearch');
+    const paint = () => {
+      body.replaceChildren(); const want = q.value.trim().toLowerCase(); let day = '';
+      const list = gran.list.filter(g => !want || (g.title + ' ' + g.people.join(' ')).toLowerCase().includes(want));
+      if (!list.length) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: gran.busy ? 'Reading your meetings…' : gran.err ? `Could not read your meetings: ${gran.err}` : 'No meetings found.' }));
+      for (const g of list.slice(0, 150)) {
+        const dn = new Date(g.at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' });
+        if (dn !== day) { day = dn; body.appendChild(Object.assign(document.createElement('div'), { className: 'gh', textContent: dn })); }
+        const n = gran.notes.get(g.id), r = document.createElement('button'); r.type = 'button'; r.className = 'grow';
+        r.innerHTML = '<span class="t"></span><span class="tx"><b></b><span></span></span><span class="st"></span>';
+        r.querySelector('.t').textContent = calFmtTime(g.at); r.querySelector('b').textContent = g.title;
+        r.querySelector('.tx span').textContent = g.people.map(p => p.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '')).slice(0, 4).join(', ');
+        const st = r.querySelector('.st'); st.textContent = granDone.has(g.id) ? 'Dealt with' : n ? (n.actions.length ? `${n.actions.length} action${n.actions.length === 1 ? '' : 's'}` : '') : ''; st.className = 'st' + (granDone.has(g.id) ? ' done' : n && n.actions.length ? ' todo' : '');
+        r.addEventListener('click', () => granMeetingDlg(g));
+        body.appendChild(r);
+      }
+    };
+    q.addEventListener('input', paint);
+    d.querySelector('[data-x="re"]').addEventListener('click', async () => { gran.at = 0; await granLoad(true); if (d.isConnected) paint(); });
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    paint();
+    // the action counts for the last week fill in as their notes are read (a few at a time)
+    (async () => { for (const g of gran.list.filter(x => Date.now() - x.at < 7 * 864e5 && !gran.notes.has(x.id)).slice(0, 12)) { if (!d.isConnected) return; await granNotes(g.id).catch(() => {}); if (d.isConnected) paint(); } })();
+  }
+  // ----- Emails that may be waiting on your reply: read, sent to you by a person, a day or more old, and not answered -----
+  const mailWait = { at: 0, items: [], busy: false };
+  const MAIL_WAIT_OFF = 'claudeNavigator.mailWaitOff.v1';          // (ids you said are not waiting: ids only)
+  const mailWaitOff = (() => { try { return new Set(JSON.parse(ls.get(MAIL_WAIT_OFF) || '[]')); } catch (e) { return new Set(); } })();
+  async function mailWaitLoad(force) {
+    if (!isApp || mailWait.busy || !(mailUi.accounts || []).length) return;
+    if (!force && mailWait.at && Date.now() - mailWait.at < 20 * 60e3) return;
+    mailWait.busy = true; const out = [];
+    try {
+      const since = new Date(Date.now() - 10 * 864e5).toISOString(), before = Date.now() - 20 * 3600e3;
+      for (const a of mailUi.accounts) {
+        if (a.needsSignIn || a.shared) continue;
+        const r = await mailApi(a.id, { path: `/me/mailFolders/inbox/messages?$top=60&$filter=receivedDateTime ge ${since}&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId&$expand=singleValueExtendedProperties($filter=id eq 'Integer 0x1081')` });
+        if (!r || !r.ok || !r.data || !Array.isArray(r.data.value)) continue;
+        const me = String(a.email || '').toLowerCase(), seen = new Set();
+        for (const m of r.data.value) {
+          const from = String(((m.from || {}).emailAddress || {}).address || '').toLowerCase(), conv = m.conversationId || m.id;
+          if (seen.has(conv)) continue; seen.add(conv);          // (only the latest message in a conversation counts)
+          if (!m.isRead || m.isDraft || !from || from === me || NO_REPLY.test(from) || /^(info|hello|news|team|support|updates?|digest|marketing|events?|accounts?|billing|invoices?|receipts?)@/.test(from) || isClaraAddr(from)) continue;
+          if ((m.singleValueExtendedProperties || []).length) continue;          // answered or forwarded already
+          if (Date.parse(m.receivedDateTime) > before || mailWaitOff.has(m.id)) continue;
+          if (!(m.toRecipients || []).some(x => String((x.emailAddress || {}).address || '').toLowerCase() === me)) continue;          // only copied in
+          m._acc = a.id; out.push(m);
+        }
+      }
+      mailWait.items = out.sort((x, y) => Date.parse(x.receivedDateTime) - Date.parse(y.receivedDateTime)).slice(0, 30);
+      mailWait.at = Date.now();
+    } catch (e) { /* the unread count is shown instead */ }
+    mailWait.busy = false;
+    try { cosBotSoon(); } catch (e) { /* starting up */ }
+  }
+  function mailWaitDlg() {
+    const d = mailDlg('gran-dlg gran-list', '<h2>Emails that may be waiting on your reply</h2><p class="hint">Read, sent to you by a person, a day or more old, and not answered. Click one to open it, or press × if it needs no reply.</p><div class="gbody"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const body = d.querySelector('.gbody');
+    const paint = () => {
+      body.replaceChildren();
+      if (!mailWait.items.length) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: 'Nothing is waiting on you.' }));
+      for (const m of mailWait.items) {
+        const r = document.createElement('button'); r.type = 'button'; r.className = 'grow';
+        r.innerHTML = '<span class="t"></span><span class="tx"><b></b><span></span></span><span class="clr" role="button" aria-label="Needs no reply">×</span>';
+        r.querySelector('.t').textContent = new Date(m.receivedDateTime).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric' });
+        r.querySelector('b').textContent = m.subject || '(no subject)'; r.querySelector('.tx span').textContent = ((m.from || {}).emailAddress || {}).name || ((m.from || {}).emailAddress || {}).address || '';
+        r.querySelector('.clr').addEventListener('click', e => { e.stopPropagation(); mailWaitOff.add(m.id); ls.set(MAIL_WAIT_OFF, JSON.stringify([...mailWaitOff].slice(-500))); mailWait.items = mailWait.items.filter(x => x !== m); paint(); try { cosBotSoon(); } catch (er) { /* not showing */ } });
+        r.addEventListener('click', async () => { d.close(); d.remove(); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(m); });
+        body.appendChild(r);
+      }
+    };
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    paint();
+  }
+  setTimeout(() => mailWaitLoad(false), 14000); setInterval(() => { if (document.visibilityState === 'visible') mailWaitLoad(false); }, 20 * 60e3);
   // Granola: connect the app to your meeting notes.
   function granolaDlg() {
     if (!isApp || !window.navigatorApp.granolaConnect) return toast('This works in the desktop app.');
@@ -16688,6 +16833,11 @@ body { width: max-content !important; min-width: 0 !important; }
       chip('Make it an action', 'Put this email on a staff member’s list', e => botPickStaff(e.currentTarget, `Email: ${ctx.label}`));
       chip('Reply', 'Start a reply to this email', () => { bot.open = false; saveBot(); cosBotRender(); mailCompose('reply', ctx.msg); });
     }
+    if (ctx && ctx.kind === 'cal' && ctx.inst) {
+      chip('Prep me for this', 'What was said and agreed before, and what is still open', () => botAskNew('Prepare me for this meeting: what was said and agreed with these people before, and what is still open?', { label: `Prep me for \u201c${ctx.label}\u201d` }));
+      const lt = ctx.inst.start <= Date.now() ? granFor(ctx.inst) : granLastTime(ctx.inst); if (lt) chip(ctx.inst.start <= Date.now() ? 'Meeting notes' : 'Notes from last time', 'Open Granola\u2019s notes', () => granMeetingDlg(lt, ctx.inst.start <= Date.now() ? '' : 'Last time'));
+    }
+    if (gran.on) chip('Meetings', 'Every recorded meeting from the last 30 days', () => granListDlg());
     chip('Brief me', 'Today, what needs you, and the team: read aloud', () => { botS.conv = []; cosBotRender(); const s = botBriefText(); botSpeak(s || 'Nothing needs you right now.'); });
     for (const [label, text] of botQuick().filter(x => x[0] !== 'Where should this go?').slice(0, ctx && ctx.kind === 'mail' ? 1 : 3)) { const name = label === 'Today' ? 'Plan my day' : label; chip(name, text.slice(0, 300), () => botAskNew(text, { label: name, claude: true })); }
     // the body: talking, a conversation, or today

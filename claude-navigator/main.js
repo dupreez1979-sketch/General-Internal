@@ -1788,6 +1788,7 @@ const granRead = async (e, name, args) => { if (!fromOwnWindow(e)) return { ok: 
 ipcMain.handle('granola-meetings', (e, from, to) => (fromOwnWindow(e) && /^\d{4}-\d\d-\d\d$/.test(from) && /^\d{4}-\d\d-\d\d$/.test(to) ? granola.meetings(from, to).then(text => ({ ok: true, text }), er => ({ ok: false, status: String(er && er.message || er) })) : { ok: false, status: 'bad dates' }));
 ipcMain.handle('granola-meeting', (e, id) => (/^[\w-]{6,80}$/.test(String(id)) ? granRead(e, 'get_meetings', { meeting_ids: [String(id)], attachments: 'none', max_participants: 10 }) : { ok: false, status: 'bad id' }));
 ipcMain.handle('granola-transcript', (e, id) => (/^[\w-]{6,80}$/.test(String(id)) ? granRead(e, 'get_meeting_transcript', { meeting_id: String(id) }) : { ok: false, status: 'bad id' }));
+ipcMain.handle('granola-ask', (e, q) => (typeof q === 'string' && q.length > 2 && q.length < 4000 ? granRead(e, 'query_granola_meetings', { query: q }) : { ok: false, status: 'bad question' }));
 ipcMain.handle('granola-disconnect', e => (fromOwnWindow(e) ? granola.disconnect() : { connected: false }));
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));

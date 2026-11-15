@@ -27,6 +27,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   granolaMeetings: (from, to) => ipcRenderer.invoke('granola-meetings', from, to),
   granolaMeeting: id => ipcRenderer.invoke('granola-meeting', id),
   granolaTranscript: id => ipcRenderer.invoke('granola-transcript', id),
+  granolaAsk: q => ipcRenderer.invoke('granola-ask', q),
   granolaDisconnect: () => ipcRenderer.invoke('granola-disconnect'),
   localAiStatus: () => ipcRenderer.invoke('local-ai-status'),
   localAiRun: (id, instructions, prompt) => ipcRenderer.invoke('local-ai-run', id, instructions, prompt),
