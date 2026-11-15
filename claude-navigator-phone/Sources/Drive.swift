@@ -368,6 +368,8 @@ final class Drive: NSObject {
         var steady = 0
         var everBusy = false
         var quiet = 0
+        var ended = false
+        var endTicks = 0
         answerTimer?.invalidate()
         answerTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] timer in
             guard let self = self, id == self.askID else { timer.invalidate(); return }
@@ -395,8 +397,18 @@ final class Drive: NSObject {
                 let rest = String(after[start.upperBound...])
                 let address = self.claude.url?.absoluteString ?? ""
                 if let end = rest.range(of: "[[END]]") {
-                    timer.invalidate()
-                    self.tell("driveAnswer", ["text": String(rest[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines), "done": true, "url": address])
+                    if !ended {
+                        ended = true
+                        self.tell("driveAnswer", ["text": String(rest[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines), "done": true, "url": address])
+                    }
+                    // After the spoken answer Claude may add one next step ("[[DO]] action | who | what"): wait a moment for it.
+                    endTicks += 1
+                    let tail = String(rest[end.upperBound...])
+                    if tail.contains("[[DONE]]") || endTicks > 20 {
+                        timer.invalidate()
+                        let steps = tail.components(separatedBy: "\n").filter { $0.contains("[[DO]]") }.map { $0.replacingOccurrences(of: "[[DO]]", with: "").trimmingCharacters(in: .whitespaces) }
+                        if !steps.isEmpty { self.tell("driveDo", ["lines": Array(steps.prefix(3))]) }
+                    }
                 } else {
                     let now = rest.trimmingCharacters(in: .whitespacesAndNewlines)
                     if now != last && !now.isEmpty { self.tell("driveAnswer", ["text": now, "done": false, "url": address]) }      // what has arrived so far

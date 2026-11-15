@@ -322,9 +322,10 @@
     return L.join('\n').slice(0, 5000); };
   function driveAsk(text, target) {
     const p = prof(), nonce = 'ref DRV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), had = drive.chats[target.id];
-    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. I am waiting in silence, so be quick: answer from what you already know in this project where you can, and look things up only when you must. If you cannot find it quickly, say so and say what you would need. Start your answer with [[SAY]] and end it with [[END]]. Do this for every message in this chat.';
+    const rule = 'Answer as if speaking aloud: plain sentences, at most 70 words, no lists, no headings, no links, no symbols. If there is more, give the headline and say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. I am waiting in silence, so be quick: answer from what you already know in this project where you can, and look things up only when you must. If you cannot find it quickly, say so and say what you would need. Start your answer with [[SAY]] and end it with [[END]]. After [[END]], only when there is one clear next step for a member of staff, add a single line in exactly this form: [[DO]] action | the staff member\u2019s name | the action in a few words. Then write [[DONE]]. Do this for every message in this chat.';
     const prompt = had ? `I said: ${text}\n\n(Spoken answer, at most 70 words, between [[SAY]] and [[END]].)\n\n${nonce}`
       : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
+    drive.offer = null; drive.confirmAct = null;
     drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
     send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
     // No dead air: a few words straight away, while Claude thinks.
@@ -380,6 +381,9 @@
   function driveHandle(text) {
     const said = text.trim(); if (!said) { drive.state = 'idle'; render(); return; }
     const low = said.toLowerCase();
+    if (drive.confirmAct) { const c = drive.confirmAct; drive.confirmAct = null;
+      if (/^(yes|yep|yeah|do it|please do|sure|ok|okay|add it)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: c.staff, text: c.text }); saveChanges(); drive.log.push({ kind: 'note', who: c.who, text: c.text }); chime('made'); return driveSay(`Added to the ${c.who}\u2019s list.`); }
+      if (/^(no|nope|nah|leave it|not now|don\u2019t|dont|do not)\b/.test(low)) return driveSay('Left as it is.'); }          // (anything else is taken as your next request)
     if (drive.confirm) { const c = drive.confirm; drive.confirm = null; if (/^(yes|yep|yeah|do it|confirm|correct|please do)\b/.test(low)) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'done', staff: c.staff, item: c.item }); saveChanges(); drive.log.push({ kind: 'done', who: c.who, text: c.name }); chime('made'); return driveSay(`Done. ${c.name} is marked as finished.`); } return driveSay('Left as it is.'); }
     if (drive.noteNext || /^(note|note for later|make a note|remember)\b/.test(low)) { const note = drive.noteNext ? said : said.replace(/^(note for later|make a note|note|remember)( that| to)?[:,]?\s*/i, ''); drive.noteNext = false; if (!note) { drive.noteNext = true; return driveSay('What is the note?'); } return driveNote(note); }
     if (/^(stop|cancel|never mind|that is all|that's all|goodbye|finish)\b/.test(low)) { drive.state = 'idle'; drive.line = ''; render(); return; }
@@ -398,7 +402,11 @@
   // After an answer it listens again for a moment, so you can carry on without touching the screen.
   window.driveSpoke = () => { if (drive.ackLeft > 0) { drive.ackLeft--; return; }       // (that was the few words said while Claude thinks)
     if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
-    drive.stream = null; if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+    drive.stream = null;
+    // Claude named a next step for someone: offer it aloud before listening again.
+    if (drive.offer && drive.after !== 'idle') { const o = drive.offer; drive.offer = null; drive.confirmAct = o; return driveSay(`Shall I put that on the ${o.who}\u2019s list? Say yes or no.`); }
+    if (drive.after === 'idle') { drive.state = 'idle'; render(); } else driveListen(6); };
+  window.driveDo = d => { if (!drive.on) return; for (const l of (d && d.lines) || []) { const f = String(l).split('|').map(x => x.trim()); if ((f[0] || '').toLowerCase() !== 'action' || !f[2]) continue; const st = staffNamed(f[1] || ''); if (!st || st.chief) continue; if (drive.state === 'speaking') drive.offer = { staff: st.id, who: st.name, text: f[2].slice(0, 200) }; return; } };
   // Claude's answer arrives a bit at a time: each finished sentence is spoken as soon as it is there, so you are
   // not kept waiting for the whole answer.
   // Claude is taking a while (usually because it is looking through files): say so, so the wait is not silent.
