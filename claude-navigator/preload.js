@@ -7,6 +7,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   onClaraMoved: (fn) => ipcRenderer.on('clara-moved', (_e, url) => fn(url)),
   apiStatus: () => ipcRenderer.invoke('api-status'),
   apiKeySet: (key) => ipcRenderer.invoke('api-key-set', key),
+  apiRun: (req) => ipcRenderer.invoke('api-run', req),
   apiAsk: (system, turns, max) => ipcRenderer.invoke('api-ask', system, turns, max),
   startupLog: () => ipcRenderer.invoke('startup-log'),
   startNote: (text) => ipcRenderer.send('start-note', String(text)),

@@ -1854,6 +1854,30 @@ ipcMain.handle('api-key-set', (e, key) => {
     return true;
   } catch (er) { return false; }
 });
+// The fuller form: the window sends the conversation as it stands, with the read-only tools it offers (search email,
+// read an email, list the calendar, ask the meeting notes). The window runs a tool when the model asks and calls again.
+// Two models only, both fixed here: the fast one, and the middle one for drafts and harder questions.
+const API_TIERS = { fast: { model: API_MODEL, top: 1000 }, smart: { model: 'claude-sonnet-5-5', top: 4000 } };
+ipcMain.handle('api-run', async (e, req) => {
+  if (!fromOwnWindow(e) || !req || typeof req !== 'object') return null;
+  const key = apiKeyGet(); if (!key) return { error: 'no key' };
+  const tier = API_TIERS[req.tier] ? req.tier : 'fast', T = API_TIERS[tier];
+  const messages = Array.isArray(req.messages) ? req.messages.slice(-24) : [];
+  if (!messages.length || JSON.stringify(messages).length > 400000) return { error: 'too much to send' };
+  const tools = Array.isArray(req.tools) ? req.tools.slice(0, 8) : [];
+  const body = { model: T.model, max_tokens: Math.max(64, Math.min(T.top, +req.max || 400)), system: String(req.system || '').slice(0, 20000), messages, output_config: { effort: tier === 'fast' ? 'low' : 'medium' } };
+  if (tier === 'fast') body.thinking = { type: 'disabled' };
+  if (tools.length) body.tools = tools;
+  const started = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 45000);
+  try {
+    const r = await net.fetch(apiBase() + '/v1/messages', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2026-10-21' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({})), ms = Date.now() - started, u = j.usage || {};
+    if (!r.ok) return { error: String((j.error && j.error.message) || `the API answered ${r.status}`).slice(0, 200), status: r.status, ms, tier };
+    const content = Array.isArray(j.content) ? j.content : [];
+    return { content, text: content.filter(c => c.type === 'text').map(c => c.text).join('\n'), stop: j.stop_reason || '', ms, in: u.input_tokens || 0, out: u.output_tokens || 0, model: j.model || '', tier };
+  } catch (er) { return { error: ctl.signal.aborted ? 'no answer in 45 seconds' : String(er && er.message || er).slice(0, 160), ms: Date.now() - started, tier }; }
+  finally { clearTimeout(timer); }
+});
 ipcMain.handle('api-ask', async (e, system, turns, max) => {
   if (!fromOwnWindow(e)) return null;
   const key = apiKeyGet(); if (!key) return { error: 'no key' };

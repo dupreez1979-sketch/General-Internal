@@ -357,7 +357,8 @@
   const useAdd = (i, o) => { const u = useNow(); u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; ls.set('apiUse', JSON.stringify(u)); };
   const useCost = u => (u.in * 0.10 + u.out * 0.50) / 1e6;          // US dollars: the fast model's price per million tokens in and out
   const apiLimit = () => +(ls.get('apiDaily') || 150);
-  const apiOn = () => fast.hasKey && ls.get('driveApi') !== 'off' && (useNow().dn || 0) < apiLimit();
+  const apiCap = () => +(ls.get('apiCap') || 10);          // the most to spend in a month from this phone, in US dollars
+  const apiOn = () => fast.hasKey && ls.get('driveApi') !== 'off' && (useNow().dn || 0) < apiLimit() && useCost(useNow()) < apiCap();
   const granOn = () => fast.granola && ls.get('driveGran') !== 'off';
   const MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|talked? about|spoke (to|with|about)|catch[- ]?up|granola|last time|what did .{1,40} say)\b/;
   const joinUp = items => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items.slice(-1));
@@ -565,6 +566,7 @@
       opt('Claude API key', fast.hasKey ? `Saved in this phone’s Keychain${fast.keyBad ? '. Claude did NOT accept it: tap to paste it again' : ''}. Fast model only (${fast.model || 'Claude Haiku 5.5'}).` : 'Not set. Tap to paste your key. It is kept in this phone’s Keychain.', fast.hasKey && !fast.keyBad, () => { fast.keyBad = false; send({ do: 'apiKey' }); });
       if (fast.hasKey) { const on = ls.get('driveApi') !== 'off';
         opt('Use it for quick answers', on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${useCost(u).toFixed(2)}. Today: ${u.dn || 0} of ${lim}.` : 'Off. Nothing is sent to the API.', on, () => { ls.set('driveApi', on ? 'off' : 'on'); render(); });
+        opt(`Most in one month: US$${apiCap()}`, `So far this month: about US$${useCost(u).toFixed(2)}. Past the limit, the API is left alone until next month. Tap to change.`, false, () => { const steps = [5, 10, 30]; ls.set('apiCap', String(steps[(steps.indexOf(apiCap()) + 1) % steps.length])); render(); });
         opt(`Most in one day: ${lim} questions`, 'Past this, the API is left alone until tomorrow. Tap to change.', false, () => { const steps = [50, 150, 400]; ls.set('apiDaily', String(steps[(steps.indexOf(lim) + 1) % steps.length])); render(); }); }
       const gon = ls.get('driveGran') !== 'off';
       opt('Granola', fast.granBusy ? 'Opening the sign-in…' : fast.granola ? (gon ? 'Connected. Meeting questions are answered from your notes. Nothing from a meeting is kept on this phone. Tap to pause.' : 'Connected, but paused. Tap to use it.') : (fast.granErr ? `Not connected (${fast.granErr}). Tap to try again.` : 'Not connected. Tap to sign in to Granola.'), fast.granola && gon, () => { if (fast.granola) { ls.set('driveGran', gon ? 'off' : 'on'); return render(); } fast.granBusy = true; fast.granErr = ''; send({ do: 'granConnect' }); render(); });
