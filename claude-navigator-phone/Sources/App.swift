@@ -75,6 +75,15 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "voiceGet": sendVoice()
         case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
         case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
+        // Fast answers: Claude's API on the fast model, and Granola asked directly
+        case "fastState": drive.tell("driveFastState", ["hasKey": drive.api.hasKey, "model": FastClaude.model, "granola": drive.gran.connected])
+        case "apiKey": drive.api.askForKey(from: topController()) { self.drive.tell("driveFastState", ["hasKey": self.drive.api.hasKey, "model": FastClaude.model, "granola": self.drive.gran.connected]) }
+        case "apiAsk":
+            if let id = body["id"] as? String, let system = body["system"] as? String, let turns = body["turns"] as? [[String: String]] { drive.api.ask(id: id, system: system, turns: turns, maxTokens: (body["max"] as? Int) ?? 300) }
+        case "granConnect": drive.gran.connect()
+        case "granDisconnect": drive.gran.disconnect(); drive.tell("driveFastState", ["hasKey": drive.api.hasKey, "model": FastClaude.model, "granola": false])
+        case "granAsk": if let id = body["id"] as? String, let text = body["text"] as? String { drive.gran.ask(id: id, question: text) }
+        case "claudeCheck": drive.claudeCheck()
         case "barge": drive.bargeIn = (body["on"] as? Bool) ?? true
         case "pause": drive.pause = max(0, min(15, (body["seconds"] as? Double) ?? 4))
         case "names": drive.names = ((body["list"] as? [String]) ?? []).prefix(80).map { String($0.prefix(60)) }

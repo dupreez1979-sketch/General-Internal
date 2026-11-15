@@ -17,6 +17,8 @@ final class Drive: NSObject {
     private var task: SFSpeechRecognitionTask?
     let voice = Voice()
     let local = Local()
+    let api = FastClaude()            // Claude's API, the fast model only
+    let gran = FastGranola()          // Granola, asked directly about meetings
     let chimes = Chime()
     private var sayAfter = Date.distantPast       // speech waits for a sound that has just started
     private var hushes = 0
@@ -41,6 +43,8 @@ final class Drive: NSObject {
         super.init()
         if #available(iOS 26.0, *) { NewHearing.prepare() }
         local.tell = { [weak self] function, payload in self?.tell(function, payload) }
+        api.tell = { [weak self] function, payload in self?.tell(function, payload) }
+        gran.tell = { [weak self] function, payload in self?.tell(function, payload) }
         voice.onFinished = { [weak self] in
             guard let self = self else { return }
             if self.monitoring && !self.voice.hasMore { self.stopListening(send: false) }
@@ -214,6 +218,16 @@ final class Drive: NSObject {
     }
 
     // Opens Claude ahead of the first question, so the page is ready when you speak.
+    // For Run Checks: is Claude's page open and signed in? (Address and yes or no only: nothing from the page.)
+    func claudeCheck() {
+        let js = "(() => { const p = location.pathname; return JSON.stringify({ host: location.host, path: p.split('/').slice(0, 2).join('/'), login: /login|signin|sign-in|oauth/.test(p), box: !!document.querySelector('[contenteditable=\"true\"], textarea') }); })()"
+        claude.evaluateJavaScript(js) { value, _ in
+            let found = ((value as? String).flatMap { $0.data(using: .utf8) }.flatMap { try? JSONSerialization.jsonObject(with: $0) }) as? [String: Any] ?? [:]
+            var out = found; out["loading"] = self.claude.isLoading; out["opened"] = self.claude.url != nil
+            self.tell("driveClaudeCheck", out)
+        }
+    }
+
     func warm(url: URL) { if !same(claude.url, url) { claude.load(URLRequest(url: url)) } }
 
     func hush() {
@@ -224,6 +238,8 @@ final class Drive: NSObject {
         stopListening(send: false)
         voice.stop()
         local.cancel()
+        api.cancel()
+        gran.cancel()
     }
 
     // MARK: Claude's model while driving
