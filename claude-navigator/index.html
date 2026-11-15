@@ -14645,6 +14645,18 @@ body { width: max-content !important; min-width: 0 !important; }
       el.querySelector('.ch-go').disabled = true;
       try { if (await local(words)) return; } catch (e) { /* Claude does it instead */ }
       if (calHelp.el !== el) return;
+      if (fastOn()) {
+        status('Laying it out\u2026');
+        const now0 = new Date(), first0 = ((calMeetAcc(prof) || {}).name || 'Kevin').split(/\s+/)[0];
+        const sys = [`You lay out a dictated meeting so ${first0}\u2019s calendar app can open the invitation for him to check and send himself. You create nothing and send nothing: you only write it out.`, `Right now it is ${now0.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(now0.getTime())} (${Intl.DateTimeFormat().resolvedOptions().timeZone}). Work out days such as "next Thursday" or "tomorrow" from that. If no length is said, make it 30 minutes (a lunch or a workshop: one hour). The words were dictated, so read past small slips.`, CAL_MEET_FORMAT].join('\n\n');
+        const r = await apiRun('fast', sys, [{ role: 'user', content: `What ${first0} said:\n${words.slice(0, 3000)}` }], null, 700);
+        if (calHelp.el !== el) return;
+        const found0 = []; let m0; const re0 = /\[\[\s*MEETING\s*\]\]([\s\S]*?)\[\[\s*END\s*\]\]/gi;
+        while (!r.error && (m0 = re0.exec(String(r.text || '')))) if (m0[1].trim()) found0.push(m0[1].replace(/^\n+|\s+$/g, ''));
+        if (found0.length) { el.querySelector('.ch-go').disabled = false; return show(found0); }
+      }
+      // Claude's own chat is the last way, and only ever in view: the chat on the right is shown before it is asked.
+      if (calState.helpNoChat) { calState.helpNoChat = false; calSave(); el.classList.remove('nochat'); }
       const v = calHelp.view, now = new Date(), first = ((calMeetAcc(prof) || {}).name || 'Kevin').split(/\s+/)[0];
       const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       const prompt = [
@@ -15533,7 +15545,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (d0 && d0.text) { if (untouched()) put(d0.text); else if (V.done) held = d0.text; }      // (it fills in as Claude writes, unless you have started typing)
       paint();
     };
-    mailAiOpen({ key: 'chief', tab: who, staff: chief, title: `Draft with ${who}`, prompt, quiet: true, onParts, onTick: () => paint() });
+    mailAiOpen({ key: 'chief', tab: who, staff: chief, title: `Draft with ${who}`, prompt, quiet: false, onParts, onTick: () => paint() });
     paint(true);
   }
   // What is learned from a reply you send: your own words (and the draft that was offered, if there was one).
@@ -16630,7 +16642,22 @@ body { width: max-content !important; min-width: 0 !important; }
         }
       } catch (er) { /* Claude answers instead */ }
     }
-    if (botS.conv.includes(e)) botAskClaude(e, finish);
+    if (botS.conv.includes(e)) botAskInChat(e, finish);
+  }
+  // Asking Claude itself happens in the open: the chat is shown in the panel with your question in it, and you read
+  // the answer there. The app never types into a chat you cannot see.
+  function botAskInChat(e, finish) {
+    const v = botEnsureView(); e.src = 'chat';
+    if (!v) { e.a = 'Claude\u2019s chat opens in the desktop app.'; e.fail = true; return finish(); }
+    const p = activeProfile(), first = botS.ruled !== v;
+    const text = [first ? `I am asking you through the Chief of Staff panel in Claude Navigator. You are my Chief of Staff${p ? ' at ' + p.name : ''}. Keep answers short and plain. Emails and invitations are only ever drafts for me to check and send myself.\n\nWhere things are right now:\n${botNotes()}` : '', e.ctx ? `In front of me: ${e.ctx.text}` : '', e.ask].filter(Boolean).join('\n\n');
+    e.a = 'Asked in Claude\u2019s chat, which is open here. The answer will appear in the chat.'; e.acts = []; e.noAct = true; e.busy = false;
+    botS.chat = true; cosBotRender();
+    let tries = 0;
+    const send = () => { let ready = true; try { v.getURL(); } catch (er) { ready = false; }
+      if (!ready || !botViewReady) { if (++tries < 40) setTimeout(send, 700); return; }
+      v.executeJavaScript(SEND_PROMPT(text)).then(r => { if (r === 'none' || r === 'empty') { if (++tries < 12) setTimeout(send, 1500); else toast('Claude\u2019s chat did not take the question. If it is asking you to sign in, do that, then ask again.'); } else botS.ruled = v; }).catch(() => { if (++tries < 40) setTimeout(send, 900); }); };
+    send();
   }
   function botAskClaude(e, finish) {
     const v = botEnsureView(); e.src = 'claude'; botPaintConv();
@@ -16731,13 +16758,13 @@ body { width: max-content !important; min-width: 0 !important; }
       host.appendChild(a);
       if (e.busy) continue;
       const src = document.createElement('div'); src.className = 'bsrc';
-      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.list ? 'Read from the team\u2019s lists' : e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : e.src === 'api' ? `Answered by Claude\u2019s ${e.tier === 'smart' ? 'fuller' : 'fast'} model${e.ms ? ' in ' + (e.ms / 1000).toFixed(1) + ' s' : ''}${e.used && e.used.length ? ', after looking at ' + e.used.join(' and ') : ''}` : 'Answered by Claude' }));
+      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.list ? 'Read from the team\u2019s lists' : e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : e.src === 'chat' ? 'In Claude\u2019s chat' : e.src === 'api' ? `Answered by Claude\u2019s ${e.tier === 'smart' ? 'fuller' : 'fast'} model${e.ms ? ' in ' + (e.ms / 1000).toFixed(1) + ' s' : ''}${e.used && e.used.length ? ', after looking at ' + e.used.join(' and ') : ''}` : 'Answered by Claude' }));
       const lnk = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', run); src.appendChild(b); };
       if (e.src === 'granola') { (e.cites || []).forEach((id, i) => { const g = gran.list.find(x => x.id === id); lnk(g ? `\u25C9 ${g.title.slice(0, 28)}${g.title.length > 28 ? '\u2026' : ''}` : `Source ${i + 1}`, () => (g ? granMeetingDlg(g) : openExternal('https://notes.granola.ai/d/' + id))); }); lnk('Ask Claude instead', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'api') { if (e.tier !== 'smart') lnk('Think harder', () => botAskNew(e.ask, { smart: true, label: e.q })); lnk('Ask in Claude\u2019s chat', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
-      if (e.src === 'claude') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
-      if (!e.fail) lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
+      if (e.src === 'claude' || e.src === 'chat') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
+      if (!e.fail && e.src !== 'chat') lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
       host.appendChild(src);
       if (e.fail) continue;
       const acts = document.createElement('div'); acts.className = 'bacts';

@@ -311,8 +311,8 @@
     return w;
   }
   const waveSet = (w, state) => { if (w) w.className = 'wave ' + state; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'fastState' }); drive.turns = {}; { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); send({ do: 'pause', seconds: +(ls.get('drivePause') || 4) }); const c = chiefOf(); if (c) send({ do: 'warm', url: askUrl(c) }); drive.model = null; if (ls.get('driveFast') !== 'off') send({ do: 'fastModel' }); render(); }
-  function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'fastState' }); drive.turns = {}; { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); send({ do: 'pause', seconds: +(ls.get('drivePause') || 4) }); drive.model = null; render(); }
+  function driveEnd() { send({ do: 'hush' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); chime('listen'); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then, quiet) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send(quiet ? { do: 'say', text, quiet: true } : { do: 'say', text })) { drive.state = 'idle'; render(); } }
   function driveStop() { dnote('stopped by you', { was: drive.state, stage: drive.stage || '' }); const was = drive.state; send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; if (was === 'thinking') { drive.line = 'Stopped. Tap to talk.'; chime('no'); } drive.pending = null; drive.stream = null; drive.ackLeft = 0; drive.localAsk = null; drive.granAsk = null; drive.apiAsk = null; render(); }
@@ -320,20 +320,16 @@
     for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
     const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
     return L.join('\n').slice(0, 5000); };
+  // Drive never types into a Claude page you cannot see. When a question needs what a Claude project holds, it says
+  // so in a sentence and puts the question on that person's list, so it is waiting when you are back at your desk.
   function driveAsk(text, target, opt) {
-    const p = prof(), nonce = 'ref DRV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), had = drive.chats[target.id];
-    const rule = 'Answer as if speaking aloud. Lead with the answer itself in one short sentence: if I ask for a time, a date, a name or a number, say just that. Add at most one or two more short sentences, only if they truly help. At most 40 words, plain sentences, no lists, no headings, no links, no symbols, no account of how you found it. If there is more, say the rest is waiting on my phone. Never say something was sent or booked: emails and invitations are only ever drafts for me to check. I am waiting in silence, so be quick: answer from what you already know in this project where you can, and look things up only when you must. If you cannot find it quickly, say so and say what you would need. Start your answer with [[SAY]] and end it with [[END]]. After [[END]], only when there is one clear next step for a member of staff, add a single line in exactly this form: [[DO]] action | the staff member\u2019s name | the action in a few words. Then write [[DONE]]. Do this for every message in this chat.';
-    const prompt = had ? `I said: ${text}\n\n(Spoken answer, the answer first, at most 40 words, between [[SAY]] and [[END]].)\n\n${nonce}`
-      : `I am driving and talking to you by voice through Claude Navigator. You are ${target.chief ? 'my Chief of Staff' : 'my ' + target.name}${p ? ' at ' + p.name : ''}. ${rule}\n\nWhere the team is up to right now:\n${snapshot()}\n\nI said: ${text}\n\n${nonce}`;
-    drive.offer = null; drive.confirmAct = null;
-    drive.state = 'thinking'; drive.who = target; drive.pending = { text, target: target.id }; drive.line = `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}…`; render();
-    send({ do: 'ask', url: had || askUrl(target), prompt, nonce });
-    // No dead air: a few words straight away, while Claude thinks.
-    { const ack = opt && opt.slow ? 'That needs a proper look. I will come back to you.' : had ? ['One moment.', 'Let me check.', 'Just a second.'][drive.log.length % 3] : `Asking ${target.chief ? 'your Chief of Staff' : 'the ' + target.name}.`; if (send({ do: 'say', text: ack })) drive.ackLeft = (drive.ackLeft || 0) + 1; }
-    // Twenty seconds on, say where it has got to, whatever the phone has or has not heard back from Claude's page.
-    drive.stage = ''; clearTimeout(drive.slow); const mine = drive.pending;
-    drive.slow = setTimeout(() => { if (!drive.on || drive.state !== 'thinking' || drive.pending !== mine) return; const g = drive.stage, t = g === 'working' || g === 'sent' ? 'Still working on it.' : g === 'unseen' ? 'Claude has not picked up the question yet. Still trying.' : 'Claude is slow to open. Still trying.'; chime('working'); if (send({ do: 'say', text: t })) drive.ackLeft = (drive.ackLeft || 0) + 1; }, 20000);
-    clearTimeout(drive.timer); drive.timer = setTimeout(() => { if (drive.state === 'thinking') { drive.pending = null; chime('no'); driveSay('Claude has not answered yet. Your question is in the chat for later.', 'idle'); } }, 330000);
+    const who = target && !target.chief ? 'the ' + target.name : 'your Chief of Staff';
+    dnote('lane', { lane: 'kept for later' });
+    drive.pending = null; drive.offer = null; drive.confirmAct = null; clearTimeout(drive.timer); clearTimeout(drive.slow);
+    if (target) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: target.id, text: ('Asked while driving: ' + text).slice(0, 300) }); saveChanges(); }
+    drive.log.push({ kind: 'note', who: target ? (target.chief ? 'Chief of Staff' : target.name) : 'Note', text });
+    drive.who = target || drive.who; chime('made');
+    driveSay(`I cannot answer that from the phone. It needs ${target && !target.chief ? 'the ' + target.name + '\u2019s project in Claude' : 'a proper look in Claude'}. I have put it on ${who}\u2019s list for when you are at your desk.`);
   }
   // Questions the phone can answer itself, at once, from what it already holds about the team (Apple's built-in model).
   // Anything that needs thinking, advice or writing goes to Claude, and so does anything the phone is not sure of.
@@ -490,7 +486,6 @@
     { const bare = low.replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(), chief = chiefOf();
       if (chief && (/^((hey|hi|hello|ok|okay|right|so|now|please) )*((go|switch|change|take me|get me|put me|pass me) )?(back )?(to |with |on )?(the |my )?(chief of staffs?|chief|chiefs office)( please| again| now)*$/.test(bare) || /^((hey|ok|okay|please) )*(go|switch|take me) back( please| now)*$/.test(bare))) {
         const was = drive.who; drive.who = chief; dnote('back to chief', { from: was && was.name });
-        try { send({ do: 'warm', url: askUrl(chief) }); } catch (e) { /* opened when you ask */ }
         return driveSay(was && !was.chief ? 'Back with your Chief of Staff.' : 'Chief of Staff here.'); } }
     const named = staffNamed(said), back = /chief of staff/.test(low);
     const target = named && !named.chief ? named : back ? chiefOf() : named || drive.who || chiefOf();       // "ask the Chief of Staff to ask the Finance Officer" goes straight to the Finance Officer
@@ -561,7 +556,7 @@
     if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
     s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
     s2.append(el('div', 'sec', 'Fast answers'));
-    s2.append(el('p', 'vtip', 'Quickest first: your team’s lists are read straight off this phone; meeting questions go to Granola; other quick questions go to Claude’s fast model through your API key. Anything that needs a proper look still goes to Claude’s own page, and takes longer.'));
+    s2.append(el('p', 'vtip', 'Quickest first: your team’s lists are read straight off this phone; meeting questions go to Granola; other quick questions go to Claude’s fast model through your API key. What needs one of your Claude projects is not attempted while you drive: it is put on that person’s list for your desk.'));
     { const u = useNow(), lim = apiLimit();
       opt('Claude API key', fast.hasKey ? `Saved in this phone’s Keychain${fast.keyBad ? '. Claude did NOT accept it: tap to paste it again' : ''}. Fast model only (${fast.model || 'Claude Haiku 5.5'}).` : 'Not set. Tap to paste your key. It is kept in this phone’s Keychain.', fast.hasKey && !fast.keyBad, () => { fast.keyBad = false; send({ do: 'apiKey' }); });
       if (fast.hasKey) { const on = ls.get('driveApi') !== 'off';
@@ -573,8 +568,6 @@
       if (fast.granola) { const dc = el('button', 'row', 'Disconnect Granola from this phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'granDisconnect' }); fast.granola = false; render(); }; s2.append(dc); }
       const rc = el('button', 'btn', fast.checks ? 'Run Checks Again' : 'Run Checks'); rc.style.margin = '6px 6px 8px'; rc.onclick = () => { rc.disabled = true; runChecks(rc); }; s2.append(rc);
       if (fast.checks) { const pre = el('p', 'vtip', 'Copied. Paste it to Claude.\n\n' + fast.checks); pre.style.whiteSpace = 'pre-wrap'; s2.append(pre); } }
-    s2.append(el('div', 'sec', 'Speed'));
-    { const on = ls.get('driveFast') !== 'off'; opt('Use Claude\u2019s fastest model while driving', on ? 'On. Your usual model is put back when you finish.' : 'Off. Claude answers with whichever model it used last.', on, () => { ls.set('driveFast', on ? 'off' : 'on'); if (on) send({ do: 'restoreModel' }); else send({ do: 'fastModel' }); render(); }); }
     s2.append(el('div', 'sec', 'When your turn ends'));
     { const cur = +(ls.get('drivePause') || 4); for (const [sec, title, sub] of [[2.5, 'After a short pause', 'About two seconds of silence.'], [4, 'After a pause', 'About four seconds. Room to think mid-sentence.'], [7, 'After a long pause', 'About seven seconds.'], [0, 'Only when I say so', 'It keeps listening until you say “over”, or press Done talking.']]) opt(title, sub, cur === sec, () => { ls.set('drivePause', String(sec)); send({ do: 'pause', seconds: sec }); render(); }); }
     s2.append(el('p', 'vtip', 'Whichever you choose, finishing with “over” or “that’s all” ends your turn straight away.'));
