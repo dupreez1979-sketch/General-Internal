@@ -315,16 +315,39 @@
   .bot-head .av { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-text, #fff); display: grid; place-items: center; font-size: 11px; }
   .bot-head b { font-size: 13px; }
   .bot-head .sp { flex: 1; }
-  .bot-head .seg .tb.on { background: var(--sel); }
-  .bot-chat { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .bot-chat { position: absolute; left: 0; right: 0; top: 43px; bottom: 0; display: flex; flex-direction: column; background: var(--win); visibility: hidden; pointer-events: none; z-index: 2; }
+  #cosBot.open.chat-on .bot-chat { visibility: visible; pointer-events: auto; }
+  .bot-chatbar { flex: none; display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-chatbar button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 2px 4px; }
+  .bot-ctx { flex: none; display: flex; align-items: center; gap: 6px; margin: 10px 12px 0; padding: 6px 10px; border-radius: 9px; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); font-size: 12px; } .bot-ctx[hidden] { display: none; } .bot-ctx b { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bot-ask { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px; }
+  .bot-talk { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-text, #fff); display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent); } .bot-talk svg { width: 20px; height: 20px; } .bot-talk:hover { filter: brightness(1.08); }
+  .bot-in { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; } .bot-in:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
+  #cosBot.listening .bot-ask { display: none; }
+  .bot-body { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); }
+  .bot-big { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 34px 18px 20px; text-align: center; } .bot-big[hidden], .bot-conv[hidden], .bot-list[hidden], .bot-foot[hidden], .bot-quick[hidden] { display: none; }
+  .bot-big .bigbtn { width: 116px; height: 116px; border-radius: 50%; border: 0; background: #c4353f; display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 0 10px rgba(196,53,63,.24), 0 0 0 22px rgba(196,53,63,.1); } .bot-big .bigbtn .wave { height: 34px; gap: 3.5px; } .bot-big .bigbtn .wave i { width: 3.5px; --c: #fff !important; background: #fff; }
+  .bot-big .said { font-size: 15px; font-weight: 600; max-width: 320px; line-height: 1.35; } .bot-big .h { color: var(--muted); font-size: 12px; }
+  .bot-conv { padding: 12px; display: grid; gap: 8px; }
+  .bot-conv .bq { justify-self: end; max-width: 86%; background: var(--accent); color: var(--accent-text, #fff); border-radius: 14px 14px 4px 14px; padding: 7px 12px; font-size: 13px; overflow-wrap: anywhere; }
+  .bot-conv .ba { justify-self: start; max-width: 96%; background: color-mix(in srgb, var(--accent) 9%, transparent); border-radius: 14px 14px 14px 4px; padding: 9px 12px; font-size: 13px; line-height: 1.45; display: flex; align-items: center; gap: 9px; overflow-wrap: anywhere; } .bot-conv .ba.fail { background: var(--field); color: var(--muted); } .bot-conv .ba .w { color: var(--muted); font-size: 12px; } .bot-conv .ba .wave { height: 16px; gap: 2px; } .bot-conv .ba .wave i { width: 2.5px; }
+  .bot-conv .bsrc { display: flex; flex-wrap: wrap; gap: 2px 12px; align-items: center; font-size: 11.5px; color: var(--muted); padding: 0 4px; } .bot-conv .bsrc button { font: inherit; font-size: 11.5px; border: 0; background: none; padding: 0; color: var(--accent); font-weight: 600; cursor: pointer; }
+  .bot-conv .bacts { display: grid; gap: 6px; margin: 2px 0 8px; }
+  .bot-conv .bact { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; border: 1px solid var(--line); border-radius: 11px; padding: 7px 10px; background: var(--win); color: var(--text); cursor: pointer; } .bot-conv .bact:hover { border-color: var(--accent); } .bot-conv .bact.pri { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .bot-conv .bact .ic, .bot-list .brow .ic { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 13px; background: color-mix(in srgb, var(--accent) 11%, transparent); color: var(--accent); }
+  .bot-conv .bact .tx, .bot-list .brow .tx { flex: 1; min-width: 0; display: grid; } .bot-conv .bact .tx b, .bot-list .brow .tx b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .bot-conv .bact .tx span, .bot-list .brow .tx span { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .bot-list .brow .tx span:empty { display: none; }
+  .bot-list .bh { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 6px 2px 0; }
+  .bot-list .brow { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; border: 0; background: none; color: var(--text); padding: 6px 2px; border-radius: 8px; cursor: pointer; width: 100%; } .bot-list .brow:hover { background: var(--hover); }
+  .bot-list .brow .ic.warn { background: color-mix(in srgb, #B36E24 18%, transparent); color: #B36E24; } .bot-list .brow .ic.ok { background: color-mix(in srgb, #328276 18%, transparent); color: #328276; } .bot-list .brow .ic.note { background: color-mix(in srgb, #FF4C80 14%, transparent); color: #FF4C80; }
+  .bot-list .brow .go { flex: none; font-size: 12px; color: var(--accent); font-weight: 600; }
+  .bot-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-foot span { flex: 1; } .bot-foot button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; }
+  dialog.bot-learn-dlg { width: min(520px, 92vw); } dialog.bot-learn-dlg .bl { max-height: 60vh; overflow: auto; margin: 6px 0 12px; }
+  .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 10px; }
   .bot-quick button { font: inherit; font-size: 11.5px; border: 1px solid var(--line); background: var(--win); color: var(--text); border-radius: 12px; padding: 3px 9px; cursor: pointer; }
   .bot-quick button:hover { border-color: var(--accent); }
   .bot-view { flex: 1; min-height: 0; display: flex; position: relative; }
   .bot-view webview { flex: 1; border: 0; }
   .bot-wait { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12.5px; pointer-events: none; }
-  .bot-list { position: absolute; left: 0; right: 0; bottom: 0; top: 43px; background: var(--win); overflow: auto; padding: 10px; display: grid; align-content: start; gap: 8px; }
-  #cosBot[data-tab="chat"] .bot-list { display: none; }
+  .bot-list { padding: 8px 12px 12px; display: grid; align-content: start; gap: 4px; }
   .bot-item { border-bottom: 1px solid var(--line); padding: 9px 2px 10px; display: grid; gap: 4px; font-size: 12.5px; }
   .bot-item:last-child { border-bottom: 0; }
   .bot-item .top { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -1942,11 +1965,15 @@
 <div id="cosBot" hidden>
   <div class="bot-tips"></div>
   <div class="bot-panel">
-    <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><div class="seg"><button class="tb" data-t="tips">Suggestions</button><button class="tb" data-t="learn" title="What the Chief of Staff has learned from what you accept and dismiss">Learned</button><button class="tb" data-t="chat">Chat</button></div><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
-    <div class="bot-chat"><div class="bot-quick"></div><div class="bot-view"><div class="bot-wait">Opening a chat with your Chief of Staff\u2026</div></div></div>
-    <div class="bot-list"></div>
+    <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
+    <div class="bot-ctx" hidden></div>
+    <div class="bot-ask"><button type="button" class="bot-talk"></button><input class="bot-in" placeholder="Ask, or tell me something…" autocomplete="off" spellcheck="true"></div>
+    <div class="bot-quick"></div>
+    <div class="bot-body"><div class="bot-big" hidden></div><div class="bot-conv" hidden></div><div class="bot-list"></div></div>
+    <div class="bot-foot" hidden></div>
+    <div class="bot-chat"><div class="bot-chatbar"><button type="button" data-a="chatback">‹ Back</button><span>The Chief of Staff’s chat in Claude</span></div><div class="bot-view"><div class="bot-wait">Opening a chat with your Chief of Staff…</div></div></div>
   </div>
-  <button class="bot-btn" title="Chief of Staff: suggestions and a chat on the side"><span class="av">CS</span><span class="badge" hidden></span></button>
+  <button class="bot-btn" title="Chief of Staff"><span class="av">CS</span><span class="badge" hidden></span></button>
 </div>
  <div id="dock" aria-label="Open beside"></div>
 <div id="sidePanel" hidden aria-label="Side panel"><div id="spRs" title="Drag to resize. Double-click to reset."></div><div id="spHead" class="sp-head"></div><div id="spMain"><div id="spNav" hidden></div><div id="spNavRs" title="Drag to resize. Double-click to reset."></div><div id="spBody" class="sp-body"></div></div><div id="spSplit" title="Drag to share the space between the two. Double-click to split evenly." hidden></div><div id="spHead2" class="sp-head" hidden></div><div id="spBody2" class="sp-body" hidden></div></div>
@@ -12380,6 +12407,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   setInterval(mailPoll, 60e3); setTimeout(mailPoll, 6000);
   async function mailOpen(m) {
+    try { if (bot.open) setTimeout(cosBotSoon, 400); } catch (e) { /* starting up */ }
     const s = mailState.sel, A = m._acc || (mailState.sel || {}).acc;
     if (m.isDraft) return mailCompose('draft', m);
     mailUi.msg = m; mailUi.msgOpen = true; mailUi.popMin = false; mailUi.msgBody = null; mailRenderMain();
@@ -14479,7 +14507,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const calHelp = { el: null, shade: null, view: null, timer: null, staff: null, prof: null };
   const calHelpStaff = prof => { const t = prof && cosTeam(prof), st = t ? t.nodes.filter(n => n.kind === 'staff') : []; return st.find(n => /executive assistant|personal assistant|\bEA\b|\bPA\b/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => /assistant/i.test(`${n.name} ${n.role || ''}`)) || st.find(n => n.chief) || st[0] || null; };
   function calHelpClose() { clearInterval(calHelp.timer); if (calHelp.el) { calHelp.el.remove(); calHelp.shade.remove(); } calHelp.el = calHelp.shade = calHelp.view = calHelp.timer = null; }
-  function calHelper(anchor, profIn) {
+  function calHelper(anchor, profIn, seedWords) {
     if (!isApp) return toast('This works in the desktop app.');
     const prof = profIn || activeProfile();
     if (!prof) { const r0 = anchor.getBoundingClientRect(); return showMenu(r0.left, r0.bottom + 4, calProfiles().map(p => ({ label: `For ${p.name}`, dot: p.color, run: () => calHelper(anchor, p) }))); }
@@ -14600,7 +14628,8 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     el.querySelector('.ch-go').addEventListener('click', go);
     say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
-    setTimeout(() => { if (calHelp.el === el && !dict.on) el.querySelector('.ch-mic').click(); }, 300);          // listening as it opens
+    if (seedWords) { say.value = String(seedWords); say.focus(); }          // (words handed over by the Chief of Staff: check them, then Make the Invite)
+    else setTimeout(() => { if (calHelp.el === el && !dict.on) el.querySelector('.ch-mic').click(); }, 300);          // listening as it opens
   }
   const CAL_MIC = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="5.8" y="1.8" width="4.4" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2.2M5.8 14.2h4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   async function chatSendTo(x, y) {
@@ -14695,7 +14724,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // is in (an email you are writing, a question for Claude, a meeting's notes, a staff member's role and so on).
   // Search boxes, names, addresses and links do not get one.
   const DICT_BOXES = 'textarea, .mc-ed, input[name="purpose"], #mailAi .ai-ask input, input[placeholder^="Ask"]';
-  const DICT_SKIP = '.cal-help, .mail-hand, .no-dict';          // (these have a Dictate button of their own)
+  const DICT_SKIP = '.cal-help, .mail-hand, .no-dict, .bot-ask';          // (these have a Dictate button of their own)
   (() => {
     if (!isApp) return;
     const mic = document.createElement('button'); mic.type = 'button'; mic.className = 'dict-float'; mic.innerHTML = CAL_MIC; mic.hidden = true;
@@ -16239,7 +16268,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const t = cosTeam();
       if (t && /\/chat\//.test(pathOf(u) || '') && t.botChat !== u) { t.botChat = u; saveCos(); }
     };
-    botView.addEventListener('dom-ready', () => { botViewReady = true; host.querySelector('.bot-wait').hidden = true; note(); botFlush(); botFocus(); });
+    botView.addEventListener('dom-ready', () => { botViewReady = true; host.querySelector('.bot-wait').hidden = true; note(); botFlush(); if (botS.chat) botFocus(); });
     ['did-navigate', 'did-navigate-in-page'].forEach(ev => botView.addEventListener(ev, note));
     return botView;
   }
@@ -16258,52 +16287,217 @@ body { width: max-content !important; min-width: 0 !important; }
     })()`).then(r => { if (r !== 'ok') { navigator.clipboard.writeText(text).catch(() => {}); toast('The question is copied: paste it into the Chief of Staff chat.'); } }).catch(() => {});
   }
   // Fill the Chief of Staff chat with a question (you check it and send it).
-  function botAsk(text) {
-    bot.open = true; bot.tab = 'chat'; saveBot();
-    botPending = text;
-    cosBotRender();
-    botEnsureView();
-    botFlush();
-  }
+  // A question from a suggestion: asked of Claude, and answered in the panel.
+  function botAsk(text) { botAskNew(text, { claude: true, label: text.replace(/\s+/g, ' ').slice(0, 90) + (text.length > 90 ? '\u2026' : '') }); }
   function botNewChat() {
     const t = cosTeam();
     if (t) { delete t.botChat; saveCos(); }
     if (botView) { botViewReady = false; try { botView.loadURL(botStartUrl()); } catch (e) { botView.setAttribute('src', botStartUrl()); } }
+    for (const e of botS.conv) clearInterval(e.timer); botS.conv = []; botS.ruled = null; cosBotRender();
     toast('A new conversation with your Chief of Staff');
+  }
+  // ===== The Chief of Staff panel: one surface. Talk or type at the top, what needs you underneath. =====
+  // Simple questions are answered on this Mac from what the app already holds; anything that needs thinking goes to the
+  // Chief of Staff's Claude chat (kept out of sight in the panel) and the answer is shown here, with what to do next.
+  const botS = { conv: [], tidy: false, chat: false, n: 0, poll: null, ruled: null };
+  const BOT_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  const botIn = () => $('cosBot').querySelector('.bot-in');
+  const botListening = () => !!(dict.on && dict.on.box === botIn());
+  // What is in front of you, so "this" means something.
+  function botCtx() {
+    try {
+      if (currentApp === 'mail' && mailUi.msg) { const m = mailUi.msg, from = (m.from || {}).emailAddress || {}; return { kind: 'mail', label: m.subject || '(no subject)', msg: m, text: `An email I have open. From: ${from.name || ''} <${from.address || ''}>. Subject: ${m.subject || ''}. It says: ${String(m.bodyPreview || '').slice(0, 600)}` }; }
+      if (currentApp === 'cal') return { kind: 'cal', label: 'Your calendar', text: 'I am looking at my calendar.' };
+      const c = botCurrent(); if (c) return { kind: 'work', label: c.name, text: `I am looking at “${c.name}”${c.url ? ` (${c.url})` : ''}.` };
+    } catch (e) { /* nothing in front */ }
+    return null;
+  }
+  // The brief: today's meetings, what needs you, and where the team is, from what the app already holds.
+  function botBrief() {
+    const p = activeProfile(), t = cosTeam(p), out = [], now = Date.now();
+    const today = [];
+    try {
+      const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a.getTime() + 864e5);
+      for (const i of calVisible(a, b)) { if (i.allDay || i.end < now) continue; today.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: (i.ev && i.ev.location) ? String(i.ev.location).slice(0, 60) : (i.start <= now ? 'On now' : ''), go: 'Open', run: () => setApp('cal') }); if (today.length >= 4) break; }
+    } catch (e) { /* no calendar yet */ }
+    if (today.length) out.push({ h: 'Today', items: today });
+    const needs = [];
+    try { const cn = claraDash.items ? claraDashLive().filter(x => x.needs) : claraState.items.filter(x => x.st.k === 'needs'); if (cn.length) needs.push({ ic: 'warn', title: cn.length === 1 ? 'Clara needs you on one meeting' : `Clara needs you on ${cn.length} meetings`, sub: String(cn[0].title || '').slice(0, 70), go: 'Open', run: () => claraPanel() }); } catch (e) { /* Clara not set up */ }
+    try { const n = mailBadgeCount(); if (n) needs.push({ ic: 'mail', title: `${n} unread email${n === 1 ? '' : 's'} in your Inbox`, sub: '', go: 'See', run: () => setApp('mail') }); } catch (e) { /* no mail yet */ }
+    if (needs.length) out.push({ h: 'Needs you', items: needs });
+    const team = [];
+    if (t) {
+      const counts = []; let phone = null;
+      for (const st of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) {
+        const f = staffFolder(st, p); if (!f) continue;
+        const all = []; const w = list => (list || []).forEach(x => x.type === 'folder' ? (x.skillsFolder ? null : w(x.children)) : all.push(x)); w(f.children);
+        const open = all.filter(x => !x.done), done = all.filter(x => x.done && x.doneAt && now - x.doneAt < 2 * 864e5 && !x.fromDrive);
+        if (open.length) counts.push(`${st.name} ${open.length}`);
+        for (const d of done.slice(0, 1)) if (team.length < 3) team.push({ ic: 'ok', title: `${st.name} finished “${String(d.name).slice(0, 60)}”`, sub: '', go: 'Open', run: () => { setApp('cos'); openStaff(st.id); } });
+        const note = open.find(x => x.fromNote); if (note && !phone) phone = { ic: 'note', title: `From your phone: “${String(note.name).slice(0, 60)}”`, sub: `On the ${st.name}’s list`, go: 'Open', run: () => { setApp('cos'); openStaff(st.id); } };
+      }
+      if (counts.length) team.push({ ic: 'team', title: 'Open actions', sub: counts.slice(0, 6).join(' · '), go: 'Team', run: () => setApp('cos') });
+      if (phone) team.push(phone);
+    }
+    if (team.length) out.push({ h: 'The team', items: team });
+    return out;
+  }
+  const botBriefText = () => botBrief().map(s => `${s.h}: ${s.items.map(i => i.title + (i.sub ? ' (' + i.sub + ')' : '')).join('; ')}.`).join(' ');
+  // Short notes about the team, for answering on this Mac.
+  function botNotes() {
+    const p = activeProfile(), t = cosTeam(p), L = [];
+    if (t) for (const st of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) {
+      const f = staffFolder(st, p), open = [], done = []; const w = list => (list || []).forEach(x => x.type === 'folder' ? (x.skillsFolder ? null : w(x.children)) : (x.done ? done : open).push(x.name)); if (f) w(f.children);
+      L.push(`${st.name}${st.role ? ' (' + st.role + ')' : ''}: ${open.length ? 'open: ' + open.slice(0, 8).join('; ') : 'nothing open'}${done.length ? '. Finished lately: ' + done.slice(-4).join('; ') : ''}`);
+    }
+    const b = botBriefText(); if (b) L.unshift(b);
+    return L.join('\n').slice(0, 3500);
+  }
+  function botSpeak(text) { try { if (ls.get('claudeNavigator.sounds') === 'off' || !text) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 900)); u.lang = 'en-AU'; speechSynthesis.speak(u); } catch (e) { /* no voice */ } }
+  const BOT_FACT = /\b(what|who|which|where|when|how many|anything|is there|are there|status|up to|open|working on|brief me)\b/i, BOT_THINK = /\b(should|advice|advise|recommend|write|draft|why|think|plan|idea|suggest|find out|search|look up|notes|granola|email|explain|compare)\b/i;
+  async function botAskNew(text, opt = {}) {
+    text = String(text || '').trim(); if (!text) return;
+    const e = { id: ++botS.n, q: opt.label || text, ask: text, a: '', src: '', busy: true, acts: [], voice: !!opt.voice, ctx: botCtx() };
+    botS.conv.push(e); if (botS.conv.length > 12) botS.conv.shift();
+    bot.open = true; botS.chat = false; saveBot(); cosBotRender();
+    const finish = () => { e.busy = false; chime(e.fail ? 'no' : 'ready'); cosBotRender(); if (e.voice && !e.fail) botSpeak(e.a); };
+    if (!opt.claude && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text)) {
+      try {
+        if (await localAiReady()) {
+          const ins = 'You are a chief of staff answering your principal. Answer only from the team notes you are given. One to three short plain sentences. No lists, no symbols, no dashes. Name the staff member and the items. Never say anything was sent or booked. If the notes do not hold the answer, or the question asks you to think, advise, write or find something out, reply with exactly the one word CLAUDE.';
+          const r = await new Promise(res => { const run = localAiRun(ins, `Team notes:\n${botNotes()}\n\n${e.ctx ? 'In front of me: ' + e.ctx.text + '\n\n' : ''}Question: ${text}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'slow' }); } }, 9000); });
+          const outText = r && !r.error ? draftClean(String(r.text || '')).replace(/\s+/g, ' ').replace(/\s*[—–]\s*/g, ', ').trim() : '';
+          if (outText && !/\bCLAUDE\b/.test(outText) && botS.conv.includes(e)) { e.a = outText; e.src = 'mac'; return finish(); }
+        }
+      } catch (er) { /* Claude answers instead */ }
+    }
+    if (botS.conv.includes(e)) botAskClaude(e, finish);
+  }
+  function botAskClaude(e, finish) {
+    const v = botEnsureView(); e.src = 'claude';
+    if (!v) { e.a = 'Claude answers in the desktop app.'; e.fail = true; return finish(); }
+    const p = activeProfile(), t = cosTeam(p), names = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name).join('; ') : '';
+    const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), first = botS.ruled !== v;
+    const rule = `Answer in plain sentences, at most 90 words, no lists, no headings, no links. Never say something was sent or booked: emails and invitations are only ever drafts for me to check and send myself. Put your answer between [[SAY]] and [[END]]. After that, only when there is a clear next step, add up to three lines, each in exactly one of these forms:\n[[DO]] action | the staff member’s name exactly as given | the action in a few words\n[[DO]] email | who it is to | the subject | what it should say, in one or two sentences\n[[DO]] meeting | the meeting in one sentence, with the day and time if known\nThen finish with [[DONE]]. Do this for every message in this chat.`;
+    const prompt = [first ? `I am asking you through the Chief of Staff panel in Claude Navigator. You are my Chief of Staff${p ? ' at ' + p.name : ''}. ${rule}\n\nThe staff: ${names}.\n\nWhere things are right now:\n${botNotes()}` : '(Same form as before: [[SAY]] answer [[END]], any [[DO]] lines, then [[DONE]].)', e.ctx ? `In front of me: ${e.ctx.text}` : '', `I said: ${e.ask}`].filter(Boolean).join('\n\n');
+    const text = `${prompt}\n\nDo not repeat this line in your answer: ${nonce}`;
+    let tries = 0, ticks = 0, last = '', stable = 0, sent = false;
+    const send = () => { if (!botS.conv.includes(e)) return; let ready = true; try { v.getURL(); } catch (er) { ready = false; }
+      if (!ready || !botViewReady) { if (++tries < 40) setTimeout(send, 700); return; }
+      v.executeJavaScript(SEND_PROMPT(text)).then(r => { if (r === 'none' || r === 'empty') { if (r === 'empty' && tries >= 2) { try { v.focus(); } catch (er) { /* not shown */ } } if (++tries < 12) setTimeout(send, 1500); else gaveUp = true; } else { sent = true; botS.ruled = v; } }).catch(() => { if (++tries < 40) setTimeout(send, 900); else gaveUp = true; }); };
+    let gaveUp = false;
+    send();
+    clearInterval(e.timer);
+    e.timer = setInterval(async () => {
+      if (!botS.conv.includes(e) || botView !== v) return clearInterval(e.timer);
+      const stop = (why) => { clearInterval(e.timer); if (why) { e.a = e.a || why; e.fail = true; } finish(); };
+      if (gaveUp && !sent) return stop('Claude did not take the question. Press Show the Chat: if it asks you to sign in, do that, then ask again.');
+      if (++ticks > 200) return stop(sent ? 'Claude has not answered yet. The question is in the chat: press Show the Chat to see it.' : 'Claude did not take the question. Press Show the Chat: if it asks you to sign in, do that, then ask again.');
+      let page = ''; try { page = String(await v.executeJavaScript('document.body ? document.body.innerText : ""') || ''); } catch (er) { return; }
+      const at = page.lastIndexOf(nonce); if (at < 0) return;
+      const body = page.slice(at + nonce.length), m = /\[\[\s*SAY\s*\]\]([\s\S]*?)(\[\[\s*END\s*\]\]|$)/i.exec(body); if (!m) return;
+      const said = m[1].replace(/\s+/g, ' ').trim(), ended = !!m[2], sig = body.length + '|' + said;
+      stable = sig === last ? stable + 1 : 0; last = sig;
+      if (said && said !== e.a) { e.a = said; botPaintConv(); }
+      if (!(/\[\[\s*DONE\s*\]\]/i.test(body) || (ended && stable >= 3) || (said && stable >= 9))) return;
+      const acts = []; const re = /\[\[\s*DO\s*\]\]\s*([^\n\[]+)/gi; let d;
+      while ((d = re.exec(body)) && acts.length < 3) { const f = d[1].split('|').map(x => x.trim()); const k = (f[0] || '').toLowerCase(); if (k === 'action' && f[2]) acts.push({ k, who: f[1], text: f[2] }); else if (k === 'email' && f[1]) acts.push({ k, who: f[1], subject: f[2] || '', text: f[3] || '' }); else if (k === 'meeting' && f[1]) acts.push({ k, text: f.slice(1).join(', ') }); }
+      e.acts = acts; stop('');
+    }, 1000);
+  }
+  // What an answer's buttons do. Emails and invitations open for you to check: nothing is sent.
+  function botStaffNamed(name) { const t = cosTeam(); if (!t) return null; const low = String(name || '').toLowerCase().replace(/^the\s+/, '').trim(); const S = t.nodes.filter(x => x.kind === 'staff' && !x.chief); return S.find(x => x.name.toLowerCase() === low) || S.find(x => low && (x.name.toLowerCase().includes(low) || low.includes(x.name.toLowerCase()))) || null; }
+  function botAddAction(st, text) {
+    const f = st && staffFolder(st); if (!f) return toast('That staff member has no folder yet.');
+    const name = String(text).replace(/\s+/g, ' ').trim().slice(0, 200); if (!name) return;
+    if (!workItems(f).some(x => x.name === name)) { insertInto(f.id, Object.assign(Link(name, 'https://claude.ai/new?q=' + encodeURIComponent(name)), { fromChief: true })); save(); try { if (currentApp === 'cos') renderCos(); else renderAll(); } catch (e) { /* drawn next time */ } }
+    chime('made'); toast(`Added to the ${st.name}’s actions.`);
+    return true;
+  }
+  function botPickStaff(anchor, text) {
+    const t = cosTeam(), r = anchor.getBoundingClientRect(); if (!t) return;
+    showMenu(r.left, r.top - 8, [{ head: 'An action for…' }].concat(t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(st => ({ label: st.name, dot: st.color, run: () => botAddAction(st, text) }))));
+  }
+  async function botRunAct(a, btn, e) {
+    if (a.k === 'action') { const st = botStaffNamed(a.who); if (!st) return botPickStaff(btn, a.text); if (botAddAction(st, a.text)) { a.did = true; botPaintConv(); } return; }
+    if (a.k === 'email') {
+      try { setApp('mail'); } catch (er) { /* already there */ }
+      const s = mailState.sel, acc = (s && s.acc === '*' ? mailVisible()[0] : mailAccOf()) || mailVisible()[0]; if (!acc) return toast('Add a mail account first.');
+      let to = { found: [], missing: [] }; try { to = await mailFindPeople(acc.id, a.who); } catch (er) { /* typed by hand instead */ }
+      bot.open = false; saveBot(); cosBotRender();
+      await mailCompose('new', null, { acc: acc.id, to: (to.found || []).join(', '), subject: a.subject, text: a.text });
+      if ((to.missing || []).length) toast(`No address found for ${to.missing.join(', ')}. Add it in To.`);
+      return;
+    }
+    if (a.k === 'meeting') { bot.open = false; saveBot(); cosBotRender(); try { setApp('cal'); } catch (er) { /* already there */ } return calHelper($('cosBot').querySelector('.bot-btn'), activeProfile(), a.text); }
+  }
+  function botPaintConv() {
+    const host = $('cosBot').querySelector('.bot-conv'); if (!host) return;
+    host.replaceChildren();
+    for (const e of botS.conv) {
+      host.appendChild(Object.assign(document.createElement('div'), { className: 'bq', textContent: e.q }));
+      const a = document.createElement('div'); a.className = 'ba' + (e.fail ? ' fail' : '');
+      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude…' : 'Checking…' })); } else a.textContent = e.a;
+      host.appendChild(a);
+      if (e.busy) continue;
+      const src = document.createElement('div'); src.className = 'bsrc';
+      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.src === 'mac' ? 'Answered on your Mac' : 'Answered by Claude' }));
+      const lnk = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', run); src.appendChild(b); };
+      if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
+      if (e.src === 'claude') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
+      if (!e.fail) lnk('Read aloud', () => botSpeak(e.a));
+      host.appendChild(src);
+      if (e.fail) continue;
+      const acts = document.createElement('div'); acts.className = 'bacts';
+      const btn = (cls, ic, title, sub, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'bact ' + cls; b.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span>'; b.querySelector('.ic').textContent = ic; b.querySelector('b').textContent = title; b.querySelector('.tx span').textContent = sub; b.addEventListener('click', () => run(b)); acts.appendChild(b); return b; };
+      e.acts.forEach((x, i) => {
+        if (x.k === 'action') btn(i ? '' : 'pri', x.did ? '✓' : '+', x.did ? 'Added' : `Make it an action for the ${botStaffNamed(x.who) ? botStaffNamed(x.who).name : x.who || 'team'}`, `“${x.text}”`, b => botRunAct(x, b, e));
+        else if (x.k === 'email') btn(i ? '' : 'pri', '✉', `Draft the email to ${x.who}`, 'Opens as a draft. You send it.', b => botRunAct(x, b, e));
+        else btn(i ? '' : 'pri', '▦', 'Set up the meeting', x.text, b => botRunAct(x, b, e));
+      });
+      if (!e.acts.some(x => x.k === 'action')) btn('', '+', 'Make it an action…', 'Choose who picks it up', b => botPickStaff(b, e.q));
+      host.appendChild(acts);
+    }
+    const body = $('cosBot').querySelector('.bot-body'); if (body && botS.conv.length) body.scrollTop = body.scrollHeight;
+  }
+  async function botTalk() {
+    if (!cosTeam() || !activeProfile()) return;
+    const inp = botIn();
+    if (botListening()) return dictStop();
+    try { speechSynthesis.cancel(); } catch (e) { /* no voice */ }
+    bot.open = true; botS.chat = false; saveBot(); inp.value = ''; cosBotRender();
+    const ok = await dictate(inp, { tidy: false, onDone: () => { const v = inp.value.trim(); inp.value = ''; cosBotRender(); if (v) botAskNew(v, { voice: true }); } });
+    if (!ok) toast('Click in the box and press your Mac’s dictation key (or Fn twice).');
+    cosBotRender();
+    clearInterval(botS.poll); botS.poll = setInterval(() => { const big = $('cosBot').querySelector('.bot-big .said'); if (!botListening()) { clearInterval(botS.poll); return cosBotRender(); } if (big) big.textContent = inp.value.trim() ? `“${inp.value.trim().slice(-140)}”` : 'Say it…'; }, 300);
+  }
+  function botLearnedDlg() {
+    const d = mailDlg('bot-learn-dlg', '<h2>What the Chief of Staff has learned</h2><div class="bl"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const paint = () => { const host = d.querySelector('.bl'); host.replaceChildren(); botPaintLearned(host); };
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    d.addEventListener('click', e => { if (e.target.closest('.bot-learn button')) setTimeout(() => { if (d.isConnected) paint(); }, 50); });
+    paint();
   }
   function cosBotRender() {
     const el = $('cosBot');
     const t = cosTeam();
-    const on = currentApp === 'cos' && !!activeProfile() && !!t;
+    const on = !!activeProfile() && !!t && ['cos', 'mail', 'cal', 'navigator'].includes(currentApp);
     el.hidden = !on;
     if (!on) return;
     // A different profile has its own Chief of Staff chat.
-    if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; el.querySelector('.bot-wait').hidden = false; }
+    if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; botS.ruled = null; botS.conv = []; el.querySelector('.bot-wait').hidden = false; }
     botList = botSuggestions();
     el.classList.toggle('open', !!bot.open);
-    el.dataset.tab = bot.tab;
+    el.classList.toggle('chat-on', !!botS.chat);
     const btn = el.querySelector('.bot-btn');
     btn.classList.toggle('quiet', !!bot.quiet);
-    const badge = btn.querySelector('.badge');
-    badge.hidden = !botList.length || bot.open;
-    badge.textContent = botList.length > 9 ? '9+' : String(botList.length);
-    btn.title = `Chief of Staff: ${botList.length ? `${botList.length} suggestion${botList.length === 1 ? '' : 's'}` : 'nothing to flag right now'}. Click for suggestions and a chat on the side.${bot.quiet ? ' (Quiet: suggestions do not pop up.)' : ''}`;
-    el.querySelectorAll('.bot-head .seg .tb').forEach(b => b.classList.toggle('on', b.dataset.t === bot.tab));
+    let needs = 0; try { needs = (botBrief().find(s => s.h === 'Needs you') || { items: [] }).items.length; } catch (e) { /* starting up */ }
+    const count = botList.length + needs, badge = btn.querySelector('.badge');
+    badge.hidden = !count || bot.open;
+    badge.textContent = count > 9 ? '9+' : String(count);
+    btn.title = `Chief of Staff: ${count ? `${count} thing${count === 1 ? '' : 's'} for you` : 'nothing to flag right now'}. Click to ask, talk, or see today.${bot.quiet ? ' (Quiet: nothing pops up.)' : ''}`;
     el.querySelector('[data-a="more"]').innerHTML = UI.more;
     el.querySelector('[data-a="min"]').innerHTML = FICON.hide;
-    // The full list.
-    const list = el.querySelector('.bot-list');
-    list.replaceChildren();
-    if (!botList.length && bot.tab !== 'learn') {
-      const e = document.createElement('div');
-      e.className = 'bot-empty';
-      e.textContent = 'Nothing to flag right now. When something you are on already exists, finished work is not filed, or two people are on the same thing, it shows up here.';
-      list.appendChild(e);
-    }
-    if (bot.tab === 'learn') botPaintLearned(list);
-    else for (const sg of botList) list.appendChild(botCard(sg, 'bot-item'));
-    if (bot.tab === 'learn') { const e = list.querySelector('.bot-empty'); if (e && botList.length) e.remove(); }
-    if (bot.tab === 'chat' && bot.open) botEnsureView();
     // New suggestions pop up briefly beside the button (not while the panel is open, or when Quiet).
     const tips = el.querySelector('.bot-tips');
     tips.replaceChildren();
@@ -16312,6 +16506,43 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const sg of fresh) tips.appendChild(botCard(sg, 'bot-tip'));
     clearTimeout(botTipTimer);
     if (fresh.length) botTipTimer = setTimeout(() => tips.replaceChildren(), 15000);
+    if (!bot.open) return;
+    const listening = botListening(), ctx = botCtx();
+    el.classList.toggle('listening', listening);
+    const talk = el.querySelector('.bot-talk'); talk.innerHTML = BOT_MIC; talk.title = 'Talk to your Chief of Staff';
+    // what is in front of you
+    const cx = el.querySelector('.bot-ctx'); cx.hidden = !ctx || listening;
+    if (ctx) { cx.replaceChildren(); cx.appendChild(Object.assign(document.createElement('span'), { textContent: ctx.kind === 'mail' ? '✉' : ctx.kind === 'cal' ? '▦' : '◉' })); cx.appendChild(Object.assign(document.createElement('b'), { textContent: 'About: ' + ctx.label })); }
+    botIn().placeholder = ctx && ctx.kind === 'mail' ? 'Ask about this email…' : 'Ask, or tell me something…';
+    // quick questions (ones about what is in front of you first)
+    const q = el.querySelector('.bot-quick'); q.replaceChildren(); q.hidden = listening;
+    const chip = (label, tip, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.title = tip; b.addEventListener('click', run); q.appendChild(b); };
+    if (ctx && ctx.kind === 'mail') {
+      chip('Who should pick this up?', 'Which staff member this email belongs with', () => botAskNew('Who on the team should pick up this email, and what should they do with it?', { label: 'Who should pick this up?', claude: true }));
+      chip('Make it an action', 'Put this email on a staff member’s list', e => botPickStaff(e.currentTarget, `Email: ${ctx.label}`));
+      chip('Reply', 'Start a reply to this email', () => { bot.open = false; saveBot(); cosBotRender(); mailCompose('reply', ctx.msg); });
+    }
+    chip('Brief me', 'Today, what needs you, and the team: read aloud', () => { botS.conv = []; cosBotRender(); const s = botBriefText(); botSpeak(s || 'Nothing needs you right now.'); });
+    for (const [label, text] of botQuick().filter(x => x[0] !== 'Where should this go?').slice(0, ctx && ctx.kind === 'mail' ? 1 : 3)) { const name = label === 'Today' ? 'Plan my day' : label; chip(name, text.slice(0, 300), () => botAskNew(text, { label: name, claude: true })); }
+    // the body: talking, a conversation, or today
+    const body = el.querySelector('.bot-body'), big = el.querySelector('.bot-big'), conv = el.querySelector('.bot-conv'), list = el.querySelector('.bot-list'), foot = el.querySelector('.bot-foot');
+    big.hidden = !listening; conv.hidden = listening || !botS.conv.length; list.hidden = listening || !!botS.conv.length;
+    if (listening) { big.replaceChildren(); const b = document.createElement('button'); b.type = 'button'; b.className = 'bigbtn'; b.title = 'Press when you have finished'; b.appendChild(waveEl(13, 'live')); b.addEventListener('click', () => dictStop()); big.appendChild(b); big.appendChild(Object.assign(document.createElement('div'), { className: 'said', textContent: 'Say it…' })); big.appendChild(Object.assign(document.createElement('div'), { className: 'h', textContent: 'Listening. Press the button when you have finished.' })); }
+    if (botS.conv.length) botPaintConv();
+    list.replaceChildren();
+    if (!botS.conv.length && !listening) {
+      const brief = botBrief();
+      for (const s of brief) {
+        list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: s.h }));
+        for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').textContent = { cal: '▦', warn: '!', mail: '✉', ok: '✓', note: '✎', team: '◎' }[i.ic] || '•'; r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
+      }
+      if (!brief.length && !botList.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'bot-empty', textContent: 'Nothing needs you right now. Ask a question, or press the button and talk.' }));
+      if (botS.tidy && botList.length) { list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: 'Tidy up' })); for (const sg of botList) list.appendChild(botCard(sg, 'bot-item')); }
+    }
+    foot.replaceChildren(); foot.hidden = listening || (!botS.conv.length && !botList.length);
+    if (botS.conv.length) { const b = document.createElement('button'); b.type = 'button'; b.textContent = '‹ Today'; b.title = 'Back to today (the conversation stays in the chat)'; b.addEventListener('click', () => { for (const e of botS.conv) clearInterval(e.timer); botS.conv = []; try { speechSynthesis.cancel(); } catch (er) { /* no voice */ } cosBotRender(); }); foot.appendChild(b); }
+    else if (botList.length) { foot.appendChild(Object.assign(document.createElement('span'), { textContent: `${botList.length} thing${botList.length === 1 ? '' : 's'} to tidy up` })); const b = document.createElement('button'); b.type = 'button'; b.textContent = botS.tidy ? 'Hide' : 'Tidy Up'; b.addEventListener('click', () => { botS.tidy = !botS.tidy; cosBotRender(); }); foot.appendChild(b); }
+    if (botS.chat) botEnsureView();
   }
   function botCard(sg, cls) {
     const c = document.createElement('div');
@@ -16589,29 +16820,25 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   (() => {
     const el = $('cosBot');
-    el.querySelector('.bot-btn').addEventListener('click', () => { bot.open = !bot.open; saveBot(); cosBotRender(); if (bot.open && bot.tab === 'chat') setTimeout(botFocus, 100); });
-    el.querySelector('.bot-head .seg').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (!b) return; bot.tab = b.dataset.t; saveBot(); cosBotRender(); if (bot.tab === 'chat') setTimeout(botFocus, 100); });
-    el.querySelector('[data-a="min"]').addEventListener('click', () => { bot.open = false; saveBot(); cosBotRender(); });
+    el.querySelector('.bot-btn').addEventListener('click', () => { bot.open = !bot.open; if (!bot.open) { botS.chat = false; try { speechSynthesis.cancel(); } catch (e) { /* no voice */ } } saveBot(); cosBotRender(); if (bot.open) setTimeout(() => { try { botIn().focus(); } catch (e) { /* hidden */ } }, 60); });
+    el.querySelector('[data-a="min"]').addEventListener('click', () => { bot.open = false; botS.chat = false; try { speechSynthesis.cancel(); } catch (e) { /* no voice */ } saveBot(); cosBotRender(); });
+    el.querySelector('.bot-talk').addEventListener('click', () => botTalk());
+    el.querySelector('.bot-in').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); e.stopPropagation(); const v = e.target.value.trim(); if (v && !botListening()) { e.target.value = ''; botAskNew(v); } } });
+    el.querySelector('[data-a="chatback"]').addEventListener('click', () => { botS.chat = false; cosBotRender(); });
     el.querySelector('[data-a="more"]').addEventListener('click', e => {
       const r = e.currentTarget.getBoundingClientRect();
       showMenu(r.left - 200, r.bottom + 4, [
         { label: 'New Conversation', run: botNewChat },
+        { label: botS.chat ? 'Hide the Chat' : 'Show the Chat', run: () => { botS.chat = !botS.chat; cosBotRender(); if (botS.chat) setTimeout(botFocus, 150); } },
         { label: 'Open the Chat in the Main View', run: () => { const t = cosTeam(); go({ kind: 'page', url: (t && t.botChat) || botStartUrl() }); } },
         '-',
+        { label: 'What I Have Learned\u2026', run: botLearnedDlg },
         { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });
-    // Quick questions.
-    const q = el.querySelector('.bot-quick');
-    const paintQuick = () => {
-      q.replaceChildren();
-      for (const [label, text] of botQuick()) { const b = document.createElement('button'); b.textContent = label; b.title = text.slice(0, 300); b.addEventListener('click', () => botAsk(text)); q.appendChild(b); }
-    };
-    el.addEventListener('mouseenter', paintQuick);
-    paintQuick();
   })();
 
   // ---------- Chief of Staff: make something new and link it ----------
@@ -17483,6 +17710,7 @@ body { width: max-content !important; min-width: 0 !important; }
       'toggle-side': () => (fr('side').hidden ? showFrame('side') : frameAction('side', 'hide')),
       'toggle-claude': () => (currentApp === 'cos' ? null : !pane.hidden ? closeClaude() : openClaude()),
       'toggle-split': () => setSplit(!splitOn),
+      'cos-talk': () => botTalk(),
       'toggle-detail': () => (currentApp !== 'cos' ? null : fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide')),
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
     };

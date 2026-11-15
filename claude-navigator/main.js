@@ -290,6 +290,8 @@ app.on('web-contents-created', (_event, contents) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return;
     // Show or hide the sidebar: Ctrl+Cmd+S on a Mac, Ctrl+Alt+S elsewhere.
     if (input.code === 'KeyS' && (isMac ? (input.control && input.meta && !input.alt) : (input.control && input.alt))) { event.preventDefault(); send('shortcut', 'toggle-side'); return; }
+    // Talk to the Chief of Staff from anywhere: Cmd+Shift+Space (Ctrl+Shift+Space elsewhere). Press again when you have finished.
+    if (input.code === 'Space' && input.shift && !input.alt) { event.preventDefault(); send('shortcut', 'cos-talk'); return; }
     // Cmd+Option+0..9: switch profile, even while typing in Claude.
     if (input.alt) {
       const m = /^Digit([0-9])$/.exec(input.code || '');
