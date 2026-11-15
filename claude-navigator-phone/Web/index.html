@@ -482,7 +482,15 @@
     const out = (text, who) => { if (sink) { sink(text, who); return true; } dnote('lane', { lane: 'instant' }); drive.log.push({ kind: 'talk', who: 'On your phone', text: said, answer: text.slice(0, 140), url: '' }); if (who) drive.who = who; chime('ready'); driveSay(text); return true; };
     { const km = REMEMBER.exec(said); if (km) { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'remember', text: km[1].replace(/\s+/g, ' ').slice(0, 240) }); saveChanges(); return out('I will remember that.'); } }
     if (/^(brief me|what needs (me|my attention)|what do i need to (do|know)|anything (for me|i need))\b/.test(low)) { const td = (t.today || []).map(x => x.text).filter(Boolean); return td.length ? out(`${td.length === 1 ? 'One thing needs' : td.length + ' things need'} you. ${td.slice(0, 4).join(' ')}${td.length > 4 ? ' The rest is on your phone.' : ''}`) : false; }
-    if (/\b(who is on what|who('?s| is) (doing|working on) what|where is (everyone|the team) up to|team (status|update))\b/.test(low)) { if (!staff.length) return false; const parts = staff.map(n => { const o = workOf(n.id).open.length; return `the ${n.name} has ${o || 'nothing'} open`; }); const line = joinUp(parts); return out(line.charAt(0).toUpperCase() + line.slice(1) + '.'); }
+    if (/\b(who is on what|who('?s| is) (doing|working on) what|where is (everyone|the team) up to|team (status|update))\b/.test(low)) { if (!staff.length) return false;
+      // Who actually has work, busiest first, with what it is: never a roll-call of everyone and a number.
+      const rows = staff.map(n => ({ n, o: workOf(n.id).open.filter(x => !x.waiting) })).filter(r => r.o.length).sort((x, y) => y.o.length - x.o.length), total = rows.reduce((c, r) => c + r.o.length, 0);
+      if (!rows.length) return out('Nothing is open with anyone.');
+      const late = rows.reduce((c, r) => c + r.o.filter(x => /^Overdue/.test(dueOf(x))).length, 0), idle = staff.length - rows.length;
+      const lead = `${total} thing${total === 1 ? ' is' : 's are'} open across ${rows.length} of your staff${late ? `, ${late} overdue` : ''}.`;
+      if (!sink) return out(`${lead} Most are with the ${rows[0].n.name}, who has ${rows[0].o.length}${rows[1] ? `, then the ${rows[1].n.name} with ${rows[1].o.length}` : ''}. Ask me about any one of them.`);
+      const first = x => { const d = dueOf(x); return String(x.name).slice(0, 60) + (d ? ` (${d.toLowerCase()})` : ''); };
+      return out([lead].concat(rows.slice(0, 8).map(r => { const o = r.o.slice().sort((x, y) => (x.due || '9') < (y.due || '9') ? -1 : 1); return `- ${r.n.name} (${o.length}): ${o.slice(0, 2).map(first).join('; ')}${o.length > 2 ? `; and ${o.length - 2} more` : ''}`; }), idle ? [`- Nothing open: ${idle} other${idle === 1 ? '' : 's'}`] : []).join('\n')); }
     if (named && !named.chief && /\b(open|outstanding|on (his|her|their|the) (list|plate)|working on|up to|to-?do|have on|got on)\b/.test(low) && !/\b(should|why|how|advice|advise|think|recommend|budget|email|file)\b/.test(low)) { const o = workOf(named.id).open.filter(x => !x.waiting).map(x => x.name); return out(o.length ? `The ${named.name} has ${o.length} open: ${joinUp(o.slice(0, 5))}${o.length > 5 ? ', and ' + (o.length - 5) + ' more' : ''}.` : `Nothing is open for the ${named.name}.`, named); }
     return false;
   }
