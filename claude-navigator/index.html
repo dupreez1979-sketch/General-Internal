@@ -358,18 +358,22 @@
   dialog.gran-dlg .gact { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; margin: 6px 0; background: color-mix(in srgb, var(--accent) 4%, transparent); } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
   dialog.gran-dlg .gact .gx { flex: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; padding: 0; } dialog.gran-dlg .gact .gx:hover { background: var(--hover); color: var(--text); }
   dialog.gran-dlg .gback { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 2px 4px; cursor: pointer; text-decoration: underline; }
-  .gma { padding: 4px 18px 24px; overflow: auto; flex: 1; min-height: 0; } .gma-lead { color: var(--muted); font-size: 13px; margin: 10px 0 12px; }
-  .gma-t { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--win); }
-  .gma-r { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 96px 250px; gap: 14px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); } .gma-r:first-child { border-top: 0; }
-  .gma-h { background: color-mix(in srgb, var(--text) 4%, transparent); padding: 6px 14px; } .gma-h button { font: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 0; background: none; text-align: left; padding: 2px 0; cursor: pointer; } .gma-h button:hover { color: var(--text); }
-  .gma .ga b { display: block; font-weight: 600; font-size: 13.5px; } .gma .ga span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+  .gma { padding: 0 0 24px; overflow: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; } .gma-lead { color: var(--muted); font-size: 13px; margin: 10px 18px 0; }
+  .gma-top { display: flex; align-items: center; gap: 12px; padding: 12px 18px 0; } .gma-find { margin-left: auto; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; width: min(280px, 40%); } .gma-find:focus { border-color: var(--accent); }
+  .gma-seg { display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); } .gma-seg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 5px 16px; border-radius: 7px; cursor: pointer; } .gma-seg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+  .gma .gma-list { flex: none; overflow: visible; padding: 8px 18px 0; } .gma .gma-list .crow { grid-template-columns: var(--gcols, minmax(240px, 2.4fr) 1.4fr 110px 250px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 0; padding: 8px 10px; } .gma .gma-list .crow[hidden] { display: none; } .gma .gma-list .crow:not(.h):hover { background: var(--hover); }
+  .gma .ga { display: grid; min-width: 0; } .gma .ga b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; } .gma .ga i { font-style: normal; color: var(--muted); font-size: 12px; margin-top: 1px; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .gma .gm { display: grid; gap: 3px; justify-items: start; min-width: 0; } .gma .gm .lnk { font: inherit; font-size: 12.5px; border: 0; background: none; color: var(--text); text-align: left; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; } .gma .gm .lnk:hover { text-decoration: underline; }
   .gma .gwhich { font: inherit; font-size: 11px; border: 1px dashed var(--line); border-radius: 999px; background: none; color: #B36E24; padding: 1px 8px; cursor: pointer; }
-  .gma .gw { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
-  .gma .gdo { display: flex; gap: 8px; justify-content: flex-end; } .gma .gdo select { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); max-width: 150px; } .gma .gdo .btn { font-size: 12px; padding: 4px 10px; white-space: nowrap; }
-  .gma-seg { display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); margin: 12px 0 0; } .gma-seg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 5px 16px; border-radius: 7px; cursor: pointer; } .gma-seg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
-  .gma-t.st .gma-r { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.1fr) 96px 150px; }
-  .gma-back { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 10px 4px; cursor: pointer; text-decoration: underline; }
+  .gma .gw { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gma .gdo { display: flex; gap: 8px; justify-content: flex-end; min-width: 0; } .gma .gdo select { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); min-width: 0; max-width: 150px; } .gma .gdo .btn { font-size: 12px; padding: 4px 10px; white-space: nowrap; flex: none; }
+  .gma-pick { font: inherit; font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); max-width: 260px; }
+  .gma-gh { display: flex; align-items: center; gap: 8px; padding: 10px 10px 6px; margin-top: 6px; cursor: pointer; font-size: 12.5px; border-bottom: 1px solid var(--line); user-select: none; } .gma-gh[hidden] { display: none; } .gma-gh:hover { background: var(--hover); }
+  .gma-gh b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .gma-gh .n { color: var(--muted); font-size: 11.5px; background: color-mix(in srgb, var(--text) 8%, transparent); border-radius: 999px; padding: 0 7px; }
+  .gma-gh .car { width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 6px solid var(--muted); transition: transform .12s; flex: none; } .gma-gh.shut .car { transform: rotate(-90deg); }
+  .gma .gma-list .crow.go { cursor: pointer; } .gma-grp { font-size: 12.5px; padding: 5px 12px; white-space: nowrap; }
+  .gma-none { color: var(--muted); font-size: 13px; padding: 14px 10px; } .gma-none[hidden] { display: none; }
+  .gma-back { align-self: flex-start; margin-left: 18px; font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 10px 4px; cursor: pointer; text-decoration: underline; }
   dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
   dialog.gran-dlg .gseg { flex: none; align-self: flex-start; display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); margin: 0 0 10px; } dialog.gran-dlg .gseg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 4px 16px; border-radius: 7px; cursor: pointer; } dialog.gran-dlg .gseg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
   dialog.gran-dlg .dlg-actions { flex-wrap: wrap; gap: 8px; } dialog.gran-dlg .dlg-actions .btn, dialog.gran-dlg .dlg-actions .btn-primary { white-space: nowrap; flex: none; }
@@ -17019,73 +17023,94 @@ body { width: max-content !important; min-width: 0 !important; }
   function granActionsPane(p) {
     const el = document.createElement('div'); el.className = 'gma';
     // Two lists on one page: what meetings threw up and nobody has yet, and what each member of staff already holds.
-    // Giving a meeting action to someone moves it from the first list to the second.
+    // Giving a meeting action to someone moves it from the first list to the second. Both are ordinary lists, like
+    // every other in the app: click a heading to sort, drag its edge to resize, and type to search.
     const view = ls.get('claudeNavigator.actView') === 'staff' ? 'staff' : 'meet', tm = cosTeam(p), people = tm ? tm.nodes.filter(x => x.kind === 'staff' && !x.chief) : [];
     const held = []; for (const st of people) { const f = staffFolder(st, p); if (f) for (const x of workItems(f)) if (!x.done && !inSkills(x.id) && !inArchive(x.id)) held.push({ st, x }); }
+    const top = document.createElement('div'); top.className = 'gma-top';
     { const seg = document.createElement('div'); seg.className = 'gma-seg';
       for (const [k, label] of [['meet', `From meetings${gran.on ? ' (' + granOpenCount(p) + ')' : ''}`], ['staff', `With staff (${held.length})`]]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = view === k ? 'on' : ''; b.addEventListener('click', () => { ls.set('claudeNavigator.actView', k); renderCos(); }); seg.appendChild(b); }
-      el.appendChild(seg); }
+      top.appendChild(seg); }
+    const find = document.createElement('input'); find.type = 'search'; find.className = 'gma-find'; find.placeholder = view === 'staff' ? 'Search actions or staff' : 'Search actions or meetings'; find.value = granActionsPane.q || ''; const pick = document.createElement('select'); pick.className = 'gma-pick'; pick.title = view === 'staff' ? 'Show one staff member\u2019s actions' : 'Show the actions from one meeting'; top.append(pick, find); find.style.marginLeft = '0'; pick.style.marginLeft = 'auto';
+    granActionsPane.f = granActionsPane.f || {}; granActionsPane.shut = granActionsPane.shut || new Set();
+    const grouped = ls.get('claudeNavigator.actGroup') !== 'off';
+    { const gb = document.createElement('button'); gb.type = 'button'; gb.className = 'btn gma-grp'; gb.textContent = grouped ? (view === 'staff' ? 'Grouped by Staff' : 'Grouped by Meeting') : 'One Long List'; gb.title = 'Switch between groups you can fold away and one long list'; gb.addEventListener('click', () => { ls.set('claudeNavigator.actGroup', grouped ? 'off' : 'on'); renderCos(); }); top.insertBefore(gb, pick); gb.style.marginLeft = 'auto'; pick.style.marginLeft = '0'; }
+    el.appendChild(top);
+    const lead = document.createElement('p'); lead.className = 'gma-lead'; el.appendChild(lead);
+    const day = t => new Date(t).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    // one list, built the way every list in the app is: a heading row from gridHead, and a row of cells for each line
+    const build = (key, cols, items, vals, cells, total, groupOf, groups, allLabel, onRow) => {
+      const l = document.createElement('div'); l.className = 'cos-list gma-list';
+      const hd = document.createElement('div'); hd.className = 'crow h'; l.appendChild(gridHead(hd, l, key, cols, { canClear: true, onSort: renderCos }));
+      const st = gridSortOf(key); if (st && vals[st.col]) items = items.slice().sort(gridCmp(st.dir, vals[st.col]));
+      const rows = [], heads = [];
+      const addRow = it => { const r = document.createElement('div'); r.className = 'crow'; const cs = cells(it); r.append(...cs); r.dataset.q = cs.slice(0, 3).map(c => c.textContent).join(' ').toLowerCase(); r.dataset.g = groupOf(it);
+        if (onRow) { r.classList.add('go'); r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; onRow(it); }); }
+        l.appendChild(r); rows.push(r); };
+      if (grouped) for (const [gid, label] of groups) {
+        const mine = items.filter(it => groupOf(it) === gid); if (!mine.length) continue;
+        const h = document.createElement('div'); h.className = 'gma-gh'; h.dataset.g = gid; h.innerHTML = '<span class="car"></span><b></b><span class="n"></span>'; h.querySelector('b').textContent = label; h.title = 'Click to fold this group away or open it';
+        h.addEventListener('click', () => { const k = view + ':' + gid; if (granActionsPane.shut.has(k)) granActionsPane.shut.delete(k); else granActionsPane.shut.add(k); filter(); });
+        l.appendChild(h); heads.push(h); mine.forEach(addRow);
+      } else items.forEach(addRow);
+      pick.replaceChildren(Object.assign(document.createElement('option'), { value: '', textContent: allLabel }));
+      for (const [id, label, n] of groups) pick.appendChild(Object.assign(document.createElement('option'), { value: id, textContent: `${label} (${n})` }));
+      pick.value = groups.some(g => g[0] === granActionsPane.f[view]) ? granActionsPane.f[view] : '';
+      const none = Object.assign(document.createElement('div'), { className: 'gma-none', textContent: 'Nothing matches that search.' }); none.hidden = true; l.appendChild(none);
+      const filter = () => { const q = find.value.trim().toLowerCase(), g = pick.value; granActionsPane.q = find.value; granActionsPane.f[view] = g; let n = 0; const per = {}; for (const r of rows) { const ok = (!g || r.dataset.g === g) && (!q || q.split(/\s+/).every(w => r.dataset.q.includes(w))); if (ok) { n++; per[r.dataset.g] = (per[r.dataset.g] || 0) + 1; } r.hidden = !ok || (grouped && granActionsPane.shut.has(view + ':' + r.dataset.g)); }
+        for (const h of heads) { const c = per[h.dataset.g] || 0, shut = granActionsPane.shut.has(view + ':' + h.dataset.g); h.hidden = !c; h.classList.toggle('shut', shut); h.querySelector('.n').textContent = c; }
+        none.hidden = !((q || g) && !n); lead.textContent = total(n, !!(q || g)); };
+      find.addEventListener('input', filter); pick.addEventListener('change', filter); filter();
+      return l;
+    };
+    const cell = (cls, kids) => { const c = document.createElement('span'); c.className = cls; c.append(...kids); return c; };
+    const two = (main, sub) => { const k = [Object.assign(document.createElement('b'), { textContent: main })]; if (sub) k.push(Object.assign(document.createElement('i'), { textContent: sub })); return cell('ga', k); };
+    const link = (text, title, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'lnk'; b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
+    const btn = (text, title, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     if (view === 'staff') {
-      const sort = (() => { try { return JSON.parse(ls.get('claudeNavigator.staffActSort') || '{}'); } catch (e) { return {}; } })(), k = sort.k || 'who', dir = sort.dir === -1 ? -1 : 1;
-      const val = r => (k === 'action' ? String(r.x.name || '').toLowerCase() : k === 'when' ? (r.x.added || 0) : r.st.name.toLowerCase());
-      held.sort((x, y) => (val(x) < val(y) ? -1 : val(x) > val(y) ? 1 : 0) * dir || (y.x.added || 0) - (x.x.added || 0));
-      el.appendChild(Object.assign(document.createElement('p'), { className: 'gma-lead', textContent: held.length ? `${held.length} open action${held.length === 1 ? '' : 's'} across ${people.length} staff${p ? ' in ' + p.name : ''}.` : 'Nobody has anything open.' }));
-      if (held.length) {
-        const tbl = document.createElement('div'); tbl.className = 'gma-t st';
-        const head = document.createElement('div'); head.className = 'gma-r gma-h';
-        for (const [key, label] of [['action', 'Action'], ['who', 'With'], ['when', 'Added']]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label + (k === key ? (dir > 0 ? ' \u2191' : ' \u2193') : ''); b.title = 'Sort by this'; b.addEventListener('click', () => { ls.set('claudeNavigator.staffActSort', JSON.stringify({ k: key, dir: k === key ? -dir : (key === 'when' ? -1 : 1) })); renderCos(); }); head.appendChild(b); }
-        head.appendChild(document.createElement('span')); tbl.appendChild(head);
-        for (const r of held) {
-          const row = document.createElement('div'); row.className = 'gma-r';
-          const c1 = document.createElement('div'); c1.className = 'ga'; c1.appendChild(Object.assign(document.createElement('b'), { textContent: r.x.name || '(No name)' })); if (r.x.why) c1.appendChild(Object.assign(document.createElement('span'), { textContent: r.x.why }));
-          const c2 = document.createElement('div'); c2.className = 'gm'; const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'lnk'; wb.textContent = r.st.name; wb.title = 'Open this staff member\u2019s page'; wb.addEventListener('click', () => { try { openStaff(r.st.id); cosUi.tab = 'work'; renderCos(); } catch (e) { /* not ready */ } }); c2.appendChild(wb);
-          const c3 = document.createElement('div'); c3.className = 'gw'; c3.textContent = r.x.added && r.x.added > 1e11 ? new Date(r.x.added).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
-          const c4 = document.createElement('div'); c4.className = 'gdo';
-          const op = document.createElement('button'); op.type = 'button'; op.className = 'btn'; op.textContent = 'Open'; op.title = 'Open it'; op.addEventListener('click', () => { try { openNode(r.x); } catch (e) { /* nothing to open */ } });
-          const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'btn'; dn.textContent = 'Done'; dn.title = 'Mark it done (it moves to their Archive)'; dn.addEventListener('click', () => { try { toggleDone(r.x.id); } catch (e) { /* drawn again */ } renderCos(); });
-          c4.append(op, dn); row.append(c1, c2, c3, c4); tbl.appendChild(row);
-        }
-        el.appendChild(tbl);
-      }
+      if (!held.length) { lead.textContent = 'Nobody has anything open.'; find.hidden = pick.hidden = true; return el; }
+      el.appendChild(build('actStaff',
+        [{ k: 'action', label: 'Action', def: 'minmax(240px, 2.6fr)', min: 160 }, { k: 'who', label: 'With', def: '1.2fr', min: 100 }, { k: 'when', label: 'Added', def: '110px', min: 80 }, { k: 'do', label: '', def: '150px', min: 120, sort: false }],
+        held, { action: r => r.x.name || '', who: r => r.st.name, when: r => r.x.added || 0 },
+        r => [two(r.x.name || '(No name)', r.x.why || ''),
+          cell('gm', [link(r.st.name, 'Open this staff member’s page', () => { try { openStaff(r.st.id); cosUi.tab = 'work'; renderCos(); } catch (e) { /* not ready */ } })]),
+          cell('gw', [r.x.added && r.x.added > 1e11 ? day(r.x.added) : '']),
+          cell('gdo', [btn('Open', 'Open it', () => { try { openNode(r.x); } catch (e) { /* nothing to open */ } }), btn('Done', 'Mark it done (it moves to their Archive)', () => { try { toggleDone(r.x.id); } catch (e) { /* drawn again */ } renderCos(); })])],
+        (n, q) => `${q ? n + ' of ' : ''}${held.length} open action${held.length === 1 ? '' : 's'} across ${people.length} staff${p ? ' in ' + p.name : ''}.`,
+        r => r.st.id, people.map(st => [st.id, st.name, held.filter(h => h.st === st).length]).filter(g => g[2]), 'All staff',
+        r => { try { openNode(r.x); } catch (e) { /* nothing to open */ } }));
       return el;
     }
-    if (!gran.on) { el.appendChild(Object.assign(document.createElement('p'), { className: 'gma-lead', textContent: 'Connect Granola and the actions from your meetings are listed here, ready to give to your staff or dismiss.' })); const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'btn'; cb.textContent = 'Connect Granola\u2026'; cb.addEventListener('click', () => granolaDlg()); el.appendChild(cb); return el; }
-    const days = granActDays(), meets = granRecent(p, days), t = cosTeam(p), staff = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief) : [];
+    if (!gran.on) { find.hidden = pick.hidden = true; lead.textContent = 'Connect Granola and the actions from your meetings are listed here, ready to give to your staff or dismiss.'; el.appendChild(btn('Connect Granola…', 'Sign in to Granola', () => granolaDlg())); return el; }
+    const days = granActDays(), meets = granRecent(p, days);
     // read the notes of any meeting not read yet, two at a time, and draw again as they arrive
-    const need = meets.filter(g => !gran.notes.get(g.id) && !g.reading);
-    need.slice(0, 2).forEach(g => { g.reading = true; granNotes(g.id).catch(() => null).then(() => { g.reading = false; granPaneSoon(); }); });
+    meets.filter(g => !gran.notes.get(g.id) && !g.reading).slice(0, 2).forEach(g => { g.reading = true; granNotes(g.id).catch(() => null).then(() => { g.reading = false; granPaneSoon(); }); });
     const rows = [];
-    for (const g of meets) { const n = gran.notes.get(g.id); if (!n || !n.actions) continue; n.actions.forEach((a, i) => { if (!granSkip.has(granKey(g.id, a))) rows.push({ g, a, sub: (n.actions.subs && n.actions.subs[i]) || '' }); }); }
-    const sort = (() => { try { return JSON.parse(ls.get('claudeNavigator.granActSort') || '{}'); } catch (e) { return {}; } })(), k = sort.k || 'when', dir = sort.dir === 1 ? 1 : -1;
-    const val = r => (k === 'action' ? r.a.toLowerCase() : k === 'meeting' ? r.g.title.toLowerCase() : r.g.at);
-    rows.sort((x, y) => (val(x) < val(y) ? -1 : val(x) > val(y) ? 1 : 0) * (k === 'when' ? dir : -dir) || y.g.at - x.g.at);
-    const reading = meets.filter(g => !gran.notes.get(g.id)).length, gone = meets.reduce((c, g) => { const n = gran.notes.get(g.id); return c + (n && n.actions ? n.actions.filter(a => granSkip.has(granKey(g.id, a))).length : 0); }, 0);
-    const lead = document.createElement('p'); lead.className = 'gma-lead';
-    lead.textContent = `${rows.length ? rows.length + ' action' + (rows.length === 1 ? '' : 's') + ' to give out or dismiss' : reading ? 'Reading the notes\u2026' : 'Nothing left to give out'}, from ${meets.length} meeting${meets.length === 1 ? '' : 's'} ${days === 7 ? 'this week' : 'in the last ' + days + ' days'}${p ? ' for ' + p.name : ''}.${reading && rows.length ? ' Still reading ' + reading + ' more.' : ''}`;
-    el.appendChild(lead);
-    if (rows.length) {
-      const tbl = document.createElement('div'); tbl.className = 'gma-t';
-      const head = document.createElement('div'); head.className = 'gma-r gma-h';
-      for (const [key, label] of [['action', 'Action'], ['meeting', 'Meeting'], ['when', 'When']]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label + (k === key ? (((key === 'when' ? dir : -dir) > 0) ? ' \u2191' : ' \u2193') : ''); b.title = 'Sort by this'; b.addEventListener('click', () => { ls.set('claudeNavigator.granActSort', JSON.stringify({ k: key, dir: k === key ? -dir : (key === 'when' ? -1 : -1) })); renderCos(); }); head.appendChild(b); }
-      head.appendChild(document.createElement('span')); tbl.appendChild(head);
-      for (const r of rows) {
-        const row = document.createElement('div'); row.className = 'gma-r';
-        const c1 = document.createElement('div'); c1.className = 'ga'; c1.appendChild(Object.assign(document.createElement('b'), { textContent: r.a })); if (r.sub) c1.appendChild(Object.assign(document.createElement('span'), { textContent: r.sub }));
-        const c2 = document.createElement('div'); c2.className = 'gm';
-        const mt = document.createElement('button'); mt.type = 'button'; mt.className = 'lnk'; mt.textContent = r.g.title; mt.title = 'Open this meeting\u2019s notes'; mt.addEventListener('click', () => granMeetingDlg(r.g)); c2.appendChild(mt);
-        if (!granProfOf(r.g) && profiles().length > 1) { const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'gwhich'; wb.textContent = 'Which company?'; wb.title = 'This meeting could belong to any of your companies. Say which, and it is remembered for the people who were in it.'; wb.addEventListener('click', e => { const q = e.currentTarget.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(z => ({ label: z.name, dot: z.color, run: () => { granProfSet(r.g, z.id); renderCos(); } }))); }); c2.appendChild(wb); }
-        const c3 = document.createElement('div'); c3.className = 'gw'; c3.textContent = new Date(r.g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
-        const c4 = document.createElement('div'); c4.className = 'gdo';
-        const sel = document.createElement('select'); sel.title = 'Put this on a staff member\u2019s list of actions';
-        sel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Give to\u2026' }));
-        for (const st of staff) sel.appendChild(Object.assign(document.createElement('option'), { value: st.id, textContent: st.name }));
-        sel.addEventListener('change', () => { const st = staff.find(z => z.id === sel.value); if (!st) return; const why = `${r.sub ? r.sub.replace(/[.\s]+$/, '') + '. ' : ''}From the meeting \u201C${r.g.title}\u201D on ${new Date(r.g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}${r.g.people.length ? ', with ' + r.g.people.map(z => z.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '').replace(/\S+@\S+/g, m => m.split('@')[0])).slice(0, 4).join(', ') : ''}.`; if (botAddAction(st, r.a, why)) { granSkip.add(granKey(r.g.id, r.a)); granSkipSave(); try { cosBotSoon(); } catch (e) { /* not showing */ } renderCos(); } else sel.value = ''; });
-        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn'; x.textContent = 'Dismiss'; x.title = 'Already done, or not needed'; x.addEventListener('click', () => { granSkip.add(granKey(r.g.id, r.a)); granSkipSave(); try { cosBotSoon(); } catch (e) { /* not showing */ } renderCos(); });
-        c4.append(sel, x); row.append(c1, c2, c3, c4); tbl.appendChild(row);
-      }
-      el.appendChild(tbl);
+    for (const g of meets) { const n = gran.notes.get(g.id); if (!n || !n.actions) continue; n.actions.forEach((a0, i) => { if (!granSkip.has(granKey(g.id, a0))) rows.push({ g, a: a0, sub: (n.actions.subs && n.actions.subs[i]) || '' }); }); }
+    rows.sort((x, y) => y.g.at - x.g.at);
+    const reading = meets.filter(g => !gran.notes.get(g.id)).length, gone = meets.reduce((c, g) => { const n = gran.notes.get(g.id); return c + (n && n.actions ? n.actions.filter(a0 => granSkip.has(granKey(g.id, a0))).length : 0); }, 0);
+    const scope = `from ${meets.length} meeting${meets.length === 1 ? '' : 's'} ${days === 7 ? 'this week' : 'in the last ' + days + ' days'}${p ? ' for ' + p.name : ''}`;
+    if (!rows.length) { find.hidden = pick.hidden = true; lead.textContent = `${reading ? 'Reading the notes…' : 'Nothing left to give out'}, ${scope}.`; }
+    else {
+      const why = r => `${r.sub ? r.sub.replace(/[.\s]+$/, '') + '. ' : ''}From the meeting “${r.g.title}” on ${day(r.g.at)}${r.g.people.length ? ', with ' + r.g.people.map(z => z.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '').replace(/\S+@\S+/g, m => m.split('@')[0])).slice(0, 4).join(', ') : ''}.`;
+      const skip = r => { granSkip.add(granKey(r.g.id, r.a)); granSkipSave(); try { cosBotSoon(); } catch (e) { /* not showing */ } renderCos(); };
+      el.appendChild(build('actMeet',
+        [{ k: 'action', label: 'Action', def: 'minmax(240px, 2.4fr)', min: 160 }, { k: 'meeting', label: 'Meeting', def: '1.4fr', min: 110 }, { k: 'when', label: 'When', def: '110px', min: 80 }, { k: 'do', label: '', def: '250px', min: 190, sort: false }],
+        rows, { action: r => r.a, meeting: r => r.g.title, when: r => r.g.at },
+        r => {
+          const mk = [link(r.g.title, 'Open this meeting’s notes', () => granMeetingDlg(r.g))];
+          if (!granProfOf(r.g) && profiles().length > 1) { const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'gwhich'; wb.textContent = 'Which company?'; wb.title = 'This meeting could belong to any of your companies. Say which, and it is remembered for the people who were in it.'; wb.addEventListener('click', e => { const q = e.currentTarget.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(z => ({ label: z.name, dot: z.color, run: () => { granProfSet(r.g, z.id); renderCos(); } }))); }); mk.push(wb); }
+          const sel = document.createElement('select'); sel.title = 'Put this on a staff member’s list of actions';
+          sel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Give to…' }));
+          for (const st of people) sel.appendChild(Object.assign(document.createElement('option'), { value: st.id, textContent: st.name }));
+          sel.addEventListener('change', () => { const st = people.find(z => z.id === sel.value); if (!st) return; if (botAddAction(st, r.a, why(r))) skip(r); else sel.value = ''; });
+          return [two(r.a, r.sub), cell('gm', mk), cell('gw', [day(r.g.at)]), cell('gdo', [sel, btn('Dismiss', 'Already done, or not needed', () => skip(r))])];
+        },
+        (n, q) => `${q ? n + ' of ' : ''}${rows.length} action${rows.length === 1 ? '' : 's'} to give out or dismiss, ${scope}.${reading ? ' Still reading ' + reading + ' more.' : ''}`,
+        r => r.g.id, meets.map(g => [g.id, `${g.title.slice(0, 44)}${g.title.length > 44 ? '\u2026' : ''}, ${day(g.at)}`, rows.filter(r => r.g === g).length]).filter(g => g[2]), 'All meetings',
+        r => granMeetingDlg(r.g)));
     }
-    if (gone) { const back = document.createElement('button'); back.type = 'button'; back.className = 'gma-back'; back.textContent = `${gone} given or dismissed. Show ${gone === 1 ? 'it' : 'them'} again`; back.addEventListener('click', () => { for (const g of meets) { const n = gran.notes.get(g.id); if (n && n.actions) n.actions.forEach(a => granSkip.delete(granKey(g.id, a))); } granSkipSave(); renderCos(); }); el.appendChild(back); }
+    if (gone) { const back = document.createElement('button'); back.type = 'button'; back.className = 'gma-back'; back.textContent = `${gone} given or dismissed. Show ${gone === 1 ? 'it' : 'them'} again`; back.addEventListener('click', () => { for (const g of meets) { const n = gran.notes.get(g.id); if (n && n.actions) n.actions.forEach(a0 => granSkip.delete(granKey(g.id, a0))); } granSkipSave(); renderCos(); }); el.appendChild(back); }
     if (!rows.length && !reading) granReviewDone();          // (cleared: the weekly note stops asking)
     return el;
   }
