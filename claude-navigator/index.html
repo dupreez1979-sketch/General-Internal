@@ -20,6 +20,7 @@
     --good: #2f7a5b; --caution: #a8641a; --danger: #c0392b;
     --good-soft: color-mix(in srgb, var(--good) 14%, transparent); --caution-soft: color-mix(in srgb, var(--caution) 16%, transparent); --danger-soft: color-mix(in srgb, var(--danger) 13%, transparent);
     --accent-ink: var(--accent);          /* the accent as text or an icon: the same as --accent in light, lightened in dark (step 5) */
+    --scrim: rgba(20,24,28,.30);          /* what dims the window behind a sheet */
 
     --side-w: 240px;
     --win: #ffffff;
@@ -44,7 +45,7 @@
       --hover: rgba(255,255,255,.05); --sel: rgba(255,255,255,.11); --accent: #0a84ff;
       --field: rgba(255,255,255,.08); --menu: rgba(42,42,42,.94); --menu-line: rgba(255,255,255,.12);
       --shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.14);
-      --tile-sel: rgba(255,255,255,.1);
+      --tile-sel: rgba(255,255,255,.1); --scrim: rgba(0,0,0,.5);
       color-scheme: dark;
     }
   }
@@ -1808,12 +1809,28 @@
   #menu .k { margin-left: auto; color: var(--muted); padding-left: 22px; letter-spacing: .5px; }
   #menu hr { border: 0; border-top: 1px solid var(--menu-line); margin: 5px 8px; }
 
+  /* A sheet: every pop-up window shares this corner, depth and title, and dims the window behind it. */
   dialog {
-    border: 0; border-radius: 12px; padding: 0; background: var(--menu); color: var(--text);
+    border: 0; border-radius: var(--r-sheet); padding: 0; background: var(--menu); color: var(--text);
     -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
-    box-shadow: var(--e-menu); width: min(420px, calc(100vw - 32px));
+    box-shadow: var(--e-sheet), 0 0 0 .5px var(--menu-line); width: min(420px, calc(100vw - 32px));
   }
-  dialog::backdrop { background: rgba(0,0,0,.18); }
+  dialog::backdrop { background: var(--scrim); }
+  dialog > h2, dialog > form > h2 { font-size: var(--fs-headline) !important; font-weight: var(--fw-bold) !important; }
+  /* Settings: one window, sections down the left, the chosen one on the right. A section is an ordinary sheet shown in place. */
+  dialog.settings-win { width: min(880px, 94vw); height: min(640px, 88vh); padding: 0; overflow: hidden; }
+  dialog.settings-win[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+  .set-nav { background: color-mix(in srgb, var(--tint, #8a8f98) 7%, var(--side)); border-right: 1px solid var(--line); padding: 44px 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+  .set-nav button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-2); padding: 6px 10px; border-radius: var(--r-control); font-size: var(--fs-body); cursor: default; }
+  .set-nav button:hover { background: var(--hover); } .set-nav button.on { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: var(--fw-bold); }
+  .set-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .set-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .set-host { flex: 1; min-height: 0; overflow: auto; padding: 22px 26px 8px; }
+  .set-foot { flex: none; display: flex; justify-content: flex-end; padding: 10px 20px 16px; border-top: 1px solid var(--line); }
+  dialog.dlg-in { position: static !important; display: block !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; resize: none !important; overflow: visible !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; color: inherit; }
+  dialog.dlg-in > h2 { margin: 0 0 8px; font-size: var(--fs-title) !important; }
+  dialog.dlg-in .dlg-actions [data-x="close"], dialog.dlg-in .dlg-actions [data-x="cancel"] { display: none; }
+  dialog.dlg-in .dlg-actions { margin-top: var(--sp-3); }
   dialog form { padding: 18px 20px 16px; display: grid; gap: var(--sp-3); }
   dialog h2 { margin: 0; font-size: var(--fs-body); font-weight: 700; }
   dialog label { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: 10px; font-size: var(--fs-body); text-align: right; }
@@ -12333,6 +12350,19 @@ body { width: max-content !important; min-width: 0 !important; }
     setTimeout(go, 500);
     setInterval(() => { if (!opened) return; const still = SOLO === 'mail' ? (mailUi.compose || (it.kind === 'msg' && mailUi.msg && mailUi.msgOpen)) : !!calUi.view; if (!still && !document.querySelector('dialog[open]')) window.close(); }, 500);
   }
+  // A yes-or-no question is asked on a sheet attached to the window, with the action's own name on the button and
+  // Cancel beside it, and a warning look when it destroys something. The first sentence is the question; the rest is
+  // the explanation under it. (Every existing confirm(...) and alert(...) in the app goes through here.)
+  (() => {
+    const box = o => { try { return isApp && window.navigatorApp.confirmBox ? window.navigatorApp.confirmBox(o) : null; } catch (e) { return null; } };
+    const split = msg => { const t = String(msg == null ? '' : msg).trim(), m = /^([\s\S]*?[?.!])(\s+|$)/.exec(t); return m && m[1].length < t.length ? { message: m[1].trim(), detail: t.slice(m[0].length).trim() } : { message: t, detail: '' }; };
+    const VERB = /^(Delete|Remove|Forget|Discard|Empty|Clear|Disconnect|Sign Out|Sign out|Unpin|Replace|Reset|Stop|Cancel|Move|Turn Off|Turn off|Leave|Restore|Send|Archive)\b/;
+    const askOld = window.confirm.bind(window), tellOld = window.alert.bind(window);
+    window.confirm = msg => { const p = split(msg), v = VERB.exec(p.message), ok = v ? v[1].replace(/\b[a-z]/g, c => c.toUpperCase()) : 'OK';
+      const r = box({ message: p.message, detail: p.detail, ok: ok === 'Cancel' ? 'Yes, Cancel It' : ok, danger: !!v && /^(Delete|Remove|Forget|Discard|Empty|Clear|Reset)$/i.test(v[1]) });
+      return r === null || r === undefined ? askOld(msg) : !!r; };
+    window.alert = msg => { const p = split(msg), r = box({ alert: true, message: p.message, detail: p.detail }); if (r === null || r === undefined) tellOld(msg); };
+  })();
   // Any dialog can be moved by its title.
   document.addEventListener('mousedown', e => {
     const h2 = e.target.closest && e.target.closest('dialog[open] > h2, dialog[open] > form > h2'); if (!h2 || e.button !== 0) return;
@@ -12681,7 +12711,14 @@ body { width: max-content !important; min-width: 0 !important; }
     return (doc.body.textContent || '').replace(/\u00a0/g, ' ').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
   } catch (e) { return ''; } };
   const mailHtml = text => mailEsc(String(text || '').trim()).replace(/\r?\n/g, '<br>');
-  const mailDlg = (cls, html) => { const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg ' + cls; d.innerHTML = html; document.body.appendChild(d); d.addEventListener('close', () => d.remove()); d.showModal(); return d; };
+  // (When Settings is showing a section, the sheet is drawn in place there instead of opening on top: mailDlg.into
+  //  names where, for the next sheet only. Closing such a sheet redraws its section, so it shows the new state.)
+  const mailDlg = (cls, html) => {
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg ' + cls; d.innerHTML = html;
+    const into = mailDlg.into; mailDlg.into = null;
+    if (into && into.host && into.host.isConnected) { d.classList.add('dlg-in'); d.setAttribute('open', ''); d.close = () => {}; d.remove = () => { if (d.isConnected) setTimeout(into.again, 0); }; into.host.replaceChildren(d); return d; }
+    document.body.appendChild(d); d.addEventListener('close', () => d.remove()); d.showModal(); return d;
+  };
   function askText(title, start, done, okLabel = 'Save') {
     const d = mailDlg('mail-askstaff', '<h2></h2><input class="ask" style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok"></button></div>');
     d.querySelector('h2').textContent = title; d.querySelector('[data-x="ok"]').textContent = okLabel;
@@ -16726,7 +16763,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const staffRunning = new Set();
   async function staffRun(st, job) {
     // job: { title, detail, x (the action, if it is one), src }
-    if (!fastOn()) { toast('This needs your Claude API key. Add it under Chief of Staff Settings \u203a Fast Answers.'); return fastDlg(); }
+    if (!fastOn()) { toast('This needs your Claude API key. Add it under Settings \u203a Fast Answers.'); return fastDlg(); }
     const p = activeProfile(), first = meFirst(), x = job.x || null, key = st.id + '|' + job.title;
     if (staffRunning.has(key)) return toast('Already working on that.');
     const d = mailDlg('granola-dlg staff-run', '<h2></h2><p class="hint"></p><div class="sr-out pre-out"></div><div class="dlg-actions" style="flex-wrap:wrap;gap:8px"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="mail" title="Opens as a new email with this in it. Nothing is sent until you press Send.">Open as an Email Draft</button><button class="btn" data-x="chat" title="Copies this and opens the chat, to carry on with Claude itself">Continue in Claude</button><button class="btn" data-x="again">Do It Again</button><span class="dlg-spacer"></span><button class="btn" data-x="done" hidden>Mark Done</button><button class="btn-primary" data-x="close">Close</button></div>');
@@ -16911,22 +16948,46 @@ body { width: max-content !important; min-width: 0 !important; }
   function botTurnsSave() { try { const all = JSON.parse(ls.get(BOT_TURNS) || '{}') || {}; all[memPid()] = { at: Date.now(), turns: botS.turns.filter(x => !x.m).slice(-8).map(x => ({ role: x.role, text: String(x.text).slice(0, 1500) })) }; ls.set(BOT_TURNS, JSON.stringify(all)); } catch (e) { /* full */ } }
   function botTurnsLoad() { if (botS.turnsFor === memPid()) return; botS.turnsFor = memPid(); botS.turns = [];
     try { const S = (JSON.parse(ls.get(BOT_TURNS) || '{}') || {})[memPid()]; if (S && Date.now() - S.at < 12 * 36e5 && Array.isArray(S.turns)) { const t = S.turns.filter(x => x && x.text && (x.role === 'user' || x.role === 'assistant')); while (t.length && t[0].role !== 'user') t.shift(); botS.turns = t; } } catch (e) { /* none kept */ } }
-  // The few things you set once, in one place.
-  function botSettingsDlg() {
-    const d = mailDlg('granola-dlg', '<h2>Chief of Staff Settings</h2><div class="set-rows"></div><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
-    const host = d.querySelector('.set-rows');
-    const row = (title, sub, label, run) => { const r = document.createElement('div'); r.className = 'set-row';
-      const t = document.createElement('div'); t.className = 'tx'; t.appendChild(Object.assign(document.createElement('div'), { textContent: title, className: 't' })); t.appendChild(Object.assign(document.createElement('div'), { textContent: sub, className: 's' }));
-      const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: label }); b.addEventListener('click', () => { d.close(); d.remove(); run(); });
-      r.append(t, b); host.appendChild(r); };
-    row('About Me and What It Has Learned', 'What every answer and draft is told about you', 'Open…', botLearnedDlg);
-    row('Fast Answers', 'Your Claude API key and the monthly limit', 'Open…', fastDlg);
-    row('Meetings (Granola)', 'Connect Granola, or turn it off', 'Open…', granolaDlg);
-    row('Words It Mishears', 'Names and words dictation gets wrong', 'Open…', hearDlg);
-    { const off = ls.get('claudeNavigator.sounds') === 'off'; row('Sounds', off ? 'Off. No sound when it listens, answers or makes something.' : 'On. A soft sound when it listens, answers or makes something.', off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); toast(off ? 'Sounds are on.' : 'Sounds are off.'); botSettingsDlg(); }); }
-    row('Mail Health', 'Whether each mail account is connected and in step', 'Open\u2026', () => mailHealth());
-    row('Pinned Projects in Claude', 'Unpin every project in Claude’s sidebar', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
-    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+  // Settings: one window. Its sections are down the left; choosing one shows it on the right, in place. No section
+  // opens a further window. (Each section is the same sheet that used to open by itself, drawn inside this one.)
+  const SETTINGS = [
+    ['general', 'General', null],
+    ['about', 'About Me', () => botLearnedDlg()],
+    ['fast', 'Fast Answers', () => fastDlg()],
+    ['meetings', 'Meetings', () => granolaDlg()],
+    ['dictation', 'Dictation', () => hearDlg()],
+    ['mail', 'Mail', () => mailHealth()],
+  ];
+  function botSettingsDlg(section) {
+    for (const old of document.querySelectorAll('dialog.settings-win')) { try { old.close(); } catch (e) { /* gone */ } old.remove(); }
+    const d = document.createElement('dialog'); d.className = 'settings-win';
+    d.innerHTML = '<div class="set-nav" role="tablist" aria-label="Settings"></div><div class="set-pane"><div class="set-host"></div><div class="set-foot"><button class="btn-primary" data-x="close">Done</button></div></div>';
+    const nav = d.querySelector('.set-nav'), host = d.querySelector('.set-host');
+    let cur = SETTINGS.some(x => x[0] === section) ? section : (ls.get('claudeNavigator.settingsTab') || 'general');
+    const general = () => {
+      const w = document.createElement('div'); w.innerHTML = '<h2 style="margin:0 0 8px;font-size:var(--fs-title)">General</h2><div class="set-rows"></div>';
+      const rows = w.querySelector('.set-rows');
+      const row = (title, sub, label, run) => { const r = document.createElement('div'); r.className = 'set-row';
+        const t = document.createElement('div'); t.className = 'tx'; t.appendChild(Object.assign(document.createElement('div'), { textContent: title, className: 't' })); t.appendChild(Object.assign(document.createElement('div'), { textContent: sub, className: 's' }));
+        const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: label }); b.addEventListener('click', run); r.append(t, b); rows.appendChild(r); };
+      const off = ls.get('claudeNavigator.sounds') === 'off';
+      row('Sounds', off ? 'Off. No sound when it listens, answers or makes something.' : 'On. A soft sound when it listens, answers or makes something.', off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); });
+      row('Suggestions', bot.quiet ? 'Quiet. They stay in the Chief of Staff panel and do not pop up.' : 'They pop up beside the Chief of Staff button as they arrive.', bot.quiet ? 'Let Them Pop Up' : 'Keep Them Quiet', () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); show(); });
+      row('Pinned Projects in Claude', 'Unpin every project in Claude’s sidebar. This happens only when you press it.', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
+      host.replaceChildren(w);
+    };
+    const show = () => {
+      for (const b of nav.children) { b.classList.toggle('on', b.dataset.k === cur); b.setAttribute('aria-selected', b.dataset.k === cur ? 'true' : 'false'); }
+      const sec = SETTINGS.find(x => x[0] === cur) || SETTINGS[0];
+      if (!sec[2]) return general();
+      host.replaceChildren(); mailDlg.into = { host, again: () => { if (d.isConnected && cur === sec[0]) show(); } };
+      try { sec[2](); } catch (e) { host.textContent = 'This section could not be shown.'; }
+      mailDlg.into = null;
+    };
+    for (const [k, label] of SETTINGS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.textContent = label; b.setAttribute('role', 'tab'); b.addEventListener('click', () => { cur = k; ls.set('claudeNavigator.settingsTab', k); show(); }); nav.appendChild(b); }
+    d.querySelector('.set-foot [data-x="close"]').addEventListener('click', () => d.close());
+    d.addEventListener('close', () => d.remove());
+    document.body.appendChild(d); d.showModal(); show();
   }
   async function apiRun(tier, system, messages, tools, max, opt) {
     if (!(opt && opt.raw)) { let me = ''; try { me = whoIAm(); } catch (e) { /* starting up */ } if (me) system = `${system || ''}\n\n${me}`; }
@@ -17032,7 +17093,7 @@ body { width: max-content !important; min-width: 0 !important; }
     botTurnsLoad();
     // "Remember that ..." is kept at once, with no model: it goes into the one memory every answer and draft reads.
     const keepIt = !opt.claude && /^(?:please\s+)?(?:remember(?!\s+to\b)|keep in mind|note that|for next time)[,:]?\s+(?:that\s+)?(.{6,})$/i.exec(text);
-    if (keepIt) { const fresh = remember('told', keepIt[1]); e.a = `${fresh ? 'I will remember that.' : 'I already had that, and have noted it again.'}\n- ${keepIt[1].replace(/\s+/g, ' ').slice(0, 200)}\n- To see or remove what I remember: the panel\u2019s menu \u203a Chief of Staff Settings \u203a About Me.`; e.src = 'mac'; e.noAct = true; e.acts = []; return finish(); }
+    if (keepIt) { const fresh = remember('told', keepIt[1]); e.a = `${fresh ? 'I will remember that.' : 'I already had that, and have noted it again.'}\n- ${keepIt[1].replace(/\s+/g, ' ').slice(0, 200)}\n- To see or remove what I remember: the panel\u2019s menu \u203a Settings \u203a About Me.`; e.src = 'mac'; e.noAct = true; e.acts = []; return finish(); }
     // A question about what was said or decided in meetings goes straight to Granola.
     const ahead = fastOn() && BOT_AHEAD.test(text) && !/\b(said|decided?|decisions?|agreed?|discuss(ed)?|talked? about|last time|notes?)\b/i.test(text);
     if (!opt.claude && !ahead && gran.on && BOT_MEET.test(text) && window.navigatorApp.granolaAsk) {
@@ -18082,7 +18143,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
       if (held) startNote(`phone: ${held} change${held === 1 ? '' : 's'} could not be placed yet`);
       const bits = [chats && `${chats} new chat${chats === 1 ? '' : 's'}`, drives && `${drives} conversation${drives === 1 ? '' : 's'} from your drive, kept in the Archive`, notes && `${notes} note${notes === 1 ? '' : 's'} turned into action${notes === 1 ? '' : 's'}`, dones && `${dones} marked done`, files && `${files} output${files === 1 ? '' : 's'} filed`].filter(Boolean);
       if (bits.length) toast(`From your phone: ${bits.join(', ')}.`);
-      if (asked) toast(`Your phone asked me to remember ${asked === 1 ? 'something' : asked + ' things'}. Have a look before I keep ${asked === 1 ? 'it' : 'them'}.`, { label: 'Look', run: botLearnedDlg });
+      if (asked) toast(`Your phone asked me to remember ${asked === 1 ? 'something' : asked + ' things'}. Have a look before I keep ${asked === 1 ? 'it' : 'them'}.`, { label: 'Look', run: () => botSettingsDlg('about') });
       phoneSoon();
     } catch (e) { console.error('Phone', e); } finally { phoneMerging = false; }
   }
@@ -18173,10 +18234,9 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
         { label: botS.chat ? 'Hide the Chat' : 'Show the Chat', run: () => { botS.chat = !botS.chat; cosBotRender(); if (botS.chat) setTimeout(botFocus, 150); } },
         { label: 'Open the Chat in the Main View', run: () => { const t = cosTeam(); go({ kind: 'page', url: (t && t.botChat) || botStartUrl() }); } },
         '-',
-        { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
-        { label: 'Chief of Staff Settings\u2026', run: botSettingsDlg },
+        { label: 'Settings\u2026', run: () => botSettingsDlg() },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });

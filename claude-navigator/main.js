@@ -1750,6 +1750,21 @@ ipcMain.handle('phone-publish', async (e, docs) => {
 });
 // What you did on the phone (a new chat, an action ticked done, an output filed) arrives as a small file in the same
 // iCloud Drive folder. The Mac reads it, applies each change once, and notes which ones it has applied.
+// A question that needs a yes or no, asked the way the Mac asks it: a sheet on the app's own window, with the action's
+// name on the button. Answered straight away (the page waits for it), so it can stand in wherever the page used to
+// ask with the plain system box. Run from source for testing, it answers null and the page asks the old way.
+ipcMain.on('confirm-box', (e, o) => {
+  try {
+    if (!fromOwnWindow(e) || !o || typeof o !== 'object') { e.returnValue = null; return; }
+    if (!app.isPackaged && process.env.NAV_TEST_MS) { e.returnValue = null; return; }
+    const win = BrowserWindow.fromWebContents(e.sender) || mainWindow;
+    const str = (x, n) => String(x || '').slice(0, n);
+    if (o.alert) { dialog.showMessageBoxSync(win, { type: 'info', buttons: ['OK'], defaultId: 0, message: str(o.message, 300), detail: str(o.detail, 1200) }); e.returnValue = true; return; }
+    const ok = str(o.ok, 40) || 'OK';
+    const r = dialog.showMessageBoxSync(win, { type: o.danger ? 'warning' : 'question', buttons: [ok, 'Cancel'], defaultId: o.danger ? 1 : 0, cancelId: 1, message: str(o.message, 300), detail: str(o.detail, 1200) });
+    e.returnValue = r === 0;
+  } catch (er) { e.returnValue = null; }
+});
 ipcMain.handle('phone-changes', async (e) => {
   if (!fromOwnWindow(e)) return null;
   const dir = phoneDir(); if (!dir) return null;

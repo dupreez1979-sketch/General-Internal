@@ -10,6 +10,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   apiRun: (req) => ipcRenderer.invoke('api-run', req),
   apiAsk: (system, turns, max) => ipcRenderer.invoke('api-ask', system, turns, max),
   claudeUnpinProjects: (only) => ipcRenderer.invoke('claude-unpin-projects', only || null),
+  confirmBox: (o) => { try { return ipcRenderer.sendSync('confirm-box', o); } catch (e) { return null; } },
   iconSet: () => ipcRenderer.invoke('icon-set'),
   clipText: () => ipcRenderer.invoke('clip-text'),
   readDownloadedHtml: (file) => ipcRenderer.invoke('read-downloaded-html', file),
