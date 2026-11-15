@@ -340,6 +340,7 @@
   .bot-list .brow .ic.warn { background: color-mix(in srgb, #B36E24 18%, transparent); color: #B36E24; } .bot-list .brow .ic.ok { background: color-mix(in srgb, #328276 18%, transparent); color: #328276; } .bot-list .brow .ic.note { background: color-mix(in srgb, #FF4C80 14%, transparent); color: #FF4C80; }
   .bot-list .brow .go { flex: none; font-size: 12px; color: var(--accent); font-weight: 600; }
   .bot-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-foot span { flex: 1; } .bot-foot button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; }
+  dialog.granola-dlg { width: min(520px, 92vw); } dialog.granola-dlg .gl { display: grid; gap: 6px; margin: 8px 0 14px; font-size: 13px; } dialog.granola-dlg .gline.good { color: #328276; font-weight: 600; } dialog.granola-dlg .gline.bad { color: #b3261e; font-weight: 600; }
   dialog.bot-learn-dlg { width: min(520px, 92vw); } dialog.bot-learn-dlg .bl { max-height: 60vh; overflow: auto; margin: 6px 0 12px; }
   .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 10px; }
   .bot-quick button { font: inherit; font-size: 11.5px; border: 1px solid var(--line); background: var(--win); color: var(--text); border-radius: 12px; padding: 3px 9px; cursor: pointer; }
@@ -16471,6 +16472,33 @@ body { width: max-content !important; min-width: 0 !important; }
     cosBotRender();
     clearInterval(botS.poll); botS.poll = setInterval(() => { const big = $('cosBot').querySelector('.bot-big .said'); if (!botListening()) { clearInterval(botS.poll); return cosBotRender(); } if (big) big.textContent = inp.value.trim() ? `“${inp.value.trim().slice(-140)}”` : 'Say it…'; }, 300);
   }
+  // Granola: connect the app to your meeting notes, and see that it works. (This step only proves the connection.)
+  function granolaDlg() {
+    if (!isApp || !window.navigatorApp.granolaConnect) return toast('This works in the desktop app.');
+    const d = mailDlg('granola-dlg', '<h2>Granola</h2><p class="hint"></p><div class="gl"></div><div class="dlg-actions"><button class="btn" data-x="details" hidden>Copy Details</button><button class="btn" data-x="off" hidden>Disconnect</button><span style="flex:1"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go"></button></div>');
+    const hint = d.querySelector('.hint'), gl = d.querySelector('.gl'), go = d.querySelector('[data-x="go"]'), off = d.querySelector('[data-x="off"]'), det = d.querySelector('[data-x="details"]');
+    let last = null, busy = false, on = false;
+    const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
+    const show = r => {
+      last = r; gl.replaceChildren(); det.hidden = !(r && r.details);
+      if (!r) return;
+      if (r.ok === false) { line(`It stopped while ${r.step}: ${r.status}`, 'bad'); line('Press Copy Details and paste it to Claude, so the cause can be found.'); return; }
+      if (r.failed) { line(`Connected, but it stopped while ${r.step}: ${r.status}`, 'bad'); line('Press Copy Details and paste it to Claude.'); return; }
+      line('Connected to Granola.', 'good');
+      if (r.meetings !== null && r.meetings !== undefined) line(`Meetings it can see from the last seven days: ${r.meetings}.`, r.meetings ? 'good' : '');
+      else line('It connected, but Granola did not offer a way to list meetings.');
+      if (r.tools && r.tools.length) line(`What Granola offers the app: ${r.tools.join(', ')}.`);
+    };
+    const paint = () => {
+      hint.textContent = busy ? (on ? 'Checking\u2026' : 'Your web browser has opened. Sign in to Granola there, then come back.') : on ? 'The app is signed in to Granola\u2019s own connection, the one Claude uses. It only reads.' : 'Sign in once in your web browser. The sign-in is kept encrypted on this Mac. The app only reads your meeting notes; it never changes them.';
+      go.textContent = on ? 'Check Again' : 'Connect Granola'; go.disabled = busy; off.hidden = !on || busy;
+    };
+    go.addEventListener('click', async () => { busy = true; paint(); let r = null; try { r = on ? await window.navigatorApp.granolaTest() : await window.navigatorApp.granolaConnect(); } catch (e) { r = { ok: false, step: 'connecting', status: String(e && e.message || e) }; } busy = false; try { on = (await window.navigatorApp.granolaStatus()).connected; } catch (e) { /* unchanged */ } show(r); paint(); if (r && r.ok !== false && !r.failed) chime('made'); });
+    off.addEventListener('click', async () => { await window.navigatorApp.granolaDisconnect(); on = false; show(null); paint(); toast('Granola is disconnected.'); });
+    det.addEventListener('click', async () => { try { await navigator.clipboard.writeText(`Claude Navigator: Granola connection\n${last && last.step ? 'Stopped while ' + last.step + ': ' + last.status + '\n' : ''}${(last && last.details) || ''}`); toast('Copied. It holds the steps and answers, no sign-in values and no meeting content.'); } catch (e) { toast('Could not copy it.'); } });
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    paint(); window.navigatorApp.granolaStatus().then(s => { on = !!s.connected; paint(); }).catch(() => {});
+  }
   function botLearnedDlg() {
     const d = mailDlg('bot-learn-dlg', '<h2>What the Chief of Staff has learned</h2><div class="bl"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const paint = () => { const host = d.querySelector('.bl'); host.replaceChildren(); botPaintLearned(host); };
@@ -16836,7 +16864,7 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
-        { label: 'Copy Granola Check', run: async () => { let t = ''; try { t = await window.navigatorApp.granolaCheck(); } catch (e) { /* older app */ } if (!t) return toast('Could not run the check.'); try { await navigator.clipboard.writeText(t); toast('Copied. It lists file names, field names and counts only, no meeting content. Paste it to Claude.'); } catch (e) { toast('Could not copy it.'); } } },
+        { label: 'Granola\u2026', run: granolaDlg },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });

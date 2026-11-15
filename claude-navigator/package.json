@@ -28,6 +28,7 @@
       "accounts.js",
       "mailindex.js",
       "maillog.js",
+      "granola.js",
       "mailindex-worker.js",
       "vendor/**",
       "look.js",

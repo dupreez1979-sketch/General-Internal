@@ -13,6 +13,7 @@ const monday = require('./monday');
 const accounts = require('./accounts');
 const mailindex = require('./mailindex');
 const maillog = require('./maillog');
+const granola = require('./granola');
 
 const isMac = process.platform === 'darwin';
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
@@ -1779,6 +1780,11 @@ ipcMain.handle('granola-check', async e => {
   }
   return L.join('\n').slice(0, 60000);
 });
+// Granola: sign in to its own connection, and check what it can see.
+ipcMain.handle('granola-status', e => (fromOwnWindow(e) ? granola.status() : { connected: false }));
+ipcMain.handle('granola-connect', e => (fromOwnWindow(e) ? granola.connect() : { ok: false, status: 'not allowed' }));
+ipcMain.handle('granola-test', e => (fromOwnWindow(e) ? granola.test() : { connected: false }));
+ipcMain.handle('granola-disconnect', e => (fromOwnWindow(e) ? granola.disconnect() : { connected: false }));
 ipcMain.handle('test-ai-url', () => (!app.isPackaged && process.env.NAV_TEST_AI ? String(process.env.NAV_TEST_AI) : ''));
 ipcMain.handle('mailindex-texts', (_e, keys) => mailindex.texts(Array.isArray(keys) ? keys.slice(0, 40).map(String) : []));
 // Calendar: read a published calendar (an Outlook ICS link). Only web addresses; at most 15 MB; 25 seconds.
