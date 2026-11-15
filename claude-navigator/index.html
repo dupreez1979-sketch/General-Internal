@@ -12650,7 +12650,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
 
   // Rules: what Outlook does with a message as it arrives. They live in Outlook, so they run even when this app is shut.
-  const MAIL_RULE_KNOWN = { c: ['fromAddresses', 'senderContains', 'subjectContains', 'bodyOrSubjectContains', 'sentToAddresses', 'hasAttachments'], a: ['moveToFolder', 'markAsRead', 'delete', 'forwardTo', 'stopProcessingRules'] };
+  const MAIL_RULE_KNOWN = { c: ['fromAddresses', 'senderContains', 'subjectContains', 'bodyOrSubjectContains', 'sentToAddresses', 'hasAttachments', 'sentCcMe', 'sentToMe', 'sentOnlyToMe'], a: ['moveToFolder', 'markAsRead', 'delete', 'forwardTo', 'stopProcessingRules'] };
   const mailRuleSimple = r => Object.keys(r.conditions || {}).every(k => MAIL_RULE_KNOWN.c.includes(k) || r.conditions[k] == null) && Object.keys(r.actions || {}).every(k => MAIL_RULE_KNOWN.a.includes(k) || r.actions[k] == null) && !Object.values(r.exceptions || {}).some(v => v != null && v !== false && !(Array.isArray(v) && !v.length));
   function mailRuleSays(r, accId) {
     const c = r.conditions || {}, a = r.actions || {}, w = [], t = [];
@@ -12661,6 +12661,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if ((c.bodyOrSubjectContains || []).length) w.push(`message has “${c.bodyOrSubjectContains.join('” or “')}”`);
     if ((c.sentToAddresses || []).length) w.push(`sent to ${adr(c.sentToAddresses)}`);
     if (c.hasAttachments) w.push('has an attachment');
+    if (c.sentCcMe) w.push('I am only copied in (Cc)');
+    if (c.sentOnlyToMe) w.push('it is sent only to me');
+    else if (c.sentToMe) w.push('it is sent to me directly');
     if (a.moveToFolder) { const z = mailAllFolders(accId).find(q => q.f.id === a.moveToFolder); t.push(`move to ${z ? z.f.displayName : 'a folder'}`); }
     if (a.markAsRead) t.push('mark as read');
     if (a.delete) t.push('delete');
@@ -12684,12 +12687,15 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!rules.length) body.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'No rules yet. A rule can file, forward or delete mail for you as it arrives.' }));
         for (const ru of rules) {
           const row = document.createElement('div'); row.className = 'rl' + (ru.isEnabled ? '' : ' off') + (ru.hasError ? ' bad' : '');
-          row.innerHTML = '<label class="sw" title="Turn this rule on or off"><input type="checkbox"><i></i></label><div class="tx"><b></b><span></span></div><button class="tb" data-r="del" title="Delete this rule">' + (FICON.hide || '×') + '</button>';
+          row.innerHTML = '<label class="sw" title="Turn this rule on or off"><input type="checkbox"><i></i></label><div class="tx"><b></b><span></span></div><button class="tb" data-r="up" title="Move this rule up: rules run in this order">\u2191</button><button class="tb" data-r="down" title="Move this rule down">\u2193</button><button class="tb" data-r="del" title="Delete this rule">' + (FICON.hide || '\u00d7') + '</button>';
           row.querySelector('b').textContent = ru.displayName || '(No name)';
           row.querySelector('.tx span').textContent = (ru.hasError ? 'Outlook reports a problem with this rule. ' : '') + mailRuleSays(ru, a.id);
           const cb = row.querySelector('input'); cb.checked = !!ru.isEnabled;
           cb.addEventListener('change', async () => { const sv = await mailApi(a.id, { method: 'PATCH', path: `${base}/${ru.id}`, body: { isEnabled: cb.checked } }); if (!sv.ok) { cb.checked = !cb.checked; return toast(`Could not change the rule: ${sv.error || 'try again'}`); } ru.isEnabled = cb.checked; row.classList.toggle('off', !cb.checked); });
           row.querySelector('[data-r="del"]').addEventListener('click', async e => { e.stopPropagation(); if (!confirm(`Delete the rule “${ru.displayName}”?`)) return; const sv = await mailApi(a.id, { method: 'DELETE', path: `${base}/${ru.id}` }); if (!sv.ok) return toast(`Could not delete the rule: ${sv.error || 'try again'}`); list(); });
+          { const at = rules.indexOf(ru), swap = async other => { if (!other) return; const s1 = ru.sequence || at + 1, s2 = other.sequence || rules.indexOf(other) + 1; const r1 = await mailApi(a.id, { method: 'PATCH', path: `${base}/${ru.id}`, body: { sequence: s2 } }); const r2 = r1.ok ? await mailApi(a.id, { method: 'PATCH', path: `${base}/${other.id}`, body: { sequence: s1 === s2 ? s2 + 1 : s1 } }) : r1; if (!r2.ok) toast(`Could not move the rule: ${r2.error || 'try again'}`); list(); };
+            const up = row.querySelector('[data-r="up"]'), dn = row.querySelector('[data-r="down"]'); up.disabled = at === 0 || !!ru.isReadOnly; dn.disabled = at === rules.length - 1 || !!ru.isReadOnly;
+            up.addEventListener('click', e => { e.stopPropagation(); swap(rules[at - 1]); }); dn.addEventListener('click', e => { e.stopPropagation(); swap(rules[at + 1]); }); }
           row.querySelector('.tx').addEventListener('click', () => { if (ru.isReadOnly) return toast('This rule was set by your organisation and cannot be changed.'); if (!mailRuleSimple(ru)) return toast('This rule uses settings made in Outlook. Here you can turn it on or off, or delete it.'); form(ru); });
           body.appendChild(row);
         }
@@ -12705,11 +12711,15 @@ body { width: max-content !important; min-width: 0 !important; }
           <div class="sec">When a message arrives that is</div>
           <div class="row"><span>From</span><input name="from" placeholder="name@example.com, or part of an address such as @example.com"></div>
           <div class="row"><span>Subject has</span><input name="subj" placeholder="words in the subject"></div>
+          <div class="row"><span>Message has</span><input name="body" placeholder="words in the subject or the message"></div>
           <div class="row"><span>Sent to</span><input name="to" placeholder="name@example.com"></div>
           <label class="pick"><input type="checkbox" name="att"><span>Has an attachment</span></label>
+          <label class="pick"><input type="checkbox" name="cc"><span>I am only copied in (Cc)</span></label>
+          <label class="pick"><input type="checkbox" name="tome"><span>It is sent to me directly</span></label>
+          <label class="pick"><input type="checkbox" name="only"><span>It is sent only to me</span></label>
           <div class="sec">Do this</div>
           <div class="row"><span>Move to</span><select name="move"><option value="">(Leave in the Inbox)</option></select></div>
-          <div class="row"><span>Forward to</span><input name="fwd" placeholder="name@example.com"></div>
+          <div class="row fwdrow" hidden><span>Forwards to</span><input name="fwd" readonly title="This rule forwards mail by itself. That is left exactly as it is: forwarding can only be set or changed in Outlook, so nothing is ever sent on from here without you."></div>
           <label class="pick"><input type="checkbox" name="read"><span>Mark as read</span></label>
           <label class="pick"><input type="checkbox" name="del"><span>Delete it</span></label>
           <label class="pick"><input type="checkbox" name="stop"><span>Do not apply the rules after this one</span></label>
@@ -12718,7 +12728,9 @@ body { width: max-content !important; min-width: 0 !important; }
         for (const z of folders) { const o = document.createElement('option'); o.value = z.f.id; o.textContent = '  '.repeat(z.depth) + z.f.displayName; if (z.f.wk !== 'inbox') f('move').appendChild(o); }
         f('name').value = (ru && ru.displayName) || '';
         f('from').value = [adr(c.fromAddresses), (c.senderContains || []).join(', ')].filter(Boolean).join(', ');
-        f('subj').value = (c.subjectContains || []).concat(c.bodyOrSubjectContains || []).join(', ');
+        f('subj').value = (c.subjectContains || []).join(', '); f('body').value = (c.bodyOrSubjectContains || []).join(', ');
+        f('cc').checked = !!c.sentCcMe; f('tome').checked = !!c.sentToMe; f('only').checked = !!c.sentOnlyToMe;
+        body.querySelector('.fwdrow').hidden = !((ac.forwardTo || []).length);
         f('to').value = adr(c.sentToAddresses);
         f('att').checked = !!c.hasAttachments;
         f('move').value = ac.moveToFolder || ''; f('fwd').value = adr(ac.forwardTo);
@@ -12730,8 +12742,11 @@ body { width: max-content !important; min-width: 0 !important; }
           if (whole.length) cond.fromAddresses = whole.map(x => ({ emailAddress: { address: x } }));
           if (part.length) cond.senderContains = part;
           if (words(f('subj').value).length) cond.subjectContains = words(f('subj').value);
-          const to = mailParse(f('to').value), fw = mailParse(f('fwd').value);
-          if (to.concat(fw).some(x => x.bad)) return toast(`“${to.concat(fw).find(x => x.bad).bad}” is not an email address.`);
+          if (words(f('body').value).length) cond.bodyOrSubjectContains = words(f('body').value);
+          if (f('cc').checked) cond.sentCcMe = true;
+          if (f('only').checked) cond.sentOnlyToMe = true; else if (f('tome').checked) cond.sentToMe = true;
+          const to = mailParse(f('to').value), fw = (ac.forwardTo || []).slice();          // (forwarding is kept as it was, never set here)
+          if (to.some(x => x.bad)) return toast(`\u201c${to.find(x => x.bad).bad}\u201d is not an email address.`);
           if (to.length) cond.sentToAddresses = to;
           if (f('att').checked) cond.hasAttachments = true;
           if (f('move').value) act.moveToFolder = f('move').value;
@@ -12741,8 +12756,8 @@ body { width: max-content !important; min-width: 0 !important; }
           if (!Object.keys(act).length) return toast('Choose what the rule should do.');
           if (!Object.keys(cond).length && !confirm('This rule has no conditions, so it will apply to every message that arrives. Save it anyway?')) return;
           if (act.delete && !confirm('Messages this rule matches will go straight to Deleted Items. Save it?')) return;
-          if (fw.length && !confirm(`Messages this rule matches will be forwarded to ${fw.map(x => x.emailAddress.address).join(', ')} without asking. Save it?`)) return;
           act.stopProcessingRules = f('stop').checked;
+          if (!confirm(`This rule will do this to mail as it arrives:\n\n${mailRuleSays({ conditions: cond, actions: act }, a.id)}\n\nSave it?`)) return;
           const name = f('name').value.trim() || (whole[0] || part[0] ? `From ${whole[0] || part[0]}` : cond.subjectContains ? `Subject: ${cond.subjectContains[0]}` : 'New rule');
           btn.disabled = true;
           const sv = ru

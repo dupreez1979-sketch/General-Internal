@@ -287,6 +287,9 @@
   }
   // ---------- Drive mode ----------
   // One big button and your voice. You talk to your Chief of Staff; say a staff member's name and they answer instead.
+  // Your turn ends by itself after a seven second pause, unless you choose otherwise (set once, for everyone, from 0.4.14:
+  // long enough to think mid-sentence, and no need to press Done talking).
+  if (!ls.get('pauseSeven')) { ls.set('drivePause', '7'); ls.set('pauseSeven', '1'); }
   // Nothing is read off the screen: answers are spoken, and what happened is listed when you finish.
   const drive = { on: false, state: 'idle', heard: '', line: '', who: null, chats: {}, log: [], pending: null, timer: null, noteNext: false };
   const mic = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></svg>';
@@ -311,7 +314,7 @@
     return w;
   }
   const waveSet = (w, state) => { if (w) w.className = 'wave ' + state; };
-  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'fastState' }); drive.turns = {}; { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); send({ do: 'pause', seconds: +(ls.get('drivePause') || 4) }); drive.model = null; render(); }
+  function driveStart() { Object.assign(drive, { on: true, state: 'idle', heard: '', line: '', who: chiefOf(), chats: {}, log: [], pending: null, noteNext: false, confirm: null, stream: null, voiceOpen: false }); drive.ackLeft = 0; drive.localAsk = null; send({ do: 'awake', on: true }); send({ do: 'voiceGet' }); send({ do: 'localGet' }); send({ do: 'fastState' }); drive.turns = {}; { const t = team(); send({ do: 'names', list: [...new Set([...(t ? t.nodes.map(x => x.name) : []), ...data.profiles.map(x => x.name)].filter(Boolean))] }); } send({ do: 'barge', on: ls.get('driveBarge') !== 'off' }); send({ do: 'pause', seconds: +(ls.get('drivePause') || 7) }); drive.model = null; render(); }
   function driveEnd() { send({ do: 'hush' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); chime('listen'); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then, quiet) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send(quiet ? { do: 'say', text, quiet: true } : { do: 'say', text })) { drive.state = 'idle'; render(); } }
@@ -569,7 +572,7 @@
       const rc = el('button', 'btn', fast.checks ? 'Run Checks Again' : 'Run Checks'); rc.style.margin = '6px 6px 8px'; rc.onclick = () => { rc.disabled = true; runChecks(rc); }; s2.append(rc);
       if (fast.checks) { const pre = el('p', 'vtip', 'Copied. Paste it to Claude.\n\n' + fast.checks); pre.style.whiteSpace = 'pre-wrap'; s2.append(pre); } }
     s2.append(el('div', 'sec', 'When your turn ends'));
-    { const cur = +(ls.get('drivePause') || 4); for (const [sec, title, sub] of [[2.5, 'After a short pause', 'About two seconds of silence.'], [4, 'After a pause', 'About four seconds. Room to think mid-sentence.'], [7, 'After a long pause', 'About seven seconds.'], [0, 'Only when I say so', 'It keeps listening until you say “over”, or press Done talking.']]) opt(title, sub, cur === sec, () => { ls.set('drivePause', String(sec)); send({ do: 'pause', seconds: sec }); render(); }); }
+    { const cur = +(ls.get('drivePause') || 7); for (const [sec, title, sub] of [[2.5, 'After a short pause', 'About two seconds of silence.'], [4, 'After a pause', 'About four seconds. Room to think mid-sentence.'], [7, 'After a long pause', 'About seven seconds.'], [0, 'Only when I say so', 'It keeps listening until you say “over”, or press Done talking.']]) opt(title, sub, cur === sec, () => { ls.set('drivePause', String(sec)); send({ do: 'pause', seconds: sec }); render(); }); }
     s2.append(el('p', 'vtip', 'Whichever you choose, finishing with “over” or “that’s all” ends your turn straight away.'));
     s2.append(el('div', 'sec', 'Talking'));
     { const on = ls.get('driveSounds') !== 'off'; opt('Sounds', on ? 'On. A soft sound when it listens, hears you, answers or makes something.' : 'Off. Voice only.', on, () => { ls.set('driveSounds', on ? 'off' : 'on'); if (!on) send({ do: 'chime', name: 'ready' }); render(); }); }
