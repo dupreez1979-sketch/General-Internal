@@ -16,6 +16,31 @@ const maillog = require('./maillog');
 const granola = require('./granola');
 
 const isMac = process.platform === 'darwin';
+
+// ---------- Startup log ----------
+// What the app did as it opened and how long each step took, so a slow start can be traced. It holds step names and
+// times only: no names, mail, files or sign-ins. Kept in memory; "Copy Startup Log" in the Help menu copies it.
+const T0 = Date.now();
+const startLog = [];
+const mark = (what, ms) => { if (startLog.length < 500) startLog.push(`${((Date.now() - T0) / 1000).toFixed(1).padStart(7)}s  ${what}${ms != null ? ` (${ms} ms)` : ''}`); };
+const timed = (what, fn) => { const t = Date.now(); try { return fn(); } finally { mark(what, Date.now() - t); } };
+let lastJob = '', lastBeat = Date.now();
+// A heartbeat four times a second: when one arrives late, the app was frozen (the spinning wheel) for that long.
+setInterval(() => {
+  const now = Date.now(), late = now - lastBeat - 250; lastBeat = now;
+  if (late > 600 && late < 15 * 60e3) mark(`FROZE for ${(late / 1000).toFixed(1)} s${lastJob ? ', last job started: ' + lastJob : ''}`);
+}, 250).unref();
+// Every job the window asks of the app is timed; the slow ones are written down by name.
+const rawHandle = ipcMain.handle.bind(ipcMain);
+ipcMain.handle = (ch, fn) => rawHandle(ch, (...a) => {
+  const t = Date.now(); lastJob = ch; let r;
+  try { r = fn(...a); } finally { const d = Date.now() - t; if (d > 250) mark(`job ${ch} held the app`, d); }
+  if (r && typeof r.then === 'function' && Date.now() - T0 < 5 * 60e3) r.then(() => {}, () => {}).then(() => { const d = Date.now() - t; if (d > 3000) mark(`job ${ch} answered`, d); });
+  return r;
+});
+ipcMain.handle('startup-log', e => (mainWindow && e.sender === mainWindow.webContents ? startLogText() : ''));
+ipcMain.on('start-note', (e, text) => { if (mainWindow && e.sender === mainWindow.webContents) mark('window: ' + String(text).replace(/[^\w .,:()-]/g, '').slice(0, 120)); });
+const startLogText = () => [`Claude Navigator ${app.getVersion()} startup log, copied ${((Date.now() - T0) / 1000).toFixed(0)} s after opening`, `macOS ${process.getSystemVersion ? process.getSystemVersion() : ''}, ${process.arch}`, ...startLog].join('\n');
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
 // Passkeys (Face ID, Touch ID, security keys through the system) cannot work inside the app: Electron has no way
 // to reach them, so a sign-in that asks for one (Microsoft's, for Clara) waits for ever. With passkey sign-in
@@ -81,6 +106,12 @@ function createWindow() {
   });
   watchRealClicks(mainWindow);
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mark('window made');
+  mainWindow.webContents.once('dom-ready', () => mark('window page read'));
+  mainWindow.webContents.once('did-finish-load', () => mark('window page loaded'));
+  mainWindow.on('unresponsive', () => mark('WINDOW stopped responding'));
+  mainWindow.on('responsive', () => mark('window responding again'));
+  mainWindow.webContents.on('render-process-gone', (_e, d) => mark('WINDOW process gone: ' + (d && d.reason)));
   mainWindow.on('closed', () => { mainWindow = null; quitting = true; for (const w of appWindows.values()) { try { w.close(); } catch (e) { /* gone */ } } });
   mainWindow.webContents.once('did-finish-load', () => { const s = winState(); for (const k of Object.keys(APP_WINDOWS)) if (s[k] && s[k].open) setTimeout(() => openAppWindow(k), 600); });
 
@@ -291,8 +322,9 @@ app.on('web-contents-created', (_event, contents) => {
     if (input.type !== 'keyDown' || !(input.control || input.meta)) return;
     // Show or hide the sidebar: Ctrl+Cmd+S on a Mac, Ctrl+Alt+S elsewhere.
     if (input.code === 'KeyS' && (isMac ? (input.control && input.meta && !input.alt) : (input.control && input.alt))) { event.preventDefault(); send('shortcut', 'toggle-side'); return; }
-    // Talk to the Chief of Staff from anywhere: Cmd+Shift+Space (Ctrl+Shift+Space elsewhere). Press again when you have finished.
-    if (input.code === 'Space' && input.shift && !input.alt) { event.preventDefault(); send('shortcut', 'cos-talk'); return; }
+    // Talk to the Chief of Staff from anywhere: Ctrl+Shift+Space. Press again when you have finished.
+    // (Not Cmd+Shift+Space: macOS can give that to Siri.)
+    if (input.code === 'Space' && input.shift && input.control && !input.meta && !input.alt) { event.preventDefault(); send('shortcut', 'cos-talk'); return; }
     // Cmd+Option+0..9: switch profile, even while typing in Claude.
     if (input.alt) {
       const m = /^Digit([0-9])$/.exec(input.code || '');
@@ -431,6 +463,12 @@ function buildMenu() {
       ],
     },
     { role: 'windowMenu' },
+    {
+      role: 'help',
+      submenu: [
+        { label: 'Copy Startup Log', click: () => { clipboard.writeText(startLogText()); send('shortcut', 'startlog-copied'); } },
+      ],
+    },
   ]));
 }
 
@@ -1852,13 +1890,15 @@ if (!app.requestSingleInstanceLock()) {
       mainWindow.focus();
     }
   });
+  mark('program read', (() => { try { return Math.round(Date.now() - process.getCreationTime()); } catch (e) { return null; } })());
   app.whenReady().then(() => {
-    try { keepSignIns(); } catch (e) { /* sign-ins then behave as before */ }
+    mark('system ready');
+    timed('keep sign-ins', () => { try { keepSignIns(); } catch (e) { /* sign-ins then behave as before */ } });
     const syncSettings = readSyncSettings();
-    if (syncSettings.enabled) { try { startSync(syncSettings.root || defaultRoot()); } catch (e) { /* folder unavailable */ } }
-    setUpSession();
-    buildMenu();
-    createWindow();
+    if (syncSettings.enabled) timed('watch the synced folder', () => { try { startSync(syncSettings.root || defaultRoot()); } catch (e) { /* folder unavailable */ } });
+    timed('set up session', setUpSession);
+    timed('menu', buildMenu);
+    timed('make window', createWindow);
     setUpUpdates();
     setUpLivePreview();
     app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

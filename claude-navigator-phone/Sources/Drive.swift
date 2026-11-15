@@ -370,6 +370,8 @@ final class Drive: NSObject {
         var quiet = 0
         var ended = false
         var endTicks = 0
+        var holdTicks = 0
+        var told = ""
         answerTimer?.invalidate()
         answerTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] timer in
             guard let self = self, id == self.askID else { timer.invalidate(); return }
@@ -384,7 +386,8 @@ final class Drive: NSObject {
                 if busy && !everBusy { self.tell("driveStage", ["stage": "working"]) }
                 if ticks == 25 && !busy && !everBusy && after.isEmpty { self.tell("driveStage", ["stage": "unseen"]) }       // ten seconds on and the question is not on Claude's page
                 if busy { everBusy = true; quiet = 0 } else { quiet += 1 }
-                guard let start = after.range(of: "[[SAY]]") else {
+                // Claude's working notes can mention the marks before the answer does: the last [[SAY]] is the answer.
+                guard let start = after.range(of: "[[SAY]]", options: .backwards) else {
                     // Claude finished but left out the marks: speak its latest message (the start of it, if it is long).
                     if !busy && everBusy && quiet >= 8 && !latest.isEmpty && after.contains(String(latest.prefix(30))) {
                         timer.invalidate()
@@ -397,9 +400,12 @@ final class Drive: NSObject {
                 let rest = String(after[start.upperBound...])
                 let address = self.claude.url?.absoluteString ?? ""
                 if let end = rest.range(of: "[[END]]") {
-                    if !ended {
-                        ended = true
-                        self.tell("driveAnswer", ["text": String(rest[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines), "done": true, "url": address])
+                    // Still working and no closing [[DONE]]: this may be a note, not the answer. Give it a few seconds.
+                    if !ended && busy && !rest.contains("[[DONE]]") && holdTicks < 12 { holdTicks += 1; return }
+                    let answer = String(rest[..<end.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !ended || answer != told {       // (told again only if a newer answer block replaced a note)
+                        ended = true; told = answer
+                        self.tell("driveAnswer", ["text": answer, "done": true, "url": address])
                     }
                     // After the spoken answer Claude may add one next step ("[[DO]] action | who | what"): wait a moment for it.
                     endTicks += 1

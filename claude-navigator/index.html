@@ -308,7 +308,9 @@
   .bot-tip button.go, .bot-item button.go { background: var(--accent); color: var(--accent-text, #fff); }
   .bot-tip button.x { background: none; color: var(--muted); padding: 2px 5px; }
   @keyframes botIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .bot-panel { width: 400px; height: min(600px, calc(100vh - 110px)); background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.22); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .bot-panel { width: min(var(--bot-w, 400px), calc(100vw - 60px)); height: min(var(--bot-h, 600px), calc(100vh - 110px)); background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 14px 40px rgba(0,0,0,.22); display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .bot-size { position: absolute; left: 0; top: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 6; } .bot-size::before { content: ''; position: absolute; left: 5px; top: 5px; width: 7px; height: 7px; border-left: 2px solid var(--muted); border-top: 2px solid var(--muted); border-radius: 3px 0 0 0; opacity: .55; } .bot-size:hover::before { opacity: 1; }
+  .bot-conv .ba .lead { font-weight: 600; } .bot-conv .ba ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 4px; } .bot-conv .ba p { margin: 6px 0 0; }
   #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }   /* kept laid out, so the chat never reloads */
   #cosBot.open .bot-tips { display: none; }
   .bot-head { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); }
@@ -1985,7 +1987,7 @@
 <div id="menu" role="menu"></div>
 <div id="cosBot" hidden>
   <div class="bot-tips"></div>
-  <div class="bot-panel">
+  <div class="bot-panel"><div class="bot-size" title="Drag to resize"></div>
     <div class="bot-head"><span class="av">CS</span><b>Chief of Staff</b><span class="sp"></span><button class="tb" data-a="more" title="More"></button><button class="tb" data-a="min" title="Tuck away (the button stays)"></button></div>
     <div class="bot-ctx" hidden></div>
     <div class="bot-ask"><button type="button" class="bot-talk"></button><input class="bot-in" placeholder="Ask, or tell me something…" autocomplete="off" spellcheck="true"></div>
@@ -2096,6 +2098,11 @@
 <script>
 (() => {
   'use strict';
+  // Startup log: tell the app when this page starts, and about any long freeze in its first five minutes.
+  const startNote = t => { try { if (window.navigatorApp && window.navigatorApp.startNote) window.navigatorApp.startNote(t); } catch (e) { /* older app */ } };
+  startNote('script started');
+  { let beat = Date.now(); const hb = setInterval(() => { const now = Date.now(), late = now - beat - 250; beat = now; if (performance.now() > 300000) return clearInterval(hb); if (late > 800 && late < 600000) startNote('FROZE for ' + (late / 1000).toFixed(1) + ' s'); }, 250); }
+  window.addEventListener('load', () => startNote('page loaded'));
 
   // ---------- Platform ----------
   const isApp = !!(window.navigatorApp && window.navigatorApp.isElectron);
@@ -15013,7 +15020,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!isApp || !window.navigatorApp.localAiStatus) return false;
     if (localAi.ok === true) return true;
     if (localAi.ok === false && Date.now() - localAi.at < 120e3) return false;
-    try { const r = await window.navigatorApp.localAiStatus(); localAi.ok = !!(r && r.ok); localAi.why = (r && r.reason) || ''; } catch (e) { localAi.ok = false; }
+    try { const r = await Promise.race([window.navigatorApp.localAiStatus(), new Promise(res => setTimeout(() => res({ ok: false, reason: 'no answer in 3 seconds' }), 3000))]); localAi.ok = !!(r && r.ok); localAi.why = (r && r.reason) || ''; } catch (e) { localAi.ok = false; }
     localAi.at = Date.now();
     return localAi.ok;
   }
@@ -16411,7 +16418,10 @@ body { width: max-content !important; min-width: 0 !important; }
     const b = botBriefText(); if (b) L.unshift(b);
     return L.join('\n').slice(0, 3500);
   }
-  function botSpeak(text) { try { if (ls.get('claudeNavigator.sounds') === 'off' || !text) return; speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).slice(0, 900)); u.lang = 'en-AU'; speechSynthesis.speak(u); } catch (e) { /* no voice */ } }
+  // Read aloud only when asked, in the most natural voice this Mac has (a Premium or Enhanced one if installed).
+  function botVoice() { let V = []; try { V = speechSynthesis.getVoices() || []; } catch (e) { /* none */ } const score = v => (/premium/i.test(v.name) ? 40 : /enhanced/i.test(v.name) ? 30 : /siri/i.test(v.name) ? 20 : 0) + (/^en[-_]AU/i.test(v.lang) ? 9 : /^en[-_]GB/i.test(v.lang) ? 5 : /^en/i.test(v.lang) ? 3 : -100) + (/compact|eloquence|albert|bad news|bells|boing|bubbles|cellos|jester|organ|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy/i.test(v.name) ? -30 : 0); return V.filter(v => /^en/i.test(v.lang)).sort((a, b) => score(b) - score(a))[0] || null; }
+  try { speechSynthesis.getVoices(); } catch (e) { /* none */ }
+  function botSpeak(text) { try { if (!text) return; if (speechSynthesis.speaking) return speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).replace(/\n+/g, '. ').slice(0, 900)); const v = botVoice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-AU'; speechSynthesis.speak(u); } catch (e) { /* no voice */ } }
   const BOT_MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|said|talked? about|spoke|catch[- ]?up|granola|last time|prep(are)? me)\b/i;
   const BOT_FACT = /\b(what|who|which|where|when|how many|anything|is there|are there|status|up to|open|working on|brief me)\b/i, BOT_THINK = /\b(should|advice|advise|recommend|write|draft|why|think|plan|idea|suggest|find out|search|look up|notes|granola|email|explain|compare)\b/i;
   async function botAskNew(text, opt = {}) {
@@ -16419,7 +16429,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const e = { id: ++botS.n, q: opt.label || text, ask: text, a: '', src: '', busy: true, acts: [], voice: !!opt.voice, ctx: botCtx() };
     botS.conv.push(e); if (botS.conv.length > 12) botS.conv.shift();
     bot.open = true; botS.chat = false; saveBot(); cosBotRender();
-    const finish = () => { e.busy = false; chime(e.fail ? 'no' : 'ready'); cosBotRender(); if (e.voice && !e.fail) botSpeak(e.a); };
+    const finish = () => { e.busy = false; chime(e.fail ? 'no' : 'ready'); cosBotRender(); };
     // A question about what was said or decided in meetings goes straight to Granola.
     if (!opt.claude && gran.on && BOT_MEET.test(text) && window.navigatorApp.granolaAsk) {
       e.src = 'granola'; botPaintConv();
@@ -16432,11 +16442,17 @@ body { width: max-content !important; min-width: 0 !important; }
       } catch (er) { /* Claude answers instead */ }
       if (!botS.conv.includes(e)) return;
     }
+    // What is open for someone is read straight off their list: no model, so it is instant.
+    if (!opt.claude && text.length < 160 && !BOT_THINK.test(text) && /\b(open|working on|up to|on (his|her|their|the) (list|plate)|doing|actions?|tasks?)\b/i.test(text)) {
+      const t = cosTeam(), low = text.toLowerCase(), st = t && t.nodes.filter(x => x.kind === 'staff' && !x.chief).find(x => x.name && low.includes(x.name.toLowerCase()));
+      const f = st && staffFolder(st);
+      if (f) { const open = workItems(f).filter(x => !x.done).map(x => x.name); e.a = open.length ? [`The ${st.name} has ${open.length} open.`].concat(open.slice(0, 8).map(n => '- ' + n), open.length > 8 ? [`- and ${open.length - 8} more`] : []).join('\n') : `Nothing is open for the ${st.name}.`; e.src = 'mac'; e.list = true; return finish(); }
+    }
     if (!opt.claude && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text) && !(gran.on && BOT_MEET.test(text))) {
       try {
         if (await localAiReady()) {
           const ins = 'You are a chief of staff answering your principal. Answer only from the team notes you are given. One to three short plain sentences. No lists, no symbols, no dashes. Name the staff member and the items. Never say anything was sent or booked. If the notes do not hold the answer, or the question asks you to think, advise, write or find something out, reply with exactly the one word CLAUDE.';
-          const r = await new Promise(res => { const run = localAiRun(ins, `Team notes:\n${botNotes()}\n\n${e.ctx ? 'In front of me: ' + e.ctx.text + '\n\n' : ''}Question: ${text}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'slow' }); } }, 9000); });
+          const r = await new Promise(res => { const run = localAiRun(ins, `Team notes:\n${botNotes()}\n\n${e.ctx ? 'In front of me: ' + e.ctx.text + '\n\n' : ''}Question: ${text}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'slow' }); } }, 6000); });
           const outText = r && !r.error ? draftClean(String(r.text || '')).replace(/\s+/g, ' ').replace(/\s*[—–]\s*/g, ', ').trim() : '';
           if (outText && !/\bCLAUDE\b/.test(outText) && botS.conv.includes(e)) { e.a = outText; e.src = 'mac'; return finish(); }
         }
@@ -16445,11 +16461,11 @@ body { width: max-content !important; min-width: 0 !important; }
     if (botS.conv.includes(e)) botAskClaude(e, finish);
   }
   function botAskClaude(e, finish) {
-    const v = botEnsureView(); e.src = 'claude';
+    const v = botEnsureView(); e.src = 'claude'; botPaintConv();
     if (!v) { e.a = 'Claude answers in the desktop app.'; e.fail = true; return finish(); }
     const p = activeProfile(), t = cosTeam(p), names = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name).join('; ') : '';
     const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase(), first = botS.ruled !== v;
-    const rule = `Answer in plain sentences, at most 90 words, no lists, no headings, no links. Never say something was sent or booked: emails and invitations are only ever drafts for me to check and send myself. Put your answer between [[SAY]] and [[END]]. After that, only when there is a clear next step, add up to three lines, each in exactly one of these forms:\n[[DO]] action | the staff member’s name exactly as given | the action in a few words\n[[DO]] email | who it is to | the subject | what it should say, in one or two sentences\n[[DO]] meeting | the meeting in one sentence, with the day and time if known\nThen finish with [[DONE]]. Do this for every message in this chat.`;
+    const rule = `Be brief. The first line is the answer itself in one short sentence: if I ask for a time, a date, a name or a number, give just that (for example "9:15am from Sydney, Terminal 2."). Then, only if it truly helps, add at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links, no account of how you found it, no caveats unless something is wrong. Never say something was sent or booked: emails and invitations are only ever drafts for me to check and send myself. Put your answer between [[SAY]] and [[END]]. After that, only when there is a clear next step, add up to three lines, each in exactly one of these forms:\n[[DO]] action | the staff member’s name exactly as given | the action in a few words\n[[DO]] email | who it is to | the subject | what it should say, in one or two sentences\n[[DO]] meeting | the meeting in one sentence, with the day and time if known\nThen finish with [[DONE]]. Do this for every message in this chat.`;
     const prompt = [first ? `I am asking you through the Chief of Staff panel in Claude Navigator. You are my Chief of Staff${p ? ' at ' + p.name : ''}. ${rule}\n\nThe staff: ${names}.\n\nWhere things are right now:\n${botNotes()}` : '(Same form as before: [[SAY]] answer [[END]], any [[DO]] lines, then [[DONE]].)', e.ctx ? `In front of me: ${e.ctx.text}` : '', `I said: ${e.ask}`].filter(Boolean).join('\n\n');
     const text = `${prompt}\n\nDo not repeat this line in your answer: ${nonce}`;
     let tries = 0, ticks = 0, last = '', stable = 0, sent = false;
@@ -16466,8 +16482,10 @@ body { width: max-content !important; min-width: 0 !important; }
       if (++ticks > 200) return stop(sent ? 'Claude has not answered yet. The question is in the chat: press Show the Chat to see it.' : 'Claude did not take the question. Press Show the Chat: if it asks you to sign in, do that, then ask again.');
       let page = ''; try { page = String(await v.executeJavaScript('document.body ? document.body.innerText : ""') || ''); } catch (er) { return; }
       const at = page.lastIndexOf(nonce); if (at < 0) return;
-      const body = page.slice(at + nonce.length), m = /\[\[\s*SAY\s*\]\]([\s\S]*?)(\[\[\s*END\s*\]\]|$)/i.exec(body); if (!m) return;
-      const said = m[1].replace(/\s+/g, ' ').trim(), ended = !!m[2], sig = body.length + '|' + said;
+      // Claude's working notes can show on the page before the answer, and can mention the markers: read the last block only.
+      const body = page.slice(at + nonce.length), says = [...body.matchAll(/\[\[\s*SAY\s*\]\]/gi)]; if (!says.length) return;
+      const m = /^([\s\S]*?)(\[\[\s*END\s*\]\]|$)/i.exec(body.slice(says[says.length - 1].index + says[says.length - 1][0].length));
+      const said = m[1].split('\n').map(x => x.replace(/[ \t]+/g, ' ').trim()).filter(Boolean).join('\n'), ended = !!m[2], sig = body.length + '|' + said;
       stable = sig === last ? stable + 1 : 0; last = sig;
       if (said && said !== e.a) { e.a = said; botPaintConv(); }
       if (!(/\[\[\s*DONE\s*\]\]/i.test(body) || (ended && stable >= 3) || (said && stable >= 9))) return;
@@ -16502,22 +16520,50 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     if (a.k === 'meeting') { bot.open = false; saveBot(); cosBotRender(); try { setApp('cal'); } catch (er) { /* already there */ } return calHelper($('cosBot').querySelector('.bot-btn'), activeProfile(), a.text); }
   }
+  // An answer is one clear line, then short points: never one block of text.
+  function botFill(a, e) {
+    const lines = String(e.a || '').split('\n').map(x => x.trim()).filter(Boolean);
+    if (e.fail || lines.length < 2) { a.textContent = e.a; return; }
+    a.style.whiteSpace = 'normal';
+    a.appendChild(Object.assign(document.createElement('div'), { className: 'lead', textContent: lines[0].replace(/^[-•*]\s+/, '') }));
+    let ul = null;
+    for (const l of lines.slice(1)) {
+      const pt = /^([-•*]|\d+[.)])\s+/.test(l);
+      if (pt || e.src === 'claude') { if (!ul) { ul = document.createElement('ul'); a.appendChild(ul); } ul.appendChild(Object.assign(document.createElement('li'), { textContent: l.replace(/^([-•*]|\d+[.)])\s+/, '').replace(/\*\*/g, '') })); }
+      else { ul = null; a.appendChild(Object.assign(document.createElement('p'), { textContent: l.replace(/^#+\s*/, '').replace(/\*\*/g, '') })); }
+    }
+  }
+  // The panel can be dragged bigger or smaller from its top left corner; the size is remembered.
+  (() => {
+    const el = $('cosBot'), h = el && el.querySelector('.bot-size'), pn = el && el.querySelector('.bot-panel'); if (!h || !pn) return;
+    const put = (w, ht) => { el.style.setProperty('--bot-w', Math.round(Math.max(340, Math.min(1000, w))) + 'px'); el.style.setProperty('--bot-h', Math.round(Math.max(360, Math.min(1200, ht))) + 'px'); };
+    try { const k = JSON.parse(ls.get('claudeNavigator.botSize') || 'null'); if (k && k.w && k.h) put(k.w, k.h); } catch (e) { /* default size */ }
+    h.addEventListener('pointerdown', ev => {
+      ev.preventDefault(); const r = pn.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY; let w = r.width, ht = r.height;
+      try { h.setPointerCapture(ev.pointerId); } catch (e) { /* still drags */ }
+      el.querySelectorAll('webview').forEach(v => { v.style.pointerEvents = 'none'; });
+      const mv = e2 => { w = r.width + (x0 - e2.clientX); ht = r.height + (y0 - e2.clientY); put(w, ht); };
+      const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); el.querySelectorAll('webview').forEach(v => { v.style.pointerEvents = ''; }); ls.set('claudeNavigator.botSize', JSON.stringify({ w: Math.round(Math.max(340, Math.min(1000, w))), h: Math.round(Math.max(360, Math.min(1200, ht))) })); };
+      h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
+    });
+    h.addEventListener('dblclick', () => { el.style.removeProperty('--bot-w'); el.style.removeProperty('--bot-h'); ls.set('claudeNavigator.botSize', ''); });
+  })();
   function botPaintConv() {
     const host = $('cosBot').querySelector('.bot-conv'); if (!host) return;
     host.replaceChildren();
     for (const e of botS.conv) {
       host.appendChild(Object.assign(document.createElement('div'), { className: 'bq', textContent: e.q }));
       const a = document.createElement('div'); a.className = 'ba' + (e.fail ? ' fail' : '');
-      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude\u2026' : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else a.textContent = e.a;
+      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude\u2026' : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else botFill(a, e);
       host.appendChild(a);
       if (e.busy) continue;
       const src = document.createElement('div'); src.className = 'bsrc';
-      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : 'Answered by Claude' }));
+      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.list ? 'Read from the team\u2019s lists' : e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : 'Answered by Claude' }));
       const lnk = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', run); src.appendChild(b); };
       if (e.src === 'granola') { (e.cites || []).forEach((id, i) => { const g = gran.list.find(x => x.id === id); lnk(g ? `\u25C9 ${g.title.slice(0, 28)}${g.title.length > 28 ? '\u2026' : ''}` : `Source ${i + 1}`, () => (g ? granMeetingDlg(g) : openExternal('https://notes.granola.ai/d/' + id))); }); lnk('Ask Claude instead', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
       if (e.src === 'claude') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
-      if (!e.fail) lnk('Read aloud', () => botSpeak(e.a));
+      if (!e.fail) lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
       host.appendChild(src);
       if (e.fail) continue;
       const acts = document.createElement('div'); acts.className = 'bacts';
@@ -16846,7 +16892,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const lt = ctx.inst.start <= Date.now() ? granFor(ctx.inst) : granLastTime(ctx.inst); if (lt) chip(ctx.inst.start <= Date.now() ? 'Meeting notes' : 'Notes from last time', 'Open Granola\u2019s notes', () => granMeetingDlg(lt, ctx.inst.start <= Date.now() ? '' : 'Last time'));
     }
     if (gran.on) chip('Meetings', 'Every recorded meeting from the last 30 days', () => granListDlg());
-    chip('Brief me', 'Today, what needs you, and the team: read aloud', () => { botS.conv = []; cosBotRender(); const s = botBriefText(); botSpeak(s || 'Nothing needs you right now.'); });
+    chip('Brief me', 'Today, what needs you, and the team', () => { botS.conv = []; cosBotRender(); });
     for (const [label, text] of botQuick().filter(x => x[0] !== 'Where should this go?').slice(0, ctx && ctx.kind === 'mail' ? 1 : 3)) { const name = label === 'Today' ? 'Plan my day' : label; chip(name, text.slice(0, 300), () => botAskNew(text, { label: name, claude: true })); }
     // the body: talking, a conversation, or today
     const body = el.querySelector('.bot-body'), big = el.querySelector('.bot-big'), conv = el.querySelector('.bot-conv'), list = el.querySelector('.bot-list'), foot = el.querySelector('.bot-foot');
@@ -18036,6 +18082,7 @@ body { width: max-content !important; min-width: 0 !important; }
       'toggle-claude': () => (currentApp === 'cos' ? null : !pane.hidden ? closeClaude() : openClaude()),
       'toggle-split': () => setSplit(!splitOn),
       'cos-talk': () => botTalk(),
+      'startlog-copied': () => toast('Startup log copied. It holds step names and times only. Paste it to Claude.'),
       'toggle-detail': () => (currentApp !== 'cos' ? null : fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide')),
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
     };
