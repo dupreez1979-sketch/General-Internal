@@ -344,6 +344,10 @@
   .bot-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-foot span { flex: 1; } .bot-foot button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; }
   dialog.mail-sigdlg.granola-dlg { width: min(640px, 94vw); } dialog.granola-dlg p.hint { margin: 0 0 8px !important; padding: 0 !important; text-align: left; }
   dialog.granola-dlg .dlg-actions { flex-wrap: wrap; } dialog.granola-dlg .dlg-actions .btn, dialog.granola-dlg .dlg-actions .btn-primary { white-space: nowrap; flex: none; }
+  dialog.applook .al-top { display: flex; align-items: center; gap: 16px; margin: 4px 0 12px; } dialog.applook .al-prev { width: 52px; height: 52px; border-radius: 13px; display: grid; place-items: center; flex: none; }
+  dialog.applook .al-cols { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; } dialog.applook .al-cols button { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; } dialog.applook .al-cols button.on { border-color: var(--text); box-shadow: 0 0 0 2px var(--win) inset; } dialog.applook .al-cols input { width: 30px; height: 28px; border: 0; background: none; padding: 0; cursor: pointer; }
+  dialog.applook .al-find { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; margin-bottom: 10px; }
+  dialog.applook .al-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; max-height: 300px; overflow: auto; padding: 2px; } dialog.applook .al-grid button { height: 42px; border-radius: 9px; border: 1px solid transparent; background: none; color: var(--text); display: grid; place-items: center; cursor: pointer; } dialog.applook .al-grid button:hover { background: var(--hover); } dialog.applook .al-grid button.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); } dialog.applook .al-none { grid-column: 1 / -1; color: var(--muted); font-size: 13px; padding: 14px 4px; }
   dialog.granola-dlg .gl { display: grid; gap: 6px; margin: 8px 0 14px; font-size: 13px; } dialog.granola-dlg .gline.good { color: #328276; font-weight: 600; } dialog.granola-dlg .gline.bad { color: #b3261e; font-weight: 600; }
   dialog.mail-sigdlg.gran-dlg { width: min(860px, 94vw); max-width: 96vw; height: min(780px, 90vh); resize: both; overflow: hidden; min-width: 420px; min-height: 320px; } dialog.gran-dlg[open] { display: flex; flex-direction: column; }
   dialog.gran-dlg h2, dialog.gran-dlg .hint, dialog.gran-dlg .dlg-actions { flex: none; } dialog.gran-dlg p.hint { margin: 0 0 8px !important; padding: 0 !important; text-align: left; }
@@ -15799,6 +15803,41 @@ body { width: max-content !important; min-width: 0 !important; }
     ls.set('claudeNavigator.appOrder', JSON.stringify(o)); appApplyOrder();
   }
   function appSetHidden(k, hide) { const h = appHidden().filter(x => x !== k); if (hide) h.push(k); ls.set('claudeNavigator.appHidden', JSON.stringify(h)); appApplyOrder(); }
+  // Each app's icon and colour can be changed (right-click the app). The icons are a set of 137 from Lucide, an
+  // openly licensed collection (ISC), kept with the app in vendor/. What you choose is kept on this Mac.
+  const APP_LOOK = 'claudeNavigator.appLook.v1';
+  const appLooks = (() => { try { return JSON.parse(ls.get(APP_LOOK) || '{}') || {}; } catch (e) { return {}; } })();
+  let appIconSet = null;
+  const appIcons = async () => { if (appIconSet) return appIconSet; try { appIconSet = (isApp && window.navigatorApp.iconSet ? await window.navigatorApp.iconSet() : null) || {}; } catch (e) { appIconSet = {}; } return appIconSet; };
+  const appIconSvg = (inner, size) => `<svg width="${size || 20}" height="${size || 20}" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  const appTileIc = k => $('appPop').querySelector(`.app-tile[data-app="${k}"] .app-ic`);
+  async function appLookApply() {
+    const set = Object.keys(appLooks).some(k => appLooks[k] && appLooks[k].icon) ? await appIcons() : {};
+    for (const k of APP_KEYS) { const ic = appTileIc(k); if (!ic) continue;
+      if (ic.dataset.own === undefined) ic.dataset.own = ic.innerHTML;          // (the icon it came with, to go back to)
+      const L = appLooks[k] || {};
+      ic.style.background = /^#[0-9a-f]{6}$/i.test(L.color || '') ? L.color : '';
+      ic.innerHTML = L.icon && set[L.icon] ? appIconSvg(set[L.icon]) : ic.dataset.own; }
+    try { dockRender(); sideMount(); } catch (e) { /* starting up */ }
+  }
+  const APP_COLOURS = ['#1B5A68', '#328276', '#6FC483', '#99351E', '#B36E24', '#FF7552', '#FF4C80', '#FF92B1', '#D9534F', '#3D6A8A', '#4A90D9', '#6B7C93', '#7B61C4', '#9B59B6', '#111111', '#5F6368'];
+  async function appLookDlg(k) {
+    const set = await appIcons(), names = Object.keys(set), L = Object.assign({}, appLooks[k] || {});
+    const d = mailDlg('granola-dlg applook', '<h2></h2><p class="hint">Choose a colour and an icon. It changes in the dock, the app switcher and anywhere else this app shows.</p><div class="al-top"><span class="app-ic al-prev"></span><div class="al-cols"></div></div><input type="search" class="al-find" placeholder="Search the icons, for example: calendar, people, money"><div class="al-grid"></div><div class="dlg-actions"><button class="btn" data-x="reset">Back to the Original</button><span style="flex:1"></span><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>');
+    d.querySelector('h2').textContent = `Icon and colour for ${APP_NAMES[k] || 'this app'}`;
+    const prev = d.querySelector('.al-prev'), cols = d.querySelector('.al-cols'), grid = d.querySelector('.al-grid'), find = d.querySelector('.al-find'), own = appTileIc(k);
+    prev.className = 'app-ic al-prev ' + ((own && [...own.classList].find(c => c !== 'app-ic')) || '');
+    const paint = () => { prev.style.background = L.color || ''; prev.innerHTML = L.icon && set[L.icon] ? appIconSvg(set[L.icon], 26) : (own ? own.dataset.own || own.innerHTML : ''); cols.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === (L.color || ''))); grid.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.n === (L.icon || ''))); };
+    for (const c of APP_COLOURS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.c = c; b.style.background = c; b.title = c; b.addEventListener('click', () => { L.color = c; paint(); }); cols.appendChild(b); }
+    { const cu = document.createElement('input'); cu.type = 'color'; cu.title = 'Any other colour'; cu.value = /^#[0-9a-f]{6}$/i.test(L.color || '') ? L.color : '#1B5A68'; cu.addEventListener('input', () => { L.color = cu.value; paint(); }); cols.appendChild(cu); }
+    const fill = () => { const q = find.value.trim().toLowerCase(); grid.replaceChildren(); for (const n of names) { if (q && !q.split(/\s+/).every(w => n.includes(w))) continue; const b = document.createElement('button'); b.type = 'button'; b.dataset.n = n; b.title = n.replace(/-/g, ' '); b.innerHTML = appIconSvg(set[n], 22).replace('stroke="#fff"', 'stroke="currentColor"'); b.addEventListener('click', () => { L.icon = n; paint(); }); grid.appendChild(b); } if (!grid.children.length) grid.appendChild(Object.assign(document.createElement('div'), { className: 'al-none', textContent: names.length ? 'No icon with that name. Try a simpler word.' : 'The icon set could not be read.' })); paint(); };
+    find.addEventListener('input', fill); fill();
+    d.addEventListener('click', e => { const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+      if (x === 'reset') { delete appLooks[k]; ls.set(APP_LOOK, JSON.stringify(appLooks)); appLookApply(); d.close(); return; }
+      if (x === 'ok') { if (L.color || L.icon) appLooks[k] = { color: L.color || '', icon: L.icon || '' }; else delete appLooks[k]; ls.set(APP_LOOK, JSON.stringify(appLooks)); appLookApply(); }
+      d.close(); });
+  }
+  setTimeout(appLookApply, 800);
   let appDragKey = null;
   function appDragWire(el, k, axis) {
     el.draggable = true;
@@ -15825,6 +15864,7 @@ body { width: max-content !important; min-width: 0 !important; }
           k === 'mail' ? { label: 'Mail Health\u2026', run: () => mailHealth() } : null,
           '-',
         ].filter(Boolean) : []),
+        ...(k !== 'chats' ? [{ label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-'] : []),
         { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
         { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
         '-',
@@ -15844,7 +15884,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
   const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['meet', 'Meetings', 'meet'], ['monday', 'monday.com', 'monday']];
-  const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
+  const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}"${(($('appPop').querySelector('.app-ic.' + cls) || {}).style || {}).background ? ` style="background:${$('appPop').querySelector('.app-ic.' + cls).style.background}"` : ''}>${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
   // is Claude while File Navigator, Claude or Chief of Staff is the main app: there a chat opens in the app's own
   // Claude pane, which the lists and the staff pages are wired to.
