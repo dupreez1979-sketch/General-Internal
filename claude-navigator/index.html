@@ -415,6 +415,13 @@
   body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead, body.side-off #main > #meetPanel > .meet-head { padding-left: 76px !important; }
   .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: max(76px, calc(148px - var(--dock-w, 0px))) !important; }
   body.cos-mode.side-off #bar { padding-left: 10px !important; }
+  /* ---- Step 8: one icon set. Every small glyph is drawn the same way: 16 by 16, one line weight, the text's own colour. ---- */
+  .gl { width: 14px; height: 14px; flex: none; vertical-align: -2.5px; display: inline-block; fill: none; stroke: currentColor; }
+  .mail-m .fl { white-space: nowrap; display: inline-flex; align-items: center; }
+  .mc-fmt .tb .gl { width: 15px; height: 15px; } .mc-fmt .tb .gl + .gl { width: 9px; margin-left: -1px; }
+  .mail-m .fl .gl { width: 12px; height: 12px; margin-right: 2px; } .mail-m .fl .hi { font-weight: var(--fw-bold); margin-right: 3px; }
+  .mail-g .gl, .rel-top .gl { width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
+  #menu .k .gl { width: 11px; height: 11px; vertical-align: -1px; }
   /* ---- Step 7: forms and sheets ---- */
   /* Fields and buttons are one height and one corner; labels are plain words in a right-aligned column, with no colon. */
   dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), dialog select { min-height: var(--control-h); border: 1px solid var(--line); border-radius: var(--r-control); padding: 4px 8px; font-size: var(--fs-body); }
@@ -2132,7 +2139,7 @@
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
     <span class="dlg-spacer"></span>
-    <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg></button>
+    <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
     <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
   </div>
@@ -2160,8 +2167,8 @@
     <button class="tb" id="bReload" data-tb="bReload" title="Reload"><span data-icon="reload"></span></button>
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
-    <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
-    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: make an email or a meeting from this chat. Claude lays it out, and it opens for you to check. Nothing is sent or saved until you do it."><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
+    <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
+    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: make an email or a meeting from this chat. Claude lays it out, and it opens for you to check. Nothing is sent or saved until you do it."><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bMore" title="More: new chat, reload, open in your web browser"></button>
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
@@ -2219,7 +2226,7 @@
  <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, outputs and more"><span class="app-ic claude"></span><b>Claude</b></button>
   <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
   <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
-  <button class="app-tile" data-app="meet" title="Your recorded meetings from Granola: notes, actions and which profile each belongs to"><span class="app-ic meet"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 11.5V8M6.3 13V4M9.7 12V6.5M13 10.5V8.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span><b>Meetings</b></button>
+  <button class="app-tile" data-app="meet" title="Your recorded meetings from Granola: notes, actions and which profile each belongs to"><span class="app-ic meet"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 11.5V8M6.3 13V4M9.7 12V6.5M13 10.5V8.5" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg></span><b>Meetings</b></button>
   <button class="app-tile" data-app="monday" title="Your monday.com workspaces and boards"><span class="app-ic monday"></span><b>monday.com</b></button>
 </div>
 
@@ -2392,17 +2399,17 @@
   // ---------- Icons ----------
   // Small glyphs share a 16px grid and draw with colour C, so they can be reused at large sizes.
   const G = {
-    folder: C => `<path d="M1.75 4.25a1 1 0 011-1h3.2l1.5 1.5h5.8a1 1 0 011 1v6.5a1 1 0 01-1 1H2.75a1 1 0 01-1-1z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
-    chat: C => `<path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5.5A1.5 1.5 0 0112 11H7l-3 2.5V11a1.5 1.5 0 01-1.5-1.5z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
-    project: C => `<rect x="2" y="4.5" width="12" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1M2 8h12" fill="none" stroke="${C}" stroke-width="1.3"/>`,
-    artifact: C => `<path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="${C}" stroke-width="1.3"/>`,
-    doc: C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`,
-    slides: C => `<rect x="2" y="2.5" width="12" height="8" rx="1" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 10.5v2.5M5.5 14.2L8 13l2.5 1.2" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
-    whiteboard: C => `<rect x="2" y="3" width="12" height="8.5" rx="1.2" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M5 13.5h6M8 11.5v2M4.6 8.4l2-2.3 1.7 1.5 2.9-2.7" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`,
-    dashboard: C => `<rect x="2.5" y="7" width="3" height="6.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="6.5" y="2.5" width="3" height="11" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/><rect x="10.5" y="5" width="3" height="8.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.3"/>`,
-    design: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="6.3" r="1" fill="${C}"/><circle cx="9.8" cy="5.6" r="1" fill="${C}"/><circle cx="10.8" cy="9.2" r="1" fill="${C}"/>`,
-    claude: C => `<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" stroke="${C}" stroke-width="1.5" stroke-linecap="round"/>`,
-    link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.2"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
+    folder: C => `<path d="M1.75 4.25a1 1 0 011-1h3.2l1.5 1.5h5.8a1 1 0 011 1v6.5a1 1 0 01-1 1H2.75a1 1 0 01-1-1z" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`,
+    chat: C => `<path d="M2.5 4a1.5 1.5 0 011.5-1.5h8A1.5 1.5 0 0113.5 4v5.5A1.5 1.5 0 0112 11H7l-3 2.5V11a1.5 1.5 0 01-1.5-1.5z" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`,
+    project: C => `<rect x="2" y="4.5" width="12" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M5.5 4.5V3.5a1 1 0 011-1h3a1 1 0 011 1v1M2 8h12" fill="none" stroke="${C}" stroke-width="1.4"/>`,
+    artifact: C => `<path d="M4 1.8h5l3.2 3.2v8.5a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/><path d="M9 1.8V5h3.2M5.5 8.5h5M5.5 11h3.5" fill="none" stroke="${C}" stroke-width="1.4"/>`,
+    doc: C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`,
+    slides: C => `<rect x="2" y="2.5" width="12" height="8" rx="1" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M8 10.5v2.5M5.5 14.2L8 13l2.5 1.2" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+    whiteboard: C => `<rect x="2" y="3" width="12" height="8.5" rx="1.2" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M5 13.5h6M8 11.5v2M4.6 8.4l2-2.3 1.7 1.5 2.9-2.7" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`,
+    dashboard: C => `<rect x="2.5" y="7" width="3" height="6.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.4"/><rect x="6.5" y="2.5" width="3" height="11" rx=".6" fill="none" stroke="${C}" stroke-width="1.4"/><rect x="10.5" y="5" width="3" height="8.5" rx=".6" fill="none" stroke="${C}" stroke-width="1.4"/>`,
+    design: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="5.7" cy="6.3" r="1" fill="${C}"/><circle cx="9.8" cy="5.6" r="1" fill="${C}"/><circle cx="10.8" cy="9.2" r="1" fill="${C}"/>`,
+    claude: C => `<path d="M8 2v12M2 8h12M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" stroke="${C}" stroke-width="1.4" stroke-linecap="round"/>`,
+    link: C => `<circle cx="8" cy="8" r="6" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M2 8h12M8 2c-2 2-2 10 0 12M8 2c2 2 2 10 0 12" fill="none" stroke="${C}" stroke-width="1"/>`,
   };
   G.canva = G.design;
   // monday.com: three tilted capsules in monday's red, yellow and green, so boards are recognisable anywhere.
@@ -2411,26 +2418,26 @@
     `<rect x="6.2" y="5.2" width="3" height="7.6" rx="1.5" fill="#FFCB00" transform="rotate(32 7.7 9)"/>` +
     `<circle cx="13" cy="11" r="1.8" fill="#00CA72"/></g>`;
   G.monday = () => MONDAY_MARK();
-  G.skill = C => `<rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8.6 4.2 5.6 8.6h2.5l-.7 3.2 3-4.4H7.9z" fill="${C}"/>`;
+  G.skill = C => `<rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M8.6 4.2 5.6 8.6h2.5l-.7 3.2 3-4.4H7.9z" fill="${C}"/>`;
   // Clara: a calendar with a spark, for the scheduling assistant.
-  G.clara = C => `<rect x="2" y="3" width="12" height="11" rx="2.2" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M2 6.4h12M5.2 1.8v2.6M10.8 1.8v2.6" stroke="${C}" stroke-width="1.3" stroke-linecap="round"/><path d="M8 7.8l.75 1.5 1.55.2-1.15 1.05.3 1.6L8 11.4l-1.45.75.3-1.6L5.7 9.5l1.55-.2z" fill="${C}"/>`;
+  G.clara = C => `<rect x="2" y="3" width="12" height="11" rx="2.2" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M2 6.4h12M5.2 1.8v2.6M10.8 1.8v2.6" stroke="${C}" stroke-width="1.4" stroke-linecap="round"/><path d="M8 7.8l.75 1.5 1.55.2-1.15 1.05.3 1.6L8 11.4l-1.45.75.3-1.6L5.7 9.5l1.55-.2z" fill="${C}"/>`;
   G.mondaydoc = C => G.file(C) + MONDAY_MARK(4.4, 5.6, 0.48);
   G.mondayfolder = C => G.folder(C);
-  G.mondayws = C => `<rect x="1.8" y="2.2" width="12.4" height="11.6" rx="2.4" fill="none" stroke="${C}" stroke-width="1.3"/>` + MONDAY_MARK(3.4, 2.8, 0.58);
-  G.file = C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
+  G.mondayws = C => `<rect x="1.8" y="2.2" width="12.4" height="11.6" rx="2.4" fill="none" stroke="${C}" stroke-width="1.4"/>` + MONDAY_MARK(3.4, 2.8, 0.58);
+  G.file = C => `<path d="M4 1.8h5.2l3 3v8.7a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V2.6a.8.8 0 01.8-.8z" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.2 1.8v3h3" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`;
   G.word = C => G.file(C) + `<path d="M5.3 7.5l.9 4 .9-3 .9 3 .9-4" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>`;
-  G.excel = C => G.file(C) + `<path d="M5.5 7.5l3.4 4.2M8.9 7.5l-3.4 4.2" fill="none" stroke="${C}" stroke-width="1.1" stroke-linecap="round"/>`;
-  G.powerpoint = C => G.file(C) + `<path d="M5.8 11.8V7.6h1.5a1.2 1.2 0 010 2.4H5.8" fill="none" stroke="${C}" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.excel = C => G.file(C) + `<path d="M5.5 7.5l3.4 4.2M8.9 7.5l-3.4 4.2" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round"/>`;
+  G.powerpoint = C => G.file(C) + `<path d="M5.8 11.8V7.6h1.5a1.2 1.2 0 010 2.4H5.8" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
   G.pdf = C => G.file(C) + `<path d="M5.2 11.2c1.6-.6 3.3-2.2 3.8-3.8.3-1-.8-1.1-.8 0 0 1.4 1.4 3.2 3 3.6" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
-  G.image = C => `<rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.6" cy="6.4" r="1.1" fill="${C}"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3" fill="none" stroke="${C}" stroke-width="1.2" stroke-linejoin="round"/>`;
-  G.video = C => `<rect x="2" y="3.5" width="9" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M11 6.5l3-1.8v6.6l-3-1.8" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/>`;
-  G.audio = C => `<path d="M6 11.5V3.5l6.5-1.5v8" fill="none" stroke="${C}" stroke-width="1.3" stroke-linejoin="round"/><circle cx="4.5" cy="11.8" r="1.6" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="11" cy="10.2" r="1.6" fill="none" stroke="${C}" stroke-width="1.3"/>`;
+  G.image = C => `<rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="5.6" cy="6.4" r="1.1" fill="${C}"/><path d="M2.5 12l3.5-3.5 2.5 2.5 2-2 3 3" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`;
+  G.video = C => `<rect x="2" y="3.5" width="9" height="9" rx="1.5" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M11 6.5l3-1.8v6.6l-3-1.8" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/>`;
+  G.audio = C => `<path d="M6 11.5V3.5l6.5-1.5v8" fill="none" stroke="${C}" stroke-width="1.4" stroke-linejoin="round"/><circle cx="4.5" cy="11.8" r="1.6" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="11" cy="10.2" r="1.6" fill="none" stroke="${C}" stroke-width="1.4"/>`;
   G.text = C => G.file(C) + `<path d="M5.5 8h5M5.5 10.2h5M5.5 12.4h3" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
   G.archive = C => G.file(C) + `<path d="M7.5 4.5v1M7.5 6.5v1M7.5 8.5v1M6.8 10.5h1.4v1.6H6.8z" fill="none" stroke="${C}" stroke-width="1" stroke-linecap="round"/>`;
   G.code = C => `<path d="M5.5 4.5L2 8l3.5 3.5M10.5 4.5L14 8l-3.5 3.5M9 3l-2 10" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
-  G.schedule = C => `<circle cx="8" cy="8.5" r="5.8" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M8 5.3v3.4l2.2 1.5" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>`;
-  G.designsystem = C => `<rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="${C}" stroke-width="1.3"/><circle cx="5.7" cy="5.7" r="1.3" fill="${C}"/><circle cx="10.3" cy="5.7" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="5.7" cy="10.3" r="1.3" fill="none" stroke="${C}" stroke-width="1.1"/><circle cx="10.3" cy="10.3" r="1.3" fill="${C}"/>`;
-  G.account = C => `<circle cx="8" cy="5.6" r="2.8" fill="none" stroke="${C}" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="${C}" stroke-width="1.3" stroke-linecap="round"/>`;
+  G.schedule = C => `<circle cx="8" cy="8.5" r="5.8" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M8 5.3v3.4l2.2 1.5" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>`;
+  G.designsystem = C => `<rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="5.7" cy="5.7" r="1.3" fill="${C}"/><circle cx="10.3" cy="5.7" r="1.3" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="5.7" cy="10.3" r="1.3" fill="none" stroke="${C}" stroke-width="1.4"/><circle cx="10.3" cy="10.3" r="1.3" fill="${C}"/>`;
+  G.account = C => `<circle cx="8" cy="5.6" r="2.8" fill="none" stroke="${C}" stroke-width="1.4"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="${C}" stroke-width="1.4" stroke-linecap="round"/>`;
   // Brighter versions in dark mode so every icon stays easy to see.
   const KIND_COLOUR = matchMedia('(prefers-color-scheme: dark)').matches ? {
     chat: '#E58A63', claude: '#E58A63', project: '#7EA6E8', artifact: '#4CC29A', link: '#A0A0A0', folder: '#5AA8F0',
@@ -2450,6 +2457,36 @@
     word: 'Word document', excel: 'Spreadsheet', powerpoint: 'Presentation', pdf: 'PDF', image: 'Image', video: 'Video', audio: 'Audio', text: 'Text file', archive: 'Archive', file: 'File',
   };
   const small = (k, C = 'currentColor', s = 16) => `<svg width="${s}" height="${s}" viewBox="0 0 16 16">${G[k](C)}</svg>`;
+  // The small glyphs that used to be typed characters (an envelope, a tick, an arrow), drawn as one set. Code may still
+  // name a glyph by its old character: ico() turns it into the drawing, and anything it does not know stays as text.
+  const GL = (() => {
+    const p = d => `<path d="${d}"/>`, dot = (x, y, r = 0.95) => `<circle cx="${x}" cy="${y}" r="${r}" fill="currentColor" stroke="none"/>`, ring = '<circle cx="8" cy="8" r="5.8"/>';
+    return {
+      mail: '<rect x="2" y="3.5" width="12" height="9" rx="1.6"/>' + p('M2.6 5l5.4 4 5.4-4'),
+      cal: '<rect x="2.2" y="3" width="11.6" height="10.5" rx="1.6"/>' + p('M2.2 6.3h11.6M5.3 1.8v2.4M10.7 1.8v2.4'),
+      people: '<circle cx="6" cy="6" r="2.3"/>' + p('M1.8 13c.4-2.4 2-3.6 4.2-3.6s3.8 1.2 4.2 3.6M10.6 3.9a2.3 2.3 0 010 4.3M12 9.7c1.3.5 2 1.6 2.3 3.3'),
+      wave: p('M3 10V6M5.5 12V4M8 11V5M10.5 12.5V3.5M13 10V6'),
+      check: p('M3.2 8.4l3 3 6.6-6.8'), pencil: p('M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2'),
+      warn: p('M8 2.4l6.2 10.8H1.8zM8 6.6v3.1') + dot(8, 11.5, 0.8), plus: p('M8 3v10M3 8h10'),
+      clock: ring + p('M8 4.8V8l2.2 1.4'), past: ring + p('M5.6 8.2l1.7 1.7 3.2-3.4'), dotc: dot(8, 8, 2),
+      x: p('M4 4l8 8M12 4l-8 8'), right: p('M6 3.5l4.5 4.5L6 12.5'), down: p('M3.5 6l4.5 4.5L12.5 6'),
+      undo: p('M5.5 3.5l-3 3 3 3M2.8 6.5H9.5a3.8 3.8 0 010 7.6H6.5'), redo: p('M10.5 3.5l3 3-3 3M13.2 6.5H6.5a3.8 3.8 0 000 7.6h3'),
+      outdent: p('M13.5 4H7.5M13.5 8H7.5M13.5 12H7.5M5 5.5L2.5 8 5 10.5'), indent: p('M2.5 4h6M2.5 8h6M2.5 12h6M11 5.5L13.5 8 11 10.5'),
+      bullets: dot(3, 4) + dot(3, 8) + dot(3, 12) + p('M6.2 4h7.3M6.2 8h7.3M6.2 12h7.3'),
+      numbers: '<text x="1.4" y="5.9" font-size="5.2" font-family="-apple-system, sans-serif" fill="currentColor" stroke="none">1</text><text x="1.4" y="13.6" font-size="5.2" font-family="-apple-system, sans-serif" fill="currentColor" stroke="none">2</text>' + p('M6.2 4h7.3M6.2 8h7.3M6.2 12h7.3'),
+      align: p('M2.5 4h11M2.5 8h7.5M2.5 12h11'), spacing: p('M4 3v10M2.2 4.8L4 3l1.8 1.8M2.2 11.2L4 13l1.8-1.8M8.2 4.5h5.3M8.2 8h5.3M8.2 11.5h5.3'),
+      link: p('M6.8 9.2a2.6 2.6 0 003.7 0l2-2a2.6 2.6 0 00-3.7-3.7l-.8.8M9.2 6.8a2.6 2.6 0 00-3.7 0l-2 2a2.6 2.6 0 003.7 3.7l.8-.8'),
+      image: '<rect x="2" y="3" width="12" height="10" rx="1.6"/>' + dot(5.6, 6.4, 1.1) + p('M2.5 11.5l3.3-3 2.6 2.2 2-1.7 3.1 2.6'),
+      smile: ring + p('M5.7 9.5c.6.9 1.4 1.3 2.3 1.3s1.7-.4 2.3-1.3') + dot(6, 6.7, 0.8) + dot(10, 6.7, 0.8),
+      more: dot(3.4, 8, 1.2) + dot(8, 8, 1.2) + dot(12.6, 8, 1.2),
+      clip: p('M12 7.3l-4.5 4.5a2.3 2.3 0 01-3.3-3.3l5-5a1.6 1.6 0 012.3 2.3L6.7 10.6a.8.8 0 01-1.1-1.1l4-4'),
+      flag: '<path d="M4 3.3h7.6l-1.7 2.6 1.7 2.6H4z" fill="currentColor"/>' + p('M4 13.6V2.8'),
+    };
+  })();
+  const GL_OF = { '\u2709': 'mail', '\u25A6': 'cal', '\u25CE': 'people', '\u25C9': 'wave', '\u2713': 'check', '\u270E': 'pencil', '!': 'warn', '+': 'plus', '\u25F7': 'clock', '\u25CB': 'past', '\u2022': 'dotc',
+    '\u2715': 'x', '\u25B8': 'right', '\u25BE': 'down', '\u21B6': 'undo', '\u21B7': 'redo', '\u21E4': 'outdent', '\u21E5': 'indent', '\u2022\u2261': 'bullets', '1\u2261': 'numbers', '\u2261': 'align', '\u2195': 'spacing',
+    '\u{1F517}': 'link', '\u{1F5BC}': 'image', '\u263A': 'smile', '\u22EF': 'more', '\u{1F4CE}': 'clip', '\u2691': 'flag' };
+  const ico = c => { const k = GL[c] ? c : GL_OF[c]; return k ? `<svg class="gl" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GL[k]}</svg>` : String(c == null ? '' : c).replace(/[&<>]/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[z])); };
 
   // Folders: a small solid Finder-blue folder. Everything else: an outline in its own colour.
   const SMALL_FOLDER = `<svg width="17" height="15" viewBox="0 0 17 15">
@@ -2467,35 +2504,35 @@
 
   const UI = {
     chev: '<svg width="10" height="10" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    plus: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+    plus: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="3.4" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.6" cy="8" r="1.25" fill="currentColor"/></svg>',
-    add: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
-    back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    add: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     apps: '<svg width="16" height="16" viewBox="0 0 16 16">' + [3, 8, 13].map(y => [3, 8, 13].map(x => `<circle cx="${x}" cy="${y}" r="1.45" fill="currentColor"/>`).join('')).join('') + '</svg>',
-    team: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="10" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 5.5v2.5M3.5 10.5V8h9v2.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>',
-    split: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.5v11" stroke="currentColor" stroke-width="1.3"/><path d="M3.6 5.5h2.6M3.6 8h2.6M9.8 5.5h2.6M9.8 8h2.6" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>',
-    grid: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
-    list: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M5.5 4h8.5M5.5 8h8.5M5.5 12h8.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="2.5" cy="4" r="1" fill="currentColor"/><circle cx="2.5" cy="8" r="1" fill="currentColor"/><circle cx="2.5" cy="12" r="1" fill="currentColor"/></svg>',
-    reload: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    star: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
-    starFilled: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="#F5B400" stroke="#E0A200" stroke-width="1.1" stroke-linejoin="round"/></svg>',
-    pause: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
-    play: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.8 8z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>',
-    trash: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6.5 4.5V3a.8.8 0 01.8-.8h1.4a.8.8 0 01.8.8v1.5M4 4.5l.7 8.3a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    team: '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="5.5" y="1.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="1" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="10" y="10.5" width="5" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5.5v2.5M3.5 10.5V8h9v2.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+    split: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="1.8" y="2.5" width="12.4" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 2.5v11" stroke="currentColor" stroke-width="1.4"/><path d="M3.6 5.5h2.6M3.6 8h2.6M9.8 5.5h2.6M9.8 8h2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    grid: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="5" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>',
+    list: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M5.5 4h8.5M5.5 8h8.5M5.5 12h8.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.5" cy="4" r="1" fill="currentColor"/><circle cx="2.5" cy="8" r="1" fill="currentColor"/><circle cx="2.5" cy="12" r="1" fill="currentColor"/></svg>',
+    reload: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    star: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+    starFilled: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 2l1.8 3.8 4.1.5-3 2.8.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.8 4.1-.5z" fill="#F5B400" stroke="#E0A200" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+    pause: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 3.5v9M10.5 3.5v9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    play: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5 3.2v9.6L12.8 8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
+    trash: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6.5 4.5V3a.8.8 0 01.8-.8h1.4a.8.8 0 01.8.8v1.5M4 4.5l.7 8.3a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     external: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L7.5 8.5M11.5 9.5v3a1 1 0 01-1 1h-7a1 1 0 01-1-1v-7a1 1 0 011-1h3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    compose: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M12.3 1.9a1.1 1.1 0 011.6 1.6L8.2 9.2l-2.1.5.5-2.1z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+    compose: '<svg width="17" height="17" viewBox="0 0 16 16"><path d="M7.5 2.5H3.5a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1v-4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.3 1.9a1.1 1.1 0 011.6 1.6L8.2 9.2l-2.1.5.5-2.1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>',
     sortUp: '<svg width="9" height="9" viewBox="0 0 16 16"><path d="M3 10.5L8 5.5l5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     sortDown: '<svg width="9" height="9" viewBox="0 0 16 16"><path d="M3 5.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    account: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5.6" r="2.8" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    attach: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 2v6.5a2 2 0 002 2h7M10.5 7.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    filter: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
-    check: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    expandAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 6L8 2.5 11.5 6M4.5 10L8 13.5l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    collapseAll: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4.5 2.5L8 6l3.5-3.5M4.5 13.5L8 10l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    account: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="5.6" r="2.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.8 14c.6-2.7 2.7-4.2 5.2-4.2s4.6 1.5 5.2 4.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    attach: '<svg width="11" height="11" viewBox="0 0 16 16"><path d="M4 2v6.5a2 2 0 002 2h7M10.5 7.5l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    filter: '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12M4.5 8h7M7 12.5h2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    check: '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 8.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     chevDown: '<svg width="10" height="10" viewBox="0 0 16 16"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
-    root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.3"/></svg>',
+    search: '<svg width="13" height="13" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.8" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    root: '<svg width="13" height="13" viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 2.5v11" stroke="currentColor" stroke-width="1.4"/></svg>',
   };
   document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = UI[el.dataset.icon] || ''; });
 
@@ -6221,7 +6258,7 @@
       if (it === '-') { if (menu.lastChild && menu.lastChild.tagName !== 'HR') menu.appendChild(document.createElement('hr')); continue; }
       const b = document.createElement('button');
       b.setAttribute('role', 'menuitem');
-      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.dot ? `<span class="pdot${it.dot === 'all' ? ' all' : ''}" style="${it.dot === 'all' ? '' : `background:${it.dot}`}"></span>` : it.iconHtml ? it.iconHtml : it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key}</span>` : ''}`;
+      b.innerHTML = `${checks ? `<span class="ck">${it.checked ? '\u2713' : ''}</span>` : ''}${icons ? `<span class="mi">${it.dot ? `<span class="pdot${it.dot === 'all' ? ' all' : ''}" style="${it.dot === 'all' ? '' : `background:${it.dot}`}"></span>` : it.iconHtml ? it.iconHtml : it.icon ? small(it.icon, KIND_COLOUR[it.icon] || 'currentColor', 15) : ''}</span>` : ''}<span class="lb"></span>${it.key ? `<span class="k">${it.key === '\u25B8' ? ico('right') : it.key}</span>` : ''}`;
       b.querySelector('.lb').textContent = it.label;
       b.disabled = !!it.disabled;
       b.addEventListener('click', () => { hideMenu(); it.run(); });
@@ -7521,9 +7558,9 @@
   const EDGE_LABEL = { side: 'Sidebar', claude: 'Claude', split: 'Split', detail: 'Details', actions: 'Actions' };
   const FICON = {
     swap: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 5.5h10.5M10.5 3l2.5 2.5-2.5 2.5M13.5 10.5H3M5.5 8L3 10.5 5.5 13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    pin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 2h5l-.6 4.2L12.5 9h-9l2.6-2.8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 9v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    pinOn: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 2h5l-.6 4.2L12.5 9h-9l2.6-2.8z" fill="currentColor" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 9v5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    hide: '<svg width="13" height="13" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    pin: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 2h5l-.6 4.2L12.5 9h-9l2.6-2.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 9v5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    pinOn: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M5.5 2h5l-.6 4.2L12.5 9h-9l2.6-2.8z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 9v5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+    hide: '<svg width="13" height="13" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
     wide: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M2.5 6V2.5H6M13.5 6V2.5H10M2.5 10v3.5H6M13.5 10v3.5H10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     narrow: '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M6 2.5V6H2.5M10 2.5V6h3.5M6 13.5V10H2.5M10 13.5V10h3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
@@ -9285,7 +9322,7 @@
     box.append(h, lead);
     const step = (num, title, state) => {
       const d = document.createElement('div'); d.className = 'cos-step ' + state;
-      d.innerHTML = `<div class="hd"><span class="num">${state === 'done' ? '✓' : num}</span><span></span></div>`;
+      d.innerHTML = `<div class="hd"><span class="num">${state === 'done' ? ico('check') : num}</span><span></span></div>`;
       d.querySelector('.hd span:last-child').textContent = title;
       box.appendChild(d); return d;
     };
@@ -9736,8 +9773,8 @@
     head.querySelector('.ftitle').textContent = popped ? `${n.name} \u00b7 ${items.length} open` : `${items.length} open`;
     const ctl = frameCtl('actions');
     const pop = document.createElement('button');
-    pop.innerHTML = popped ? '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 3v10" stroke="currentColor" stroke-width="1.3"/></svg>'
-      : '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    pop.innerHTML = popped ? '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v10" stroke="currentColor" stroke-width="1.4"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     pop.title = popped ? 'Dock it beside Work again' : 'Pop out: a small window of its own that stays open while you move around (it follows the staff member you are on)';
     pop.addEventListener('click', e => { e.stopPropagation(); setFrame('actions', { popped: !popped }); cosPaintActions(); });
     if (popped) ctl.querySelector('[data-f="swap"]') && ctl.querySelector('[data-f="swap"]').remove();
@@ -10841,7 +10878,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const b = (html, title, run) => { const x = document.createElement('button'); x.innerHTML = html; x.title = title; x.addEventListener('click', run); ctl.appendChild(x); };
       b(UI.reload, 'Reload this note', () => { const v = notesViews.get(notesState.cur); if (v) try { v.reload(); } catch (e) { /* loading */ } });
       b(UI.external, 'Open this note in your web browser', () => { const n = notesState.list.find(x => x.id === notesState.cur); if (n) openExternal(n.url); });
-      const fl = document.createElement('button'); fl.className = 'nfloat'; fl.hidden = true; fl.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.5 5V3.5A1.5 1.5 0 017 2h5.5A1.5 1.5 0 0114 3.5V9a1.5 1.5 0 01-1.5 1.5H10.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>'; ctl.appendChild(fl);
+      const fl = document.createElement('button'); fl.className = 'nfloat'; fl.hidden = true; fl.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5V3.5A1.5 1.5 0 017 2h5.5A1.5 1.5 0 0114 3.5V9a1.5 1.5 0 01-1.5 1.5H10.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>'; ctl.appendChild(fl);
       fl.addEventListener('click', () => {
         if (currentApp === 'notes') { notesState.open = true; notesSave(); setApp(notesState.from || 'navigator'); }
         else { notesState.open = false; notesSave(); setApp('notes'); }
@@ -10897,7 +10934,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const h = document.createElement('div'); h.className = 'cos-side-h'; h.textContent = 'Notes'; sd.appendChild(h);
     for (const n of notesState.list) {
       const b = document.createElement('button'); b.className = n.id === notesState.cur ? 'on' : '';
-      b.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#E0A800" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5" stroke="#E0A800" stroke-width="1.3" stroke-linecap="round"/></svg><span></span>';
+      b.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="#E0A800" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5" stroke="#E0A800" stroke-width="1.4" stroke-linecap="round"/></svg><span></span>';
       b.querySelector('span').textContent = n.name;
       b.addEventListener('click', () => { notesState.cur = n.id; notesSave(); notesRender(); });
       b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [
@@ -12333,7 +12370,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (d.querySelector('.sched')) return;
       if (f('allday').checked) return toast('Untick All day to use the Scheduling Assistant.');
       const sc = document.createElement('div'); sc.className = 'sched';
-      sc.innerHTML = '<div class="sc-bar"><button type="button" class="btn-primary" data-sc="done">✓ Done</button><button type="button" class="tb" data-sc="-1" title="The day before">‹</button><b class="sc-day"></b><button type="button" class="tb" data-sc="1" title="The day after">›</button><span class="sc-note"></span><button type="button" class="btn" data-sc="find">Find a Free Time</button></div><div class="sc-body"></div><p class="sc-hint">Drag the outlined band to move the meeting, or double-click a time to start it there. Working hours, 8 am to 6 pm.</p>';
+      sc.innerHTML = '<div class="sc-bar"><button type="button" class="btn-primary" data-sc="done">' + ico('check') + ' Done</button><button type="button" class="tb" data-sc="-1" title="The day before">‹</button><b class="sc-day"></b><button type="button" class="tb" data-sc="1" title="The day after">›</button><span class="sc-note"></span><button type="button" class="btn" data-sc="find">Find a Free Time</button></div><div class="sc-body"></div><p class="sc-hint">Drag the outlined band to move the meeting, or double-click a time to start it there. Working hours, 8 am to 6 pm.</p>';
       sc.addEventListener('click', ev0 => {
         const k = ev0.target.dataset && ev0.target.dataset.sc; if (!k) return;
         if (k === 'done') { sc.remove(); d.classList.remove('sched-on'); return; }
@@ -13148,7 +13185,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   const MAIL_ICON = { inbox: 'M2 9.5l1.6-5.6a1 1 0 011-.7h6.8a1 1 0 011 .7L14 9.5v2.7a1 1 0 01-1 1H3a1 1 0 01-1-1zM2 9.5h3.5l.8 1.5h3.4l.8-1.5H14', drafts: 'M3 13h2.2l7-7-2.2-2.2-7 7zM9.2 5.6l2.2 2.2', sentitems: 'M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3',
     archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', deleteditems: 'M2.5 4.5h11M6.5 4.5V3h3v1.5M4 4.5l.7 8.5h6.6l.7-8.5', junkemail: 'M8 2.5l5.5 3v5l-5.5 3-5.5-3v-5zM8 6v3M8 11v.2', outbox: 'M3 13.5h10M8 2.5v8M5 5.5l3-3 3 3' };
-  const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const mailIcon = wk => `<svg width="15" height="15" viewBox="0 0 16 16"><path d="${MAIL_ICON[wk] || 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z'}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // The sidebar, as in Outlook: New Email at the top, then each account (name over address) with its folders.
   const MAIL_TW = '<svg width="12" height="12" viewBox="0 0 16 16"><path d="M5.5 2.8L10.8 8l-5.3 5.2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   function mailSideRender() {
@@ -13247,9 +13284,9 @@ body { width: max-content !important; min-width: 0 !important; }
     ].filter(Boolean)); });
     sd.appendChild(add);
     // Rules are easy to miss on the right-click menu, so they have a button of their own here.
-    { const own = vis.filter(z => !z.needsSignIn && !z.shared); if (own.length) { const rb = document.createElement('button'); rb.className = 'add mail-hbtn'; rb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12l-4.600 5.300v4.200l-2.800-1.400v-2.800z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Rules\u2026</span>';
+    { const own = vis.filter(z => !z.needsSignIn && !z.shared); if (own.length) { const rb = document.createElement('button'); rb.className = 'add mail-hbtn'; rb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M2 3.5h12l-4.600 5.300v4.200l-2.800-1.400v-2.800z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Rules\u2026</span>';
       rb.addEventListener('click', () => { if (own.length === 1) return mailRules(own[0]); const r0 = rb.getBoundingClientRect(); showMenu(r0.left, r0.top - 4, own.map(z => ({ label: `Rules for ${z.email}`, run: () => mailRules(z) })), { above: true }); }); sd.appendChild(rb); } }
-    { const hb = document.createElement('button'); hb.className = 'add mail-hbtn'; hb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M1.5 8.5h3l1.5-4 3 8 1.6-4h3.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mail Health\u2026</span>'; hb.title = 'Is mail working? What the app has asked of Microsoft lately, any problems, and a report to copy'; hb.addEventListener('click', mailHealth); sd.appendChild(hb); }
+    { const hb = document.createElement('button'); hb.className = 'add mail-hbtn'; hb.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><path d="M1.5 8.5h3l1.5-4 3 8 1.6-4h3.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Mail Health\u2026</span>'; hb.title = 'Is mail working? What the app has asked of Microsoft lately, any problems, and a report to copy'; hb.addEventListener('click', mailHealth); sd.appendChild(hb); }
     const hidden = (mailUi.accounts || []).length - vis.length;
     if (hidden > 0) sd.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: `${hidden} more ${hidden === 1 ? 'account is' : 'accounts are'} in other profiles. Choose All Profiles to see ${hidden === 1 ? 'it' : 'them'}.` }));
   }
@@ -13294,7 +13331,7 @@ body { width: max-content !important; min-width: 0 !important; }
     forward: 'M9.5 4l4 4-4 4M13 8H7a4.5 4.5 0 00-4.5 4.5', sync: 'M13 8a5 5 0 01-8.7 3.4M3 8a5 5 0 018.7-3.4M11.5 2v2.8H8.7M4.5 14v-2.8h2.8', move: 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z',
     unread: 'M2 4.5h9.5M2 4.5v7.5h12V7M2 4.5l6 4.5 3-2.2M13.2 2.6a1.6 1.6 0 110 3.2 1.6 1.6 0 010-3.2', flag: 'M4 14V2.5M4 3h8l-1.6 2.8L12 8.6H4', archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', filter: 'M2.5 4h11M4.5 8h7M6.5 12h3',
   };
-  const mailToolIcon = k => `<svg width="16" height="16" viewBox="0 0 16 16"><path d="${MAIL_TOOL[k]}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const mailToolIcon = k => `<svg width="16" height="16" viewBox="0 0 16 16"><path d="${MAIL_TOOL[k]}" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   // A thin handle on the right edge of a column: drag to set its width, double-click to go back to the usual width.
   // Widths are remembered (mailState.w), and are the same everywhere that column appears.
   function dragWidth(host, key, cssVar, min, max) {
@@ -13418,7 +13455,7 @@ body { width: max-content !important; min-width: 0 !important; }
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
     const paneOn = mailState.pane === true;
-    const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.5 3v10" stroke="currentColor" stroke-width="1.3"/></svg>';
+    const pn = document.createElement('button'); pn.className = 'tb mail-pane-btn' + (paneOn ? ' on' : ''); pn.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M9.5 3v10" stroke="currentColor" stroke-width="1.4"/></svg>';
     pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up, and the list shows columns).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
     pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
     head.appendChild(pn);
@@ -13436,7 +13473,7 @@ body { width: max-content !important; min-width: 0 !important; }
     flt.addEventListener('click', () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); });
     fh.appendChild(flt);
     const threads = mailState.threads !== false;
-    const thb = document.createElement('button'); thb.className = 'tb' + (threads ? ' on' : ''); thb.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4h8M2.5 8h11M5.5 12h8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+    const thb = document.createElement('button'); thb.className = 'tb' + (threads ? ' on' : ''); thb.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4h8M2.5 8h11M5.5 12h8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
     thb.title = threads ? 'Messages in the same conversation are kept together. Click to list every message by itself.' : 'Every message is listed by itself. Click to keep conversations together.';
     thb.addEventListener('click', () => { mailState.threads = !threads; mailSave(); mailRenderMain(); });
     fh.appendChild(thb);          // (the folder's name and these two switches are in the toolbar and its More menu now)
@@ -13523,7 +13560,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const grouped = !mailUi.search && !(ms && ms.col !== 'date');          // (the Today, Yesterday headings only make sense in date order)
       if (g !== group && grouped) {
         group = g;
-        const gh = document.createElement('div'); gh.className = 'mail-g'; gh.textContent = `${mailUi.shutGroups[g] ? '▸' : '▾'}  ${g}`;
+        const gh = document.createElement('div'); gh.className = 'mail-g'; gh.innerHTML = ico(mailUi.shutGroups[g] ? 'right' : 'down'); gh.append(String(g));
         gh.addEventListener('click', () => { mailUi.shutGroups[g] = !mailUi.shutGroups[g]; mailRenderMain(); });
         list.appendChild(gh);
       }
@@ -13540,7 +13577,7 @@ body { width: max-content !important; min-width: 0 !important; }
         : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
       r.querySelector('.avs').appendChild(mailAvatar(who && who.emailAddress && who.emailAddress.name, who && who.emailAddress && who.emailAddress.address));
       r.querySelector('b').textContent = name;
-      r.querySelector('.fl').textContent = `${x.importance === 'high' ? '! ' : ''}${x.hasAttachments ? '📎 ' : ''}${x.flag && x.flag.flagStatus === 'flagged' ? '⚑' : ''}`;
+      r.querySelector('.fl').innerHTML = `${x.importance === 'high' ? '<span class="hi">!</span>' : ''}${x.hasAttachments ? ico('clip') : ''}${x.flag && x.flag.flagStatus === 'flagged' ? ico('flag') : ''}`;
       r.querySelector('.dt').textContent = wide ? mailWhenWide(x.receivedDateTime) : mailWhen(x.receivedDateTime);
       r.querySelector('.sj').textContent = x.subject || '(No subject)'; r.dataset.mid = x.id; r.tabIndex = 0;
       r.querySelector('.pv').textContent = (mailUi.search && x._folderName && !/^inbox$/i.test(x._folderName) ? `${x._folderName} \u00b7 ` : '') + (x.bodyPreview || '').replace(/\s+/g, ' ');
@@ -13619,7 +13656,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const when = ev.isAllDay ? new Date(String(ev.start.dateTime).slice(0, 10) + 'T00:00').toLocaleDateString('en-AU', day) + ', all day'
           : `${st.toLocaleDateString('en-AU', day)}, ${st.toLocaleTimeString('en-AU', tm)} to ${en.toLocaleTimeString('en-AU', tm)}`;
         const resp = (ev.responseStatus && ev.responseStatus.response) || '';
-        bar.innerHTML = '<svg width="18" height="18" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5h12M5.2 1.8v2.4M10.8 1.8v2.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><div><b></b><span></span></div>';
+        bar.innerHTML = '<svg width="18" height="18" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5.2 1.8v2.4M10.8 1.8v2.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><div><b></b><span></span></div>';
         bar.querySelector('b').textContent = when;
         const said = { accepted: 'You accepted', declined: 'You declined', tentativelyAccepted: 'You said maybe' }[resp] || '';
         bar.querySelector('span').textContent = [ev.location && ev.location.displayName, ev.isCancelled || ev.kind === 'meetingCancelled' ? 'This meeting was cancelled' : said].filter(Boolean).join('  ·  ');
@@ -14026,13 +14063,13 @@ body { width: max-content !important; min-width: 0 !important; }
       <label><span>Subject:</span><input name="subject"></label>
       <div class="mc-files"></div>
       <div class="mc-draft" hidden></div>
-      <div class="mc-fmt">${fb('undo', '↶', 'Undo')}${fb('redo', '↷', 'Redo')}<span class="fsep"></span>
+      <div class="mc-fmt">${fb('undo', ico('undo'), 'Undo')}${fb('redo', ico('redo'), 'Redo')}<span class="fsep"></span>
         <select data-cmd="fontName" title="Font"><option value="Arial">Arial</option><option value="Calibri, Arial, sans-serif">Calibri</option><option value="Helvetica, Arial, sans-serif">Helvetica</option><option value="Verdana, sans-serif">Verdana</option><option value="Georgia, serif">Georgia</option><option value="'Times New Roman', serif">Times New Roman</option><option value="'Courier New', monospace">Courier New</option></select>
         <select data-cmd="fontSize" title="Text size"><option value="1">8</option><option value="2">10</option><option value="3" selected>12</option><option value="4">14</option><option value="5">18</option><option value="6">24</option><option value="7">36</option></select>
         ${fb('removeFormat', 'A<s>a</s>', 'Clear the formatting of the selected words')}<button type="button" class="tb" data-do="color" title="Text colour"><span class="fa" style="border-bottom:3px solid #C00000">A</span></button><button type="button" class="tb" data-do="hilite" title="Highlight"><span class="fa" style="background:#FFF200;padding:0 3px">A</span></button>
         ${fb('bold', '<b>B</b>', 'Bold')}${fb('italic', '<i>I</i>', 'Italic')}${fb('underline', '<u>U</u>', 'Underline')}<span class="fsep"></span>
-        ${fb('insertUnorderedList', '•≡', 'Bulleted list')}${fb('insertOrderedList', '1≡', 'Numbered list')}${fb('outdent', '⇤', 'Less indent')}${fb('indent', '⇥', 'More indent')}<button type="button" class="tb" data-do="align" title="Align">≡▾</button><button type="button" class="tb" data-do="space" title="Line spacing">↕▾</button><span class="fsep"></span>
-        ${fb('link', '🔗', 'Make the selected words a link')}<button type="button" class="tb" data-do="image" title="Put a picture in the message">🖼</button><button type="button" class="tb" data-do="emoji" title="Emoji">☺</button><button type="button" class="tb" data-do="more" title="More: strikethrough, quote, table, superscript, subscript">⋯</button><input type="file" accept="image/*" class="mc-img" hidden></div>
+        ${fb('insertUnorderedList', ico('bullets'), 'Bulleted list')}${fb('insertOrderedList', ico('numbers'), 'Numbered list')}${fb('outdent', ico('outdent'), 'Less indent')}${fb('indent', ico('indent'), 'More indent')}<button type="button" class="tb" data-do="align" title="Align">${ico('align')}${ico('down')}</button><button type="button" class="tb" data-do="space" title="Line spacing">${ico('spacing')}${ico('down')}</button><span class="fsep"></span>
+        ${fb('link', ico('link'), 'Make the selected words a link')}<button type="button" class="tb" data-do="image" title="Put a picture in the message">${ico('image')}</button><button type="button" class="tb" data-do="emoji" title="Emoji">${ico('smile')}</button><button type="button" class="tb" data-do="more" title="More: strikethrough, quote, table, superscript, subscript">${ico('more')}</button><input type="file" accept="image/*" class="mc-img" hidden></div>
       <div class="mc-scroll"><div class="mc-ed" contenteditable="true"></div><div class="mc-quote"></div></div><input type="file" multiple hidden>`;
     const f = n => el.querySelector(`[name="${n}"]`);
     // To, Cc and Bcc hold people as tokens. The field still answers to .value as one line of text, so everything that
@@ -14833,7 +14870,7 @@ body { width: max-content !important; min-width: 0 !important; }
       c.innerHTML = '<div class="h"><b>Details in this email</b><span class="sp"></span></div><div class="ai-note"></div><div class="ai-fields"></div><div class="ai-acts"></div>';
       c.querySelector('.ai-note').textContent = note;
       const box = c.querySelector('.ai-fields');
-      const add = (k, v) => { const r = document.createElement('div'); r.className = 'fl'; r.innerHTML = '<input class="k"><input class="v"><button class="tb" title="Leave this one out">✕</button>'; r.querySelector('.k').value = k; r.querySelector('.v').value = v; r.querySelector('button').addEventListener('click', () => r.remove()); box.appendChild(r); };
+      const add = (k, v) => { const r = document.createElement('div'); r.className = 'fl'; r.innerHTML = '<input class="k"><input class="v"><button class="tb" title="Leave this one out">' + ico('x') + '</button>'; r.querySelector('.k').value = k; r.querySelector('.v').value = v; r.querySelector('button').addEventListener('click', () => r.remove()); box.appendChild(r); };
       for (const [k, v] of Object.entries(fields)) add(k, v);
       const now = () => { const o = {}; for (const r of box.querySelectorAll('.fl')) { const k = r.querySelector('.k').value.trim(), v = r.querySelector('.v').value.trim(); if (k && v) o[k] = v; } return o; };
       const acts = c.querySelector('.ai-acts');
@@ -14889,12 +14926,12 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!n) return;
     const box = document.createElement('div'); box.className = 'mail-rel' + (R.open ? ' open' : '');
     const bits = [R.links.length ? `${R.links.length} sent on` : '', R.mail.length ? `${R.mail.length} other ${R.mail.length === 1 ? 'email' : 'emails'} with ${R.who}` : '', R.cal.length ? `${R.cal.length} ${R.cal.length === 1 ? 'meeting' : 'meetings'}` : ''].filter(Boolean);
-    const top = document.createElement('button'); top.className = 'rel-top'; top.textContent = `${R.open ? '▾' : '▸'}  Related: ${bits.join('  ·  ')}`;
+    const top = document.createElement('button'); top.className = 'rel-top'; top.innerHTML = ico(R.open ? 'down' : 'right'); top.append(`Related: ${bits.join('  ·  ')}`);
     top.title = 'What this email has been sent on to, and your other mail and meetings with this person';
     top.addEventListener('click', () => { R.open = !R.open; R.openAll = R.open; mailRenderMain(); });
     box.appendChild(top);
     if (R.open) {
-      const row = (icon, text, sub, run) => { const b = document.createElement('button'); b.className = 'rel-row'; b.innerHTML = '<i></i><span class="t"></span><span class="s"></span>'; b.querySelector('i').textContent = icon; b.querySelector('.t').textContent = text; b.querySelector('.s').textContent = sub; b.addEventListener('click', run); box.appendChild(b); };
+      const row = (icon, text, sub, run) => { const b = document.createElement('button'); b.className = 'rel-row'; b.innerHTML = '<i></i><span class="t"></span><span class="s"></span>'; b.querySelector('i').innerHTML = ico(icon); b.querySelector('.t').textContent = text; b.querySelector('.s').textContent = sub; b.addEventListener('click', run); box.appendChild(b); };
       const day = t => new Date(t).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: new Date(t).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' });
       for (const l of R.links) row('→', l.name, `${LINK_WORD[l.t] || ''}${l.board ? ' · ' + l.board : ''}`, () => linkOpen(l));
       for (const i of R.cal) row(i.end >= Date.now() ? '◷' : '○', i.ev.title || '(No title)', `${i.end >= Date.now() ? 'Coming up' : 'Was'} ${day(i.start)}, ${calFmtTime(i.start)}`, () => linkOpen({ t: 'cal', at: i.start }));
@@ -16119,7 +16156,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = mailDlg('mail-prefs', `<h2>Snippets</h2><p class="hint">Words you use often. Put one in from the Snippets button when writing.</p><div class="sn-list"></div><button class="btn" data-x="addsn">Add a Snippet</button>
       <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`);
     const sn = L.snippets.map(x => Object.assign({}, x));
-    const paint = () => { const box = d.querySelector('.sn-list'); box.replaceChildren(); sn.forEach((x, i) => { const r = document.createElement('div'); r.className = 'sn'; r.innerHTML = '<input placeholder="Name"><textarea rows="2" placeholder="The words"></textarea><button class="tb" title="Delete this snippet">✕</button>'; r.querySelector('input').value = x.name; r.querySelector('textarea').value = x.text; r.querySelector('input').addEventListener('input', e => { x.name = e.target.value; }); r.querySelector('textarea').addEventListener('input', e => { x.text = e.target.value; }); r.querySelector('button').addEventListener('click', () => { sn.splice(i, 1); paint(); }); box.appendChild(r); }); };
+    const paint = () => { const box = d.querySelector('.sn-list'); box.replaceChildren(); sn.forEach((x, i) => { const r = document.createElement('div'); r.className = 'sn'; r.innerHTML = '<input placeholder="Name"><textarea rows="2" placeholder="The words"></textarea><button class="tb" title="Delete this snippet">' + ico('x') + '</button>'; r.querySelector('input').value = x.name; r.querySelector('textarea').value = x.text; r.querySelector('input').addEventListener('input', e => { x.name = e.target.value; }); r.querySelector('textarea').addEventListener('input', e => { x.text = e.target.value; }); r.querySelector('button').addEventListener('click', () => { sn.splice(i, 1); paint(); }); box.appendChild(r); }); };
     paint();
     d.addEventListener('click', e => {
       const x = e.target.dataset && e.target.dataset.x; if (!x) return;
@@ -16269,7 +16306,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
   const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['meet', 'Meetings', 'meet'], ['monday', 'monday.com', 'monday']];
-  const CHATS_ICON = '<svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  const CHATS_ICON = '<svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>';
   // (All Chats has no tile in the app switcher, so its icon and colour are read straight from what you chose)
   const dockIcon = cls => cls === 'chats' ? `<span class="app-ic mini claude"${/^#[0-9a-f]{6}$/i.test((appLooks.chats || {}).color || '') ? ` style="background:${appLooks.chats.color}"` : ''}>${(appLooks.chats || {}).icon && appIconSet && appIconSet[appLooks.chats.icon] ? appIconSvg(appIconSet[appLooks.chats.icon]) : CHATS_ICON}</span>` : `<span class="app-ic mini ${cls}"${(($('appPop').querySelector('.app-ic.' + cls) || {}).style || {}).background ? ` style="background:${$('appPop').querySelector('.app-ic.' + cls).style.background}"` : ''}>${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
@@ -16426,16 +16463,16 @@ body { width: max-content !important; min-width: 0 !important; }
       const item = DOCK.find(x => x[0] === k);
       const tb = (html, title, run, on) => { const bt = document.createElement('button'); bt.className = 'tb' + (on ? ' on' : ''); bt.innerHTML = html; bt.title = title; bt.addEventListener('click', run); head.appendChild(bt); return bt; };
       head.appendChild(macLights({ close: () => sideCloseApp(k), titles: { close: `Close ${item[1]} (its icon in the dock opens it again)` } }));
-      if (upper && hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.3"/></svg>',
+      if (upper && hasNav) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M6 3v10" stroke="currentColor" stroke-width="1.4"/></svg>',
         sideState.nav ? `Hide ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}` : `Show ${k === 'mail' ? 'the accounts and folders' : 'the list of calendars'}`, () => { sideState.nav = !sideState.nav; sideSave(); sideMount(); sideStart(true); }, sideState.nav);
       head.insertAdjacentHTML('beforeend', `${dockIcon(item[2])}<b></b><span class="sp"></span>`);
       head.querySelector('b').textContent = item[1];
-      if (upper && !b) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2 8h12" stroke="currentColor" stroke-width="1.3"/></svg>', 'Open a second app underneath this one', e => {
+      if (upper && !b) tb('<svg width="16" height="16" viewBox="0 0 16 16"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 8h12" stroke="currentColor" stroke-width="1.4"/></svg>', 'Open a second app underneath this one', e => {
         const r0 = e.currentTarget.getBoundingClientRect(), hid = appHidden();
         showMenu(r0.left - 120, r0.bottom + 4, DOCK.filter(x => sideCan(x[0]) && x[0] !== a && !hid.includes(x[0] === 'folders' ? 'navigator' : x[0])).map(x => ({ label: `${x[1]} Underneath`, run: () => sideOpen(x[0], true) })));
       });
       if (!upper) tb('<span class="t">Swap</span>', 'Put this one on top', () => { sideState.app = b; sideState.app2 = a; sideState.nav = false; sideSave(); sideMount(); sideStart(true); });
-      if (OWN_WINDOW.includes(k === 'folders' ? 'navigator' : k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k === 'folders' ? 'navigator' : k));
+      if (OWN_WINDOW.includes(k === 'folders' ? 'navigator' : k)) tb('<svg width="15" height="15" viewBox="0 0 16 16"><path d="M9 2.5h4.5V7M13.5 2.5L8 8M12 10v2.5a1 1 0 01-1 1H3.5a1 1 0 01-1-1V5a1 1 0 011-1H6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>', `Open ${item[1]} in a window of its own, to put on another screen`, () => appOwnWindow(k === 'folders' ? 'navigator' : k));
       tb('<span class="t">Make Main</span>', `Make ${item[1]} the main app. What is main now moves here.`, () => dockMain(k));
       if (k === 'claude' || k === 'monday') tb(UI.reload, 'Reload', () => { try { sideViews[k].reload(); } catch (e) { /* loading */ } });
     };
@@ -17159,7 +17196,7 @@ body { width: max-content !important; min-width: 0 !important; }
     items.forEach((i, n) => { const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:stretch';
       const r = document.createElement('button'); r.type = 'button'; r.className = 'brow adv'; r.style.flex = '1'; r.style.minWidth = '0'; r.innerHTML = '<span class="ic ok"></span><span class="tx"><b></b><span></span></span><span class="go">Help</span>'; r.querySelector('.ic').textContent = String(n + 1); r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.why; r.title = 'Ask the Chief of Staff to help with this';
       r.addEventListener('click', () => botAskNew(`Help me with this, which you put ${['first', 'second', 'third'][n]} for today: ${i.title}.${i.why ? ' (' + i.why + ')' : ''} What is the first step, and can a staff member take any of it?`, { label: i.title }));
-      const x = Object.assign(document.createElement('button'), { type: 'button', textContent: '✕', title: 'Not useful. It is remembered, so the advice learns what you do not want.' }); x.style.cssText = 'border:0;background:none;color:var(--muted);cursor:pointer;padding:0 8px;font-size:12px';
+      const x = Object.assign(document.createElement('button'), { type: 'button', innerHTML: ico('x'), title: 'Not useful. It is remembered, so the advice learns what you do not want.' }); x.style.cssText = 'border:0;background:none;color:var(--muted);cursor:pointer;padding:0 8px;font-size:12px';
       x.addEventListener('click', () => { remember('noted', `Advice for the day he said was not useful: ${i.title}`); botAdvice.items = botAdvice.items.filter(z => z !== i); toast('Noted. I will leave that sort of thing out.'); cosBotRender(); });
       wrap.append(r, x); list.appendChild(wrap); });
   }
@@ -17600,7 +17637,7 @@ body { width: max-content !important; min-width: 0 !important; }
       host.appendChild(src);
       if (e.fail) continue;
       const acts = document.createElement('div'); acts.className = 'bacts';
-      const btn = (cls, ic, title, sub, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'bact ' + cls; b.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span>'; b.querySelector('.ic').textContent = ic; b.querySelector('b').textContent = title; b.querySelector('.tx span').textContent = sub; b.addEventListener('click', () => run(b)); acts.appendChild(b); return b; };
+      const btn = (cls, ic, title, sub, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'bact ' + cls; b.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span>'; b.querySelector('.ic').innerHTML = ico(ic); b.querySelector('b').textContent = title; b.querySelector('.tx span').textContent = sub; b.addEventListener('click', () => run(b)); acts.appendChild(b); return b; };
       for (const o of (e.opens || [])) {
         if (o.kind === 'mail') btn('', '\u2709', `Open the email: ${o.title.slice(0, 60)}`, 'Opens it in Mail', async () => { try { if (currentApp !== 'mail') setApp('mail'); } catch (er) { /* already there */ } await mailOpen(o.m); });
         else if (o.url) btn('', '\u25A6', `Open in your calendar: ${o.title.slice(0, 60)}`, o.at ? new Date(o.at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' }) + ', in Outlook' : 'In Outlook', () => openExternal(o.url));
@@ -18218,7 +18255,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const talk = el.querySelector('.bot-talk'); talk.innerHTML = BOT_MIC; talk.title = 'Talk to your Chief of Staff';
     // what is in front of you
     const cx = el.querySelector('.bot-ctx'); cx.hidden = !ctx || listening;
-    if (ctx) { cx.replaceChildren(); cx.appendChild(Object.assign(document.createElement('span'), { textContent: ctx.kind === 'mail' ? '✉' : ctx.kind === 'cal' ? '▦' : '◉' })); cx.appendChild(Object.assign(document.createElement('b'), { textContent: 'About: ' + ctx.label })); }
+    if (ctx) { cx.replaceChildren(); cx.appendChild(Object.assign(document.createElement('span'), { innerHTML: ico(ctx.kind === 'mail' ? 'mail' : ctx.kind === 'cal' ? 'cal' : 'wave') })); cx.appendChild(Object.assign(document.createElement('b'), { textContent: 'About: ' + ctx.label })); }
     botIn().placeholder = ctx && ctx.kind === 'mail' ? 'Ask about this email…' : 'Ask, or tell me something…';
     // quick questions (ones about what is in front of you first)
     const q = el.querySelector('.bot-quick'); q.replaceChildren(); q.hidden = listening;
@@ -18246,7 +18283,7 @@ body { width: max-content !important; min-width: 0 !important; }
       try { botAdvicePaint(list); } catch (e) { /* the lists below still show */ }
       for (const s of brief) {
         list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: s.h }));
-        for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').textContent = { cal: '▦', warn: '!', mail: '✉', ok: '✓', note: '✎', team: '◎', meet: '\u25C9' }[i.ic] || '•'; r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
+        for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').innerHTML = ico({ cal: 'cal', warn: 'warn', mail: 'mail', ok: 'check', note: 'pencil', team: 'people', meet: 'wave' }[i.ic] || 'dotc'); r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
       }
       if (!brief.length && !botList.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'bot-empty', textContent: 'Nothing needs you right now. Ask a question, or press the button and talk.' }));
       if (botS.tidy && botList.length) { list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: 'Tidy up' })); for (const sg of botList) list.appendChild(botCard(sg, 'bot-item')); }
