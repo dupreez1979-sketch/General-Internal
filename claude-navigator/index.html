@@ -8789,7 +8789,7 @@
   }
   function outputsDlg(days = 7, onlyStaff = null, onlyItem = null) {
     const p = activeProfile(); if (!p) return;
-    const d = document.createElement('dialog'); d.className = 'mail-sigdlg outs-dlg';
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg outs-dlg'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } });
     d.innerHTML = '<h2></h2><p class="hint"></p><div class="outs-list"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>';
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); try { cosBotSoon(); } catch (e) { /* not ready */ } });
     const paint = () => {
@@ -11759,7 +11759,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
       ev = r.data;
     }
-    const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg';
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg cal-evdlg'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } });
     const s0 = ev ? new Date(calGTime(ev.start, ev.isAllDay)) : (when || (() => { const x = new Date(calUi.date); const n = new Date(); x.setHours(n.getHours() + 1, 0, 0, 0); return x; })());
     const e0 = ev ? new Date(calGTime(ev.end, ev.isAllDay) - (ev.isAllDay ? 86400e3 : 0)) : new Date(s0.getTime() + 30 * 60e3);
     const rec = ev && ev.recurrence, pat = rec && rec.pattern;
@@ -12973,7 +12973,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = new Date(iso), now = new Date(), day0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     if (d.getTime() >= day0) return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
     if (d.getTime() >= day0 - 86400e3) return 'Yesterday';
-    return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString('en-AU', d.getFullYear() === now.getFullYear() ? { weekday: 'short', day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
   };
   // Outlook's groups: Today, Yesterday, This Week, Last Week, This Month, Last Month, then by year.
   const mailGroupOf = iso => {
@@ -13468,7 +13468,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function mailFolderMenu(a, f, x, y) {
     const sys = !!f.wk;
     const ask = (title, name, done) => {
-      const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
+      const d = document.createElement('dialog'); d.className = 'mail-sigdlg'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } });
       d.innerHTML = '<h2></h2><input class="ask" style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>';
       d.querySelector('h2').textContent = title; const inp = d.querySelector('input'); inp.value = name;
       const fin = ok => { const v = inp.value.trim(); d.close(); d.remove(); if (ok && v) done(v); };
@@ -13670,7 +13670,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? { emailAddress: name ? { address, name } : { address } } : { bad: x };
   });
   function mailAskLink(start, done) {
-    const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
+    const d = document.createElement('dialog'); d.className = 'mail-sigdlg'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } });
     d.innerHTML = '<h2>Link</h2><input style="width:100%;font:inherit;padding:6px 8px;box-sizing:border-box" placeholder="https://"><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Add Link</button></div>';
     const inp = d.querySelector('input'); inp.value = start || '';
     const fin = ok => { let v = inp.value.trim(); d.close(); d.remove(); if (ok && v) { if (!/^[a-z]+:/i.test(v)) v = 'https://' + v; if (/^(https?|mailto):/i.test(v)) done(v); } };
@@ -15198,7 +15198,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!r.error) { localAi.ok = true; }
     }
     L.push(`Last dictation: ${dict.last || 'none yet this session'}`);
-    const d = document.createElement('dialog'); d.className = 'ai-check'; d.innerHTML = '<h2>On-Mac check</h2><pre style="white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0 0 14px"></pre><div class="dlg-actions"><button class="btn" data-x="copy">Copy</button><span style="flex:1"></span><button class="btn-primary" data-x="ok">Close</button></div>';
+    const d = document.createElement('dialog'); d.className = 'ai-check'; d.addEventListener('close', () => { try { d.remove(); } catch (e) { /* already gone */ } }); d.innerHTML = '<h2>On-Mac check</h2><pre style="white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0 0 14px"></pre><div class="dlg-actions"><button class="btn" data-x="copy">Copy</button><span style="flex:1"></span><button class="btn-primary" data-x="ok">Close</button></div>';
     d.querySelector('pre').textContent = L.join('\n');
     d.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (!x) return; if (x.dataset.x === 'copy') { navigator.clipboard.writeText(L.join('\n')).catch(() => {}); toast('Copied.'); } else { d.close(); d.remove(); } });
     document.body.appendChild(d); d.showModal();
@@ -15298,7 +15298,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (S.opts.onDone) { try { S.opts.onDone(text); } catch (e) { /* the box has gone */ } }
   }
   // ----- The small sounds: listening, heard, ready, made, could not. Low, warm and short, made here from plain tones
-  // (no sound files). Switch them off with localStorage claudeNavigator.sounds = off.
+  // (no sound files). Switched on or off in Chief of Staff Settings.
   const CHIME = { listen: [[196, 0, .28], [293.7, .11, .36]], heard: [[293.7, 0, .24], [196, .11, .36]], working: [[261.6, 0, .42]], ready: [[261.6, 0, .26], [329.6, .1, .26], [392, .2, .5]], made: [[261.6, 0, .6], [392, .02, .6], [523.3, .14, .7]], no: [[220, 0, .22], [220, .16, .34]] };
   let chimeCtx = null;
   function chime(name) {
@@ -15862,7 +15862,6 @@ body { width: max-content !important; min-width: 0 !important; }
           !win && OWN_WINDOW.includes(k) ? { label: `Open ${name} in Its Own Window`, run: () => appOwnWindow(k) } : null,
           k === 'mail' ? { label: 'New Email', run: () => chatToEmail({}) } : null,
           k === 'cal' ? { label: 'New Event', run: () => calGEdit(null, false) } : null,
-          k === 'mail' ? { label: 'Mail Health\u2026', run: () => mailHealth() } : null,
           '-',
         ].filter(Boolean) : []),
         { label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-',
@@ -16869,6 +16868,8 @@ body { width: max-content !important; min-width: 0 !important; }
     row('Fast Answers', 'Your Claude API key and the monthly limit', 'Open…', fastDlg);
     row('Meetings (Granola)', 'Connect Granola, or turn it off', 'Open…', granolaDlg);
     row('Words It Mishears', 'Names and words dictation gets wrong', 'Open…', hearDlg);
+    { const off = ls.get('claudeNavigator.sounds') === 'off'; row('Sounds', off ? 'Off. No sound when it listens, answers or makes something.' : 'On. A soft sound when it listens, answers or makes something.', off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); toast(off ? 'Sounds are on.' : 'Sounds are off.'); botSettingsDlg(); }); }
+    row('Mail Health', 'Whether each mail account is connected and in step', 'Open\u2026', () => mailHealth());
     row('Pinned Projects in Claude', 'Unpin every project in Claude’s sidebar', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
   }
