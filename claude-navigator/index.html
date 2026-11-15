@@ -931,6 +931,17 @@
   .mail-compose .mc-files:not(:empty) { padding: 8px 14px; border-bottom: 1px solid var(--line); }
   .mail-compose .mc-sug { margin: 0 14px 0 76px; border: 1px solid var(--line); border-radius: var(--r-control); display: grid; background: var(--win); box-shadow: var(--e-float); position: relative; z-index: 2; }
   .mail-compose .mc-sug[hidden] { display: none; }
+  /* People in To, Cc and Bcc are tokens: one Backspace or the cross takes a whole person out. */
+  .mail-compose .mc-tok { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-width: 0; padding: 4px 0; cursor: text; }
+  .mail-compose .mc-tok input { flex: 1 1 120px; min-width: 80px; padding: 4px 0; }
+  .mc-chip { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--text); border-radius: var(--r-control); padding: 2px 3px 2px 8px; font-size: var(--fs-body); line-height: 1.5; cursor: default; }
+  .mc-chip .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mc-chip .cx { flex: none; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); font-size: 13px; line-height: 1; }
+  .mc-chip .cx:hover { background: color-mix(in srgb, var(--text) 14%, transparent); color: var(--text); }
+  /* From is a choice when you have more than one account. */
+  .mail-compose .mc-fromb { font: inherit; font-size: var(--fs-body); color: var(--text); background: none; border: 0; border-radius: var(--r-control); padding: 4px 6px; margin: 4px 0 4px -6px; display: inline-flex; align-items: center; gap: 6px; }
+  .mail-compose .mc-fromb:hover { background: var(--hover); } .mail-compose .mc-fromb:disabled { opacity: .5; }
+  .mail-compose .mc-fromb i { width: 9px; height: 9px; border-radius: 50%; flex: none; } .mail-compose .mc-fromb svg { color: var(--muted); transform: rotate(90deg); }
   .mail-compose .mc-sug button { background: none; border: 0; text-align: left; font: inherit; font-size: var(--fs-body); padding: 6px 10px; color: var(--text); }
   .mail-compose .mc-sug button:hover { background: var(--hover); }
   .mail-compose .mc-scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
@@ -13994,7 +14005,7 @@ body { width: max-content !important; min-width: 0 !important; }
     document.body.appendChild(d); d.showModal(); inp.focus();
   }
   async function mailCompose(mode, m, seed) {
-    const s = mailState.sel, acc = (seed && seed.acc && mailAccById(seed.acc)) || (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
+    const s = mailState.sel; let acc = (seed && seed.acc && mailAccById(seed.acc)) || (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
     if (!acc) return toast('Choose an account first');
     if (mailUi.compose) return toast('Finish or close the message you are writing first.');
     mailUi.compose = { busy: true };
@@ -14024,8 +14035,40 @@ body { width: max-content !important; min-width: 0 !important; }
         ${fb('link', '🔗', 'Make the selected words a link')}<button type="button" class="tb" data-do="image" title="Put a picture in the message">🖼</button><button type="button" class="tb" data-do="emoji" title="Emoji">☺</button><button type="button" class="tb" data-do="more" title="More: strikethrough, quote, table, superscript, subscript">⋯</button><input type="file" accept="image/*" class="mc-img" hidden></div>
       <div class="mc-scroll"><div class="mc-ed" contenteditable="true"></div><div class="mc-quote"></div></div><input type="file" multiple hidden>`;
     const f = n => el.querySelector(`[name="${n}"]`);
+    // To, Cc and Bcc hold people as tokens. The field still answers to .value as one line of text, so everything that
+    // reads or fills it works as before: a finished address becomes a token, what you are still typing stays as text.
+    const natVal = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    for (const n of ['to', 'cc', 'bcc']) {
+      const inp = f(n), box = document.createElement('span'), chips = []; box.className = 'mc-tok'; inp.replaceWith(box); box.appendChild(inp);
+      const raw = () => natVal.get.call(inp), setRaw = v => natVal.set.call(inp, v);
+      const fmt = e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address;
+      const paint = () => {
+        for (const x of box.querySelectorAll('.mc-chip')) x.remove();
+        for (const c of chips) {
+          const b = document.createElement('span'); b.className = 'mc-chip'; b.title = `${c.address}\nBackspace or the cross takes them out. Double-click to change the address.`;
+          b.innerHTML = '<span class="nm"></span><span class="cx" role="button" aria-label="Remove">\u00d7</span>'; b.querySelector('.nm').textContent = c.name || c.address;
+          b.querySelector('.cx').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); chips.splice(chips.indexOf(c), 1); paint(); inp.focus(); });
+          b.addEventListener('dblclick', e => { e.preventDefault(); chips.splice(chips.indexOf(c), 1); setRaw(fmt(c)); paint(); hold = Date.now(); setTimeout(() => { inp.focus(); inp.select(); }, 0); });
+          b.addEventListener('click', e => { e.preventDefault(); inp.focus(); });
+          box.insertBefore(b, inp);
+        }
+      };
+      const take = text => { const left = []; for (const p of String(text || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)) { const r = mailParse(p)[0]; if (r && !r.bad) { if (!chips.some(c => c.address.toLowerCase() === r.emailAddress.address.toLowerCase())) chips.push(r.emailAddress); } else left.push(p); } return left.join(', '); };
+      let hold = 0;
+      const commit = () => { if (!raw().trim() || Date.now() - hold < 500) return; setRaw(take(raw())); paint(); };
+      Object.defineProperty(inp, 'value', { configurable: true, get: () => [...chips.map(fmt), raw().trim()].filter(Boolean).join(', '), set: v => { chips.length = 0; setRaw(take(v)); paint(); } });
+      inp.typing = raw;
+      inp.addEventListener('keydown', e => {
+        if ((e.key === ',' || e.key === ';' || e.key === 'Enter') && raw().trim()) { e.preventDefault(); commit(); }
+        else if (e.key === 'Tab') commit();
+        else if (e.key === 'Backspace' && !raw() && chips.length) { e.preventDefault(); chips.pop(); paint(); }
+      });
+      inp.addEventListener('blur', () => setTimeout(commit, 160));
+      inp.addEventListener('paste', () => setTimeout(() => { if (/[,;\n]/.test(raw()) || mailParse(raw()).every(z => !z.bad)) commit(); }, 0));
+      box.addEventListener('mousedown', e => { if (e.target === box) { e.preventDefault(); inp.focus(); } });
+    }
     f('to').value = mailAddrs(d.toRecipients); f('cc').value = mailAddrs(d.ccRecipients); f('bcc').value = mailAddrs(d.bccRecipients); f('subject').value = d.subject || '';
-    el.querySelector('.mc-from').textContent = `${acc.name || ''} (${acc.email})`;
+    let paintFrom = () => { el.querySelector('.mc-from').textContent = `${acc.name || ''} (${acc.email})`; }; paintFrom();
     const showRow = n => { el.querySelector(`[data-row="${n}"]`).hidden = false; const b = el.querySelector(`[data-x="${n}"]`); if (b) b.hidden = true; };
     if (f('cc').value) showRow('cc'); if (f('bcc').value) showRow('bcc');
     // Formatting acts on what is selected in the message (the buttons do not take the cursor away).
@@ -14113,14 +14156,14 @@ body { width: max-content !important; min-width: 0 !important; }
     const sug = el.querySelector('.mc-sug');
     for (const n of ['to', 'cc', 'bcc']) f(n).addEventListener('input', e => {
       clearTimeout(sugT);
-      const inp = e.target, last = inp.value.split(/[,;]/).pop().trim();
+      const inp = e.target, last = (inp.typing ? inp.typing() : inp.value).split(/[,;]/).pop().trim();
       if (last.length < 2) { sug.hidden = true; return; }
       sugT = setTimeout(async () => {
         const pr = await mailApi(acc.id, { path: `/me/people?$search=${encodeURIComponent('"' + last.replace(/"/g, '') + '"')}&$top=6&$select=displayName,scoredEmailAddresses` });
         const ppl = pr.ok ? (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).filter(x => x.address) : [];
         sug.replaceChildren(); sug.hidden = !ppl.length;
         inp.parentNode.after(sug);
-        for (const p of ppl) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${p.name} <${p.address}>`; b.addEventListener('mousedown', ev => { ev.preventDefault(); const parts = inp.value.split(/([,;])/); parts[parts.length - 1] = ` ${p.name} <${p.address}>`; inp.value = parts.join('').trim() + ', '; sug.hidden = true; inp.focus(); }); sug.appendChild(b); }
+        for (const p of ppl) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${p.name} <${p.address}>`; b.addEventListener('mousedown', ev => { ev.preventDefault(); const typed = inp.typing ? inp.typing() : '', whole = inp.value, kept = typed && whole.endsWith(typed.trim()) ? whole.slice(0, whole.length - typed.trim().length) : whole; inp.value = `${kept}${kept.trim() && !/[,;]\s*$/.test(kept) ? ', ' : ''}${p.name} <${p.address}>`; sug.hidden = true; inp.focus(); }); sug.appendChild(b); }
       }, 250);
     });
     el.addEventListener('focusout', () => setTimeout(() => { sug.hidden = true; }, 150));
@@ -14170,6 +14213,41 @@ body { width: max-content !important; min-width: 0 !important; }
       const mine = `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:11pt">${out.innerHTML}</div>`;
       return { bad, lists, body: { subject: f('subject').value, toRecipients: lists.to, ccRecipients: lists.cc, bccRecipients: lists.bcc, body: { contentType: 'html', content: mine + (C.under ? C.under() : C.quoted || C.draftBody || '') } } };
     };
+    const fromChoices = () => (mailUi.accounts || []).filter(a => !a.needsSignIn && a.provider !== 'google');
+    const moveFrom = async to => {
+      if (!to || to.id === C.acc || C.sending || C.moving) return;
+      if (C.files.some(fl => !fl.sent)) return toast('Wait a moment: a file is still being attached.');
+      C.moving = true; paintFrom(); toast(`Moving this message to ${to.email}\u2026`);
+      const v = fields(), was = acc;
+      const made = await mailApi(to.id, { method: 'POST', path: '/me/messages', body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) });
+      if (!made.ok || !made.data || !made.data.id) { C.moving = false; paintFrom(); return toast(`Could not move it to ${to.email}: ${made.error || 'try again'}. It is still from ${was.email}.`); }
+      let lost = 0;
+      const at = await mailApi(C.acc, { path: `/me/messages/${C.id}/attachments` });
+      for (const a of (at.ok && at.data && at.data.value) || []) {
+        if (!a.contentBytes) { lost++; continue; }
+        const up = await mailApi(to.id, { method: 'POST', path: `/me/messages/${made.data.id}/attachments`, body: Object.assign({ '@odata.type': '#microsoft.graph.fileAttachment', name: a.name, contentType: a.contentType || 'application/octet-stream', contentBytes: a.contentBytes, isInline: !!a.isInline }, a.contentId ? { contentId: a.contentId } : {}) });
+        if (!up.ok) lost++;
+      }
+      const oldAcc = C.acc, oldId = C.id;
+      C.acc = to.id; C.id = made.data.id; C.conv = made.data.conversationId || ''; acc = to;
+      await mailApi(oldAcc, { method: 'DELETE', path: `/me/messages/${oldId}` });
+      const now = await mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size,isInline` });
+      if (now.ok) { C.files = ((now.data && now.data.value) || []).filter(z => !z.isInline).map(a => ({ name: a.name, id: a.id, size: a.size, sent: true })); paintFiles(); }
+      const oldSig = ed.querySelector('.mc-sig'), sg2 = mailSigOf(to.id);
+      if (oldSig) { if (sg2) oldSig.innerHTML = sg2; else oldSig.remove(); } else if (sg2 && mode !== 'draft') { const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = sg2; ed.appendChild(document.createElement('br')); ed.appendChild(sg); }
+      C.moving = false; paintFrom();
+      toast(lost ? `Now from ${to.email}. ${lost} attached file${lost === 1 ? '' : 's'} could not be carried across: add ${lost === 1 ? 'it' : 'them'} again.` : `Now from ${to.email}`);
+    };
+    paintFrom = () => {
+      const host = el.querySelector('.mc-from'), all = fromChoices(); host.replaceChildren();
+      if (all.length < 2) { host.textContent = `${acc.name || ''} (${acc.email})`; return; }
+      const pOf = a => { try { const pid = (mailProf(a.id) || [])[0]; return pid ? profiles().find(z => z.id === pid) : null; } catch (e) { return null; } };
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'mc-fromb'; b.disabled = !!C.moving; b.title = 'Send this from another of your accounts. The draft moves to that account, with its words, people and files.';
+      const pr = pOf(acc); b.innerHTML = `${pr ? '<i></i>' : ''}<span></span>${UI.chev || ''}`; if (pr) b.querySelector('i').style.background = pr.color || '#999'; b.querySelector('span').textContent = C.moving ? 'Moving\u2026' : `${acc.name || ''} (${acc.email})`;
+      b.addEventListener('click', e => { e.preventDefault(); const r0 = b.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, all.map(a => { const z = pOf(a); return { label: `${a.email}${z ? '  \u00b7  ' + z.name : ''}`, dot: z ? z.color : undefined, checked: a.id === C.acc, run: () => moveFrom(a) }; })); });
+      host.appendChild(b);
+    };
+    paintFrom();
     const shut = () => { if (C.draftRun) C.draftRun.cancel(); if (mailAi.views.chief) mailAiClose(); el.remove(); if (C.shade) C.shade.remove(); mailUi.compose = null; mailUi.composeEl = null; mailRefreshFolders(); if (mailState.sel) mailLoadMessages(true); };
     el.addEventListener('click', async e => {
       const x = e.target.closest('[data-x]'); if (!x || C.sending) return;
