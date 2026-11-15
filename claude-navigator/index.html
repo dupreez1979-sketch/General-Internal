@@ -416,12 +416,12 @@
   .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: max(76px, calc(148px - var(--dock-w, 0px))) !important; }
   body.cos-mode.side-off #bar { padding-left: 10px !important; }
   /* ---- Step 8: one icon set. Every small glyph is drawn the same way: 16 by 16, one line weight, the text's own colour. ---- */
-  .gl { width: 14px; height: 14px; flex: none; vertical-align: -2.5px; display: inline-block; fill: none; stroke: currentColor; }
+  .gly { width: 14px; height: 14px; flex: none; vertical-align: -2.5px; display: inline-block; fill: none; stroke: currentColor; }
   .mail-m .fl { white-space: nowrap; display: inline-flex; align-items: center; }
-  .mc-fmt .tb .gl { width: 15px; height: 15px; } .mc-fmt .tb .gl + .gl { width: 9px; margin-left: -1px; }
-  .mail-m .fl .gl { width: 12px; height: 12px; margin-right: 2px; } .mail-m .fl .hi { font-weight: var(--fw-bold); margin-right: 3px; }
-  .mail-g .gl, .rel-top .gl { width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
-  #menu .k .gl { width: 11px; height: 11px; vertical-align: -1px; }
+  .mc-fmt .tb .gly { width: 15px; height: 15px; } .mc-fmt .tb .gly + .gly { width: 9px; margin-left: -1px; }
+  .mail-m .fl .gly { width: 12px; height: 12px; margin-right: 2px; } .mail-m .fl .hi { font-weight: var(--fw-bold); margin-right: 3px; }
+  .mail-g .gly, .rel-top .gly { width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px; }
+  #menu .k .gly { width: 11px; height: 11px; vertical-align: -1px; }
   /* ---- Step 7: forms and sheets ---- */
   /* Fields and buttons are one height and one corner; labels are plain words in a right-aligned column, with no colon. */
   dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]), dialog select { min-height: var(--control-h); border: 1px solid var(--line); border-radius: var(--r-control); padding: 4px 8px; font-size: var(--fs-body); }
@@ -1983,6 +1983,7 @@
   .set-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
   .set-host { flex: 1; min-height: 0; overflow: auto; padding: 22px 26px 8px; }
   .set-foot { flex: none; display: flex; justify-content: flex-end; padding: 10px 20px 16px; border-top: 1px solid var(--line); }
+  .set-row .btn.danger { color: var(--danger-ink); } .set-row .btn + .btn { margin-left: 6px; } .set-row .s:empty { display: none; }
   dialog.dlg-in { position: static !important; display: block !important; width: auto !important; height: auto !important; max-width: none !important; max-height: none !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; resize: none !important; overflow: visible !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; color: inherit; }
   dialog.dlg-in > h2 { margin: 0 0 8px; font-size: var(--fs-title) !important; }
   dialog.dlg-in .dlg-actions [data-x="close"], dialog.dlg-in .dlg-actions [data-x="cancel"] { display: none; }
@@ -2141,7 +2142,7 @@
     <span class="dlg-spacer"></span>
     <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
-    <button class="tb" id="sMore" title="More: undo, expand or collapse all, Claude's sidebar, back up and restore"><span data-icon="more"></span></button>
+    <button class="tb" id="sMore" title="More: undo, show or hide panels, expand or collapse all"><span data-icon="more"></span></button>
   </div>
 </aside>
 
@@ -2486,7 +2487,7 @@
   const GL_OF = { '\u2709': 'mail', '\u25A6': 'cal', '\u25CE': 'people', '\u25C9': 'wave', '\u2713': 'check', '\u270E': 'pencil', '!': 'warn', '+': 'plus', '\u25F7': 'clock', '\u25CB': 'past', '\u2022': 'dotc',
     '\u2715': 'x', '\u25B8': 'right', '\u25BE': 'down', '\u21B6': 'undo', '\u21B7': 'redo', '\u21E4': 'outdent', '\u21E5': 'indent', '\u2022\u2261': 'bullets', '1\u2261': 'numbers', '\u2261': 'align', '\u2195': 'spacing',
     '\u{1F517}': 'link', '\u{1F5BC}': 'image', '\u263A': 'smile', '\u22EF': 'more', '\u{1F4CE}': 'clip', '\u2691': 'flag' };
-  const ico = c => { const k = GL[c] ? c : GL_OF[c]; return k ? `<svg class="gl" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GL[k]}</svg>` : String(c == null ? '' : c).replace(/[&<>]/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[z])); };
+  const ico = c => { const k = GL[c] ? c : GL_OF[c]; return k ? `<svg class="gly" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GL[k]}</svg>` : String(c == null ? '' : c).replace(/[&<>]/g, z => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[z])); };
 
   // Folders: a small solid Finder-blue folder. Everything else: an outline in its own colour.
   const SMALL_FOLDER = `<svg width="17" height="15" viewBox="0 0 17 15">
@@ -3783,7 +3784,7 @@
     if (!ls.get(LIB_TIP_STORE) && all.length) {
       const b = document.createElement('div');
       b.className = 'banner';
-      b.innerHTML = `<span>Drag items onto your folders to file them. Select several with ${isMac ? '\u2318' : 'Ctrl'}-click or ${isMac ? '\u21e7' : 'Shift'}-click first, or right-click and choose File in Folder. Choose Not Filed to see what is left.</span><button class="tb" title="Hide this tip">Got it</button>`;
+      b.innerHTML = `<span>Drag items onto a folder to file them. Not Filed shows what is left.</span><button class="tb" title="Hide this tip">Got it</button>`;
       b.querySelector('button').addEventListener('click', () => { ls.set(LIB_TIP_STORE, '1'); renderLibrary(); });
       frag.appendChild(b);
     }
@@ -7230,14 +7231,9 @@
     state.lastFolderId = null;
     go({ kind: 'page', url: a.url });
   }
-  $('sAccount').addEventListener('click', e => {
-    const r = e.currentTarget.getBoundingClientRect();
-    showMenu(r.left, r.top - 4, [
-      ...ACCOUNT_LINKS.map(a => a === '-' ? '-' : { label: a.label + (a.external ? ' \u2197' : ''), key: a.key, run: () => openAccountLink(a) }),
-      isApp && '-',
-      isApp && { label: 'Show Claude\u2019s Own Menu', run: () => { setHideClaudeSidebar(false); showClaudeSidebar(); } },
-    ], { above: true });
-  });
+  $('sAccount').innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.1"/><path d="M8 1.8v1.7M8 12.5v1.7M1.8 8h1.7M12.5 8h1.7M3.6 3.6l1.2 1.2M11.2 11.2l1.2 1.2M12.4 3.6l-1.2 1.2M4.8 11.2l-1.2 1.2"/></svg>';
+  $('sAccount').title = `Settings (${K.mod},)`;
+  $('sAccount').addEventListener('click', () => botSettingsDlg());
   $('bRefreshLib').addEventListener('click', () => (state.loc.which === 'monday' ? mondayRefresh(true) : refreshLibrary(true)));
   $('libFilterBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
@@ -9318,7 +9314,7 @@
     const step1 = !n.claudeProject, step2 = !!n.claudeProject && !n.instructionsAt;
     const h = document.createElement('h3'); h.textContent = `Set up ${n.name}’s Claude Project`;
     const lead = document.createElement('p'); lead.className = 'lead';
-    lead.textContent = `Two steps, done in Claude (on the ${fr('claude').at}). Each box below matches a box in Claude: copy it across, or check what the app filled in.`;
+    lead.textContent = 'Two steps in Claude. Copy each box across.';
     box.append(h, lead);
     const step = (num, title, state) => {
       const d = document.createElement('div'); d.className = 'cos-step ' + state;
@@ -10386,7 +10382,7 @@
       const e = document.createElement('div');
       e.className = 'cos-empty';
       e.style.marginTop = '20px';
-      e.innerHTML = n.chief ? '<b>No routines to show</b><span>Every routine in the team is listed here, yours and each staff member\u2019s. Choose All Staff or another filter, or make one with New Routine.</span>' : '<b>No routines yet</b><span>Routines are what this staff member does on a schedule, like a weekly finance check or a monthly board report. Click New Routine and make the scheduled task in Claude: its name and schedule are read from there.</span>';
+      e.innerHTML = n.chief ? '<b>No routines to show</b><span>Choose All Staff, or make one with New Routine.</span>' : '<b>No routines yet</b><span>A routine is work done on a schedule. Make one with New Routine.</span>';
       grid.appendChild(e);
     }
     grid.addEventListener('contextmenu', e => {
@@ -10913,7 +10909,7 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const [id, v] of notesViews) v.hidden = id !== notesState.cur;
     if (!cur) {
       const e = document.createElement('div'); e.className = 'nempty';
-      e.innerHTML = '<b>Your Apple Notes, here</b><span>Show a note from your phone here, live: changes either side appear on both. On your iPhone, open the note, tap Share, then Copy Link, and paste the link here. The first time, sign in to iCloud with your Apple Account password and code (passkeys do not work inside the app).</span>';
+      e.innerHTML = '<b>Your Apple Notes, here</b><span>On your iPhone, open the note, tap Share, then Copy Link, and paste the link here.</span>';
       const bt = document.createElement('button'); bt.className = 'btn-primary'; bt.textContent = 'Add a Note…'; bt.addEventListener('click', () => notesAdd());
       e.appendChild(bt); body.appendChild(e);
       return;
@@ -11269,7 +11265,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (errs.length) { const e = document.createElement('div'); e.className = 'cal-err'; e.textContent = errs.join(' \u00b7 '); P.appendChild(e); }
     if (!calState.feeds.length && calG.accounts && !calG.accounts.length) {
       const e = document.createElement('div'); e.className = 'cal-empty';
-      e.innerHTML = '<b>Your calendar, here</b><span>Add an account in Mail (the apps button, then Mail): its calendars then show here, and you can make and change meetings. Or show a calendar from its published link, to look at only:</span><ol><li>In Outlook on the web: Settings › Calendar › Shared calendars.</li><li>Under Publish a calendar, choose your calendar and Can view all details, then Publish.</li><li>Copy the ICS link and paste it here.</li></ol>';
+      e.innerHTML = '<b>Your calendar, here</b><span>Add an account in Mail and its calendars show here. Or paste a calendar\u2019s published link:</span><ol><li>In Outlook on the web: Settings › Calendar › Shared calendars.</li><li>Under Publish a calendar, choose your calendar and Can view all details, then Publish.</li><li>Copy the ICS link and paste it here.</li></ol>';
       const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add a Calendar…'; b.addEventListener('click', () => calAddFeed());
       e.appendChild(b); P.appendChild(e); return;
     }
@@ -12688,7 +12684,7 @@ body { width: max-content !important; min-width: 0 !important; }
       try { H = await window.navigatorApp.mailHealth(); } catch (e) { H = null; }
       const body = d.querySelector('.mh-body'); body.replaceChildren();
       if (!H) { body.textContent = 'Could not read the health record.'; return; }
-      d.querySelector('.hint').textContent = `${H.online ? 'This Mac is online.' : 'This Mac is OFFLINE.'} Figures are for the last ten minutes. If something looks wrong, Copy a Report and send it to whoever looks after the app.`;
+      d.querySelector('.hint').textContent = `${H.online ? 'This Mac is online.' : 'This Mac is OFFLINE.'} Figures are for the last ten minutes.`;
       d.querySelector('[data-x="pause"]').textContent = H.index.paused ? 'Switch Search Indexing Back On' : 'Pause Search Indexing';
       d.querySelector('[data-x="pause"]').title = 'Reading your mail in for search is the heaviest thing the app asks of Microsoft. Pausing it leaves search working on what is already read in, with Microsoft\u2019s own search filling the gaps.';
       for (const a of H.accounts) {
@@ -12938,7 +12934,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function mailNeedMore(a, what, then) {
     const real = (mailUi.accounts || []).find(x => x.id === (a.via || a.id)) || a;
     if (real.more) return then(real);
-    const d = mailDlg('mail-more', `<h2></h2><p class="hint">${mailEsc(what)} need one more permission from Microsoft for <b>${mailEsc(real.email)}</b>. Sign in once more to allow it. Microsoft’s page opens in your web browser and lists what the app is asking for.</p><p class="hint">If Microsoft says an administrator must approve, nothing changes here and everything you use now keeps working. Ask whoever looks after Microsoft 365 for that organisation to approve “Claude Navigator”.</p><div class="dlg-actions"><button class="btn" data-x="cancel">Not Now</button><button class="btn-primary" data-x="ok">Sign In to Allow</button></div>`);
+    const d = mailDlg('mail-more', `<h2></h2><p class="hint">${mailEsc(what)} need one more permission from Microsoft for <b>${mailEsc(real.email)}</b>. Sign in once more to allow it. Microsoft’s page opens in your web browser and lists what the app is asking for.</p><p class="hint">If an administrator must approve, ask whoever looks after Microsoft 365 to approve “Claude Navigator”.</p><div class="dlg-actions"><button class="btn" data-x="cancel">Not Now</button><button class="btn-primary" data-x="ok">Sign In to Allow</button></div>`);
     d.querySelector('h2').textContent = `Allow ${what.toLowerCase()}`;
     d.addEventListener('click', async e => {
       const x = e.target.dataset && e.target.dataset.x; if (!x) return;
@@ -13377,7 +13373,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (mailUi.accounts !== null && !vis.length) {
       const e = document.createElement('div'); e.className = 'cal-empty';
       const other = (mailUi.accounts || []).length;
-      e.innerHTML = `<b>Your mail, here</b><span>${other ? 'No account belongs to this profile yet. Add one, or choose All Profiles to see the accounts you have already added (which profiles an account belongs to is in each profile’s settings).' : 'Add your Microsoft 365, Outlook.com or Hotmail account. You sign in on Microsoft’s own page in your web browser, once: the app keeps you signed in after that, through restarts and updates. Your password is never seen by the app.'}</span>`;
+      e.innerHTML = `<b>Your mail, here</b><span>${other ? 'No account belongs to this profile yet. Add one, or choose All Profiles.' : 'Add your Microsoft 365, Outlook.com or Hotmail account. You sign in on Microsoft’s own page.'}</span>`;
       const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add an Account…'; b.addEventListener('click', () => mailAddAccount());
       e.appendChild(b); P.appendChild(e); return;
     }
@@ -14593,7 +14589,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Set Up the Clara Folder\u2026'; b.addEventListener('click', () => { footOpen = true; paintFoot(); }); l.appendChild(b); foot.appendChild(l);
         return;
       }
-      foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'Outlook files emails you are only copied on with Clara into a folder called Clara. Anything she sends straight to you stays in the Inbox.' }));
+      foot.appendChild(Object.assign(document.createElement('div'), { className: 'cl-why', textContent: 'Emails you are only copied on go to the Clara folder. What she sends you stays in the Inbox.' }));
       for (const a of accs) {
         const on = !!claraMail.folders[a.id], l = document.createElement('div'); l.className = 'cl-set';
         l.appendChild(Object.assign(document.createElement('span'), { textContent: a.email }));
@@ -15109,7 +15105,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!staff) return toast(`${prof.name} has no staff yet. Add an Executive Assistant in Chief of Staff first.`);
     const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', calHelpClose);
     const el = document.createElement('div'); el.className = 'cal-view cal-help'; el.style.setProperty('--ev', prof.color || CAL_COLOUR);
-    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. The invite opens for you to check, and people are only told when you save it. It listens as soon as this opens. Say the meeting and pause as long as you like. Done stops the listening so you can check your words; nothing is made until you press Make the Invite.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. Say the meeting, then press Make the Invite to check it.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
     Object.assign(calHelp, { el, shade, prof, staff });
     document.body.append(shade, el);          // (over the whole app, so drawing the calendar again never disturbs the chat)
     popMovable(el, el.querySelector('.cv-bar'), 'calHelp', null);
@@ -15688,7 +15684,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const hearList = () => { try { const l = JSON.parse(ls.get(HEAR_STORE) || '[]'); return Array.isArray(l) ? l.filter(x => x && x.from && x.to) : []; } catch (e) { return []; } };
   const hearFix = t => { let x = String(t || ''); try { for (const [a, b] of HEAR_BUILT) x = x.replace(new RegExp('\\b(?:' + a + ')\\b', 'gi'), b); for (const r of hearList()) x = x.replace(new RegExp('\\b' + String(r.from).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+') + '\\b', 'gi'), () => String(r.to)); } catch (e) { /* left as heard */ } return x; };
   function hearDlg() {
-    const d = mailDlg('granola-dlg', '<h2>Words it mishears</h2><p class="hint">When dictation writes a word wrongly, add it here and it is put right every time, on this Mac and in Drive on the phone. \u201cMonkey bar\u201d and \u201cClawd\u201d are already taken care of.</p><div class="gl hl"></div><div class="dlg-actions"><button class="btn" data-x="add">Add a Word</button><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('granola-dlg', '<h2>Words it mishears</h2><p class="hint">Add a word that dictation gets wrong and it is put right every time.</p><div class="gl hl"></div><div class="dlg-actions"><button class="btn" data-x="add">Add a Word</button><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const gl = d.querySelector('.hl'); let list = hearList();
     const save = () => { ls.set(HEAR_STORE, JSON.stringify(list.filter(x => x.from.trim() && x.to.trim()).slice(0, 80))); try { phoneSoon(); } catch (e) { /* the phone gets it next time */ } };
     const paint = () => { gl.replaceChildren(); if (!list.length) gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline', textContent: 'Nothing of your own yet.' }));
@@ -15880,7 +15876,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!acc) return toast('Add a mail account first.');
     const shade = document.createElement('div'); shade.className = 'cal-vshade cal-hshade'; shade.addEventListener('click', mailHelpClose);
     const el = document.createElement('div'); el.className = 'cal-view cal-help nochat mail-helper';
-    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What email do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Email Emma and Raj to say the board meeting has moved to Monday the 14th at 4:30, and ask them to confirm by Friday."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the email. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Write the Email</button></div><p class="ch-note">Nothing is sent. The email opens for you to check and change, and only you can press Send. It listens as soon as this opens. Say it and pause as long as you like. Done stops the listening so you can check your words; nothing is written until you press Write the Email.</p><div class="ch-out"></div></div></div>`;
+    el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What email do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Email Emma and Raj to say the board meeting has moved to Monday the 14th at 4:30, and ask them to confirm by Friday."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the email. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Write the Email</button></div><p class="ch-note">Nothing is sent. Say the email, then press Write the Email to check it.</p><div class="ch-out"></div></div></div>`;
     Object.assign(mailHelp, { el, shade });
     document.body.append(shade, el);
     popMovable(el, el.querySelector('.cv-bar'), 'mailHelp', null);
@@ -17294,36 +17290,71 @@ body { width: max-content !important; min-width: 0 !important; }
     try { const S = (JSON.parse(ls.get(BOT_TURNS) || '{}') || {})[memPid()]; if (S && Date.now() - S.at < 12 * 36e5 && Array.isArray(S.turns)) { const t = S.turns.filter(x => x && x.text && (x.role === 'user' || x.role === 'assistant')); while (t.length && t[0].role !== 'user') t.shift(); botS.turns = t; } } catch (e) { /* none kept */ } }
   // Settings: one window. Its sections are down the left; choosing one shows it on the right, in place. No section
   // opens a further window. (Each section is the same sheet that used to open by itself, drawn inside this one.)
+  // Every setting in the app lives in this one window. A section is either a list of rows (drawn here) or one of the
+  // app's own sheets shown in place.
   const SETTINGS = [
     ['general', 'General', null],
     ['about', 'About Me', () => botLearnedDlg()],
     ['fast', 'Fast Answers', () => fastDlg()],
+    ['mail', 'Mail', () => mailHealth()],
     ['meetings', 'Meetings', () => granolaDlg()],
     ['dictation', 'Dictation', () => hearDlg()],
-    ['mail', 'Mail', () => mailHealth()],
+    ['folders', 'Folders and Backup', null],
+    ['account', 'Claude Account', null],
+    ['app', 'This App', null],
   ];
   function botSettingsDlg(section) {
     for (const old of document.querySelectorAll('dialog.settings-win')) { try { old.close(); } catch (e) { /* gone */ } old.remove(); }
     const d = document.createElement('dialog'); d.className = 'settings-win';
     d.innerHTML = '<div class="set-nav" role="tablist" aria-label="Settings"></div><div class="set-pane"><div class="set-host"></div><div class="set-foot"><button class="btn-primary" data-x="close">Done</button></div></div>';
     const nav = d.querySelector('.set-nav'), host = d.querySelector('.set-host');
-    let cur = SETTINGS.some(x => x[0] === section) ? section : (ls.get('claudeNavigator.settingsTab') || 'general');
-    const general = () => {
-      const w = document.createElement('div'); w.innerHTML = '<h2 style="margin:0 0 8px;font-size:var(--fs-title)">General</h2><div class="set-rows"></div>';
+    let cur = SETTINGS.some(x => x[0] === section) ? section : (ls.get('claudeNavigator.settingsTab') || 'general'); if (!SETTINGS.some(x => x[0] === cur)) cur = 'general';
+    // A section made of rows: a name, one short line, and the buttons that act on it.
+    const rowsPage = (title, fill) => {
+      const w = document.createElement('div'); w.innerHTML = '<h2 style="margin:0 0 8px;font-size:var(--fs-title)"></h2><div class="set-rows"></div>'; w.querySelector('h2').textContent = title;
       const rows = w.querySelector('.set-rows');
-      const row = (title, sub, label, run) => { const r = document.createElement('div'); r.className = 'set-row';
-        const t = document.createElement('div'); t.className = 'tx'; t.appendChild(Object.assign(document.createElement('div'), { textContent: title, className: 't' })); t.appendChild(Object.assign(document.createElement('div'), { textContent: sub, className: 's' }));
-        const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: label }); b.addEventListener('click', run); r.append(t, b); rows.appendChild(r); };
-      const off = ls.get('claudeNavigator.sounds') === 'off';
-      row('Sounds', off ? 'Off. No sound when it listens, answers or makes something.' : 'On. A soft sound when it listens, answers or makes something.', off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); });
-      row('Suggestions', bot.quiet ? 'Quiet. They stay in the Chief of Staff panel and do not pop up.' : 'They pop up beside the Chief of Staff button as they arrive.', bot.quiet ? 'Let Them Pop Up' : 'Keep Them Quiet', () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); show(); });
-      row('Pinned Projects in Claude', 'Unpin every project in Claude’s sidebar. This happens only when you press it.', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
-      host.replaceChildren(w);
+      const row = (name, sub, ...btns) => { const r = document.createElement('div'); r.className = 'set-row';
+        const t = document.createElement('div'); t.className = 'tx'; t.appendChild(Object.assign(document.createElement('div'), { textContent: name, className: 't' })); if (sub) t.appendChild(Object.assign(document.createElement('div'), { textContent: sub, className: 's' }));
+        r.appendChild(t);
+        for (const [label, run, kind] of btns) { const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn' + (kind === 'danger' ? ' danger' : ''), textContent: label }); b.addEventListener('click', e => run(e, b)); r.appendChild(b); }
+        rows.appendChild(r); };
+      fill(row); host.replaceChildren(w);
+    };
+    let appVer = ''; try { if (isApp && window.navigatorApp.updateStatus) window.navigatorApp.updateStatus().then(u => { appVer = (u && u.current) || ''; if (cur === 'app' && d.isConnected) show(); }).catch(() => {}); } catch (e) { /* shown without it */ }
+    const leave = run => () => { d.close(); setTimeout(run, 60); };          // (what opens elsewhere closes Settings first)
+    const PAGES = {
+      general: row => {
+        const off = ls.get('claudeNavigator.sounds') === 'off';
+        row('Sounds', off ? 'Off.' : 'On when it listens, answers or makes something.', [off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); }]);
+        row('Suggestions', bot.quiet ? 'Quiet: they wait in the Chief of Staff column.' : 'They pop up as they arrive.', [bot.quiet ? 'Let Them Pop Up' : 'Keep Them Quiet', () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); show(); }]);
+        if (isApp) row('Claude\u2019s Own Sidebar', hideClaudeSidebar() ? 'Hidden.' : 'Showing.', [hideClaudeSidebar() ? 'Show It' : 'Hide It', () => { setHideClaudeSidebar(!hideClaudeSidebar()); show(); }]);
+        row('Panels', 'Put the sidebar, Claude and split view back as they were.', ['Reset', () => { try { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); } catch (e) { /* not ready */ } toast('Panels are back as they were'); }]);
+      },
+      folders: row => {
+        if (isApp) {
+          row('Keep Folders on This Mac', fsState.enabled ? 'On. Your folders are real folders in Documents.' : 'Off.', [fsState.enabled ? 'Turn Off' : 'Turn On\u2026', () => { if (fsState.enabled) { if (confirm('Stop keeping your folders on disk? The folders and files already there stay where they are.')) disableFolderSync(); } else enableFolderSync(); setTimeout(show, 400); }]);
+          row('Folder Location', '', ...(fsState.enabled ? [[isMac ? 'Show in Finder' : 'Show in File Explorer', () => window.navigatorApp.fsReveal('')]] : []), ['Change\u2026', async () => { const root = await window.navigatorApp.fsChooseRoot(); if (root) enableFolderSync(root); }]);
+          row('Automatic Backups', 'Go back to your folders as they were on an earlier day.', ['Restore\u2026', (e, b) => { const r0 = b.getBoundingClientRect(); showBackupMenu(r0.left, r0.bottom + 4); }]);
+        }
+        row('Back Up to a File', '', ['Back Up\u2026', () => exportTree()]);
+        row('Restore from a File', '', ['Choose a File\u2026', leave(() => $('importFile').click())]);
+        if (isApp && goneLinks().length) row('Chats Deleted in Claude', `${goneLinks().length} still in your folders.`, ['Remove Them\u2026', () => { goneRemove(); show(); }]);
+        row('Example Folders', 'Replace your folders with the example set. You can undo this.', ['Reset\u2026', () => { if (!confirm(fsState.enabled ? 'Replace all your folders in the app with the example set? Your folders and files on this Mac are not touched, and will show up again here. You can undo this.' : 'Replace all your folders with the example set? You can undo this.')) return; snap(); state.tree = seed(); ls.set(FS_TRASH, '[]'); fsState.pullAfter = true; commit(); d.close(); }, 'danger']);
+      },
+      account: row => {
+        for (const a of ACCOUNT_LINKS) { if (a === '-') continue; row(a.label === 'Settings' ? 'Claude\u2019s Settings' : a.label, '', [a.confirm ? 'Log Out\u2026' : a.external ? 'Open \u2197' : 'Open', leave(() => openAccountLink(a)), a.confirm ? 'danger' : '']); }
+        if (isApp) row('Pinned Projects', 'Unpin every project in Claude\u2019s sidebar.', ['Unpin All', () => { toast('Unpinning your projects in Claude\u2026'); claudeUnpin(null, false); }]);
+      },
+      app: row => {
+        row('Version', appVer || (isApp ? '' : 'In your web browser'), ...(isApp ? [updateReady ? [`Restart to Update to ${updateReady}`, () => window.navigatorApp.updateInstall()] : ['Check for Updates', () => checkForUpdates()]] : []));
+        if (isApp) row('Diagnostics', 'A short report to paste when something looks wrong.', ['Copy', () => copyDiagnostics()]);
+        row('Keyboard Shortcuts', '', ['Show', leave(() => cosShortcutsHelp())]);
+      },
     };
     const show = () => {
       for (const b of nav.children) { b.classList.toggle('on', b.dataset.k === cur); b.setAttribute('aria-selected', b.dataset.k === cur ? 'true' : 'false'); }
       const sec = SETTINGS.find(x => x[0] === cur) || SETTINGS[0];
-      if (!sec[2]) return general();
+      if (!sec[2]) return rowsPage(sec[1], PAGES[sec[0]] || (() => {}));
       host.replaceChildren(); mailDlg.into = { host, again: () => { if (d.isConnected && cur === sec[0]) show(); } };
       try { sec[2](); } catch (e) { host.textContent = 'This section could not be shown.'; }
       mailDlg.into = null;
@@ -17386,12 +17417,12 @@ body { width: max-content !important; min-width: 0 !important; }
   const fastCost = u => (u.cost != null ? u.cost : (u.in * 0.10 + u.out * 0.50) / 1e6);       // US dollars, at each model's own price
   function fastDlg() {
     if (!isApp || !window.navigatorApp.apiStatus) return toast('This works in the desktop app.');
-    const d = mailDlg('granola-dlg', '<h2>Fast answers</h2><p class="hint">Quick questions in this panel can be answered in a second or two by Claude\u2019s fast model, through your own Anthropic API key, instead of waiting on Claude\u2019s page. It can look at your email, calendar and meetings to answer, and can never send or change anything. What needs a Claude project still goes to Claude\u2019s page.</p><div class="gl"></div><label class="fkey" style="display:grid;gap:4px;margin:10px 0 2px;font-size:12.5px">API key<input type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-\u2026" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text)"></label><div class="dlg-actions"><button class="btn" data-x="off" hidden>Remove the Key</button><button class="btn" data-x="test" hidden>Test It</button><button class="btn" data-x="tog" hidden></button><button class="btn" data-x="cap" hidden></button><span class="dlg-spacer"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go">Save the Key</button></div>');
+    const d = mailDlg('granola-dlg', '<h2>Fast answers</h2><p class="hint">Quick questions are answered in a second or two through your own Anthropic API key. It can read your email, calendar and meetings, and can never send or change anything.</p><div class="gl"></div><label class="fkey" style="display:grid;gap:4px;margin:10px 0 2px;font-size:12.5px">API key<input type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-\u2026" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text)"></label><div class="dlg-actions"><button class="btn" data-x="off" hidden>Remove the Key</button><button class="btn" data-x="test" hidden>Test It</button><button class="btn" data-x="tog" hidden></button><button class="btn" data-x="cap" hidden></button><span class="dlg-spacer"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go">Save the Key</button></div>');
     const gl = d.querySelector('.gl'), inp = d.querySelector('input'), q = x => d.querySelector(`[data-x="${x}"]`);
     const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
     const paint = extra => { gl.replaceChildren(); const u = fastNow(), on = ls.get('claudeNavigator.fastApi') !== 'off';
-      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)} on this Mac${phoneSpend() ? ' and US$' + phoneSpend().toFixed(2) + ' on your phone' : ''}, of your US$${fastCap()} limit for both together.${fastSpent() >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Off: nothing is sent to the API.'); line('Fast answers use the fast model (Haiku). Email drafts and \u201cThink harder\u201d use the fuller one (Sonnet). No other model is ever used.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
-      else line('No key saved yet. Paste yours below. It is encrypted with this Mac\u2019s Keychain and cannot be read back.');
+      if (fastS.hasKey) { line('A key is saved in this Mac\u2019s Keychain.', 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, US$${(fastCost(u) + (phoneSpend() || 0)).toFixed(2)} of your US$${fastCap()} limit${phoneSpend() ? ' (Mac and phone together)' : ''}.${fastSpent() >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Off: nothing is sent to the API.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
+      else line('No key saved yet. Paste yours below: it is kept in this Mac\u2019s Keychain.');
       if (extra) line(extra[0], extra[1]);
       q('off').hidden = q('test').hidden = q('tog').hidden = q('cap').hidden = !fastS.hasKey; q('cap').textContent = `Monthly Limit: US$${fastCap()}`; q('cap').title = 'The most the Mac and the phone together will spend through the API in a month. Press to change.'; q('tog').textContent = on ? 'Turn Off' : 'Turn On'; inp.placeholder = fastS.hasKey ? 'Paste a new key to replace it' : 'sk-ant-\u2026'; };
     q('go').addEventListener('click', async () => { const k = inp.value.trim(); if (!k) return inp.focus(); const ok = await window.navigatorApp.apiKeySet(k); inp.value = ''; fastS.keyBad = false; await fastLoad(); paint(ok ? ['Saved.', 'good'] : ['It could not be saved.', 'bad']); });
@@ -18146,7 +18177,7 @@ body { width: max-content !important; min-width: 0 !important; }
     try { cosBotSoon(); } catch (e) { /* starting up */ }
   }
   function mailWaitDlg() {
-    const d = mailDlg('gran-dlg gran-list', '<h2>Emails that may be waiting on your reply</h2><p class="hint">Read, sent to you by a person, a day or more old, and not answered. Double-click one to open it, or press Needs No Reply.</p><div class="gbody"></div><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('gran-dlg gran-list', '<h2>Emails that may be waiting on your reply</h2><p class="hint">Read, from a person, a day or more old, and not answered.</p><div class="gbody"></div><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const body = d.querySelector('.gbody');
     const who = m => ((m.from || {}).emailAddress || {}).name || ((m.from || {}).emailAddress || {}).address || '';
     const open = async m => { d.close(); d.remove(); if (currentApp !== 'mail') { try { setApp('mail'); } catch (e) { /* already there */ } } await mailOpen(m); };
@@ -18198,7 +18229,7 @@ body { width: max-content !important; min-width: 0 !important; }
     // About me: given to Claude with every answer and draft made through the API key, for this profile.
     const me = d.querySelector('.mem-me'), M = memOf(), pr = activeProfile();
     const mk = (tag, props, css) => { const x = Object.assign(document.createElement(tag), props || {}); if (css) x.style.cssText = css; return x; };
-    me.appendChild(mk('p', { className: 'hint', textContent: `Claude is told this with every answer and every draft${pr ? ' in ' + pr.name : ''}. It is kept on this Mac. Say \u201cremember that \u2026\u201d in the panel to add to the list.` }));
+    me.appendChild(mk('p', { className: 'hint', textContent: `Claude is told this with every answer${pr ? ' in ' + pr.name : ''}. Say \u201cremember that \u2026\u201d to add to it.` }));
     const nameIn = mk('input', { type: 'text', value: M.name || '', placeholder: meFull() ? `Your name (now: ${meFull()})` : 'Your name', className: 'dlg-input' }, 'margin-bottom:8px');
     const about = mk('textarea', { rows: 5, value: M.about || '', placeholder: 'About you, in your own words. For example: what you do, who matters most, how you like answers and emails, what you never want.', className: 'dlg-input' });
     const keep = () => { M.name = nameIn.value.trim().slice(0, 80); M.about = about.value.slice(0, 2000); memSave(); };
@@ -18396,7 +18427,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const ln = (text, btns) => { const d = document.createElement('div'); d.className = 'ln'; const s = document.createElement('span'); s.textContent = text; d.appendChild(s); for (const [label, run] of btns) { const b = document.createElement('button'); b.textContent = label; b.addEventListener('click', run); d.appendChild(b); } box.appendChild(d); };
     if (!lines.length) {
       const e = document.createElement('div'); e.className = 'bot-empty';
-      e.textContent = 'Nothing learned yet. As you act on or dismiss suggestions, and file things, it learns what you want and where things go. It shows here, and is written for the Chief of Staff chat.';
+      e.textContent = 'Nothing learned yet. It learns as you act on suggestions and file things.';
       box.appendChild(e);
     }
     const filing = lines.filter(x => x.kind === 'filing'), types = lines.filter(x => x.kind === 'type');
@@ -18413,7 +18444,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const p = activeProfile(), dir = companyFolderPath(p);
     h('For the Chief of Staff chat');
     ln(dir ? `This, and an overview of the whole team (every staff member's role, work, skills and routines), is kept up to date in ${dir}/.chief-of-staff, and the Chief of Staff reads it.`
-      : 'Turn on Keep Folders on This Mac (Navigator\u2019s \u2026 menu) so this, and an overview of the whole team, is kept where the Chief of Staff chat can read it.', []);
+      : 'Turn on Keep Folders on This Mac (under Folders and Backup) so the Chief of Staff chat can read this.', []);
     if (lines.length) ln('Start learning again from nothing.', [['Forget All', () => { if (!confirm('Forget everything your Chief of Staff has learned for this profile?')) return; const t = cosTeam(); if (t) { t.learn = { kinds: {}, folders: {}, notFolders: {}, since: Date.now() }; saveCos(); cosNotesSoon(); cosBotRender(); } }]]);
     list.appendChild(box);
   }
@@ -19260,48 +19291,25 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
       { label: 'Expand All', run: () => setAllOpen(true) },
       { label: 'Collapse All', run: () => setAllOpen(false) },
       '-',
-      isApp && { label: 'Hide Claude\u2019s Own Sidebar', checked: hideClaudeSidebar(), run: () => setHideClaudeSidebar(!hideClaudeSidebar()) },
-      isApp && '-',
-      isApp && { label: fsState.enabled ? 'Keep Folders on This Mac' : 'Keep Folders on This Mac\u2026', checked: fsState.enabled, run: () => {
-        if (fsState.enabled) { if (confirm('Stop keeping your folders on disk? The folders and files already there stay where they are.')) disableFolderSync(); }
-        else enableFolderSync();
-      } },
-      isApp && fsState.enabled && { label: isMac ? 'Show Folders in Finder' : 'Show Folders in File Explorer', run: () => window.navigatorApp.fsReveal('') },
-      isApp && { label: 'Change Folder Location\u2026', run: async () => {
-        const root = await window.navigatorApp.fsChooseRoot();
-        if (root) enableFolderSync(root);
-      } },
-      isApp && '-',
-      isApp && { label: 'Copy Link Diagnostics', run: () => {
-        const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
-        const report = { chats: (lib.chats || []).length, artifacts: (lib.artifacts || []).length, linkedPairs: pairs,
-          chatsCheckedSoFar: Object.keys(lib.scanned || {}).length, artifactPagesCheckedSoFar: Object.keys(lib.pageChecked || {}).length,
-          sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null };
-        navigator.clipboard.writeText(JSON.stringify(report, null, 2)).then(() => toast('Diagnostics copied. Paste them into your chat with Claude Code.'));
-      } },
-      isApp && goneLinks().length > 0 && { label: `Remove ${goneLinks().length} Chat${goneLinks().length === 1 ? '' : 's'} Deleted in Claude\u2026`, run: () => {
-        const ids = goneLinks().map(n => n.id);
-        if (!confirm(`Remove ${ids.length} chat${ids.length === 1 ? '' : 's'} that ${ids.length === 1 ? 'was' : 'were'} deleted in Claude from your folders? Anything attached to them stays in the folder. You can undo this.`)) return;
-        snap();
-        for (const id of ids) { const l = locate(id); if (!l) continue; queueTrash([l.node]); l.list.splice(l.index, 1, ...((l.node.children || []).filter(c => c.type !== 'link' || !goneFromClaude(c)))); }
-        commit();
-        toast(`Removed ${ids.length} deleted chat${ids.length === 1 ? '' : 's'}`, true);
-      } },
-      isApp && updateReady && { label: `Restart to Update to ${updateReady}`, run: () => window.navigatorApp.updateInstall() },
-      isApp && !updateReady && { label: 'Check for Updates\u2026', run: checkForUpdates },
-      isApp && { label: 'Restore from Automatic Backup\u2026', run: () => showBackupMenu(lastMenuX, lastMenuY) },
-      { label: 'Back Up Folders to a File…', run: exportTree },
-      { label: 'Restore Folders from a File…', run: () => $('importFile').click() },
-      '-',
-      { label: 'Reset to Example Folders', run: () => {
-        if (!confirm(fsState.enabled
-          ? 'Replace all your folders in the app with the example set? Your folders and files on this Mac are not touched, and will show up again here. You can undo this.'
-          : 'Replace all your folders with the example set? You can undo this.')) return;
-        snap(); state.tree = seed(); ls.set(FS_TRASH, '[]'); fsState.pullAfter = true; commit();
-      } },
+      { label: 'Settings\u2026', key: K.mod + ',', run: () => botSettingsDlg() },
     ], { above: true });
   });
 
+  function copyDiagnostics() {
+    const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
+    const report = { chats: (lib.chats || []).length, artifacts: (lib.artifacts || []).length, linkedPairs: pairs,
+      chatsCheckedSoFar: Object.keys(lib.scanned || {}).length, artifactPagesCheckedSoFar: Object.keys(lib.pageChecked || {}).length,
+      sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null };
+    navigator.clipboard.writeText(JSON.stringify(report, null, 2)).then(() => toast('Diagnostics copied'));
+  }
+  function goneRemove() {
+    const ids = goneLinks().map(n => n.id);
+    if (!ids.length || !confirm(`Remove ${ids.length} chat${ids.length === 1 ? '' : 's'} that ${ids.length === 1 ? 'was' : 'were'} deleted in Claude from your folders? Anything attached to them stays in the folder. You can undo this.`)) return;
+    snap();
+    for (const id of ids) { const l = locate(id); if (!l) continue; queueTrash([l.node]); l.list.splice(l.index, 1, ...((l.node.children || []).filter(c => c.type !== 'link' || !goneFromClaude(c)))); }
+    commit();
+    toast(`Removed ${ids.length} deleted chat${ids.length === 1 ? '' : 's'}`, true);
+  }
   function exportTree() {
     const blob = new Blob([JSON.stringify({ app: 'claude-navigator', version: 1, saved: new Date().toISOString(), tree: state.tree }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
@@ -19478,6 +19486,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
     };
     window.navigatorApp.onShortcut(k => {
+      if (k === 'app-settings') { if (!document.querySelector('dialog.settings-win')) botSettingsDlg(); return; }
       const m = /^profile-(\d)$/.exec(k);
       if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);
       if (document.querySelector('dialog[open]') || tbCustomizing) return;

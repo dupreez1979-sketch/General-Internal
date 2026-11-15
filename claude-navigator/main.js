@@ -402,12 +402,20 @@ function buildMenu() {
   if (!isMac) { Menu.setApplicationMenu(null); return; }
   const act = a => () => send('shortcut', a);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { role: 'appMenu' },
+    { label: app.name, submenu: [
+      { role: 'about' }, { type: 'separator' },
+      { label: 'Settings\u2026', accelerator: 'Cmd+,', click: act('app-settings') }, { type: 'separator' },
+      { role: 'services' }, { type: 'separator' },
+      { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' },
+      { role: 'quit' },
+    ] },
     {
       label: 'File',
       submenu: [
         { label: 'New Chat', accelerator: 'Cmd+N', click: act('new-chat') },
         { label: 'New Folder', accelerator: 'Cmd+Shift+N', click: act('new-folder') },
+        { type: 'separator' },
+        { label: 'Settings\u2026', click: act('app-settings') },
         { type: 'separator' },
         { label: 'Save Page to Folder', accelerator: 'Cmd+S', click: act('save') },
         { label: 'Save As\u2026', accelerator: 'Cmd+Shift+S', click: act('save-as') },
