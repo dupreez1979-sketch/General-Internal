@@ -48,8 +48,6 @@ function readLinkFile(file) {
   } catch (e) { return ''; }
 }
 
-const statIno = p => { try { return String(fs.lstatSync(p).ino); } catch (e) { return null; } };
-const isDir = p => { try { const st = fs.lstatSync(p); return st.isDirectory() && !st.isSymbolicLink(); } catch (e) { return false; } };
 const exists = p => { try { fs.accessSync(p); return true; } catch (e) { return false; } };
 
 class FolderSync {

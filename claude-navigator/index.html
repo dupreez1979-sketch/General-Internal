@@ -362,7 +362,7 @@
   dialog.gran-dlg .gact { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; margin: 6px 0; background: color-mix(in srgb, var(--accent) 4%, transparent); } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
   dialog.gran-dlg .gact .gx { flex: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; padding: 0; } dialog.gran-dlg .gact .gx:hover { background: var(--hover); color: var(--text); }
   dialog.gran-dlg .gback { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 2px 4px; cursor: pointer; text-decoration: underline; }
-  .gma { padding: 0 0 24px; overflow: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; } .gma-lead { color: var(--muted); font-size: 13px; margin: 10px 18px 0; }
+  .gma { padding: 0 var(--bot-pad, 0px) 24px 0; overflow: auto; flex: 1; min-height: 0; display: flex; flex-direction: column; } .gma-lead { color: var(--muted); font-size: 13px; margin: 10px 18px 0; }
   .gma-top { display: flex; align-items: center; gap: 12px; padding: 12px 18px 0; } .gma-find { margin-left: auto; font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; width: min(280px, 40%); } .gma-find:focus { border-color: var(--accent); }
   .gma-seg { display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); } .gma-seg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 5px 16px; border-radius: 7px; cursor: pointer; } .gma-seg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
   .gma .gma-list { flex: none; overflow: visible; padding: 8px 18px 0; } .gma .gma-list .crow { grid-template-columns: var(--gcols, minmax(240px, 2.4fr) 1.4fr 110px 250px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 0; padding: 8px 10px; } .gma .gma-list .crow[hidden] { display: none; } .gma .gma-list .crow:not(.h):hover { background: var(--hover); }
@@ -385,7 +385,6 @@
   dialog.gran-dlg .gnote { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
   .cal-pop .gran-b { justify-self: start; margin-top: 4px; }
   .app-ic.mini.meet { background: #328276; }
-  dialog.gran-list .gsearch { flex: none; font: inherit; font-size: 13px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--win); color: var(--text); outline: none; margin: 0 0 8px; }
   dialog.gran-list .grow { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; border: 0; background: none; color: var(--text); padding: 7px 6px; border-radius: 8px; cursor: pointer; } dialog.gran-list .grow:hover { background: var(--hover); }
   dialog.gran-list .grow .t { flex: none; width: 64px; color: var(--muted); font-size: 12px; } dialog.gran-list .grow .tx { flex: 1; min-width: 0; display: grid; } dialog.gran-list .grow .tx b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } dialog.gran-list .grow .tx span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   dialog.gran-list .grow .st { flex: none; font-size: 11.5px; color: var(--muted); } dialog.gran-list .grow .st.todo { color: #B36E24; font-weight: 600; } dialog.gran-list .grow .clr { flex: none; color: var(--muted); font-size: 16px; padding: 0 6px; } dialog.gran-list .grow .clr:hover { color: var(--text); }
@@ -428,11 +427,6 @@
   #cosSkillsBtn svg:last-child { transform: rotate(90deg); }
   .cos-tabs button .n { font-size: 11px; color: var(--muted); margin-left: 4px; }
   .cos-proj { flex: 1; min-width: 0; min-height: 0; display: flex; }
-  .cos-ptop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  .cos-ptop .tb { white-space: nowrap; flex: none; }
-  .cos-ptop input { font: inherit; font-size: 15px; font-weight: 650; border: 0; background: none; color: var(--text); padding: 4px 6px; border-radius: 6px; min-width: 120px; flex: 1; }
-  .cos-ptop input:focus { background: var(--field); outline: none; }
-  .cos-ptop .tb.on { background: var(--sel); color: var(--text); }
   .cos-src { width: 46%; min-width: 280px; flex: 0 1 auto; display: flex; flex-direction: column; border-left: 1px solid var(--line); min-height: 0; }
   .cos-src-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
   .cos-src-head .tb.on { background: var(--sel); color: var(--text); }
@@ -891,7 +885,6 @@
   #mailAi .ai-card .tx { font-size: 13px; line-height: 1.45; white-space: pre-wrap; user-select: text; }
   #mailAi .ai-refs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
   #mailAi .ai-ask { flex: none; padding: 0 10px 8px; }
-  #mailAi .ai-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 7px; }
   #mailAi .chip { border: 0; border-radius: 11px; padding: 3px 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; }
   #mailAi .chip:hover { background: color-mix(in srgb, var(--accent) 30%, transparent); }
   #mailAi .ai-line { display: flex; gap: 6px; }
@@ -1675,7 +1668,6 @@
   .tbp-chip .ic { display: inline-grid; place-items: center; color: var(--muted); }
   .tbp-chip.space .ic { width: 22px; height: 14px; border: 1px dashed var(--muted); border-radius: 3px; }
   .tbp-chip.space.flex .ic { width: 40px; }
-  .tbp-empty { font-size: 12px; color: var(--muted); align-self: center; }
   .tbp-btns { display: flex; justify-content: flex-end; gap: 8px; }
   #bSaveMore { min-width: 18px; padding: 0 3px; margin-left: -4px; }
   .libbar { position: sticky; top: -14px; z-index: 4; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: color-mix(in srgb, var(--accent) 10%, var(--win)); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 8px; padding: 6px 10px; margin: 0 0 10px; }
@@ -2756,7 +2748,6 @@
     if (changed) save();
   }
   var tidyFresh = false;
-  const tidyKeep = () => state.loc.kind === 'folder' && state.loc.id ? state.loc.id : state.lastFolderId;
   function applyProfileThemeSafe() { try { applyProfileTheme(); } catch (e) { /* during start-up */ } }
 
   function locate(id, nodes = state.tree, parent = null) {
@@ -6258,7 +6249,6 @@
 
   // ---------- Main area events ----------
   const libKeys = () => [...browseEl.querySelectorAll('.item.lib')].map(r => r.dataset.key);
-  const libItem = key => libRowItems.get(key) || libList(state.loc.which).find(x => x.url === key);
   // Everything selected, including on other pages of the list.
   const selectedLibItems = () => {
     const out = [], seen = new Set();
@@ -6957,7 +6947,6 @@
       isApp && { label: 'Show Claude\u2019s Own Menu', run: () => { setHideClaudeSidebar(false); showClaudeSidebar(); } },
     ], { above: true });
   });
-  const setLibFilter = v => { state.libFilter = v; state.libPage = 0; ls.set(LIB_FILTER_STORE, v); renderMain(); renderToolbar(); };
   $('bRefreshLib').addEventListener('click', () => (state.loc.which === 'monday' ? mondayRefresh(true) : refreshLibrary(true)));
   $('libFilterBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
@@ -8928,7 +8917,7 @@
     const skillLines = skills.length ? [`Your skills: ${skills.join('; ')}. These are Claude Skills switched on in my account. When a request fits one of them, use that skill rather than a similar one, and say which skill you used.`] : [];
     const chiefLines = n.chief ? [
       `You lead the ${p ? p.name + ' ' : ''}team: ${(cosTeam() || { nodes: [] }).nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') || 'no staff yet'}.`,
-      'Use my Granola meeting notes and transcripts (my NCTI and Monkey Baa meetings) for what is current and how I am thinking. Say which meeting something came from.',
+      'Use my Granola meeting notes and transcripts (the meetings for this profile) for what is current and how I am thinking. Say which meeting something came from.',
       'Point out when something already exists (a doc, artifact, chat or skill) before anyone makes it again, and say when two staff members are working on the same thing.',
       'The company folders hold outputs, not workings: artifacts, documents, PDFs and final files. Chats are the working and stay with the staff member who did it. When work is finished, check it has a final output, suggest which company folder that output belongs in, and point out finished work that has no output yet.',
       ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
@@ -9874,13 +9863,6 @@
     const url = extractUrl(e.dataTransfer);
     return url ? { name: guessName(url), url } : null;
   }
-  function cosDroppedLinks(e) {
-    try { const xs = JSON.parse(e.dataTransfer.getData(LIB_TYPE) || '[]').filter(x => x && x.url); if (xs.length) return xs.map(x => ({ name: hasWords(x.name) ? x.name : guessName(x.url), url: x.url })); } catch (err) { /* ignore */ }
-    const ids = (e.dataTransfer.getData(NAV_TYPE) || '').split(',').filter(Boolean);
-    if (ids.length) return ids.map(nodeOf).filter(Boolean).map(n => n.type === 'file' ? { name: n.name, path: n.path, file: true } : n.url ? { name: n.name, url: n.url } : null).filter(Boolean);
-    const url = extractUrl(e.dataTransfer);
-    return url ? [{ name: guessName(url), url }] : [];
-  }
   const cosAccepts = e => [...e.dataTransfer.types].some(x => x === LIB_TYPE || x === NAV_TYPE || x === 'text/uri-list');
   function cosLinkChip(link, onRemove) {
     const c = document.createElement('span');
@@ -10535,7 +10517,6 @@ body { width: max-content !important; min-width: 0 !important; }
   // Outlook email from the address set for them (each company's own) with Clara copied in.
   const saveClara = () => ls.set(CLARA_STORE, JSON.stringify({ email: clara.email, url: clara.url }));
   const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
-  function openClara() { go({ kind: 'page', url: clara.url }); }
   // Clara's sign-in turned out to live at another of its addresses: use that one from now on.
   try { if (window.navigatorApp && window.navigatorApp.onClaraMoved) window.navigatorApp.onClaraMoved(url => { try { const u = new URL(url); if (u.protocol !== 'https:' || !/(^|\.)claralabs\.com$/i.test(u.hostname) || clara.url === u.href) return; clara.url = u.href; saveClara(); try { claraDashLoad(true); } catch (e) { /* read next time */ } } catch (e) { /* not an address */ } }); } catch (e) { /* older app */ }
   // Clara's own page (made once, kept loaded in one place; a moved or reloaded page would ask to sign in again).
@@ -11144,7 +11125,7 @@ body { width: max-content !important; min-width: 0 !important; }
           return mailApi(inst.g.acc, { method: 'PATCH', path: `/me/events/${inst.g.id}`, body: { start: iso(a), end: iso(b) } });
         };
         const na = resize ? was[0] : shift(was[0], mins, days), nb = shift(was[1], mins, resize ? 0 : days);
-        const fmt = (a, b) => `${new Date(a).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(a)} – ${calFmtTime(b)}`;
+        const fmt = (a, b) => `${new Date(a).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(a)} to ${calFmtTime(b)}`;
         const invited = inst.ev.attendees && inst.ev.attendees.length;
         const series = inst.recurring && inst.g.master;
         const one = async () => {
@@ -11601,8 +11582,6 @@ body { width: max-content !important; min-width: 0 !important; }
   const tzTime = (ms, tz) => new Date(ms).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', timeZone: tz }).replace(/\s?([ap])\.?m\.?/i, (_, x) => x.toLowerCase() + 'm');
   const TZ_COMMON = ['Australia/Sydney', 'Australia/Melbourne', 'Australia/Brisbane', 'Australia/Adelaide', 'Australia/Darwin', 'Australia/Perth', 'Australia/Hobart', 'Pacific/Auckland', 'Asia/Hong_Kong', 'Asia/Singapore', 'Asia/Tokyo', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Chicago', 'America/Los_Angeles', 'UTC'];
   const tzDefault = pid => (calState.tzBy && calState.tzBy[pid || '_']) || calTz();
-  const calYmd = d => `${d.getFullYear()}-${calPad(d.getMonth() + 1)}-${calPad(d.getDate())}`;
-  const calHm = d => `${calPad(d.getHours())}:${calPad(d.getMinutes())}`;
   const calGKey = (accId, calId) => `g:${accId}:${calId}`;
   const calGTime = (t, allDay) => {
     const m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)/.exec((t && t.dateTime) || '');
@@ -11981,7 +11960,6 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     // ----- Who is free when. The day's calendar sits on the right of the form; the Scheduling Assistant lays everyone
     // out side by side. In both, the meeting is a block you can drag to another time.
-    const DAY0 = 7 * 60, DAY1 = 19 * 60;                       // the hours shown
     const dayOf = () => { const s = readDt('sd', 'st'); return isNaN(s) ? null : new Date(s.getFullYear(), s.getMonth(), s.getDate()); };
     const whoList = () => mailParse(f('att').value).filter(p2 => !p2.bad).map(p2 => ({ address: p2.emailAddress.address, name: p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address }));
     const mineOn = day => { const a = day.getTime(), b = a + 86400e3; return (calG.inst || []).filter(i => !i.allDay && i.start < b && i.end > a && i.g.response !== 'declined' && !(inst && i.key === inst.key)).map(i => ({ a: i.start, b: i.end, subject: i.ev.title || 'Busy', status: i.ev.transp ? 'free' : 'busy' })); };
@@ -15360,7 +15338,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const fallback = async why => {
       if (S.finished) return; S.finished = true; clearInterval(S.timer); localAi.runs.delete(S.id); dictPill().remove(); if (dict.on === S) dict.on = null; if (S.live) { S.live.remove(); S.live = null; } if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; }
       chime('no');
-      if (/microphone/i.test(why || '')) return toast('Allow the microphone for Claude Navigator: System Settings, Privacy & Security, Microphone.');
+      if (/microphone/i.test(why || '')) return toast('Allow the microphone for Claude Navigator: System Settings \u203a Privacy & Security \u203a Microphone.');
       if (!(await old())) toast('Click in the box and press your Mac’s dictation key (or Fn twice).');
     };
     S.on = x => {
@@ -16012,7 +15990,6 @@ body { width: max-content !important; min-width: 0 !important; }
     sideSave(); sideMount(); sideStart(true);
     if (back) { try { setFrame('claude', { wide: false }); } catch (e) { /* no chat open */ } }
   }
-  function sideClose() { sideCloseApp(sideState.app); }
   const sideCan = k => k && k !== currentApp && isApp && k !== dockMainKey() && !(k === 'claude' && dockNative('claude')) && !(k === 'chats' && appKey() === 'claude');
   // Put each side app's own screen into its place in the side panel, and everything else back where it lives.
   function sideMount() {
@@ -16536,7 +16513,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // Quick questions in the chat (each fills the message box; you send it).
   function botQuick() {
-    const p = activeProfile(), t = cosTeam(p), co = p ? p.name : 'the company';
+    const p = activeProfile(), t = cosTeam(p), co = p ? p.name : 'this profile';
     const staff = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name + (x.role ? ` (${x.role})` : '')).join('; ') : '';
     const cur = botCurrent();
     return [
@@ -16704,7 +16681,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const staffRunning = new Set();
   async function staffRun(st, job) {
     // job: { title, detail, x (the action, if it is one), src }
-    if (!fastOn()) { toast('This needs your Claude API key. Add it under Settings, Fast answers.'); return fastDlg(); }
+    if (!fastOn()) { toast('This needs your Claude API key. Add it under Chief of Staff Settings \u203a Fast Answers.'); return fastDlg(); }
     const p = activeProfile(), first = meFirst(), x = job.x || null, key = st.id + '|' + job.title;
     if (staffRunning.has(key)) return toast('Already working on that.');
     const d = mailDlg('granola-dlg staff-run', '<h2></h2><p class="hint"></p><div class="sr-out" style="white-space:pre-wrap;user-select:text;font-size:13.5px;line-height:1.5;max-height:52vh;overflow:auto;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--win);min-height:90px"></div><div class="dlg-actions" style="flex-wrap:wrap;gap:8px"><button class="btn" data-x="copy">Copy</button><button class="btn" data-x="mail" title="Opens as a new email with this in it. Nothing is sent until you press Send.">Open as an Email Draft</button><button class="btn" data-x="chat" title="Copies this and opens the chat, to carry on with Claude itself">Continue in Claude</button><button class="btn" data-x="again">Do It Again</button><span style="flex:1"></span><button class="btn" data-x="done" hidden>Mark Done</button><button class="btn-primary" data-x="close">Close</button></div>');
@@ -16882,17 +16859,17 @@ body { width: max-content !important; min-width: 0 !important; }
     try { const S = (JSON.parse(ls.get(BOT_TURNS) || '{}') || {})[memPid()]; if (S && Date.now() - S.at < 12 * 36e5 && Array.isArray(S.turns)) { const t = S.turns.filter(x => x && x.text && (x.role === 'user' || x.role === 'assistant')); while (t.length && t[0].role !== 'user') t.shift(); botS.turns = t; } } catch (e) { /* none kept */ } }
   // The few things you set once, in one place.
   function botSettingsDlg() {
-    const d = mailDlg('granola-dlg', '<h2>Chief of Staff settings</h2><div class="set-rows" style="display:flex;flex-direction:column;gap:8px;margin:6px 0 4px"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('granola-dlg', '<h2>Chief of Staff Settings</h2><div class="set-rows" style="display:flex;flex-direction:column;gap:8px;margin:6px 0 4px"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const host = d.querySelector('.set-rows');
     const row = (title, sub, label, run) => { const r = document.createElement('div'); r.style.cssText = 'display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid var(--line)';
       const t = document.createElement('div'); t.style.cssText = 'flex:1;min-width:0'; t.appendChild(Object.assign(document.createElement('div'), { textContent: title, style: 'font-weight:600' })); t.appendChild(Object.assign(document.createElement('div'), { textContent: sub, style: 'color:var(--muted);font-size:12.5px' }));
       const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: label }); b.addEventListener('click', () => { d.close(); d.remove(); run(); });
       r.append(t, b); host.appendChild(r); };
-    row('About me, and what it has learned', 'What every answer and draft is told about you', 'Open…', botLearnedDlg);
-    row('Fast answers', 'Your Claude API key and the monthly limit', 'Open…', fastDlg);
-    row('Meetings', 'Granola: connect, or turn off', 'Open…', granolaDlg);
-    row('Words it mishears', 'Names and words dictation gets wrong', 'Open…', hearDlg);
-    row('Pinned projects in Claude', 'Unpin every project in Claude’s sidebar', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
+    row('About Me and What It Has Learned', 'What every answer and draft is told about you', 'Open…', botLearnedDlg);
+    row('Fast Answers', 'Your Claude API key and the monthly limit', 'Open…', fastDlg);
+    row('Meetings (Granola)', 'Connect Granola, or turn it off', 'Open…', granolaDlg);
+    row('Words It Mishears', 'Names and words dictation gets wrong', 'Open…', hearDlg);
+    row('Pinned Projects in Claude', 'Unpin every project in Claude’s sidebar', 'Unpin All', () => { toast('Unpinning your projects in Claude…'); claudeUnpin(null, false); });
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
   }
   async function apiRun(tier, system, messages, tools, max, opt) {
@@ -16952,7 +16929,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const gl = d.querySelector('.gl'), inp = d.querySelector('input'), q = x => d.querySelector(`[data-x="${x}"]`);
     const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
     const paint = extra => { gl.replaceChildren(); const u = fastNow(), on = ls.get('claudeNavigator.fastApi') !== 'off';
-      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} request${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)} of your US$${fastCap()} limit.${fastCost(u) >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Switched off: nothing is sent to the API.'); line('Quick answers use the fast model (Haiku). Email drafts and \u201cThink harder\u201d use the fuller one (Sonnet). No other model is ever used.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
+      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)} of your US$${fastCap()} limit.${fastCost(u) >= fastCap() ? ' The limit is reached: nothing more is sent until next month, or until you raise it.' : ''}` : 'Switched off: nothing is sent to the API.'); line('Fast answers use the fast model (Haiku). Email drafts and \u201cThink harder\u201d use the fuller one (Sonnet). No other model is ever used.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
       else line('No key saved yet. Paste yours below. It is encrypted with this Mac\u2019s Keychain and cannot be read back.');
       if (extra) line(extra[0], extra[1]);
       q('off').hidden = q('test').hidden = q('tog').hidden = q('cap').hidden = !fastS.hasKey; q('cap').textContent = `Monthly Limit: US$${fastCap()}`; q('cap').title = 'The most the app will spend through the API in a month. Press to change.'; q('tog').textContent = on ? 'Switch Off' : 'Switch On'; inp.placeholder = fastS.hasKey ? 'Paste a new key to replace it' : 'sk-ant-\u2026'; };
@@ -16983,7 +16960,7 @@ body { width: max-content !important; min-width: 0 !important; }
     { const st = A.localAiStatus ? await within(A.localAiStatus(), 5000) : null; L.push(`6. This Mac\u2019s own model: ${!st ? 'not in this version' : st.timedOut ? 'no answer in 5 seconds' : st.ok ? 'available' : 'not available' + (st.reason ? ' (' + st.reason + ')' : '')}`); }
     { const u = fastNow(); L.push(`7. API use this month: ${u.n} questions, about US$${fastCost(u).toFixed(3)}; fast answers ${fastOn() ? 'on' : 'off'}; Granola in the panel ${gran.on ? 'on' : 'off'}`); }
     const text = L.join('\n'); try { await navigator.clipboard.writeText(text); } catch (e) { /* shown below anyway */ }
-    const d = mailDlg('granola-dlg', '<h2>Checks</h2><p class="hint">Copied. Paste it to Claude. It holds times and yes or no only. (Help \u203a Run Checks opens this.)</p><pre style="white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0;max-height:50vh;overflow:auto"></pre><div class="dlg-actions"><button class="btn" data-x="log">Copy the Startup Log Instead</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('granola-dlg', '<h2>Checks</h2><p class="hint">Copied. Paste it to Claude. It holds times and yes or no only. (Help \u203a Run Checks opens this.)</p><pre style="white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0;max-height:50vh;overflow:auto"></pre><div class="dlg-actions"><button class="btn" data-x="log">Copy Startup Log Instead</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
     d.querySelector('[data-x="log"]').addEventListener('click', async () => { try { await navigator.clipboard.writeText(String(await A.startupLog() || '')); toast('Startup log copied.'); } catch (e) { toast('Could not copy it. Use Help \u203a Copy Startup Log.'); } });
     d.querySelector('pre').textContent = text; d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
   }
@@ -16999,7 +16976,7 @@ body { width: max-content !important; min-width: 0 !important; }
     botTurnsLoad();
     // "Remember that ..." is kept at once, with no model: it goes into the one memory every answer and draft reads.
     const keepIt = !opt.claude && /^(?:please\s+)?(?:remember(?!\s+to\b)|keep in mind|note that|for next time)[,:]?\s+(?:that\s+)?(.{6,})$/i.exec(text);
-    if (keepIt) { const fresh = remember('told', keepIt[1]); e.a = `${fresh ? 'I will remember that.' : 'I already had that, and have noted it again.'}\n- ${keepIt[1].replace(/\s+/g, ' ').slice(0, 200)}\n- To see or remove what I remember: the panel\u2019s menu, About Me and What It Has Learned.`; e.src = 'mac'; e.noAct = true; e.acts = []; return finish(); }
+    if (keepIt) { const fresh = remember('told', keepIt[1]); e.a = `${fresh ? 'I will remember that.' : 'I already had that, and have noted it again.'}\n- ${keepIt[1].replace(/\s+/g, ' ').slice(0, 200)}\n- To see or remove what I remember: the panel\u2019s menu \u203a Chief of Staff Settings \u203a About Me.`; e.src = 'mac'; e.noAct = true; e.acts = []; return finish(); }
     // A question about what was said or decided in meetings goes straight to Granola.
     const ahead = fastOn() && BOT_AHEAD.test(text) && !/\b(said|decided?|decisions?|agreed?|discuss(ed)?|talked? about|last time|notes?)\b/i.test(text);
     if (!opt.claude && !ahead && gran.on && BOT_MEET.test(text) && window.navigatorApp.granolaAsk) {
@@ -17160,7 +17137,7 @@ body { width: max-content !important; min-width: 0 !important; }
     let ul = null;
     for (const l of lines.slice(1)) {
       const pt = /^([-•*]|\d+[.)])\s+/.test(l);
-      if (pt || e.src === 'claude') { if (!ul) { ul = document.createElement('ul'); a.appendChild(ul); } ul.appendChild(Object.assign(document.createElement('li'), { textContent: l.replace(/^([-•*]|\d+[.)])\s+/, '').replace(/\*\*/g, '') })); }
+      if (pt) { if (!ul) { ul = document.createElement('ul'); a.appendChild(ul); } ul.appendChild(Object.assign(document.createElement('li'), { textContent: l.replace(/^([-•*]|\d+[.)])\s+/, '').replace(/\*\*/g, '') })); }
       else { ul = null; a.appendChild(Object.assign(document.createElement('p'), { textContent: l.replace(/^#+\s*/, '').replace(/\*\*/g, '') })); }
     }
   }
@@ -17185,7 +17162,7 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const e of botS.conv) {
       host.appendChild(Object.assign(document.createElement('div'), { className: 'bq', textContent: e.q }));
       const a = document.createElement('div'); a.className = 'ba' + (e.fail ? ' fail' : '');
-      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'api' ? (e.step || 'Thinking\u2026') : e.src === 'claude' ? (e.why ? e.why + ' Asking Claude\u2026' : 'Asking Claude\u2026') : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else botFill(a, e);
+      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'api' ? (e.step || 'Thinking\u2026') : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else botFill(a, e);
       host.appendChild(a);
       if (e.busy) continue;
       const src = document.createElement('div'); src.className = 'bsrc';
@@ -17194,7 +17171,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (e.src === 'granola') { (e.cites || []).forEach((id, i) => { const g = gran.list.find(x => x.id === id); lnk(g ? `\u25C9 ${g.title.slice(0, 28)}${g.title.length > 28 ? '\u2026' : ''}` : `Source ${i + 1}`, () => (g ? granMeetingDlg(g) : openExternal('https://notes.granola.ai/d/' + id))); }); lnk('Ask Claude instead', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'api') { if (e.tier !== 'smart') lnk('Think harder', () => botAskNew(e.ask, { smart: true, label: e.q })); lnk('Ask in Claude\u2019s chat', () => botAskNew(e.ask, { claude: true, label: e.q })); }
       if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
-      if (e.src === 'claude' || e.src === 'chat') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
+      if (e.src === 'chat') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
       if (!e.fail && e.src !== 'chat') lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
       host.appendChild(src);
       if (e.fail) continue;
@@ -17740,7 +17717,7 @@ body { width: max-content !important; min-width: 0 !important; }
     paint(); window.navigatorApp.granolaStatus().then(s => { on = !!s.connected; paint(); }).catch(() => {});
   }
   function botLearnedDlg() {
-    const d = mailDlg('bot-learn-dlg', '<h2>About me, and what it has learned</h2><div class="mem-me"></div><div class="bl"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const d = mailDlg('bot-learn-dlg', '<h2>About Me and What It Has Learned</h2><div class="mem-me"></div><div class="bl"></div><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
     const paint = () => { const host = d.querySelector('.bl'); host.replaceChildren(); botPaintLearned(host); };
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
     d.addEventListener('click', e => { if (e.target.closest('.bot-learn button')) setTimeout(() => { if (d.isConnected) paint(); }, 50); });
@@ -17770,6 +17747,8 @@ body { width: max-content !important; min-width: 0 !important; }
     if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; botS.ruled = null; botS.conv = []; el.querySelector('.bot-wait').hidden = false; }
     botList = botSuggestions();
     el.classList.toggle('open', !!bot.open);
+    // (the Actions list keeps its buttons clear of the open panel, which floats over the right-hand side)
+    try { const pn = el.querySelector('.bot-panel'); document.body.style.setProperty('--bot-pad', bot.open && pn ? (pn.offsetWidth || 400) + 28 + 'px' : '0px'); } catch (e) { /* drawn next time */ }
     el.classList.toggle('chat-on', !!botS.chat);
     const btn = el.querySelector('.bot-btn');
     btn.classList.toggle('quiet', !!bot.quiet);
@@ -18128,11 +18107,10 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: botS.chat ? 'Hide the Chat' : 'Show the Chat', run: () => { botS.chat = !botS.chat; cosBotRender(); if (botS.chat) setTimeout(botFocus, 150); } },
         { label: 'Open the Chat in the Main View', run: () => { const t = cosTeam(); go({ kind: 'page', url: (t && t.botChat) || botStartUrl() }); } },
         '-',
-        { label: 'About Me and What It Has Learned\u2026', run: botLearnedDlg },
         { label: bot.quiet ? 'Let Suggestions Pop Up' : 'Quiet (Suggestions Stay in Here)', run: () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); } },
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
-        { label: 'Settings\u2026', run: botSettingsDlg },
+        { label: 'Chief of Staff Settings\u2026', run: botSettingsDlg },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });

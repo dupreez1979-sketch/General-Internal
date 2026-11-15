@@ -240,9 +240,9 @@
       if (!apiOn()) return cannot();
       const id = 'home' + newId(), p = prof(); e.src = 'api'; render();
       const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal on his phone.\n\nBe brief. The first line is the answer itself in one short sentence: if he asks for a time, a name or a number, give just that. Then, only if it truly helps, at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nQuestions asking for your advice, priorities or a plan are always answered, from the notes: never refuse those. You know only the team notes below and what has been said in this conversation. Only when he asks for a specific fact you have not been given, such as what an email, a file, a calendar entry or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: the staff member's name | the action in a few words\n\nWhere the team is up to right now:\n${snapshot()}`;
-      const timer = setTimeout(() => { if (waits[id]) { delete waits[id]; e.keep = true; done('That took too long to answer. Try again, or keep it for your desk.', 'none'); } }, mailOn() ? 45000 : 20000);
+      const timer = setTimeout(() => { if (waits[id]) { delete waits[id]; e.keep = true; done('That took too long to answer. Try again, or put it on a list for later.', 'none'); } }, mailOn() ? 45000 : 20000);
       waits[id] = a => { clearTimeout(timer); delete waits[id]; if (a && (a.in || a.out)) useAdd(a.in, a.out); if (a && a.status === 401) fast.keyBad = true;
-        if (a && a.error) { e.keep = true; return done(`The fast model could not answer just now (${String(a.error).slice(0, 80)}). Try again, or keep it for your desk.`, 'none'); }
+        if (a && a.error) { e.keep = true; return done(`The fast model could not answer just now (${String(a.error).slice(0, 80)}). Try again, or put it on a list for later.`, 'none'); }
         let text2 = a ? String(a.text || '').trim() : ''; if (!text2 || /\bLOOKUP\b/.test(text2)) return cannot();
         text2 = text2.replace(/\n?\s*DO:\s*([^\n]+)\s*$/i, (m0, l) => { const f = l.split('|').map(x => x.trim()), st = staffNamed(f[0] || ''); if (st && !st.chief && f[1]) e.act = { staff: st.id, who: st.name, text: f[1].slice(0, 200) }; return ''; }).replace(/\s*[—–]\s*/g, ', ').trim();
         home.turns = home.turns.concat([{ role: 'user', text: said }, { role: 'assistant', text: text2 }]).slice(-8); e.ms = a.ms; e.used = a.used || []; done(text2, 'api'); };
@@ -306,17 +306,17 @@
       else { const lines = String(e.a).split('\n').map(x => x.trim()).filter(Boolean); a.append(el('b', '', (lines[0] || '').replace(/^[-•*]\s+/, ''))); if (lines.length > 1) { const ul = el('ul'); for (const l of lines.slice(1)) ul.append(el('li', '', l.replace(/^([-•*]|\d+[.)])\s+/, ''))); a.append(ul); } }
       s.append(a);
       if (!e.busy) {
-        const foot = el('div', 'hsrc'); foot.append(el('span', '', e.src === 'phone' ? 'Read from the team’s lists' : e.src === 'granola' ? 'From your meetings' : e.src === 'api' ? `Claude’s fast model${e.ms ? ', ' + (e.ms / 1000).toFixed(1) + ' s' : ''}${(e.used || []).length ? ', after looking at ' + e.used.join(' and ') : ''}` : 'Not answered'));
+        const foot = el('div', 'hsrc'); foot.append(el('span', '', e.src === 'phone' ? 'Read from the team’s lists' : e.src === 'granola' ? 'Answered from your meetings' : e.src === 'api' ? `Answered by Claude’s fast model${e.ms ? ' in ' + (e.ms / 1000).toFixed(1) + ' s' : ''}${(e.used || []).length ? ', after looking at ' + e.used.join(' and ') : ''}` : 'Not answered'));
         const link = (label, run) => { const b = el('button', '', label); b.onclick = run; foot.append(b); };
-        if (e.act && !e.act.did) link(`Put it on the ${e.act.who}’s list`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.act.staff, text: e.act.text }); saveChanges(); e.act.did = true; chime('made'); render(); });
+        if (e.act && !e.act.did) link(`Put It on the ${e.act.who}’s List`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.act.staff, text: e.act.text }); saveChanges(); e.act.did = true; chime('made'); render(); });
         if (e.act && e.act.did) foot.append(el('span', 'ok', `On the ${e.act.who}’s list`));
-        if (e.keep && !e.kept) link(`Keep it for my desk`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.target.id, text: ('Asked on the phone: ' + e.q).slice(0, 300) }); saveChanges(); e.kept = true; chime('made'); render(); });
+        if (e.keep && !e.kept) link(e.target.chief ? 'Put It on My Chief of Staff’s List' : `Put It on the ${e.target.name}’s List`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.target.id, text: ('Asked on the phone: ' + e.q).slice(0, 300) }); saveChanges(); e.kept = true; chime('made'); render(); });
         if (e.kept) foot.append(el('span', 'ok', `On ${e.target.chief ? 'your Chief of Staff' : 'the ' + e.target.name}’s list`));
-        if (e.keep) link('Open Claude’s Chat', () => { ui.asked = { staff: e.target.id, pid: ui.pid }; chat(askUrl(e.target), e.target.name); });
+        if (e.keep) link('Ask in Claude’s Chat', () => { ui.asked = { staff: e.target.id, pid: ui.pid }; chat(askUrl(e.target), e.target.name); });
         s.append(foot);
       }
     }
-    if (home.conv.length) { const cl = el('button', 'hclear', 'Clear these answers'); cl.onclick = () => { home.conv = []; home.turns = []; render(); }; s.append(cl); }
+    if (home.conv.length) { const cl = el('button', 'hclear', 'Clear These Answers'); cl.onclick = () => { home.conv = []; home.turns = []; render(); }; s.append(cl); }
     lastDriveCards(s);
     if (!home.conv.length) agendaPaint(s);
     s.append(el('div', 'sec', 'Needs you'));
@@ -688,14 +688,14 @@
       opt('Claude API key', fast.hasKey ? `Saved in this phone’s Keychain${fast.keyBad ? '. Claude did NOT accept it: tap to paste it again' : ''}. Fast model only (${fast.model || 'Claude Haiku 5.5'}).` : 'Not set. Tap to paste your key. It is kept in this phone’s Keychain.', fast.hasKey && !fast.keyBad, () => { fast.keyBad = false; send({ do: 'apiKey' }); });
       { const mon = ls.get('driveMail') !== 'off', n = fast.mail.length;
         opt('Email and calendar', fast.mailBusy ? 'Opening the sign-in…' : n ? (mon ? `Reading ${fast.mail.join(', ')}. It can look things up, never send or change. Nothing read is kept on this phone. Tap to pause.` : 'Signed in, but paused. Tap to use it.') : (fast.mailErr ? `Not signed in (${fast.mailErr}). Tap to try again.` : 'Not signed in. Tap to sign in to Microsoft, so questions about your email and calendar can be answered here.'), n > 0 && mon, () => { if (n) { ls.set('driveMail', mon ? 'off' : 'on'); return render(); } fast.mailBusy = true; fast.mailErr = ''; send({ do: 'mailConnect' }); render(); });
-        if (n) { const add = el('button', 'row', 'Add another email account'); add.style.cssText = 'border:0;color:var(--muted)'; add.onclick = () => { fast.mailBusy = true; fast.mailErr = ''; send({ do: 'mailConnect' }); render(); }; s2.append(add);
+        if (n) { const add = el('button', 'row', 'Add Another Email Account'); add.style.cssText = 'border:0;color:var(--muted)'; add.onclick = () => { fast.mailBusy = true; fast.mailErr = ''; send({ do: 'mailConnect' }); render(); }; s2.append(add);
           if (fast.mailErr) s2.append(el('p', 'vtip', 'That sign-in did not finish: ' + fast.mailErr));
-          const dc = el('button', 'row', 'Sign out of email on this phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'mailDisconnect', email: '' }); fast.mail = []; render(); }; s2.append(dc); } }
+          const dc = el('button', 'row', 'Sign Out of Email on This Phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'mailDisconnect', email: '' }); fast.mail = []; render(); }; s2.append(dc); } }
       if (!fast.mail.length && fast.mailErr) s2.append(el('p', 'vtip', 'The sign-in did not finish: ' + fast.mailErr));
       const gon = ls.get('driveGran') !== 'off';
-      opt('Granola', fast.granBusy ? 'Opening the sign-in…' : fast.granola ? (gon ? 'Connected. Meeting questions are answered from your notes. Nothing from a meeting is kept on this phone. Tap to pause.' : 'Connected, but paused. Tap to use it.') : (fast.granErr ? `Not connected (${fast.granErr}). Tap to try again.` : 'Not connected. Tap to sign in to Granola.'), fast.granola && gon, () => { if (fast.granola) { ls.set('driveGran', gon ? 'off' : 'on'); return render(); } fast.granBusy = true; fast.granErr = ''; send({ do: 'granConnect' }); render(); });
-      if (fast.granola) { const dc = el('button', 'row', 'Disconnect Granola from this phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'granDisconnect' }); fast.granola = false; render(); }; s2.append(dc); }
-    if (fast.hasKey) { s2.append(el('div', 'sec', 'Quick answers'));
+      opt('Meetings (Granola)', fast.granBusy ? 'Opening the sign-in…' : fast.granola ? (gon ? 'Connected. Meeting questions are answered from your notes. Nothing from a meeting is kept on this phone. Tap to pause.' : 'Connected, but paused. Tap to use it.') : (fast.granErr ? `Not connected (${fast.granErr}). Tap to try again.` : 'Not connected. Tap to sign in to Granola.'), fast.granola && gon, () => { if (fast.granola) { ls.set('driveGran', gon ? 'off' : 'on'); return render(); } fast.granBusy = true; fast.granErr = ''; send({ do: 'granConnect' }); render(); });
+      if (fast.granola) { const dc = el('button', 'row', 'Disconnect Granola from This Phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'granDisconnect' }); fast.granola = false; render(); }; s2.append(dc); }
+    if (fast.hasKey) { s2.append(el('div', 'sec', 'Fast answers'));
       const on = ls.get('driveApi') !== 'off';
         opt('Use Claude’s fast model', on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${useCost(u).toFixed(2)}. Today: ${u.dn || 0} of ${lim}.` : 'Off. Nothing is sent to the API.', on, () => { ls.set('driveApi', on ? 'off' : 'on'); render(); });
       opt('Limits', `US$${apiCap()} a month and ${lim} questions a day. Tap to ${ui.setLimits ? 'hide' : 'change'}.`, false, () => { ui.setLimits = !ui.setLimits; render(); });
@@ -708,7 +708,7 @@
     if (ui.setVoices) {
     const hear = el('button', 'btn', 'Hear It'); hear.style.margin = '0 6px 12px'; hear.onclick = () => send({ do: 'voiceTry' }); s2.append(hear);
     for (const x of (v.voices || [])) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); nm.append(el('span', '', x.note)); r.append(nm); if (x.on) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voicePick', id: x.id }); s2.append(r); }
-    if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
+    if (v.chosen) { const auto = el('button', 'row', 'Choose the Best One for Me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
       s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. Download one in the iPhone’s Settings, Accessibility, Spoken Content, Voices.'));
     }
     { const on = ls.get('driveSounds') !== 'off'; opt('Sounds', on ? 'On. A soft sound when it listens, hears you, answers or makes something.' : 'Off. Voice only.', on, () => { ls.set('driveSounds', on ? 'off' : 'on'); if (!on) send({ do: 'chime', name: 'ready' }); render(); }); }
