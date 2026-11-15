@@ -468,6 +468,7 @@ function buildMenu() {
     {
       role: 'help',
       submenu: [
+        { label: 'Run Checks', click: () => send('shortcut', 'run-checks') },
         { label: 'Copy Startup Log', click: () => { clipboard.writeText(startLogText()); send('shortcut', 'startlog-copied'); } },
       ],
     },
@@ -1834,6 +1835,43 @@ ipcMain.handle('clara-signin-info', async e => {
 });
 // What Granola keeps on this Mac: file names, sizes, and the shape of its data (field names, counts and lengths).
 // Never any meeting content, titles, names or sign-in values. For working out how the app can read meeting notes.
+// ---------- Claude's API, the fast model only ----------
+// Quick questions in the Chief of Staff panel can be answered through your own API key instead of driving Claude's
+// page. One model, fixed here: there is no setting that reaches a dearer one. The key is encrypted with the Mac's
+// Keychain in the app's own data folder; the window can save or remove it but can never read it back.
+const API_MODEL = 'claude-haiku-5-5';
+const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');
+const apiKeyGet = () => { try { return safeStorage.decryptString(fs.readFileSync(apiKeyFile())); } catch (e) { return ''; } };
+const apiBase = () => (!app.isPackaged && process.env.NAV_TEST_API) || 'https://api.anthropic.com';
+ipcMain.handle('api-status', e => (fromOwnWindow(e) ? { hasKey: !!apiKeyGet(), model: API_MODEL } : null));
+ipcMain.handle('api-key-set', (e, key) => {
+  if (!fromOwnWindow(e)) return false;
+  key = String(key || '').trim();
+  try {
+    if (!key) { fs.rmSync(apiKeyFile(), { force: true }); return true; }
+    if (key.length > 400 || /\s/.test(key) || !safeStorage.isEncryptionAvailable()) return false;
+    fs.writeFileSync(apiKeyFile(), safeStorage.encryptString(key), { mode: 0o600 });
+    return true;
+  } catch (er) { return false; }
+});
+ipcMain.handle('api-ask', async (e, system, turns, max) => {
+  if (!fromOwnWindow(e)) return null;
+  const key = apiKeyGet(); if (!key) return { error: 'no key' };
+  const messages = [];
+  for (const t of (Array.isArray(turns) ? turns : []).slice(-8)) { if (!t || (t.role !== 'user' && t.role !== 'assistant') || typeof t.text !== 'string' || !t.text) continue; if (messages.length && messages[messages.length - 1].role === t.role) continue; messages.push({ role: t.role, content: t.text.slice(0, 20000) }); }
+  if (!messages.length || messages[0].role !== 'user' || messages[messages.length - 1].role !== 'user') return { error: 'nothing to ask' };
+  const started = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 30000);
+  try {
+    const r = await net.fetch(apiBase() + '/v1/messages', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2026-10-21' },
+      body: JSON.stringify({ model: API_MODEL, max_tokens: Math.max(64, Math.min(800, +max || 320)), system: String(system || '').slice(0, 12000), messages, thinking: { type: 'disabled' }, output_config: { effort: 'low' } }) });
+    const j = await r.json().catch(() => ({})), ms = Date.now() - started, u = j.usage || {};
+    if (!r.ok) return { error: String((j.error && j.error.message) || `the API answered ${r.status}`).slice(0, 200), status: r.status, ms };
+    const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
+    if (j.stop_reason === 'refusal' || !text) return { error: j.stop_reason === 'refusal' ? 'declined' : 'empty answer', ms, in: u.input_tokens || 0, out: u.output_tokens || 0 };
+    return { text, ms, in: u.input_tokens || 0, out: u.output_tokens || 0, model: j.model || '' };
+  } catch (er) { return { error: ctl.signal.aborted ? 'no answer in 30 seconds' : String(er && er.message || er).slice(0, 160), ms: Date.now() - started }; }
+  finally { clearTimeout(timer); }
+});
 ipcMain.handle('granola-check', async e => {
   if (!fromOwnWindow(e)) return '';
   const L = [`Claude Navigator ${app.getVersion()}: Granola check (names, counts and lengths only; no meeting content)`];

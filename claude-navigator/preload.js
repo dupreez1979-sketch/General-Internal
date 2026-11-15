@@ -5,6 +5,9 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp', {
   isElectron: true,
   onClaraMoved: (fn) => ipcRenderer.on('clara-moved', (_e, url) => fn(url)),
+  apiStatus: () => ipcRenderer.invoke('api-status'),
+  apiKeySet: (key) => ipcRenderer.invoke('api-key-set', key),
+  apiAsk: (system, turns, max) => ipcRenderer.invoke('api-ask', system, turns, max),
   startupLog: () => ipcRenderer.invoke('startup-log'),
   startNote: (text) => ipcRenderer.send('start-note', String(text)),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),

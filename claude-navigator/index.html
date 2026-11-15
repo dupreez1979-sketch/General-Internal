@@ -16351,13 +16351,13 @@ body { width: max-content !important; min-width: 0 !important; }
     const t = cosTeam();
     if (t) { delete t.botChat; saveCos(); }
     if (botView) { botViewReady = false; try { botView.loadURL(botStartUrl()); } catch (e) { botView.setAttribute('src', botStartUrl()); } }
-    for (const e of botS.conv) clearInterval(e.timer); botS.conv = []; botS.ruled = null; cosBotRender();
+    for (const e of botS.conv) clearInterval(e.timer); botS.conv = []; botS.ruled = null; botS.turns = []; cosBotRender();
     toast('A new conversation with your Chief of Staff');
   }
   // ===== The Chief of Staff panel: one surface. Talk or type at the top, what needs you underneath. =====
   // Simple questions are answered on this Mac from what the app already holds; anything that needs thinking goes to the
   // Chief of Staff's Claude chat (kept out of sight in the panel) and the answer is shown here, with what to do next.
-  const botS = { conv: [], tidy: false, chat: false, n: 0, poll: null, ruled: null };
+  const botS = { conv: [], tidy: false, chat: false, n: 0, poll: null, ruled: null, turns: [] };
   const BOT_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
   const botIn = () => $('cosBot').querySelector('.bot-in');
   const botListening = () => !!(dict.on && dict.on.box === botIn());
@@ -16445,6 +16445,50 @@ body { width: max-content !important; min-width: 0 !important; }
   function botVoice() { let V = []; try { V = speechSynthesis.getVoices() || []; } catch (e) { /* none */ } const score = v => (/premium/i.test(v.name) ? 40 : /enhanced/i.test(v.name) ? 30 : /siri/i.test(v.name) ? 20 : 0) + (/^en[-_]AU/i.test(v.lang) ? 9 : /^en[-_]GB/i.test(v.lang) ? 5 : /^en/i.test(v.lang) ? 3 : -100) + (/compact|eloquence|albert|bad news|bells|boing|bubbles|cellos|jester|organ|trinoids|whisper|wobble|zarvox|fred|junior|ralph|kathy/i.test(v.name) ? -30 : 0); return V.filter(v => /^en/i.test(v.lang)).sort((a, b) => score(b) - score(a))[0] || null; }
   try { speechSynthesis.getVoices(); } catch (e) { /* none */ }
   function botSpeak(text) { try { if (!text) return; if (speechSynthesis.speaking) return speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(String(text).replace(/\n+/g, '. ').slice(0, 900)); const v = botVoice(); if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-AU'; speechSynthesis.speak(u); } catch (e) { /* no voice */ } }
+  // Fast answers through your own API key (the fast model only). What is kept here: whether it is switched on, and a
+  // count with token totals for the month. Never the key, a question or an answer.
+  const fastS = { hasKey: false, model: '', keyBad: false };
+  const fastLoad = async () => { try { const r = isApp && window.navigatorApp.apiStatus ? await window.navigatorApp.apiStatus() : null; if (r) { fastS.hasKey = !!r.hasKey; fastS.model = r.model || ''; } } catch (e) { /* older app */ } return fastS; };
+  setTimeout(fastLoad, 2500);
+  const fastOn = () => fastS.hasKey && ls.get('claudeNavigator.fastApi') !== 'off' && (fastNow().dn || 0) < 400;
+  const fastNow = () => { let u = {}; try { u = JSON.parse(ls.get('claudeNavigator.apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
+  const fastUse = (i, o) => { const u = fastNow(); u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; ls.set('claudeNavigator.apiUse', JSON.stringify(u)); };
+  const fastCost = u => (u.in * 0.10 + u.out * 0.50) / 1e6;       // US dollars: the fast model's price per million tokens in and out
+  function fastDlg() {
+    if (!isApp || !window.navigatorApp.apiStatus) return toast('This works in the desktop app.');
+    const d = mailDlg('granola-dlg', '<h2>Fast answers</h2><p class="hint">Quick questions in this panel can be answered in a second or two by Claude\u2019s fast model, through your own Anthropic API key, instead of waiting on Claude\u2019s page. Only the fast model is ever used. Anything that needs a proper look still goes to Claude\u2019s page.</p><div class="gl"></div><label class="fkey" style="display:grid;gap:4px;margin:10px 0 2px;font-size:12.5px">API key<input type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-\u2026" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text)"></label><div class="dlg-actions"><button class="btn" data-x="off" hidden>Remove the Key</button><button class="btn" data-x="test" hidden>Test It</button><button class="btn" data-x="tog" hidden></button><span style="flex:1"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go">Save the Key</button></div>');
+    const gl = d.querySelector('.gl'), inp = d.querySelector('input'), q = x => d.querySelector(`[data-x="${x}"]`);
+    const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
+    const paint = extra => { gl.replaceChildren(); const u = fastNow(), on = ls.get('claudeNavigator.fastApi') !== 'off';
+      if (fastS.hasKey) { line(`A key is saved, encrypted with this Mac\u2019s Keychain. Model: ${fastS.model}.`, 'good'); line(on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${fastCost(u).toFixed(2)}.` : 'Switched off: nothing is sent to the API.'); if (fastS.keyBad) line('Claude did not accept this key. Paste it again.', 'bad'); }
+      else line('No key saved yet. Paste yours below. It is encrypted with this Mac\u2019s Keychain and cannot be read back.');
+      if (extra) line(extra[0], extra[1]);
+      q('off').hidden = q('test').hidden = q('tog').hidden = !fastS.hasKey; q('tog').textContent = on ? 'Switch Off' : 'Switch On'; inp.placeholder = fastS.hasKey ? 'Paste a new key to replace it' : 'sk-ant-\u2026'; };
+    q('go').addEventListener('click', async () => { const k = inp.value.trim(); if (!k) return inp.focus(); const ok = await window.navigatorApp.apiKeySet(k); inp.value = ''; fastS.keyBad = false; await fastLoad(); paint(ok ? ['Saved.', 'good'] : ['It could not be saved.', 'bad']); });
+    q('off').addEventListener('click', async () => { await window.navigatorApp.apiKeySet(''); await fastLoad(); paint(['The key has been removed from this Mac.', '']); });
+    q('tog').addEventListener('click', () => { ls.set('claudeNavigator.fastApi', ls.get('claudeNavigator.fastApi') !== 'off' ? 'off' : 'on'); paint(); });
+    q('test').addEventListener('click', async () => { paint(['Asking\u2026', '']); const r = await window.navigatorApp.apiAsk('Reply with the one word READY.', [{ role: 'user', text: 'Are you there?' }], 64); if (r && (r.in || r.out)) fastUse(r.in, r.out); fastS.keyBad = !!(r && r.status === 401); paint(r && !r.error ? [`It answered in ${(r.ms / 1000).toFixed(1)} seconds (${r.in} tokens in, ${r.out} out).`, 'good'] : [`It did not work: ${(r && r.error) || 'no answer'}.`, 'bad']); });
+    q('close').addEventListener('click', () => { d.close(); d.remove(); });
+    fastLoad().then(() => paint());
+  }
+  // Run Checks: tries each part for real and copies one report. Times and yes or no only: no key, question or answer.
+  async function runChecks() {
+    toast('Running checks\u2026 this takes up to a minute.');
+    const A = window.navigatorApp || {}; let ver = ''; try { ver = String(await A.startupLog() || '').split('\n')[0].replace(/ startup log.*$/, ''); } catch (e) { /* older app */ }
+    const L = [`${ver || 'Claude Navigator'} checks, ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`];
+    const within = (pr, ms) => Promise.race([pr, new Promise(res => setTimeout(() => res({ timedOut: true }), ms))]).catch(er => ({ error: String(er && er.message || er) }));
+    try { const log = String(await A.startupLog() || '').split('\n'); const fr = log.filter(l => /FROZE/.test(l)); L.push(`1. Freezes since opening: ${fr.length}${fr.length ? ' (longest ' + Math.max(...fr.map(l => +(/for ([\d.]+) s/.exec(l) || [0, 0])[1])).toFixed(1) + ' s)' : ''}`); for (const l of log.filter(l => /synced folder is in|folder read \d+ times|folder (read|written):/.test(l)).slice(-4)) L.push('   ' + l.trim()); } catch (e) { L.push('1. Startup log: not available'); }
+    await fastLoad();
+    if (fastS.hasKey) { const r = await within(A.apiAsk('Reply with the one word READY.', [{ role: 'user', text: 'Are you there?' }], 64), 35000); if (r && (r.in || r.out)) fastUse(r.in, r.out); L.push(`2. Claude API: ${!r || r.timedOut ? 'FAILED: no answer' : r.error ? 'FAILED: ' + r.error + (r.status ? ' (' + r.status + ')' : '') : 'answered in ' + r.ms + ' ms, model ' + (r.model || '?')}`); } else L.push('2. Claude API: no key saved');
+    { const r = A.granolaTest ? await within(A.granolaTest(), 60000) : null; L.push(`3. Granola: ${!r ? 'not in this version' : r.timedOut ? 'FAILED: no answer in a minute' : /not connected yet/.test(r.status || '') ? 'not connected' : r.failed || r.ok === false ? 'FAILED while ' + r.step + ': ' + r.status : r.connected ? 'connected, ' + (r.meetings == null ? 'meetings not counted' : r.meetings + ' meetings in the last seven days') : 'not connected'}`); }
+    { let t = ''; try { t = A.claraSignInInfo ? String(await within(A.claraSignInInfo(), 30000) || '') : ''; } catch (e) { /* older app */ } const pg = /^Page: .*$/m.exec(t), tok = /clara_access_token \(([^)]+)\) lasts (\d+) h/.exec(t); L.push(`4. Clara: ${pg ? pg[0].replace(/^Page: /, '') : 'page not read'}; sign-in ${tok ? 'held for ' + tok[1] + ', ' + tok[2] + ' hours left' : 'not found'}; app opens ${(() => { try { return new URL(clara.url).host; } catch (e) { return 'unknown'; } })()}`); }
+    { let u = ''; try { u = botView ? botView.getURL() : ''; } catch (e) { /* not opened */ } let path0 = ''; try { path0 = new URL(u).pathname.split('/').slice(0, 2).join('/'); } catch (e) { /* none */ } L.push(`5. Claude\u2019s page (Chief of Staff): ${!u ? 'not opened yet in this session' : /login|signin|oauth/.test(u) ? 'showing a SIGN-IN screen' : 'open at ' + path0}`); }
+    { const st = A.localAiStatus ? await within(A.localAiStatus(), 5000) : null; L.push(`6. This Mac\u2019s own model: ${!st ? 'not in this version' : st.timedOut ? 'no answer in 5 seconds' : st.ok ? 'available' : 'not available' + (st.reason ? ' (' + st.reason + ')' : '')}`); }
+    { const u = fastNow(); L.push(`7. API use this month: ${u.n} questions, about US$${fastCost(u).toFixed(3)}; fast answers ${fastOn() ? 'on' : 'off'}; Granola in the panel ${gran.on ? 'on' : 'off'}`); }
+    const text = L.join('\n'); try { await navigator.clipboard.writeText(text); } catch (e) { /* shown below anyway */ }
+    const d = mailDlg('granola-dlg', '<h2>Checks</h2><p class="hint">Copied. Paste it to Claude. It holds times and yes or no only.</p><pre style="white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;user-select:text;margin:0;max-height:50vh;overflow:auto"></pre><div class="dlg-actions"><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    d.querySelector('pre').textContent = text; d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+  }
   const BOT_MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|said|talked? about|spoke|catch[- ]?up|granola|last time|prep(are)? me)\b/i;
   const BOT_FACT = /\b(what|who|which|where|when|how many|anything|is there|are there|status|up to|open|working on|brief me)\b/i, BOT_THINK = /\b(should|advice|advise|recommend|write|draft|why|think|plan|idea|suggest|find out|search|look up|notes|granola|email|explain|compare)\b/i;
   async function botAskNew(text, opt = {}) {
@@ -16471,7 +16515,29 @@ body { width: max-content !important; min-width: 0 !important; }
       const f = st && staffFolder(st);
       if (f) { const open = workItems(f).filter(x => !x.done).map(x => x.name); e.a = open.length ? [`The ${st.name} has ${open.length} open.`].concat(open.slice(0, 8).map(n => '- ' + n), open.length > 8 ? [`- and ${open.length - 8} more`] : []).join('\n') : `Nothing is open for the ${st.name}.`; e.src = 'mac'; e.list = true; return finish(); }
     }
-    if (!opt.claude && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text) && !(gran.on && BOT_MEET.test(text))) {
+    // Claude's fast model, through your API key: it knows the team's lists and what is in front of you, nothing else.
+    // If the question needs an email it cannot see, a file or a project's knowledge, it says so and Claude's page takes it.
+    if (!opt.claude && fastOn() && text.length < 1500) {
+      e.src = 'api'; botPaintConv();
+      try {
+        const p = activeProfile(), t = cosTeam(p), names = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(x => x.name).join('; ') : '';
+        const system = `You are the Chief of Staff${p ? ' at ' + p.name : ''}, answering your principal in a small panel.\n\nBe brief. The first line is the answer itself in one short sentence: if he asks for a time, a date, a name or a number, give just that. Then, only if it truly helps, at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check and send.\n\nYou know only the notes below, what is in front of him (if given) and what has been said in this conversation. If the question needs anything else, such as another email, a file, a calendar entry, a figure or what a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter the answer, only when there is a clear next step, add up to three lines, each in exactly one of these forms:\nDO: action | the staff member's name exactly as given | the action in a few words | the background they need in one sentence\nDO: email | who it is to | the subject | what it should say, in one or two sentences\nDO: meeting | the meeting in one sentence, with the day and time if known\n\nThe staff: ${names}.\n\nWhere things are right now:\n${botNotes()}`;
+        const turns = botS.turns.slice(-6).concat([{ role: 'user', text: `${e.ctx ? 'In front of me: ' + e.ctx.text.slice(0, 6000) + '\n\n' : ''}${text}` }]);
+        const r = await window.navigatorApp.apiAsk(system, turns, 320);
+        if (r && (r.in || r.out)) fastUse(r.in, r.out);
+        if (r && r.status === 401) fastS.keyBad = true;
+        const raw = r && !r.error ? String(r.text || '').trim() : '';
+        if (raw && !/\bLOOKUP\b/.test(raw) && botS.conv.includes(e)) {
+          const acts = [], keep = [];
+          for (const l of raw.split('\n')) { const m = /^\s*DO:\s*(.+)$/i.exec(l); if (!m) { if (l.trim()) keep.push(l.trim()); continue; } const f = m[1].split('|').map(x => x.trim()), k = (f[0] || '').toLowerCase(); if (acts.length >= 3) continue; if (k === 'action' && f[2]) acts.push({ k, who: f[1], text: f[2], why: f.slice(3).join(', ') }); else if (k === 'email' && f[1]) acts.push({ k, who: f[1], subject: f[2] || '', text: f[3] || '' }); else if (k === 'meeting' && f[1]) acts.push({ k, text: f.slice(1).join(', ') }); }
+          e.a = keep.join('\n').replace(/\s*[—–]\s*/g, ', '); e.acts = acts; e.ms = r.ms;
+          botS.turns = botS.turns.concat([{ role: 'user', text }, { role: 'assistant', text: e.a }]).slice(-8);
+          return finish();
+        }
+      } catch (er) { /* Claude's page answers instead */ }
+      if (!botS.conv.includes(e)) return;
+    }
+    if (!opt.claude && !fastOn() && text.length < 240 && BOT_FACT.test(text) && !BOT_THINK.test(text) && !(gran.on && BOT_MEET.test(text))) {
       try {
         if (await localAiReady()) {
           const ins = 'You are a chief of staff answering your principal. Answer only from the team notes you are given. One to three short plain sentences. No lists, no symbols, no dashes. Name the staff member and the items. Never say anything was sent or booked. If the notes do not hold the answer, or the question asks you to think, advise, write or find something out, reply with exactly the one word CLAUDE.';
@@ -16578,13 +16644,14 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const e of botS.conv) {
       host.appendChild(Object.assign(document.createElement('div'), { className: 'bq', textContent: e.q }));
       const a = document.createElement('div'); a.className = 'ba' + (e.fail ? ' fail' : '');
-      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'claude' ? 'Asking Claude\u2026' : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else botFill(a, e);
+      if (e.busy && !e.a) { a.appendChild(waveEl(9, 'busy')); a.appendChild(Object.assign(document.createElement('span'), { className: 'w', textContent: e.src === 'api' ? 'Thinking\u2026' : e.src === 'claude' ? 'Asking Claude\u2026' : e.src === 'granola' ? 'Looking through your meetings\u2026' : 'Checking\u2026' })); } else botFill(a, e);
       host.appendChild(a);
       if (e.busy) continue;
       const src = document.createElement('div'); src.className = 'bsrc';
-      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.list ? 'Read from the team\u2019s lists' : e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : 'Answered by Claude' }));
+      src.appendChild(Object.assign(document.createElement('span'), { textContent: e.list ? 'Read from the team\u2019s lists' : e.src === 'mac' ? 'Answered on your Mac' : e.src === 'granola' ? 'Answered from your meetings' : e.src === 'api' ? `Answered by Claude\u2019s fast model${e.ms ? ' in ' + (e.ms / 1000).toFixed(1) + ' s' : ''}` : 'Answered by Claude' }));
       const lnk = (label, run) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', run); src.appendChild(b); };
       if (e.src === 'granola') { (e.cites || []).forEach((id, i) => { const g = gran.list.find(x => x.id === id); lnk(g ? `\u25C9 ${g.title.slice(0, 28)}${g.title.length > 28 ? '\u2026' : ''}` : `Source ${i + 1}`, () => (g ? granMeetingDlg(g) : openExternal('https://notes.granola.ai/d/' + id))); }); lnk('Ask Claude instead', () => botAskNew(e.ask, { claude: true, label: e.q })); }
+      if (e.src === 'api') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
       if (e.src === 'mac') lnk('Ask Claude to dig deeper', () => botAskNew(e.ask, { claude: true, label: e.q }));
       if (e.src === 'claude') lnk('Show the Chat', () => { botS.chat = true; cosBotRender(); });
       if (!e.fail) lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
@@ -17268,6 +17335,8 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: 'Bring Back Dismissed Suggestions', disabled: !bot.dismissed.length, run: () => { bot.dismissed = []; saveBot(); cosBotRender(); } },
         '-',
         { label: 'Granola\u2026', run: granolaDlg },
+        { label: 'Fast Answers (API Key)\u2026', run: fastDlg },
+        { label: 'Run Checks', run: runChecks },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
     });
@@ -18143,6 +18212,7 @@ body { width: max-content !important; min-width: 0 !important; }
       'toggle-claude': () => (currentApp === 'cos' ? null : !pane.hidden ? closeClaude() : openClaude()),
       'toggle-split': () => setSplit(!splitOn),
       'cos-talk': () => botTalk(),
+      'run-checks': () => runChecks(),
       'startlog-copied': () => toast('Startup log copied. It holds step names and times only. Paste it to Claude.'),
       'toggle-detail': () => (currentApp !== 'cos' ? null : fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide')),
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
