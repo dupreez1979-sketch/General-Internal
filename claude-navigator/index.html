@@ -10465,6 +10465,8 @@ body { width: max-content !important; min-width: 0 !important; }
   const saveClara = () => ls.set(CLARA_STORE, JSON.stringify({ email: clara.email, url: clara.url }));
   const EMAIL_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
   function openClara() { go({ kind: 'page', url: clara.url }); }
+  // Clara's sign-in turned out to live at another of its addresses: use that one from now on.
+  try { if (window.navigatorApp && window.navigatorApp.onClaraMoved) window.navigatorApp.onClaraMoved(url => { try { const u = new URL(url); if (u.protocol !== 'https:' || !/(^|\.)claralabs\.com$/i.test(u.hostname) || clara.url === u.href) return; clara.url = u.href; saveClara(); try { claraDashLoad(true); } catch (e) { /* read next time */ } } catch (e) { /* not an address */ } }); } catch (e) { /* older app */ }
   // Clara's own page (made once, kept loaded in one place; a moved or reloaded page would ask to sign in again).
   // ----- Apple Notes (iCloud), in a floating panel -----
   // Your notes (for example action lists for Monkey Baa and NCTI) stay in Apple Notes on your phone; here they show

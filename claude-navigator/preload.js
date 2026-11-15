@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer, webUtils } = require('electron');
 // Only the app's own folder page gets these: never a web page, even if one were somehow loaded here.
 if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp', {
   isElectron: true,
+  onClaraMoved: (fn) => ipcRenderer.on('clara-moved', (_e, url) => fn(url)),
   startupLog: () => ipcRenderer.invoke('startup-log'),
   startNote: (text) => ipcRenderer.send('start-note', String(text)),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),

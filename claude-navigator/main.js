@@ -285,7 +285,8 @@ app.on('web-contents-created', (_event, contents) => {
   });
 
   contents.on('dom-ready', () => { tabKeepRestore(contents).then(() => setTimeout(() => tabKeepSnap(contents), 4000)).catch(() => {}); });
-  contents.on('did-navigate-in-page', () => { setTimeout(() => tabKeepSnap(contents), 1500); });
+  contents.on('did-navigate-in-page', (_e, url) => { setTimeout(() => tabKeepSnap(contents), 1500); claraHome(contents, url); });
+  contents.on('did-navigate', (_e, url) => claraHome(contents, url));
 
   if (contents.getType() !== 'webview') return;
 
@@ -1334,6 +1335,26 @@ const tabKeepOrigin = wc => {
   } catch (e) { /* not a page */ }
   return '';
 };
+// Clara keeps its sign-in at one of its addresses (app.claralabs.com) and shows a sign-in screen at its others
+// (beta.claralabs.com), even while you are signed in. When a Clara page lands on a sign-in screen and a current
+// sign-in is held for another Clara address, go there instead, and tell the window so it opens there from now on.
+const claraMovedAt = new Map();
+async function claraHome(wc, url) {
+  try {
+    const u = new URL(url), isClara = h => /(^|\.)claralabs\.com$/i.test(h);
+    if (u.protocol !== 'https:' || !isClara(u.hostname) || !/\/(log-?in|sign-?in|auth)\b/i.test(u.pathname)) return;
+    if (Date.now() - (claraMovedAt.get(wc.id) || 0) < 60000) return;          // (once a minute at most: never a loop)
+    const now = Date.now() / 1000, all = await wc.session.cookies.get({ name: 'clara_access_token' });
+    const c = all.find(x => isClara(String(x.domain).replace(/^\./, '')) && x.value && (!x.expirationDate || x.expirationDate > now + 60));
+    if (!c) return;
+    const host = String(c.domain).replace(/^\./, '');
+    if (host === u.hostname || u.hostname.endsWith('.' + host)) return;      // the sign-in already covers this address: it really is signed out
+    claraMovedAt.set(wc.id, Date.now()); mark('Clara: signed in at another address, going there');
+    const home = `https://${host}/`;
+    if (!wc.isDestroyed()) wc.loadURL(home).catch(() => {});
+    send('clara-moved', home);
+  } catch (e) { /* stays where it is */ }
+}
 async function tabKeepRestore(wc) {
   const o = tabKeepOrigin(wc); if (!o) return;
   const saved = tabKeepLoad()[o] || {};
