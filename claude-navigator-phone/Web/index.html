@@ -78,6 +78,15 @@
   .row small { color:var(--muted); font-size:12.5px; white-space:nowrap; flex:none; }
   .pill { display:inline-block; font-size:12px; font-weight:650; border-radius:999px; padding:2px 9px; background:color-mix(in srgb, var(--warn) 16%, transparent); color:var(--warn); }
   .pill.ok { background:color-mix(in srgb, var(--ok) 16%, transparent); color:var(--ok); }
+  .hask { flex:none; display:flex; align-items:center; gap:10px; padding:6px 12px 10px; }
+  .hmic { flex:none; width:52px; height:52px; border-radius:50%; border:0; background:var(--accent); color:#fff; display:grid; place-items:center; box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); } .hmic svg { width:22px; height:22px; }
+  .hin { flex:1; min-width:0; font:inherit; font-size:16px; padding:13px 16px; border-radius:999px; border:1.5px solid color-mix(in srgb, var(--ink) 16%, transparent); background:var(--card, #fff); color:var(--ink); outline:none; } .hin:focus { border-color:var(--accent); }
+  .hq { margin:10px 4px 6px auto; max-width:86%; width:fit-content; background:var(--accent); color:#fff; border-radius:16px 16px 4px 16px; padding:9px 13px; font-size:15px; }
+  .ha { margin:0 4px 4px; max-width:96%; width:fit-content; background:color-mix(in srgb, var(--accent) 10%, transparent); border-radius:16px 16px 16px 4px; padding:11px 14px; font-size:15px; line-height:1.4; } .ha b { font-weight:650; } .ha ul { margin:6px 0 0; padding-left:18px; } .ha li { margin:3px 0; } .ha.none { background:var(--bg); color:var(--muted); } .ha .hw { color:var(--muted); }
+  .hsrc { display:flex; flex-wrap:wrap; gap:4px 14px; align-items:center; font-size:12.5px; color:var(--muted); margin:0 8px 6px; } .hsrc button { border:0; background:none; font:inherit; font-size:12.5px; font-weight:650; color:var(--accent); padding:4px 0; } .hsrc .ok { color:var(--accent); font-weight:650; }
+  .hclear { display:block; border:0; background:none; font:inherit; font-size:13px; color:var(--muted); text-decoration:underline; margin:6px 8px 0; padding:4px 0; }
+  .hnone { color:var(--muted); font-size:14px; margin:0 6px 6px; }
+  .hrow { display:flex; align-items:center; gap:10px; width:100%; border:0; background:var(--bg); color:var(--ink); font:inherit; font-size:15px; text-align:left; border-radius:14px; padding:12px 14px; margin-bottom:6px; } .hrow .dot { width:10px; height:10px; border-radius:50%; background:var(--accent); flex:none; } .hrow .lb { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; } .hrow .n { color:var(--muted); font-size:13px; }
   .tcard { background:var(--bg); border-radius:16px; padding:12px 14px; margin-bottom:8px; } .tcard p { margin:6px 0 0; font-size:15px; }
   .empty { text-align:center; color:var(--muted); padding:40px 26px; font-size:15px; } .empty b { display:block; color:var(--ink); font-size:19px; margin-bottom:8px; }
   .empty ol { text-align:left; padding-left:22px; margin:14px 0 18px; } .empty li { margin-bottom:7px; }
@@ -99,7 +108,7 @@
   const send = m => { if (m && /^(listen|stopListening|say|hush|ask|warm|fastModel|restoreModel|localAsk|chime|apiAsk|granAsk|granConnect)$/.test(m.do)) dnote('> ' + m.do, Object.assign({}, m, { do: undefined }, m.do === 'say' && m.quiet ? { text: '(' + String(m.text).length + ' characters from a meeting, not kept)' } : {}, m.do === 'granAsk' ? { text: '(your question, ' + String(m.text).length + ' characters)' } : {})); try { window.webkit.messageHandlers.phone.postMessage(m); return true; } catch (e) { return false; } };
   const ls = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private */ } } };
   let data = { state: 'loading', profiles: [], teams: {} };
-  const ui = { tab: 'team', pid: ls.get('pid') || '', staff: null, seg: 'open', sheet: false };
+  const ui = { tab: 'today', pid: ls.get('pid') || '', staff: null, seg: 'open', sheet: false };
 
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const initials = n => (n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
@@ -149,7 +158,7 @@
   }
   function tabs() {
     const t = el('div', 'tabs');
-    for (const [k, label] of [['team', 'Team'], ['actions', 'Actions'], ['today', 'Today'], ['recent', 'Recent']]) { const b = el('button', ui.tab === k ? 'on' : ''); b.innerHTML = icon[k] + '<span></span>'; b.querySelector('span').textContent = label; b.onclick = () => { ui.tab = k; ui.staff = null; render(); }; t.append(b); }
+    for (const [k, label] of [['today', 'Chief of Staff'], ['team', 'Team'], ['actions', 'Actions'], ['recent', 'Recent']]) { const b = el('button', ui.tab === k ? 'on' : ''); b.innerHTML = icon[k] + '<span></span>'; b.querySelector('span').textContent = label; b.onclick = () => { ui.tab = k; ui.staff = null; render(); }; t.append(b); }
     return t;
   }
   function askBar(n, last) {
@@ -206,15 +215,77 @@
     if (ui.seg === 'outs') { for (const { o, x } of outs) { const r = itemRow(o, x.name ? `From “${x.name}”` : '', o.at ? when(o.at) : ''); const p = el('span', 'pill' + (o.filed.length ? ' ok' : ''), o.filed.length ? `Filed in ${o.filed[0]}` : 'File\u2026'); if (!o.filed.length) p.onclick = e => { e.stopPropagation(); ui.filing = { o, staff: n.id }; render(); }; r.append(p); s.append(r); } if (!outs.length) s.append(emptyNote('No outputs yet', 'What comes out of their work shows here, with where each is saved.')); }
     return [top, who, seg, s, askBar(n, true)];
   }
+  // ----- Home: the Chief of Staff. The same screen as the panel on the Mac: a microphone and a box to ask in, a few
+  // quick questions, the answers, and underneath what needs you and where the team is up to. The microphone opens
+  // Drive, already listening. A typed question is answered the same four ways a spoken one is, on the screen.
+  const home = { conv: [], draft: '', turns: [] };
+  function homeAsk(text) {
+    const said = String(text || '').trim(); if (!said) return;
+    const t = team(), chief = chiefOf(); if (!t || !chief) return;
+    const low = said.toLowerCase(), named = staffNamed(said), target = named && !named.chief ? named : chief;
+    const e = { q: said, a: '', src: '', busy: true, target }; home.conv.push(e); if (home.conv.length > 8) home.conv.shift(); home.draft = '';
+    const done = (text2, src) => { e.a = text2; e.src = src; e.busy = false; render(); const sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = 0; };
+    const cannot = () => { e.keep = true; done(`I cannot answer that from the phone. It needs ${target.chief ? 'a proper look in Claude' : 'the ' + target.name + '’s project in Claude'}.`, 'none'); };
+    const viaApi = () => {
+      if (!apiOn()) return cannot();
+      const id = 'home' + newId(), p = prof(); e.src = 'api'; render();
+      const system = `You are ${target.chief ? 'the Chief of Staff' : 'the ' + target.name}${p ? ' at ' + p.name : ''}, answering your principal on his phone.\n\nBe brief. The first line is the answer itself in one short sentence: if he asks for a time, a name or a number, give just that. Then, only if it truly helps, at most three short points, each on its own line starting with "- ", each under 15 words. At most 60 words in all. No headings, no links. Australian English. Never say something was sent or booked: emails and invitations are only ever drafts for him to check.\n\nQuestions asking for your advice, priorities or a plan are always answered, from the notes: never refuse those. You know only the team notes below and what has been said in this conversation. Only when he asks for a specific fact you have not been given, such as what an email, a file, a calendar entry or a project holds, reply with exactly the one word LOOKUP and nothing else. Never guess a fact.\n\nAfter your answer, only when there is one clear next step for a named member of staff, add a final line in exactly this form:\nDO: the staff member's name | the action in a few words\n\nWhere the team is up to right now:\n${snapshot()}`;
+      const timer = setTimeout(() => { if (waits[id]) { delete waits[id]; cannot(); } }, 20000);
+      waits[id] = a => { clearTimeout(timer); delete waits[id]; if (a && (a.in || a.out)) useAdd(a.in, a.out); if (a && a.status === 401) fast.keyBad = true;
+        let text2 = a && !a.error ? String(a.text || '').trim() : ''; if (!text2 || /\bLOOKUP\b/.test(text2)) return cannot();
+        text2 = text2.replace(/\n?\s*DO:\s*([^\n]+)\s*$/i, (m0, l) => { const f = l.split('|').map(x => x.trim()), st = staffNamed(f[0] || ''); if (st && !st.chief && f[1]) e.act = { staff: st.id, who: st.name, text: f[1].slice(0, 200) }; return ''; }).replace(/\s*[—–]\s*/g, ', ').trim();
+        home.turns = home.turns.concat([{ role: 'user', text: said }, { role: 'assistant', text: text2 }]).slice(-8); e.ms = a.ms; done(text2, 'api'); };
+      send({ do: 'apiAsk', id, system, turns: home.turns.slice(-6).concat([{ role: 'user', text: said }]), max: 320 });
+    };
+    render();
+    if (driveInstant(said, low, named, text2 => done(text2, 'phone'))) return;
+    if (granOn() && MEET.test(low)) {
+      const id = 'home' + newId(); e.src = 'granola'; render();
+      const timer = setTimeout(() => { if (waits[id]) { delete waits[id]; viaApi(); } }, 45000);
+      waits[id] = a => { clearTimeout(timer); delete waits[id]; const text2 = a && !a.error ? granClean(a.text) : ''; if (!text2) return viaApi(); e.quiet = true; done(text2, 'granola'); };
+      return send({ do: 'granAsk', id, text: `${said}\n\nAnswer briefly: the answer itself first, in one or two short plain sentences, at most 60 words. No lists, no headings, no links.` });
+    }
+    viaApi();
+  }
   function viewToday() {
-    const t = team(), s = el('div', 'scroll'), list = (t && t.today) || [];
+    const t = team(), s = el('div', 'scroll'), list = (t && t.today) || [], chief = t && t.nodes.find(x => x.chief);
+    const bar = el('div', 'hask');
+    const mic = el('button', 'hmic'); mic.innerHTML = icon.mic; mic.title = 'Talk to your Chief of Staff'; mic.onclick = () => { if (!team()) return; driveStart(); setTimeout(() => { if (drive.on && drive.state === 'idle') driveListen(8); }, 700); };
+    const inp = el('input', 'hin'); inp.type = 'text'; inp.placeholder = 'Ask, or tell me something…'; inp.value = home.draft || ''; inp.enterKeyHint = 'send'; inp.autocapitalize = 'sentences';
+    inp.oninput = () => { home.draft = inp.value; }; inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const v = inp.value; inp.value = ''; inp.blur(); homeAsk(v); } };
+    bar.append(mic, inp);
+    const chips = el('div', 'chips');
+    const chip = (label, run) => { const b = el('button', 'chip', label); b.onclick = run; chips.append(b); };
+    chip('Brief me', () => homeAsk('Brief me')); chip('Who is on what', () => homeAsk('Who is on what'));
+    if (granOn()) chip('Meetings', () => homeAsk('What was decided or agreed in my meetings this week?'));
+    chip('What should I focus on', () => homeAsk('What should I focus on today?'));
+    // the answers, newest first
+    for (const e of home.conv.slice().reverse()) {
+      s.append(el('div', 'hq', e.q));
+      const a = el('div', 'ha' + (e.src === 'none' ? ' none' : ''));
+      if (e.busy) a.append(el('span', 'hw', e.src === 'granola' ? 'Looking through your meetings…' : e.src === 'api' ? 'Thinking…' : 'Checking…'));
+      else { const lines = String(e.a).split('\n').map(x => x.trim()).filter(Boolean); a.append(el('b', '', (lines[0] || '').replace(/^[-•*]\s+/, ''))); if (lines.length > 1) { const ul = el('ul'); for (const l of lines.slice(1)) ul.append(el('li', '', l.replace(/^([-•*]|\d+[.)])\s+/, ''))); a.append(ul); } }
+      s.append(a);
+      if (!e.busy) {
+        const foot = el('div', 'hsrc'); foot.append(el('span', '', e.src === 'phone' ? 'Read from the team’s lists' : e.src === 'granola' ? 'From your meetings' : e.src === 'api' ? `Claude’s fast model${e.ms ? ', ' + (e.ms / 1000).toFixed(1) + ' s' : ''}` : 'Not answered'));
+        const link = (label, run) => { const b = el('button', '', label); b.onclick = run; foot.append(b); };
+        if (e.act && !e.act.did) link(`Put it on the ${e.act.who}’s list`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.act.staff, text: e.act.text }); saveChanges(); e.act.did = true; chime('made'); render(); });
+        if (e.act && e.act.did) foot.append(el('span', 'ok', `On the ${e.act.who}’s list`));
+        if (e.keep && !e.kept) link(`Keep it for my desk`, () => { changes.push({ id: newId(), at: Date.now(), pid: ui.pid, type: 'note', staff: e.target.id, text: ('Asked on the phone: ' + e.q).slice(0, 300) }); saveChanges(); e.kept = true; chime('made'); render(); });
+        if (e.kept) foot.append(el('span', 'ok', `On ${e.target.chief ? 'your Chief of Staff' : 'the ' + e.target.name}’s list`));
+        if (e.keep) link('Open Claude’s Chat', () => { ui.asked = { staff: e.target.id, pid: ui.pid }; chat(askUrl(e.target), e.target.name); });
+        s.append(foot);
+      }
+    }
+    if (home.conv.length) { const cl = el('button', 'hclear', 'Clear these answers'); cl.onclick = () => { home.conv = []; home.turns = []; render(); }; s.append(cl); }
     lastDriveCards(s);
-    if (list.length) s.append(el('div', 'sec', 'For you to look at'));
+    s.append(el('div', 'sec', 'Needs you'));
     for (const c of list) { const d = el('div', 'tcard'); d.append(el('span', 'pill', c.kind)); d.append(el('p', '', c.text)); s.append(d); }
-    if (!list.length) s.append(emptyNote('Nothing needs you', 'When work is not filed, has no output, or two people are on the same thing, it shows here.'));
+    if (!list.length) s.append(el('div', 'hnone', 'Nothing needs you right now.'));
+    if (t) { const st = t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(n => ({ n, open: workOf(n.id).open.length })).filter(x => x.open).sort((x, y) => y.open - x.open);
+      if (st.length) { s.append(el('div', 'sec', 'The team')); for (const x of st.slice(0, 8)) { const b = el('button', 'hrow'); const d = el('span', 'dot'); if (x.n.color) d.style.background = x.n.color; b.append(d, el('span', 'lb', x.n.name), el('span', 'n', `${x.open} open`)); b.onclick = () => { ui.tab = 'team'; ui.staff = x.n.id; ui.seg = 'open'; render(); }; s.append(b); } } }
     if (t && t.todayAt) s.append(el('div', 'asof', `As your Mac last saw it: ${when(t.todayAt)}, ${new Date(t.todayAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}`));
-    const chief = t && t.nodes.find(x => x.chief);
-    return [topBar(true), el('h1', '', 'Today'), s, ...(chief ? [askBar(chief, false)] : []), tabs()];
+    return [topBar(true), bar, chips, s, tabs()];
   }
   // Every open action across the team in one list, with a row of names to narrow it to one person or a department.
   function viewActions() {
@@ -349,7 +420,7 @@
   // ===== Fast answers =====
   const fast = { hasKey: false, granola: false, model: '', granErr: '', checks: '' };
   const waits = {};                      // (Run Checks waits here for its own answers)
-  window.driveFastState = v => { Object.assign(fast, v || {}); if (drive.voiceOpen) render(); };
+  window.driveFastState = v => { Object.assign(fast, v || {}); if (drive.voiceOpen || !drive.on) render(); };
   window.driveGranState = v => { fast.granola = !!(v && v.on); fast.granErr = (v && v.error) || ''; fast.granSteps = (v && v.steps) || ''; fast.granBusy = false; if (drive.voiceOpen) render(); };
   // What the API has been used for: a count and token totals, by month and by day. Nothing that was asked or answered.
   const useNow = () => { let u = {}; try { u = JSON.parse(ls.get('apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
@@ -362,10 +433,10 @@
   const MEET = /\b(meetings?|met with|discuss(ed)?|decided?|decisions?|agreed?|talked? about|spoke (to|with|about)|catch[- ]?up|granola|last time|what did .{1,40} say)\b/;
   const joinUp = items => (items.length < 2 ? items.join('') : items.slice(0, -1).join(', ') + ' and ' + items.slice(-1));
   // 1. Straight off the lists this phone already holds. No model, so it is instant and costs nothing.
-  function driveInstant(said, low, named) {
+  function driveInstant(said, low, named, sink) {
     const t = team(); if (!t) return false;
     const staff = t.nodes.filter(x => x.kind === 'staff' && !x.chief);
-    const out = (text, who) => { dnote('lane', { lane: 'instant' }); drive.log.push({ kind: 'talk', who: 'On your phone', text: said, answer: text.slice(0, 140), url: '' }); if (who) drive.who = who; chime('ready'); driveSay(text); return true; };
+    const out = (text, who) => { if (sink) { sink(text, who); return true; } dnote('lane', { lane: 'instant' }); drive.log.push({ kind: 'talk', who: 'On your phone', text: said, answer: text.slice(0, 140), url: '' }); if (who) drive.who = who; chime('ready'); driveSay(text); return true; };
     if (/^(brief me|what needs (me|my attention)|what do i need to (do|know)|anything (for me|i need))\b/.test(low)) { const td = (t.today || []).map(x => x.text).filter(Boolean); return td.length ? out(`${td.length === 1 ? 'One thing needs' : td.length + ' things need'} you. ${td.slice(0, 4).join(' ')}${td.length > 4 ? ' The rest is on your phone.' : ''}`) : false; }
     if (/\b(who is on what|who('?s| is) (doing|working on) what|where is (everyone|the team) up to|team (status|update))\b/.test(low)) { if (!staff.length) return false; const parts = staff.map(n => { const o = workOf(n.id).open.length; return `the ${n.name} has ${o || 'nothing'} open`; }); const line = joinUp(parts); return out(line.charAt(0).toUpperCase() + line.slice(1) + '.'); }
     if (named && !named.chief && /\b(open|outstanding|on (his|her|their|the) (list|plate)|working on|up to|to-?do|have on|got on)\b/.test(low) && !/\b(should|why|how|advice|advise|think|recommend|budget|email|file)\b/.test(low)) { const o = workOf(named.id).open.filter(x => !x.waiting).map(x => x.name); return out(o.length ? `The ${named.name} has ${o.length} open: ${joinUp(o.slice(0, 5))}${o.length > 5 ? ', and ' + (o.length - 5) + ' more' : ''}.` : `Nothing is open for the ${named.name}.`, named); }
@@ -635,7 +706,9 @@
     }
     const keepChips = (app.querySelector('.chips') || {}).scrollLeft || 0;
     const keep = (app.querySelector('.scroll') || {}).scrollTop || 0, key = ui.tab + '|' + (ui.staff || '') + '|' + ui.seg + '|' + ui.pid;
+    const typing = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('hin');
     app.replaceChildren(...parts);
+    if (typing) { const i = app.querySelector('.hin'); if (i) { try { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } catch (e) { /* no cursor */ } } }
     if (render.key === key) { const sc = app.querySelector('.scroll'); if (sc) sc.scrollTop = keep; }
     const ch = app.querySelector('.chips'); if (ch) ch.scrollLeft = keepChips;
     render.key = key;
@@ -655,7 +728,7 @@
       const known = Object.values(((data.teams[a.pid] || {}).work) || {}).some(w => [...w.open, ...w.done].some(x => sameUrl(x.url, url))) || changes.some(c => c.type === 'chat' && sameUrl(c.url, url));
       if (!known) { const name = String((info && info.title) || '').replace(/\s*[-|\u2013]\s*Claude\s*$/i, '').trim() || 'New chat'; changes.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at: Date.now(), pid: a.pid, type: 'chat', staff: a.staff, url: url.replace(/[?#].*$/, ''), name }); saveChanges(); }
     }
-    render(); send({ do: 'load' });
+    render(); send({ do: 'load' }); send({ do: 'fastState' });
   };
   // Drag a list down and let go to refresh: the phone reads the team again and sends anything waiting.
   (() => {
@@ -675,6 +748,7 @@
     app.addEventListener('touchend', end, { passive: true }); app.addEventListener('touchcancel', end, { passive: true });
   })();
   render();
+  send({ do: 'fastState' });          // (which fast answers are set up: asked as the app opens, so Home can use them)
   if (!send({ do: 'load' })) fetch('demo.json').then(r => r.json()).then(window.phoneData).catch(() => window.phoneData({ state: 'none' }));     // in a web browser: sample data, for design checks
 })();
 </script></body></html>
