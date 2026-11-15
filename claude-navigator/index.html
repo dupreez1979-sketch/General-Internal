@@ -15147,6 +15147,24 @@ body { width: max-content !important; min-width: 0 !important; }
     b.dispatchEvent(new Event('input', { bubbles: true }));
   }
   const dictWords = s => (String(s || '').toLowerCase().match(/[a-z0-9']+/g) || []);
+  // Words the dictation mishears, put right every time: a few that are built in, and your own list ("heard as" and
+  // "should be"). The same list goes to the phone, so Drive hears them the same way.
+  const HEAR_STORE = 'claudeNavigator.hearFix.v1';
+  const HEAR_BUILT = [['monkey\\s+bars?', 'Monkey Baa'], ['monkey\\s+ba+h?', 'Monkey Baa'], ['clawd|claud', 'Claude'], ['(?:cloud|clawed|clod)\\s+(chat|chats|code|project|projects|navigator|api)', 'Claude $1']];
+  const hearList = () => { try { const l = JSON.parse(ls.get(HEAR_STORE) || '[]'); return Array.isArray(l) ? l.filter(x => x && x.from && x.to) : []; } catch (e) { return []; } };
+  const hearFix = t => { let x = String(t || ''); try { for (const [a, b] of HEAR_BUILT) x = x.replace(new RegExp('\\b(?:' + a + ')\\b', 'gi'), b); for (const r of hearList()) x = x.replace(new RegExp('\\b' + String(r.from).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+') + '\\b', 'gi'), () => String(r.to)); } catch (e) { /* left as heard */ } return x; };
+  function hearDlg() {
+    const d = mailDlg('granola-dlg', '<h2>Words it mishears</h2><p class="hint">When dictation writes a word wrongly, add it here and it is put right every time, on this Mac and in Drive on the phone. \u201cMonkey bar\u201d and \u201cClawd\u201d are already taken care of.</p><div class="gl hl"></div><div class="dlg-actions"><button class="btn" data-x="add">Add a Word</button><span style="flex:1"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const gl = d.querySelector('.hl'); let list = hearList();
+    const save = () => { ls.set(HEAR_STORE, JSON.stringify(list.filter(x => x.from.trim() && x.to.trim()).slice(0, 80))); try { phoneSoon(); } catch (e) { /* the phone gets it next time */ } };
+    const paint = () => { gl.replaceChildren(); if (!list.length) gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline', textContent: 'Nothing of your own yet.' }));
+      list.forEach((r, i) => { const row = document.createElement('div'); row.style.cssText = 'display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center';
+        const mk = (v, ph, k) => { const inp = document.createElement('input'); inp.value = v; inp.placeholder = ph; inp.spellcheck = false; inp.style.cssText = 'font:inherit;padding:6px 9px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text);min-width:0'; inp.addEventListener('input', () => { r[k] = inp.value; save(); }); return inp; };
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn'; x.textContent = 'Remove'; x.addEventListener('click', () => { list.splice(i, 1); save(); paint(); });
+        row.append(mk(r.from, 'Heard as, for example: monkey bar', 'from'), Object.assign(document.createElement('span'), { textContent: '\u2192', style: 'color:var(--muted)' }), mk(r.to, 'Should be, for example: Monkey Baa', 'to'), x); gl.appendChild(row); }); };
+    d.addEventListener('click', e => { const k = e.target.dataset && e.target.dataset.x; if (k === 'add') { list.push({ from: '', to: '' }); paint(); const ins = gl.querySelectorAll('input'); if (ins.length) ins[ins.length - 2].focus(); } else if (k === 'close') { save(); d.close(); d.remove(); } });
+    paint();
+  }
   async function dictFinish(S) {
     if (S.finished) return; S.finished = true;
     clearInterval(S.timer); localAi.runs.delete(S.id);
@@ -15159,6 +15177,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const out = r && !r.error ? draftClean(r.text).replace(/^dictated text:\s*/i, '') : '';
       if (out) { const a = new Set(dictWords(text)), o = dictWords(out), kept = o.filter(w => a.has(w)).length; if (o.length && kept / o.length >= 0.9 && o.length >= a.size * 0.6 && out.length <= text.length * 1.15 + 10) text = out; }
     }
+    text = hearFix(text);
     dictPut(S, text, true);
     pill.remove(); if (dict.on === S) dict.on = null;
     if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; }
@@ -17398,7 +17417,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function phonePublish() {
     if (!isApp || SOLO || !window.navigatorApp || !window.navigatorApp.phonePublish) return;
     const docs = {}, ap = activeProfile();
-    for (const p of profiles()) { const t = (cos.teams || {})[p.id]; if (t && (t.nodes || []).length) { try { docs[p.id] = phoneDoc(p, t, !!ap && ap.id === p.id); } catch (e) { /* this team is not ready */ } } }
+    for (const p of profiles()) { const t = (cos.teams || {})[p.id]; if (t && (t.nodes || []).length) { try { docs[p.id] = phoneDoc(p, t, !!ap && ap.id === p.id); docs[p.id].hear = hearList().slice(0, 80); } catch (e) { /* this team is not ready */ } } }
     const sig = JSON.stringify(docs).replace(/"todayAt":\d+/g, '');
     if (sig === phoneLast || !Object.keys(docs).length) return;
     phoneLast = sig;
@@ -17476,6 +17495,7 @@ body { width: max-content !important; min-width: 0 !important; }
         '-',
         { label: 'Granola\u2026', run: granolaDlg },
         { label: 'Fast Answers (API Key)\u2026', run: fastDlg },
+        { label: 'Words It Mishears\u2026', run: hearDlg },
         { label: 'Run Checks', run: runChecks },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
