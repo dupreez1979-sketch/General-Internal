@@ -370,9 +370,50 @@
   .tb.bot-tool.on .av { background: var(--accent); color: var(--accent-text, #fff); box-shadow: none; }
   .tb.bot-tool .n { position: absolute; top: 2px; right: 0; width: 8px; height: 8px; border-radius: 50%; background: #E3A452; box-shadow: 0 0 0 2px var(--win); } .tb.bot-tool .n[hidden] { display: none; }
   #cosBot .bot-btn { display: none; }
-  #bar #bBot { order: 999; }
-  .banner { flex: none; display: flex; align-items: center; gap: var(--sp-3); padding: 8px 14px; background: var(--caution-soft, #fdf3e2); border-bottom: 1px solid var(--line); font-size: var(--fs-caption); }
-  .banner .needs-dot { width: 8px; height: 8px; border-radius: 50%; background: #E3A452; flex: none; }
+  #bar #bBot { order: 999999; }
+  /* ---- Step 4, matched to the signed-off mock-ups ---- */
+  /* The profile control is the sidebar's title: its own full-width row, swatch, name, what it holds, chevron at the far end. */
+  .side-top .profile-btn { background: none; } .side-top .profile-btn:hover { background: var(--hover); }
+  .side-top .profile-btn { flex: 1; min-width: 0; max-width: none; margin: 0 -4px 0 -8px; height: 44px; gap: 10px; padding: 4px 8px; }
+  .profile-btn .pdot { width: 28px; height: 28px; border-radius: 8px; font-size: var(--fs-body); }
+  .profile-btn .ptext { flex: 1; }
+  .profile-btn .pname { font-size: var(--fs-headline); }
+  .profile-btn .psub { font-size: var(--fs-caption); }
+  .mac-app body.has-dock:not(.side-right) .side-top { padding-left: 38px; }
+  /* The sidebar button sits at the left of the main toolbar, wherever that starts. */
+  html #topLeft { left: calc(var(--dock-w, 0px) + var(--side-now) + 8px) !important; }
+  html body.side-right #topLeft { left: calc(var(--dock-w, 0px) + 8px) !important; }
+  html.mac-app body.side-off #topLeft, html.mac-app body.side-right #topLeft { left: max(78px, calc(var(--dock-w, 0px) + 8px)) !important; }
+  #bar, .cos-head, #main > #mailPanel > .cal-head, #main > #calPanel > .cal-head, #main > #notesPanel > .fhead, #main > #meetPanel > .meet-head { padding-left: 46px !important; }
+  .mac-app body.side-off #bar, .mac-app body.side-right #bar, .mac-app body.side-off .cos-head, .mac-app body.side-right .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-right #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-right #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-right #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head, .mac-app body.side-right #main > #meetPanel > .meet-head { padding-left: max(46px, calc(118px - var(--dock-w, 0px))) !important; }
+  body.cos-mode #bar { padding-left: 10px !important; }
+  /* Its menu: a square swatch for each profile, and the one you are in filled with its colour. */
+  #menu.prof { min-width: 250px; padding: 6px; border-radius: var(--r-card); }
+  #menu.prof button { height: 30px; padding: 0 10px; border-radius: var(--r-control); }
+  #menu.prof .mi { width: 22px; margin-right: 6px; } #menu.prof .mi .pdot { width: 14px; height: 14px; border-radius: 4px; }
+  #menu.prof button.cur { background: var(--accent); color: var(--accent-text, #fff); }
+  #menu.prof button.cur .mi .pdot { background: var(--accent-text, #fff) !important; opacity: .9; }
+  #menu.prof button.cur * { color: inherit; }
+  /* A notice is a soft, rounded card under the toolbar. */
+  .banner { margin: 10px 14px 0; border: 0; border-radius: var(--r-card); padding: 9px 10px 9px 14px; background: color-mix(in srgb, #B36E24 15%, var(--win)); font-size: var(--fs-body); }
+  .banner .needs-dot { display: none; }
+  .banner b { color: color-mix(in srgb, #B36E24 78%, var(--text)); }
+  .banner .d { color: var(--text); }
+  /* Search boxes carry a magnifier. */
+  .mail-search, .cos-search input, .cal-search { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16'%3E%3Ccircle cx='7' cy='7' r='4.6' fill='none' stroke='%238a9098' stroke-width='1.5'/%3E%3Cpath d='M10.6 10.6L14 14' stroke='%238a9098' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") !important; background-repeat: no-repeat !important; background-position: 9px 50% !important; padding-left: 30px !important; }
+  .cal-search { font: inherit; font-size: var(--fs-caption); background-color: var(--field); border: 0; border-radius: var(--r-control); padding: 6px 10px; width: 180px; color: var(--text); margin-left: 6px; outline: none; }
+  .cal-search:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); }
+  /* Mail: the folder's name sits in the toolbar. */
+  .mail-tools > .cal-title { margin-left: 4px; flex: 0 1 auto; min-width: 40px; overflow: hidden; text-overflow: ellipsis; }
+  .mail-tools > .mail-sub { flex: 0 6 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cos-head .hsub { font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; margin-right: 6px; }
+  .cos-head .seg .tb, #viewSeg .tb { padding: 0 10px; } .cos-head .seg .tb.on .t, #viewSeg .tb.on .t { font-weight: var(--fw-bold); }
+  /* Folders: the list's own switches live under More. (They stay in the page, out of sight, so More can press them.) */
+  #bar { position: relative; }
+  body:not(.tb-customizing) #bar > #libFilterBtn, body:not(.tb-customizing) #bar > #libSelectBtn, body:not(.tb-customizing) #bar > #libAttachedBtn, body:not(.tb-customizing) #bar > #subAllBtn,
+  body:not(.tb-customizing) #bar > #bRefreshLib, body:not(.tb-customizing) #bar > #splitBtn, body:not(.tb-customizing):not(.tb-page) #bar > #bNewChat { position: absolute; right: 250px; top: 12px; visibility: hidden; pointer-events: none; }
+  #bar #bMore { display: inline-flex; } #bar > .search { order: 99995 !important; }
+  .banner { flex: none; display: flex; align-items: center; gap: var(--sp-3); }
   .banner b { font-weight: var(--fw-bold); white-space: nowrap; } .banner .d { color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .banner .btn { flex: none; }
   .cos-cvwrap { flex: 1; min-width: 0; min-height: 0; display: flex; position: relative; }
@@ -588,8 +629,6 @@
   body.side-off #topLeft .profile-btn { max-width: 170px; }
   #edgeSide { display: none !important; }
   /* With the sidebar hidden, the top bars start clear of the profile picker. */
-  body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead { padding-left: 250px !important; }
-  .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead { padding-left: 320px !important; }
   #sidePanel .sl-head .fctl, #sidePanel .sl-src, #splitBtn { display: none !important; }
   .dock-b.on::before { content: ''; position: absolute; left: -5px; top: 9px; bottom: 9px; width: 3px; border-radius: 2px; background: var(--accent); }
   body #menu { z-index: 300; }            /* above the app switcher, the dock and the side panel */
@@ -2055,8 +2094,8 @@
     </div>
     <div id="title" data-tb="title">Folders</div>
     <div class="seg" id="viewSeg" data-tb="viewSeg" role="group" aria-label="View">
-      <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span data-icon="grid"></span></button>
-      <button class="tb" id="vList" title="as List (Ctrl+2)"><span data-icon="list"></span></button>
+      <button class="tb" id="vIcons" title="as Icons (Ctrl+1)"><span class="t">Icons</span></button>
+      <button class="tb" id="vList" title="as List (Ctrl+2)"><span class="t">List</span></button>
     </div>
  <button class="tb" id="splitBtn" data-tb="splitBtn" title="Split view: your folders on the left, Claude or monday.com on the right, so you can drag across without losing your place"><span data-icon="split"></span><span class="t">Split</span></button>
     <button class="tb" id="libFilterBtn" data-tb="libFilterBtn" title="Filter: filed or not, archived, date, outputs, starred" hidden><span data-icon="filter"></span><span class="t" id="libFilterText">Filter</span></button>
@@ -2375,7 +2414,8 @@
   const UI = {
     chev: '<svg width="10" height="10" viewBox="0 0 16 16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     plus: '<svg width="14" height="14" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v6M5 8h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
-    more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="5.2" cy="8" r=".9" fill="currentColor"/><circle cx="8" cy="8" r=".9" fill="currentColor"/><circle cx="10.8" cy="8" r=".9" fill="currentColor"/></svg>',
+    more: '<svg width="16" height="16" viewBox="0 0 16 16"><circle cx="3.4" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.6" cy="8" r="1.25" fill="currentColor"/></svg>',
+    add: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
     back: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M10 2.5L4.5 8l5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     fwd: '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M6 2.5L11.5 8 6 13.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     apps: '<svg width="16" height="16" viewBox="0 0 16 16">' + [3, 8, 13].map(y => [3, 8, 13].map(x => `<circle cx="${x}" cy="${y}" r="1.45" fill="currentColor"/>`).join('')).join('') + '</svg>',
@@ -6109,6 +6149,7 @@
   function showMenu(x, y, items, { above = false } = {}) {
     lastMenuX = x;
     lastMenuY = y;
+    menu.classList.remove('prof');
     menu.replaceChildren();
     const checks = items.some(it => it && it !== '-' && it.checked !== undefined);
     const icons = items.some(it => it && it !== '-' && (it.icon || it.dot || it.iconHtml));
@@ -7058,10 +7099,14 @@
   $('bSaveMore').addEventListener('click', e => { const b = $('bSave').getBoundingClientRect(); showSaveMenu(b.left, b.bottom + 4); });
   $('bExternal').addEventListener('click', () => openExternal(state.pageUrl));
   $('bNewChat').addEventListener('click', newChat);
-  $('bMore').innerHTML = UI.more;
+  $('bMore').innerHTML = UI.more; $('bMore').title = 'More: new chat, split view, filter, select, outputs, refresh';
+  $('bNewMenu').innerHTML = UI.add;
   $('bMore').addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); const page = !$('bReload').hidden;
+    // The list's own switches (Filter, Select, Outputs, Split and so on) are pressed from here.
+    const sw = currentApp === 'cos' ? [] : [['splitBtn', 'Split View'], ['libFilterBtn'], ['libSelectBtn'], ['libAttachedBtn'], ['subAllBtn'], ['bRefreshLib', 'Refresh from Claude']].map(([id, nm]) => { const el = $(id); if (!el || el.hidden) return null; const tx = nm || ((el.querySelector('.t') || {}).textContent || '').trim(); return tx ? { label: tx, run: () => el.click() } : null; }).filter(Boolean);
     showMenu(b.left, b.bottom + 4, [
       { label: 'New Chat', run: newChat },
+      sw.length && '-', ...sw,
       page && '-',
       page && { label: 'Reload This Page', run: () => viewDo(v => v.reload()) },
       page && { label: 'Open in Your Web Browser', run: () => openExternal(state.pageUrl) },
@@ -7592,10 +7637,10 @@
     e.preventDefault();
     if (fr('side').hidden) showFrame('side'); else frameAction('side', 'hide');
   }, true);
-  // The profile picker and the sidebar button sit at the top left of the window, whether the sidebar is showing or not.
+  // The sidebar button sits at the left of the main toolbar, whether the sidebar is showing or not. (The profile control is the sidebar's title.)
   (() => {
     const tl = $('topLeft'); if (!tl) return;
-    tl.appendChild($('profileBtn')); document.body.appendChild(tl);
+    document.body.appendChild(tl);
     $('sideToggle').addEventListener('click', () => { if (fr('side').hidden) showFrame('side'); else frameAction('side', 'hide'); });
   })();
   // Put every panel where its settings say.
@@ -8289,7 +8334,8 @@
     if (t && !staff) {
       const seg = document.createElement('div');
       seg.className = 'seg';
-      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart">${UI.team}</button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List">${UI.list}</button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team">${small('schedule', 'currentColor')}</button>`;
+      seg.innerHTML = `<button class="tb${cosUi.view === 'chart' ? ' on' : ''}" data-v="chart" title="Org chart"><span class="t">Chart</span></button><button class="tb${cosUi.view === 'list' ? ' on' : ''}" data-v="list" title="List"><span class="t">List</span></button><button class="tb${cosUi.view === 'week' ? ' on' : ''}" data-v="week" title="This week: every routine across the team"><span class="t">Week</span></button>`;
+      { const ns = t.nodes.filter(x => x.kind === 'staff').length; head.querySelector('h1').textContent = 'Team'; const hs = document.createElement('span'); hs.className = 'hsub'; hs.textContent = `${ns} staff`; head.querySelector('h1').after(hs); }
       seg.addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) { cosUi.view = b.dataset.v; ls.set('claudeNavigator.cosView', cosUi.view); renderCos(); } });
       const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
       const noProject = t.nodes.filter(x => x.kind === 'staff' && !x.claudeProject);
@@ -8301,24 +8347,19 @@
         notice.querySelector('button').title = `Every staff member works in their own Claude Project. Set up ${noProject[0].name} now.`;
         notice.querySelector('button').addEventListener('click', () => openStaff(noProject[0].id));
       }
-      head.append(
+      const addB =
         btn('', 'Add a staff member or a department under the one selected', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [
           { label: 'New Staff Member', key: `${K.mod}N`, run: () => cosAdd('staff', cosUi.sel) },
-          { label: 'New Department', key: `${K.mod}${K.shift}N`, run: () => cosAdd('dept', cosUi.sel) }]); }, `<span class="ic">${UI.plus}</span><span class="t">Add</span>`),
-        seg);
+          { label: 'New Department', key: `${K.mod}${K.shift}N`, run: () => cosAdd('dept', cosUi.sel) }]); }, UI.add);
+      head.append(seg, addB);
     }
     if (p) {
       const more = document.createElement('button');
       more.className = 'tb';
-      more.title = 'Export the org chart, mirror to Documents, keyboard shortcuts';
+      more.title = 'More: refresh from your phone, export the org chart, mirror to Documents, keyboard shortcuts';
       more.innerHTML = UI.more;
       more.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosMoreMenu(b.right - 240, b.bottom + 4); });
-      // Refresh: pick up what was done on the phone now, and send the phone the latest, without waiting for the next check.
-      const sync = document.createElement('button');
-      sync.className = 'tb ico'; sync.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">Refresh</span>`;
-      sync.title = 'Refresh now: bring in what you did on your phone, and send your phone the latest';
-      sync.addEventListener('click', () => phoneSyncNow());
-      head.append(sync, cosSearchBox(t), more);
+      head.append(more, cosSearchBox(t));
     }
     head.append(botToolBtn());
     main.appendChild(head);
@@ -10600,6 +10641,8 @@ body { width: max-content !important; min-width: 0 !important; }
   function cosMoreMenu(x, y) {
     const t = cosTeam();
     showMenu(x, y, [
+      { label: 'Refresh From Your Phone Now', run: () => phoneSyncNow() },
+      '-',
       { label: 'Ask the Team', disabled: !t, run: () => { const c = t && t.nodes.find(x => x.chief); if (c) cosAsk(c); } },
       { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add an Executive Assistant with Clara…', disabled: !t, run: () => claraNode() ? askClara(claraNode()) : cosAddClara() },
       '-',
@@ -11099,14 +11142,23 @@ body { width: max-content !important; min-width: 0 !important; }
       : v === 'day' ? calUi.date.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
       : `${from.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} – ${calAddDays(to, -1).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     const seg = document.createElement('div'); seg.className = 'seg';
-    for (const [k, l] of [['day', 'Day'], ['workweek', 'Work Week'], ['week', 'Week'], ['month', 'Month'], ['list', 'List']]) seg.appendChild(tb(`<span class="t">${l}</span>`, `Show ${l}`, () => { calState.view = k; calSave(); calUi.scrolled = false; calRender(); }, v === k));
+    for (const [k, l] of [['day', 'Day'], ['week', 'Week'], ['month', 'Month'], ['list', 'List']]) seg.appendChild(tb(`<span class="t">${l}</span>`, `Show ${l}`, () => { calState.view = k; calUi.q = ''; calSave(); calUi.scrolled = false; calRender(); }, !calUi.q && (v === k || (k === 'week' && v === 'workweek'))));
     const busy = Object.values(calUi.loading).some(Boolean);
     const lastAt = Math.max(0, ...Object.values(calUi.fetchedAt));
     const upd = document.createElement('span'); upd.className = 'cal-upd';
     upd.textContent = busy ? 'Reading your calendar…' : lastAt ? `Updated ${new Date(lastAt).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })}` : '';
-    head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.scrolled = false; calRender(); }),
-      tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), upd,
-      tb(UI.reload, 'Read your calendars again', () => { calRefresh(true); calGReload(); }), seg);
+    if (calUi.q) title.textContent = `Search: ${calUi.q}`;
+    const cmore = tb(UI.more, 'More: Work Week, read your calendars again', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [
+      { label: 'Work Week (Monday to Friday)', checked: v === 'workweek', run: () => { calState.view = v === 'workweek' ? 'week' : 'workweek'; calUi.q = ''; calSave(); calUi.scrolled = false; calRender(); } },
+      '-',
+      { label: 'Read Your Calendars Again', run: () => { calRefresh(true); calGReload(); } },
+      upd.textContent ? { label: upd.textContent, disabled: true, run: () => {} } : null]); });
+    const csr = document.createElement('input'); csr.type = 'search'; csr.className = 'cal-search'; csr.placeholder = 'Search'; csr.value = calUi.q || ''; csr.title = 'Search your meetings by name or place: the last month and the next four. Press Return to search, Escape to clear.';
+    csr.addEventListener('keydown', e => { if (e.key === 'Enter') { calUi.q = csr.value.trim(); calRender(); } if (e.key === 'Escape') { csr.value = ''; if (calUi.q) { calUi.q = ''; calRender(); } } });
+    csr.addEventListener('search', () => { if (!csr.value && calUi.q) { calUi.q = ''; calRender(); } });
+    head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.q = ''; calUi.scrolled = false; calRender(); }),
+      tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), ...(busy ? [upd] : []),
+      seg, cmore, csr);
     if (currentApp === 'cal') head.append(botToolBtn());
     if (currentApp !== 'cal') {
       const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Event'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
@@ -11115,7 +11167,10 @@ body { width: max-content !important; min-width: 0 !important; }
       mic.addEventListener('click', () => calHelper(mic));
       head.insertBefore(mic, head.firstChild); head.insertBefore(nm, head.firstChild);
     }
-    calGLoad(from, to, false);
+    // A search looks across the last month and the next four, whatever the view was showing.
+    const qd = new Date(); qd.setHours(0, 0, 0, 0);
+    const [lf, lt] = calUi.q ? [calAddDays(qd, -31), calAddDays(qd, 123)] : [from, to];
+    calGLoad(lf, lt, false);
     P.appendChild(head);
     const errs = Object.entries(calUi.errors).map(([id, m]) => `${(calState.feeds.find(f => f.id === id) || {}).name || 'Calendar'}: ${m}`);
     if (calG.err) errs.push(calG.err);
@@ -11126,6 +11181,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const b = document.createElement('button'); b.className = 'btn-primary'; b.textContent = 'Add a Calendar…'; b.addEventListener('click', () => calAddFeed());
       e.appendChild(b); P.appendChild(e); return;
     }
+    if (calUi.q) { const ql = calUi.q.toLowerCase(); const hit = calVisible(lf, lt).filter(i => `${i.ev.title || ''} ${i.ev.location || ''}`.toLowerCase().includes(ql)); const le = calList(lf, lt, hit); if (!hit.length) le.textContent = 'No meetings match that search, in the last month or the next four.'; P.appendChild(le); return; }
     const list = calVisible(from, to);
     if (v === 'month') P.appendChild(calMonth(from, list));
     else if (v === 'list') P.appendChild(calList(from, to, list));
@@ -13161,7 +13217,7 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   const MAIL_TOOL = { hand: 'M5.5 7.5a2.3 2.3 0 100-4.6 2.3 2.3 0 000 4.6zM1.8 13c.3-2.3 1.7-3.6 3.7-3.6 1 0 1.9.3 2.5 1M9.5 9.5h5M12.2 7.2l2.3 2.3-2.3 2.3',
     del: 'M2.5 4.5h11M6.5 4.5V3a.8.8 0 01.8-.8h1.4a.8.8 0 01.8.8v1.5M4 4.5l.7 8.3a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8.3', reply: 'M6.5 4L2.5 8l4 4M3 8h6a4.5 4.5 0 014.5 4.5', replyAll: 'M5.5 4L1.5 8l4 4M9 4L5 8l4 4M5.5 8H10a3.5 3.5 0 013.5 3.5',
-    forward: 'M9.5 4l4 4-4 4M13 8H7a4.5 4.5 0 00-4.5 4.5', sync: 'M13 8a5 5 0 01-8.7 3.4M3 8a5 5 0 018.7-3.4M11.5 2v2.8H8.7M4.5 14v-2.8h2.8', move: 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1zM6 8.8h4M8.5 7l1.8 1.8-1.8 1.8',
+    forward: 'M9.5 4l4 4-4 4M13 8H7a4.5 4.5 0 00-4.5 4.5', sync: 'M13 8a5 5 0 01-8.7 3.4M3 8a5 5 0 018.7-3.4M11.5 2v2.8H8.7M4.5 14v-2.8h2.8', move: 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z',
     unread: 'M2 4.5h9.5M2 4.5v7.5h12V7M2 4.5l6 4.5 3-2.2M13.2 2.6a1.6 1.6 0 110 3.2 1.6 1.6 0 010-3.2', flag: 'M4 14V2.5M4 3h8l-1.6 2.8L12 8.6H4', archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', filter: 'M2.5 4h11M4.5 8h7M6.5 12h3',
   };
   const mailToolIcon = k => `<svg width="16" height="16" viewBox="0 0 16 16"><path d="${MAIL_TOOL[k]}" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
@@ -13226,6 +13282,14 @@ body { width: max-content !important; min-width: 0 !important; }
       b.title = title; b.disabled = !!opts.off; b.addEventListener('click', run); into.appendChild(b); return b;
     };
     if (inSide) { const nw = document.createElement('button'); nw.className = 'btn-primary mail-new'; nw.textContent = 'New Email'; nw.addEventListener('click', () => mailCompose('new')); head.appendChild(nw); }
+    // The folder you are in is the toolbar's title, with its account and what is unread.
+    {
+      const tt = document.createElement('b'); tt.className = 'cal-title'; tt.textContent = mailUi.search ? `Search: ${mailUi.search}` : s ? s.name : 'Mail';
+      const sb = document.createElement('span'); sb.className = 'mail-sub';
+      let un = 0; try { const z = !mailUi.search && s && !everyone && mailAllFolders(s.acc).find(q => q.f.id === s.folder); un = (z && z.f.unreadItemCount) || 0; } catch (e) { /* not loaded yet */ }
+      sb.textContent = (mailUi.search ? (mailUi.sOpt.scope === 'here' && acc ? acc.email : mailVisible().length > 1 ? 'All accounts' : 'All folders') : acc ? acc.email : everyone ? `${mailSelAccs().length} accounts` : '') + (un ? ` \u00b7 ${un} unread` : '');
+      head.append(tt, sb, Object.assign(document.createElement('span'), { className: 'sp' }));
+    }
     const acts = document.createElement('div'); acts.className = 'mail-acts';
     let into = acts;
     const none = !m;
@@ -13241,7 +13305,7 @@ body { width: max-content !important; min-width: 0 !important; }
       tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }).classList.add('ico');
       tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }).classList.add('ico');
       const c = claraOpenCount();
-      const mb = document.createElement('button'); mb.className = 'tb ico mail-more'; mb.innerHTML = UI.more; mb.title = 'More: Reply All, Forward, Mark as Unread, Send To, Clara, Check for New Mail';
+      const mb = document.createElement('button'); mb.className = 'tb ico mail-more'; mb.innerHTML = UI.more; mb.title = 'More: Reply All, Forward, Mark as Unread, Send To, Clara, Unread Only, Conversations, Check for New Mail';
       mb.addEventListener('click', e => {
         const r0 = e.currentTarget.getBoundingClientRect();
         showMenu(r0.left, r0.bottom + 4, [
@@ -13252,6 +13316,9 @@ body { width: max-content !important; min-width: 0 !important; }
           { label: 'Send To\u2026', disabled: none, run: () => mailSendTo(m, r0.left, r0.bottom + 4) },
           '-',
           { label: c ? `Clara (${c})\u2026` : 'Clara\u2026', run: () => claraPanel() },
+          { label: 'Unread Only', checked: !!mailUi.onlyUnread, run: () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); } },
+          { label: 'Keep Conversations Together', checked: mailState.threads !== false, run: () => { mailState.threads = mailState.threads === false; mailSave(); mailRenderMain(); } },
+          '-',
           { label: 'Check for New Mail', run: () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail\u2026'); } },
         ]);
       });
@@ -13272,7 +13339,6 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     msgTools();
     head.appendChild(acts);
-    head.appendChild(Object.assign(document.createElement('span'), { className: 'sp' }));
     const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search all mail'; sr.title = `Search every account (${K.mod}F). Type words, or say who and when: “from peter last month with a pdf”. Put “exact words” in quotes.`; sr.value = mailUi.search || '';
     sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
@@ -13299,8 +13365,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const thb = document.createElement('button'); thb.className = 'tb' + (threads ? ' on' : ''); thb.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 4h8M2.5 8h11M5.5 12h8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
     thb.title = threads ? 'Messages in the same conversation are kept together. Click to list every message by itself.' : 'Every message is listed by itself. Click to keep conversations together.';
     thb.addEventListener('click', () => { mailState.threads = !threads; mailSave(); mailRenderMain(); });
-    fh.appendChild(thb);
-    col.appendChild(fh);
+    fh.appendChild(thb);          // (the folder's name and these two switches are in the toolbar and its More menu now)
     if (mailUi.search && mailUi.sInfo) {
       const I = mailUi.sInfo, O = mailUi.sOpt, bar = document.createElement('div'); bar.className = 'mail-sbar';
       const again = () => mailSearch(mailUi.search, true);
@@ -17370,7 +17435,7 @@ body { width: max-content !important; min-width: 0 !important; }
       try { h.setPointerCapture(ev.pointerId); } catch (e) { /* still drags */ }
       el.querySelectorAll('webview').forEach(v => { v.style.pointerEvents = 'none'; });
       const mv = e2 => { w = r.width + (x0 - e2.clientX); ht = r.height + (y0 - e2.clientY); put(w, ht); };
-      const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); el.querySelectorAll('webview').forEach(v => { v.style.pointerEvents = ''; }); ls.set('claudeNavigator.botSize', JSON.stringify({ w: Math.round(Math.max(340, Math.min(1000, w))), h: Math.round(Math.max(360, Math.min(1200, ht))) })); };
+      const up = () => { h.removeEventListener('pointermove', mv); h.removeEventListener('pointerup', up); h.removeEventListener('pointercancel', up); el.querySelectorAll('webview').forEach(v => { v.style.pointerEvents = ''; }); ls.set('claudeNavigator.botSize', JSON.stringify({ w: Math.round(Math.max(340, Math.min(1000, w))), h: Math.round(Math.max(360, Math.min(1200, ht))) })); try { const bw = JSON.parse(ls.get('claudeNavigator.botW') || '{}'); bw[currentApp] = Math.round(Math.max(340, Math.min(1000, w))); ls.set('claudeNavigator.botW', JSON.stringify(bw)); } catch (e) { /* kept as the one width */ } };
       h.addEventListener('pointermove', mv); h.addEventListener('pointerup', up); h.addEventListener('pointercancel', up);
     });
     h.addEventListener('dblclick', () => { el.style.removeProperty('--bot-w'); el.style.removeProperty('--bot-h'); ls.set('claudeNavigator.botSize', ''); });
@@ -17969,7 +18034,7 @@ body { width: max-content !important; min-width: 0 !important; }
     el.hidden = !on;
     if (!on) { botDock(false); botToolPaint(); return; }
     // Open or closed is remembered for each app: open in Chief of Staff and closed elsewhere, until you choose otherwise.
-    if (botS.forApp !== currentApp) { botS.forApp = currentApp; const by = bot.openBy || {}; bot.open = by[currentApp] !== undefined ? !!by[currentApp] : currentApp === 'cos'; }
+    if (botS.forApp !== currentApp) { botS.forApp = currentApp; try { const bw = JSON.parse(ls.get('claudeNavigator.botW') || '{}')[currentApp]; if (bw) el.style.setProperty('--bot-w', bw + 'px'); else { const k = JSON.parse(ls.get('claudeNavigator.botSize') || 'null'); if (k && k.w) el.style.setProperty('--bot-w', k.w + 'px'); else el.style.removeProperty('--bot-w'); } } catch (e) { /* the usual width */ } const by = bot.openBy || {}; bot.open = by[currentApp] !== undefined ? !!by[currentApp] : currentApp === 'cos'; }
     // A different profile has its own Chief of Staff chat.
     if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; botS.ruled = null; botS.conv = []; el.querySelector('.bot-wait').hidden = false; }
     botList = botSuggestions();
@@ -19300,7 +19365,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
     dot.style.background = p ? p.color : '';
     dot.textContent = p ? (p.name || '').trim().slice(0, 1).toUpperCase() : '';
     dot.style.color = p && luminance(p.color || '#000000') > 0.6 ? '#000' : '#fff';
-    if (isMac) btn.title = 'Switch profile (\u2325\u23181, 2, 3... and \u2325\u23180 for All Profiles)';
+    if (isMac) btn.title = 'Switch profile (\u2303\u23251, 2, 3... and \u2303\u23250 for All Profiles)';
     profileSubPaint();
     document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
@@ -19371,9 +19436,9 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
   function showProfileMenu(x, y) {
     const ap = activeProfile();
     showMenu(x, y, [
-      { label: 'All Profiles', dot: 'all', checked: !ap, key: (isMac ? '\u2325\u2318' : 'Ctrl+Alt+') + '0', run: () => setProfile(null) },
+      { label: 'All Profiles', dot: 'all', checked: !ap, key: (isMac ? '\u2303\u2325' : 'Ctrl+Alt+') + '0', run: () => setProfile(null) },
       '-',
-      ...profiles().map((p, i) => ({ label: p.name, dot: p.color, checked: ap === p, key: i < 9 ? (isMac ? '\u2325\u2318' : 'Ctrl+Alt+') + (i + 1) : undefined, run: () => setProfile(p.id) })),
+      ...profiles().map((p, i) => ({ label: p.name, dot: p.color, checked: ap === p, key: i < 9 ? (isMac ? '\u2303\u2325' : 'Ctrl+Alt+') + (i + 1) : undefined, run: () => setProfile(p.id) })),
       '-',
       { label: 'New Profile\u2026', run: () => openProfileDialog(null) },
       ap && { label: `Edit \u201c${ap.name}\u201d\u2026`, run: () => openProfileDialog(ap) },
@@ -19381,6 +19446,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
       !ap && profiles().length > 0 && { label: 'Edit a Profile\u2026', run: () => showMenu(x, y, profiles().map(p => ({ label: p.name, dot: p.color, run: () => openProfileDialog(p) }))) },
       profiles().length > 1 && { label: 'Change Profile Order\u2026', run: () => showMenu(x, y, profiles().map((p, i) => ({ label: `${i + 1}. ${p.name}`, dot: p.color, run: () => showMenu(x, y, profileOrderItems(p)) }))) },
     ]);
+    menu.classList.add('prof'); for (const bt of menu.querySelectorAll('button')) { const ck = bt.querySelector('.ck'); if (ck && ck.textContent.trim()) bt.classList.add('cur'); }
   }
   $('profileBtn').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
