@@ -2154,7 +2154,7 @@
   };
   // Clara, the external executive assistant: its email address and dashboard (see the Clara section).
   const CLARA_STORE = 'claudeNavigator.clara.v1';
-  const clara = (() => { try { return Object.assign({ email: 'clara@monkeybaa.com.au', url: 'https://beta.claralabs.com/' }, JSON.parse(ls.get(CLARA_STORE) || '{}')); } catch (e) { return { email: 'clara@monkeybaa.com.au', url: 'https://beta.claralabs.com/' }; } })();
+  const clara = (() => { try { return Object.assign({ email: 'clara@monkeybaa.com.au', url: 'https://app.claralabs.com/' }, JSON.parse(ls.get(CLARA_STORE) || '{}')); } catch (e) { return { email: 'clara@monkeybaa.com.au', url: 'https://app.claralabs.com/' }; } })();
 
   // ---------- Icons ----------
   // Small glyphs share a 16px grid and draw with colour C, so they can be reused at large sizes.
@@ -16038,7 +16038,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function claraSettings() {
     claraDialog('claraSetDlg', 'Clara Settings', [
       { name: 'email', label: 'Clara’s email address', value: clara.email, ph: 'clara@yourcompany.com' },
-      { name: 'url', label: 'Clara’s dashboard', value: clara.url, ph: 'https://beta.claralabs.com/' },
+      { name: 'url', label: 'Clara’s dashboard', value: clara.url, ph: 'https://app.claralabs.com/' },
     ], 'Save', v => {
       if (!EMAIL_RE.test(v.email)) return 'That email address does not look right.';
       let u; try { u = new URL(v.url); } catch (e) { return 'That dashboard address does not look right.'; }
