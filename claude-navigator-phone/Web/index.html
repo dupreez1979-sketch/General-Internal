@@ -161,6 +161,7 @@
     t.append(el('span', 'grow'));
     if (showProfile && team()) { const d = el('button', 'drivebtn', 'Drive'); d.onclick = () => driveStart(); t.append(d); }
     const r = el('button', 'ibtn', '↻'); r.title = 'Refresh'; r.onclick = () => send({ do: 'load' }); t.append(r);
+    const g = el('button', 'ibtn', '⚙'); g.title = 'Settings'; g.onclick = () => { ui.settings = true; send({ do: 'fastState' }); send({ do: 'voiceGet' }); render(); }; t.append(g);
     return t;
   }
   function tabs() {
@@ -437,8 +438,8 @@
   window.driveMailState = v => { fast.mail = (v && v.accounts) || []; fast.mailErr = (v && v.error) || ''; fast.mailBusy = false; render(); };
   window.driveMailCheck = v => { if (v && waits[v.id]) waits[v.id](v); };
   const waits = {};                      // (Run Checks waits here for its own answers)
-  window.driveFastState = v => { if (v && Array.isArray(v.mail)) fast.mail = v.mail; Object.assign(fast, v || {}); if (drive.voiceOpen || !drive.on) render(); };
-  window.driveGranState = v => { fast.granola = !!(v && v.on); fast.granErr = (v && v.error) || ''; fast.granSteps = (v && v.steps) || ''; fast.granBusy = false; if (drive.voiceOpen) render(); };
+  window.driveFastState = v => { if (v && Array.isArray(v.mail)) fast.mail = v.mail; Object.assign(fast, v || {}); if (ui.settings || !drive.on) render(); };
+  window.driveGranState = v => { fast.granola = !!(v && v.on); fast.granErr = (v && v.error) || ''; fast.granSteps = (v && v.steps) || ''; fast.granBusy = false; if (ui.settings) render(); };
   // What the API has been used for: a count and token totals, by month and by day. Nothing that was asked or answered.
   const useNow = () => { let u = {}; try { u = JSON.parse(ls.get('apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
   const useAdd = (i, o) => { const u = useNow(); u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; ls.set('apiUse', JSON.stringify(u)); };
@@ -534,7 +535,7 @@
   // "Hey Siri, talk to my Chief of Staff": straight into Drive, already listening.
   window.driveTrace = () => {};
   window.driveFromSiri = () => { if (!team()) return false; if (!drive.on) driveStart(); setTimeout(() => { if (drive.on && drive.state === 'idle') driveListen(8); }, 900); return true; };
-  window.driveLocal = v => { drive.local = !!(v && v.ok); if (drive.voiceOpen) render(); };
+  window.driveLocal = v => { drive.local = !!(v && v.ok); if (ui.settings) render(); };
   window.driveLocalAnswer = a => {
     if (drive.noteAsk && drive.noteAsk.id === a.id) { const k = drive.noteAsk; drive.noteAsk = null; clearTimeout(drive.timer); const m = /\d+/.exec(String(a.text || '')); return driveNoteFor(k.note, a.error || !m ? null : k.staff[+m[0] - 1] || null); }
     const q = drive.localAsk; if (!drive.on || !q || q.id !== a.id) return;
@@ -637,52 +638,64 @@
   };
   // Which of Claude's models is answering: the fastest one for the drive, and the usual one put back afterwards.
   window.driveModel = m => { drive.model = m; if (drive.on) render(); else if (m.step === 'restore' && !m.ok && m.was) { const t = el('div', 'pulltip', `Claude is still on the fast model. Set it back to ${m.was} in Claude.`); t.style.opacity = 1; document.body.append(t); setTimeout(() => t.remove(), 6000); } };
-  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (drive.on) render(); };
+  window.driveVoice = v => { drive.voice = Object.assign(drive.voice || {}, v); if (drive.on || ui.settings) render(); };
   // Every answer from the phone goes in the Drive log too.
   for (const n of ['driveHeard', 'driveSpoke', 'driveAnswer', 'driveStage', 'driveWait', 'driveLocalAnswer', 'driveModel', 'driveInterrupted', 'driveTrace', 'driveApi', 'driveGran', 'driveGranState', 'driveFastState']) { const f = window[n]; if (typeof f === 'function') window[n] = a => { if (!(n === 'driveHeard' && a && !a.final && !a.problem)) dnote('< ' + n.slice(5), a); return f(a); }; }
   const driveLogText = () => `Chief of Staff Drive log\nstate: ${drive.state} | stage: ${drive.stage || ''} | line: ${String(drive.line || '').slice(0, 80)}\n` + dtrace.slice(-300).join('\n');
+  // Settings: one sheet, opened from the cog on any screen (and from Drive). What you connect comes first, each
+  // thing on one line; the long lists (voices, limits) stay folded away until you ask for them.
   function voiceSheet() {
-    const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { drive.voiceOpen = false; render(); };
-    const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.append(el('div', 'grab'), el('div', 'sec', 'The voice that answers'));
+    const v = drive.voice || {}, sh = el('div', 'shade'); sh.style.zIndex = 21; sh.onclick = () => { ui.settings = false; render(); };
+    const s2 = el('div', 'sheet vsheet'); s2.style.zIndex = 22; s2.style.maxHeight = '86%'; s2.append(el('div', 'grab'));
+    { const hd = el('div', 'sec', 'Settings'); hd.style.cssText = 'display:flex;align-items:center;font-size:17px;text-transform:none;letter-spacing:0;color:var(--ink);margin:6px 6px 4px'; const x = el('button', 'ibtn', '✕'); x.style.cssText = 'margin-left:auto;width:34px;height:34px;font-size:15px'; x.onclick = () => { ui.settings = false; render(); }; hd.append(x); s2.append(hd); }
     const opt = (title, sub, on, run) => { const b = el('button', 'card'); const tx = el('div', 'tx'); tx.append(el('b', '', title), el('span', 's', sub)); b.append(tx); if (on) b.append(el('span', 'badge', '✓')); b.onclick = run; s2.append(b); };
-    s2.append(el('p', 'vtip', `Drive is using ${v.phoneVoice || 'the phone’s voice'}. It is free and works with no signal. Tap a voice to use it, or Hear It to listen.`));
-    { const lg = el('button', 'btn', 'Copy Drive Log'); lg.style.margin = '0 6px 12px'; lg.onclick = () => { const t = driveLogText(); send({ do: 'copy', text: t }); try { navigator.clipboard.writeText(t).catch(() => {}); } catch (e) { /* the phone copies it */ } lg.textContent = 'Copied. Paste it to Claude.'; }; s2.append(lg); }
-    const hear = el('button', 'btn', 'Hear It'); hear.style.margin = '0 6px 12px'; hear.onclick = () => send({ do: 'voiceTry' }); s2.append(hear);
-    for (const x of (v.voices || [])) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); nm.append(el('span', '', x.note)); r.append(nm); if (x.on) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voicePick', id: x.id }); s2.append(r); }
-    if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
-    s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. If you have downloaded one and it is not in this list, close Drive and open it again.'));
-    s2.append(el('div', 'sec', 'Fast answers'));
-    s2.append(el('p', 'vtip', 'Quickest first: your team’s lists are read straight off this phone; meeting questions go to Granola; other quick questions go to Claude’s fast model through your API key. What needs one of your Claude projects is not attempted while you drive: it is put on that person’s list for your desk.'));
-    { const u = useNow(), lim = apiLimit();
+    const u = useNow(), lim = apiLimit();
+    s2.append(el('div', 'sec', 'Connections'));
       opt('Claude API key', fast.hasKey ? `Saved in this phone’s Keychain${fast.keyBad ? '. Claude did NOT accept it: tap to paste it again' : ''}. Fast model only (${fast.model || 'Claude Haiku 5.5'}).` : 'Not set. Tap to paste your key. It is kept in this phone’s Keychain.', fast.hasKey && !fast.keyBad, () => { fast.keyBad = false; send({ do: 'apiKey' }); });
-      if (fast.hasKey) { const on = ls.get('driveApi') !== 'off';
-        opt('Use it for quick answers', on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${useCost(u).toFixed(2)}. Today: ${u.dn || 0} of ${lim}.` : 'Off. Nothing is sent to the API.', on, () => { ls.set('driveApi', on ? 'off' : 'on'); render(); });
-        opt(`Most in one month: US$${apiCap()}`, `So far this month: about US$${useCost(u).toFixed(2)}. Past the limit, the API is left alone until next month. Tap to change.`, false, () => { const steps = [5, 10, 30]; ls.set('apiCap', String(steps[(steps.indexOf(apiCap()) + 1) % steps.length])); render(); });
-        opt(`Most in one day: ${lim} questions`, 'Past this, the API is left alone until tomorrow. Tap to change.', false, () => { const steps = [50, 150, 400]; ls.set('apiDaily', String(steps[(steps.indexOf(lim) + 1) % steps.length])); render(); }); }
       { const mon = ls.get('driveMail') !== 'off', n = fast.mail.length;
         opt('Email and calendar', fast.mailBusy ? 'Opening the sign-in…' : n ? (mon ? `Reading ${fast.mail.join(', ')}. It can look things up, never send or change. Nothing read is kept on this phone. Tap to pause.` : 'Signed in, but paused. Tap to use it.') : (fast.mailErr ? `Not signed in (${fast.mailErr}). Tap to try again.` : 'Not signed in. Tap to sign in to Microsoft, so questions about your email and calendar can be answered here.'), n > 0 && mon, () => { if (n) { ls.set('driveMail', mon ? 'off' : 'on'); return render(); } fast.mailBusy = true; fast.mailErr = ''; send({ do: 'mailConnect' }); render(); });
         if (n) { const add = el('button', 'row', 'Add another email account'); add.style.cssText = 'border:0;color:var(--muted)'; add.onclick = () => { fast.mailBusy = true; fast.mailErr = ''; send({ do: 'mailConnect' }); render(); }; s2.append(add);
           if (fast.mailErr) s2.append(el('p', 'vtip', 'That sign-in did not finish: ' + fast.mailErr));
           const dc = el('button', 'row', 'Sign out of email on this phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'mailDisconnect', email: '' }); fast.mail = []; render(); }; s2.append(dc); } }
+      if (!fast.mail.length && fast.mailErr) s2.append(el('p', 'vtip', 'The sign-in did not finish: ' + fast.mailErr));
       const gon = ls.get('driveGran') !== 'off';
       opt('Granola', fast.granBusy ? 'Opening the sign-in…' : fast.granola ? (gon ? 'Connected. Meeting questions are answered from your notes. Nothing from a meeting is kept on this phone. Tap to pause.' : 'Connected, but paused. Tap to use it.') : (fast.granErr ? `Not connected (${fast.granErr}). Tap to try again.` : 'Not connected. Tap to sign in to Granola.'), fast.granola && gon, () => { if (fast.granola) { ls.set('driveGran', gon ? 'off' : 'on'); return render(); } fast.granBusy = true; fast.granErr = ''; send({ do: 'granConnect' }); render(); });
       if (fast.granola) { const dc = el('button', 'row', 'Disconnect Granola from this phone'); dc.style.cssText = 'border:0;color:var(--muted)'; dc.onclick = () => { send({ do: 'granDisconnect' }); fast.granola = false; render(); }; s2.append(dc); }
-      const rc = el('button', 'btn', fast.checks ? 'Run Checks Again' : 'Run Checks'); rc.style.margin = '6px 6px 8px'; rc.onclick = () => { rc.disabled = true; runChecks(rc); }; s2.append(rc);
-      if (fast.checks) { const pre = el('p', 'vtip', 'Copied. Paste it to Claude.\n\n' + fast.checks); pre.style.whiteSpace = 'pre-wrap'; s2.append(pre); } }
-    s2.append(el('div', 'sec', 'When your turn ends'));
+    if (fast.hasKey) { s2.append(el('div', 'sec', 'Quick answers'));
+      const on = ls.get('driveApi') !== 'off';
+        opt('Use Claude’s fast model', on ? `On. This month: ${u.n} question${u.n === 1 ? '' : 's'}, about US$${useCost(u).toFixed(2)}. Today: ${u.dn || 0} of ${lim}.` : 'Off. Nothing is sent to the API.', on, () => { ls.set('driveApi', on ? 'off' : 'on'); render(); });
+      opt('Limits', `US$${apiCap()} a month and ${lim} questions a day. Tap to ${ui.setLimits ? 'hide' : 'change'}.`, false, () => { ui.setLimits = !ui.setLimits; render(); });
+      if (ui.setLimits) {
+        opt(`Most in one month: US$${apiCap()}`, `So far this month: about US$${useCost(u).toFixed(2)}. Past the limit, the API is left alone until next month. Tap to change.`, false, () => { const steps = [5, 10, 30]; ls.set('apiCap', String(steps[(steps.indexOf(apiCap()) + 1) % steps.length])); render(); });
+        opt(`Most in one day: ${lim} questions`, 'Past this, the API is left alone until tomorrow. Tap to change.', false, () => { const steps = [50, 150, 400]; ls.set('apiDaily', String(steps[(steps.indexOf(lim) + 1) % steps.length])); render(); });
+      } }
+    s2.append(el('div', 'sec', 'Voice'));
+    opt('The voice that answers', `${v.phoneVoice || 'The phone’s voice'}. Free, and works with no signal. Tap to ${ui.setVoices ? 'hide the list' : 'choose another'}.`, false, () => { ui.setVoices = !ui.setVoices; if (ui.setVoices) send({ do: 'voiceGet' }); render(); });
+    if (ui.setVoices) {
+    const hear = el('button', 'btn', 'Hear It'); hear.style.margin = '0 6px 12px'; hear.onclick = () => send({ do: 'voiceTry' }); s2.append(hear);
+    for (const x of (v.voices || [])) { const r = el('button', 'row'); const nm = el('div', 'nm', x.name); nm.append(el('span', '', x.note)); r.append(nm); if (x.on) r.append(el('small', '', 'In use')); r.onclick = () => send({ do: 'voicePick', id: x.id }); s2.append(r); }
+    if (v.chosen) { const auto = el('button', 'row', 'Choose the best one for me'); auto.style.cssText = 'border:0;color:var(--muted)'; auto.onclick = () => send({ do: 'voicePick', id: '' }); s2.append(auto); }
+      s2.append(el('p', 'vtip', 'Premium and Enhanced voices sound far more natural than Basic ones. Download one in the iPhone’s Settings, Accessibility, Spoken Content, Voices.'));
+    }
+    { const on = ls.get('driveSounds') !== 'off'; opt('Sounds', on ? 'On. A soft sound when it listens, hears you, answers or makes something.' : 'Off. Voice only.', on, () => { ls.set('driveSounds', on ? 'off' : 'on'); if (!on) send({ do: 'chime', name: 'ready' }); render(); }); }
+    s2.append(el('div', 'sec', 'In Drive: when your turn ends'));
     { const cur = +(ls.get('drivePause') || 7); for (const [sec, title, sub] of [[2.5, 'After a short pause', 'About two seconds of silence.'], [4, 'After a pause', 'About four seconds. Room to think mid-sentence.'], [7, 'After a long pause', 'About seven seconds.'], [0, 'Only when I say so', 'It keeps listening until you say “over”, or press Done talking.']]) opt(title, sub, cur === sec, () => { ls.set('drivePause', String(sec)); send({ do: 'pause', seconds: sec }); render(); }); }
     s2.append(el('p', 'vtip', 'Whichever you choose, finishing with “over” or “that’s all” ends your turn straight away.'));
-    s2.append(el('div', 'sec', 'Talking'));
-    { const on = ls.get('driveSounds') !== 'off'; opt('Sounds', on ? 'On. A soft sound when it listens, hears you, answers or makes something.' : 'Off. Voice only.', on, () => { ls.set('driveSounds', on ? 'off' : 'on'); if (!on) send({ do: 'chime', name: 'ready' }); render(); }); }
+    s2.append(el('div', 'sec', 'In Drive: talking'));
     { const on = ls.get('driveBarge') !== 'off'; opt('Let me interrupt by speaking', on ? 'On. Start talking, or say stop, and the answer stops.' : 'Off. Press Stop or Reply to cut in.', on, () => { ls.set('driveBarge', on ? 'off' : 'on'); send({ do: 'barge', on: !on }); render(); }); }
     { const on = ls.get('driveLocal') !== 'off'; opt('Answer simple questions on the phone', !drive.local ? 'Not available on this phone, so everything goes to Claude.' : on ? 'On. Things like what is open, or Brief me, are answered at once.' : 'Off. Everything goes to Claude.', on && !!drive.local, () => { ls.set('driveLocal', on ? 'off' : 'on'); render(); }); }
+    s2.append(el('div', 'sec', 'Help'));
+    s2.append(el('p', 'vtip', 'If something is not working, run the checks and paste the result to Claude.'));
+      const rc = el('button', 'btn', fast.checks ? 'Run Checks Again' : 'Run Checks'); rc.style.margin = '6px 6px 8px'; rc.onclick = () => { rc.disabled = true; runChecks(rc); }; s2.append(rc);
+    { const lg = el('button', 'btn', 'Copy Drive Log'); lg.style.margin = '0 6px 12px'; lg.onclick = () => { const t = driveLogText(); send({ do: 'copy', text: t }); try { navigator.clipboard.writeText(t).catch(() => {}); } catch (e) { /* the phone copies it */ } lg.textContent = 'Copied. Paste it to Claude.'; }; s2.append(lg); }
+      if (fast.checks) { const pre = el('p', 'vtip', 'Copied. Paste it to Claude.\n\n' + fast.checks); pre.style.whiteSpace = 'pre-wrap'; s2.append(pre); }
     return [sh, s2];
   }
   function viewDrive() {
     const d = el('div', 'drive ' + drive.state), who = drive.who || chiefOf() || { name: 'Chief of Staff', chief: true };
     const bar = el('div', 'dbar'); bar.append(el('b', '', 'Drive'), el('span', 'dprof', (prof() || {}).name || ''), el('span', 'grow'));
     const mo = drive.model; if (mo && mo.step === 'fast') bar.append(el('span', 'dmodel', mo.ok ? `Fast model: ${mo.now.split(' ').slice(0, 2).join(' ')}` : `Model: ${mo.was ? mo.was.split(' ').slice(0, 2).join(' ') : 'as it was'}`));
-    const vb = el('button', 'dend', 'Voice'); vb.onclick = () => { drive.voiceOpen = true; send({ do: 'voiceGet' }); render(); }; bar.append(vb);
+    const vb = el('button', 'dend', 'Settings'); vb.onclick = () => { ui.settings = true; send({ do: 'voiceGet' }); render(); }; bar.append(vb);
     const end = el('button', 'dend', 'Finish'); end.onclick = driveEnd; bar.append(end);
     const mid = el('div', 'dmid'), big = el('button', 'dbig');
     const label = { idle: who.chief ? 'Talk to your Chief of Staff' : `Talk to the ${who.name}`, listening: 'Listening', thinking: 'Thinking', speaking: who.chief ? 'Chief of Staff' : who.name }[drive.state];
@@ -706,7 +719,7 @@
       const fav = pinned().map(id => (team() || { nodes: [] }).nodes.find(x => x.id === id)).filter(Boolean)[0]; if (fav) fb(fav.name, () => { drive.who = fav; driveListen(8); }); }
     else if (drive.state === 'listening') { fb('Cancel', driveStop, 'stop'); fb('Done talking', () => send({ do: 'stopListening' })); }
     else { fb('Stop', driveStop, 'stop'); if (drive.state === 'speaking') { fb('Say again', () => driveSay(drive.line)); fb('Reply', () => { send({ do: 'hush' }); driveListen(8); }); } }
-    d.append(bar, mid, foot); return drive.voiceOpen ? [d, ...voiceSheet()] : [d];
+    d.append(bar, mid, foot); return ui.settings ? [d, ...voiceSheet()] : [d];
   }
   function lastDriveCards(s) {
     let ld = null; try { ld = JSON.parse(ls.get('lastDrive') || 'null'); } catch (e) { ld = null; }
@@ -726,6 +739,7 @@
       const t = team(), n = ui.staff && t && t.nodes.find(x => x.id === ui.staff);
       parts = n ? viewStaff(n) : ui.tab === 'today' ? viewToday() : ui.tab === 'actions' ? viewActions() : ui.tab === 'recent' ? viewRecent() : viewTeam();
       if (ui.sheet) parts = parts.concat(sheet());
+      if (ui.settings) parts = parts.concat(voiceSheet());
       if (ui.filing) parts = parts.concat(fileSheet());
     }
     const keepChips = (app.querySelector('.chips') || {}).scrollLeft || 0;
