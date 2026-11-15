@@ -572,7 +572,7 @@
   #sidePanel .sp-body { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
   #sidePanel .sp-body > webview { flex: 1; border: 0; }
   #sidePanel .sp-body > webview[hidden] { display: none; }
-  #sidePanel .sp-body > #mailPanel, #sidePanel .sp-body > #calPanel, #sidePanel .sp-body > #notesPanel { position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; flex: 1; min-height: 0; border: 0; border-radius: 0; box-shadow: none; resize: none; }
+  #sidePanel .sp-body > #mailPanel, #sidePanel .sp-body > #calPanel, #sidePanel .sp-body > #meetPanel, #sidePanel .sp-body > #notesPanel { position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: auto !important; height: auto !important; flex: 1; min-height: 0; border: 0; border-radius: 0; box-shadow: none; resize: none; }
   #sidePanel .sp-body > [hidden] { display: none !important; }
   #sidePanel .sp-body #notesPanel .fhead { display: none; }
   #sidePanel .sp-body > #splitLeft { display: flex !important; flex: 1; max-width: none; min-width: 0; border: 0; order: 0; }
@@ -1016,6 +1016,21 @@
   body.cal-mode #tree, body.cal-mode #sNewFolder { display: none !important; }
   #calSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.cal-mode #calSide { display: block; }
+  body.meet-mode { --accent: #328276; --accent-text: #ffffff; --tint: #8FB5AE; }
+  body.meet-mode #main > :not(#meetPanel) { display: none !important; }
+  body.meet-mode #tree, body.meet-mode #sNewFolder { display: none !important; }
+  #meetSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; } body.meet-mode #meetSide { display: block; }
+  #meetSide .mt-i { display: flex; align-items: center; gap: 8px; width: 100%; font: inherit; font-size: 13px; text-align: left; border: 0; background: none; color: var(--text); padding: 5px 8px 5px 14px; border-radius: 7px; cursor: pointer; } #meetSide .mt-i:hover { background: var(--hover); } #meetSide .mt-i.on { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: 600; }
+  #meetSide .mt-i .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; } #meetSide .mt-i .lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #meetSide .mt-i .n { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  #meetPanel { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--win); min-height: 0; }
+  #meetPanel[hidden] { display: none; }
+  .meet-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 0 16px; min-height: 52px; border-bottom: 1px solid var(--line); flex-wrap: wrap; } .meet-head h1 { font-size: 16px; margin: 0; white-space: nowrap; } .meet-head .sub { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .meet-head select, .meet-head input[type=search] { font: inherit; font-size: 12.5px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); outline: none; } .meet-head input[type=search] { border-radius: 999px; width: min(260px, 34%); } .meet-head .btn { font-size: 12.5px; padding: 5px 12px; white-space: nowrap; }
+  #meetPanel .cos-list { flex: 1; min-height: 0; overflow: auto; padding: 8px 16px 20px; } #meetPanel .cos-list .crow { grid-template-columns: var(--gcols, minmax(240px, 2.4fr) 130px 1.6fr 1.1fr 120px); border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 0; cursor: pointer; } #meetPanel .cos-list .crow.h { cursor: default; } #meetPanel .cos-list .crow[hidden] { display: none; } #meetPanel .cos-list .crow:not(.h):hover { background: var(--hover); }
+  #meetPanel .crow > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #meetPanel .crow .mt { font-weight: 600; } #meetPanel .crow .mu { color: var(--muted); font-size: 12.5px; } #meetPanel .crow .todo { color: #B36E24; font-weight: 600; font-size: 12.5px; } #meetPanel .crow .done { color: var(--muted); font-size: 12.5px; }
+  #meetPanel .gwhich { font: inherit; font-size: 11px; border: 1px dashed var(--line); border-radius: 999px; background: none; color: #B36E24; padding: 1px 8px; cursor: pointer; } #meetPanel .co { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; border: 0; background: none; color: var(--text); font: inherit; font-size: 12.5px; padding: 0; cursor: pointer; } #meetPanel .co i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .meet-empty { color: var(--muted); font-size: 13px; padding: 26px 18px; display: grid; gap: 12px; justify-items: start; }
+  .app-ic.meet { background: #328276; }
   .calnav .cos-side-h { padding: 10px 8px 6px; }
   .calnav > .cal-new { display: flex; align-items: center; justify-content: center; gap: 8px; width: calc(100% - 8px); margin: 4px 4px 10px; padding: 8px 12px; font-size: 13.5px; font-weight: 650; border-radius: 9px; }
   .cal-mini { padding: 0 4px 8px; }
@@ -1923,6 +1938,7 @@
   <div id="cosSide" hidden aria-label="Team"></div>
   <div id="notesSide" aria-label="Notes"></div>
   <div id="calSide" class="calnav" aria-label="Calendars"></div>
+  <div id="meetSide" class="calnav" aria-label="Meetings"></div>
   <div id="mailSide" class="mailnav" aria-label="Mail accounts and folders"></div>
   <div class="side-foot">
     <button class="tb" id="sNewFolder" title="New Folder (Ctrl+Shift+N)"><span data-icon="plus"></span><span class="t">New Folder</span></button>
@@ -2001,6 +2017,7 @@
   <div id="claraHost" hidden></div>
   <div id="notesPanel" hidden aria-label="Notes"></div>
   <div id="calPanel" hidden aria-label="Calendar"></div>
+  <div id="meetPanel" hidden aria-label="Meetings"></div>
   <div id="mailPanel" hidden aria-label="Mail"></div>
   <div id="cosMain" hidden></div>
   <div id="cosSrcRs" class="col-rs" title="Drag to resize; double-click to reset"></div>
@@ -2012,6 +2029,7 @@
  <button class="app-tile" data-app="claude" title="Everything in your Claude account: chats, projects, outputs and more"><span class="app-ic claude"></span><b>Claude</b></button>
   <button class="app-tile" data-app="mail" title="Your mail: the accounts that belong to this profile, their folders and messages"><span class="app-ic mail"></span><b>Mail</b></button>
   <button class="app-tile" data-app="cal" title="Your Outlook calendar: day, week, month and list, with Join for Teams, and meetings coloured by profile"><span class="app-ic cal"></span><b>Calendar</b></button>
+  <button class="app-tile" data-app="meet" title="Your recorded meetings from Granola: notes, actions and which company each belongs to"><span class="app-ic meet"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 11.5V8M6.3 13V4M9.7 12V6.5M13 10.5V8.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span><b>Meetings</b></button>
   <button class="app-tile" data-app="monday" title="Your monday.com workspaces and boards"><span class="app-ic monday"></span><b>monday.com</b></button>
 </div>
 
@@ -7634,7 +7652,7 @@
   // The nine-dot button switches between the apps. Each keeps its own place.
   var navFace = ['claude', 'monday'].includes(ls.get('claudeNavigator.navFace')) ? ls.get('claudeNavigator.navFace') : 'files';
   const appKey = () => currentApp === 'navigator' ? (navFace === 'files' ? 'navigator' : navFace) : currentApp;     // which tile is on
-  var currentApp = (SOLO_TREE ? (SOLO === 'cos' ? 'cos' : 'navigator') : SOLO) || (['cos', 'cal', 'mail'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
+  var currentApp = (SOLO_TREE ? (SOLO === 'cos' ? 'cos' : 'navigator') : SOLO) || (['cos', 'cal', 'mail', 'meet'].includes(ls.get('claudeNavigator.app')) ? ls.get('claudeNavigator.app') : 'navigator');
   function cosEndMaking() {
     if (state.autoFile && state.autoFile.onMade) state.autoFile = null;
     state.cosWatch = null;
@@ -7652,7 +7670,7 @@
       // Back from Chief of Staff: every folder collapsed, Team included (where Chief of Staff was is not opened).
       tidyTree(null); tidyFresh = true;
     }
-    currentApp = ['cos', 'cal', 'mail'].includes(a) ? a : 'navigator';
+    currentApp = ['cos', 'cal', 'mail', 'meet'].includes(a) ? a : 'navigator';
     if (currentApp === 'navigator') {
       const was = navFace;
       navFace = a === 'claude' || a === 'monday' ? a : 'files';
@@ -7670,11 +7688,13 @@
     document.body.classList.toggle('cos-mode', currentApp === 'cos');
     document.body.classList.toggle('notes-mode', currentApp === 'notes');
     document.body.classList.toggle('cal-mode', currentApp === 'cal');
+    document.body.classList.toggle('meet-mode', currentApp === 'meet');
     document.body.classList.toggle('mail-mode', currentApp === 'mail');
     try { sideMount(); } catch (e) { /* starting up */ }
     try { $('mailPanel').hidden = !mailOn(); if (currentApp === 'mail') mailStart(false); } catch (e) { /* starting up */ }
     try { notesRender(); } catch (e) { /* starting up */ }
     try { $('calPanel').hidden = !calOn(); if (currentApp === 'cal') { calRender(); calRefresh(false); } } catch (e) { /* starting up */ }
+    try { $('meetPanel').hidden = !meetOn(); if (currentApp === 'meet') meetRender(); } catch (e) { /* starting up */ }
     try { dockRender(); } catch (e) { /* starting up */ }
     $('cosSide').hidden = currentApp !== 'cos';
     $('cosMain').hidden = currentApp !== 'cos';
@@ -15763,8 +15783,8 @@ body { width: max-content !important; min-width: 0 !important; }
   // Chief of Staff, the Claude and Folders icons open the panels those apps already had, which you can drag between.)
   // A side app opens without its own sidebar; the button at its top left brings that back.
   // The order of the apps (in the switcher and in the dock) is yours: drag one to move it, or right-click it.
-  const APP_KEYS = ['cos', 'navigator', 'claude', 'chats', 'mail', 'cal', 'monday'];
-  const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', chats: 'All Chats', mail: 'Mail', cal: 'Calendar', notes: 'Notes', monday: 'monday.com' };
+  const APP_KEYS = ['cos', 'navigator', 'claude', 'chats', 'mail', 'cal', 'meet', 'monday'];
+  const APP_NAMES = { cos: 'Chief of Staff', navigator: 'File Navigator', claude: 'Claude', chats: 'All Chats', mail: 'Mail', cal: 'Calendar', meet: 'Meetings', notes: 'Notes', monday: 'monday.com' };
   function appOrder() { let o = []; try { o = JSON.parse(ls.get('claudeNavigator.appOrder') || '[]'); } catch (e) { /* default */ } o = o.filter(k => APP_KEYS.includes(k)); for (const k of APP_KEYS) if (!o.includes(k)) o.push(k); return o; }
   function appHidden() { try { return JSON.parse(ls.get('claudeNavigator.appHidden') || '[]').filter(k => APP_KEYS.includes(k)); } catch (e) { return []; } }
   function appApplyOrder() {
@@ -15823,7 +15843,7 @@ body { width: max-content !important; min-width: 0 !important; }
   function sideHas(k) { return typeof sideState === 'object' && !!sideState && !!k && (sideState.app === k || sideState.app2 === k); }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
-  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['monday', 'monday.com', 'monday']];
+  const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['meet', 'Meetings', 'meet'], ['monday', 'monday.com', 'monday']];
   const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}">${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
   // is Claude while File Navigator, Claude or Chief of Staff is the main app: there a chat opens in the app's own
@@ -15873,13 +15893,12 @@ body { width: max-content !important; min-width: 0 !important; }
       // One click makes an app the main one; a double click opens it beside the main one (or closes it there).
       b.addEventListener('click', e => {
         if (k === 'actions') return dockClick(k, e);
-        if (k === 'meetings') return granListDlg();
         if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
         if (e.detail >= 2) { if (dockIsMain(k)) return toast(`${label} is the main app. Double-click another app to open that beside it.`); return dockClick(k, e); }
         dockTimer = setTimeout(() => { if (!dockIsMain(k)) dockMain(k); }, 240);
       });
-      if (k !== 'actions' && k !== 'meetings') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
+      if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
       d.appendChild(b);
     };
     const hid = appHidden();
@@ -15892,7 +15911,6 @@ body { width: max-content !important; min-width: 0 !important; }
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
       mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' && !isMain ? `All your Claude chats, to drag into folders: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}` : (isMain ? `${label} is the main app` : `${label}: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
-    if (gran.on) mk('meetings', 'Meetings', '<span class="app-ic mini meet"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 11.5V8M6.3 13V4M9.7 12V6.5M13 10.5V8.5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></span>', false, 'Meetings: Granola\u2019s notes and actions from the last 30 days', false);
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
       const on = !fr('actions').hidden;
@@ -15943,9 +15961,10 @@ body { width: max-content !important; min-width: 0 !important; }
     const inSide = el => el.parentNode === B1 || el.parentNode === B2;
     const place = (el, k, back) => { const to = slotOf(k); if (to) { if (el.parentNode !== to) to.appendChild(el); } else if (inSide(el)) back(el); };
     const toMain = el => main.insertBefore(el, $('cosMain'));
-    place($('mailPanel'), 'mail', toMain); place($('calPanel'), 'cal', toMain); place($('notesPanel'), 'notes', toMain);
+    place($('mailPanel'), 'mail', toMain); place($('calPanel'), 'cal', toMain); place($('meetPanel'), 'meet', toMain); place($('notesPanel'), 'notes', toMain);
     if (!slotOf('mail') && currentApp !== 'mail') $('mailPanel').hidden = true;
     if (!slotOf('cal') && currentApp !== 'cal') $('calPanel').hidden = true;
+    if (!slotOf('meet') && currentApp !== 'meet') $('meetPanel').hidden = true;
     if (!slotOf('notes') && currentApp !== 'notes') $('notesPanel').hidden = true;          // (closed: it must not be left floating over the app)
     let sh = $('spChats');
     if (slotOf('chats') && !sh) { sh = document.createElement('div'); sh.id = 'spChats'; }
@@ -16003,6 +16022,7 @@ body { width: max-content !important; min-width: 0 !important; }
       try {
         if (k === 'mail') { if (light) mailRender(); else mailStart(false); }
         else if (k === 'cal') { $('calPanel').hidden = false; calRender(); if (!light) calRefresh(false); }
+        else if (k === 'meet') { $('meetPanel').hidden = false; meetRender(); }
         else if (k === 'notes') notesRender();
         else if (k === 'cos') sideCosRender();
         else if (k === 'chats') sideChatsRender();
@@ -16977,6 +16997,7 @@ body { width: max-content !important; min-width: 0 !important; }
     } catch (e) { gran.err = String(e && e.message || e); }
     gran.busy = false;
     try { cosBotSoon(); dockRender(); } catch (e) { /* starting up */ }
+    try { if (meetOn()) meetRender(); } catch (e) { /* not showing */ }
     return gran;
   }
   // The notes for one meeting: Granola's summary, and your own notes if you typed any.
@@ -16997,6 +17018,96 @@ body { width: max-content !important; min-width: 0 !important; }
   const granSkipSave = () => ls.set(GRAN_SKIP, JSON.stringify([...granSkip].slice(-1500)));
   const granKey = (id, a) => { let h = 5381; for (const c of String(a).toLowerCase().replace(/\W+/g, '')) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return String(id).slice(0, 12) + ':' + h.toString(36); };
   const granLeft = (id, n) => (n && n.actions ? n.actions.filter(a => !granSkip.has(granKey(id, a))).length : 0);
+  // ===== Meetings: an app like Mail and Calendar. =====
+  // A sidebar to choose when, which company and what is still to do; a list with the usual headings (sort, resize),
+  // a search and filters; a click opens the meeting's notes. Open it beside another app from the dock, like the rest.
+  const meetOn = () => currentApp === 'meet' || sideHas('meet');
+  const meetUi = (() => { try { return Object.assign({ when: '30', co: '', show: 'all', q: '' }, JSON.parse(ls.get('claudeNavigator.meetUi') || '{}')); } catch (e) { return { when: '30', co: '', show: 'all', q: '' }; } })();
+  const meetSave = () => ls.set('claudeNavigator.meetUi', JSON.stringify({ when: meetUi.when, co: meetUi.co, show: meetUi.show }));
+  const MEET_WHEN = [['today', 'Today'], ['week', 'This week'], ['last', 'Last week'], ['30', 'Last 30 days']];
+  const MEET_SHOW = [['all', 'All meetings'], ['todo', 'With actions to give out'], ['done', 'Dealt with']];
+  function meetIn(g, when) {
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0); const mon = new Date(d0); mon.setDate(mon.getDate() - ((mon.getDay() + 6) % 7));
+    if (g.at > Date.now()) return false;
+    if (when === 'today') return g.at >= d0.getTime();
+    if (when === 'week') return g.at >= mon.getTime();
+    if (when === 'last') return g.at >= mon.getTime() - 7 * 864e5 && g.at < mon.getTime();
+    return true;
+  }
+  const meetCoOk = (g, co) => !co || (co === '?' ? !granProfOf(g) : granProfOf(g) === co);
+  const meetShowOk = (g, show) => show === 'all' || (show === 'done' ? granDone.has(g.id) : !granDone.has(g.id) && granLeft(g.id, gran.notes.get(g.id)) > 0);
+  let meetTimer = null;
+  const meetSoon = () => { clearTimeout(meetTimer); meetTimer = setTimeout(() => { try { if (meetOn() && !document.querySelector('#meetPanel input:focus')) meetRender(); } catch (e) { /* not showing */ } }, 400); };
+  function meetSideRender() {
+    const sd = $('meetSide'); if (!sd || currentApp !== 'meet') return; sd.replaceChildren();
+    const head = t => sd.appendChild(Object.assign(document.createElement('div'), { className: 'cos-side-h', textContent: t }));
+    const item = (label, n, on, run, dot) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'mt-i' + (on ? ' on' : ''); if (dot) { const d = document.createElement('span'); d.className = 'dot'; d.style.background = dot; b.appendChild(d); } b.appendChild(Object.assign(document.createElement('span'), { className: 'lb', textContent: label })); b.appendChild(Object.assign(document.createElement('span'), { className: 'n', textContent: n })); b.addEventListener('click', run); sd.appendChild(b); };
+    const pick = (k, v) => () => { meetUi[k] = v; meetSave(); meetRender(); };
+    const base = (w, c, sh) => gran.list.filter(g => meetIn(g, w) && meetCoOk(g, c) && meetShowOk(g, sh)).length;
+    head('When');
+    for (const [k, label] of MEET_WHEN) item(label, base(k, meetUi.co, meetUi.show), meetUi.when === k, pick('when', k));
+    const ps = profiles();
+    if (ps.length > 1) {
+      head('Company');
+      item('All companies', base(meetUi.when, '', meetUi.show), !meetUi.co, pick('co', ''));
+      for (const z of ps) item(z.name, base(meetUi.when, z.id, meetUi.show), meetUi.co === z.id, pick('co', z.id), z.color || '#999');
+      item('Not sure which', base(meetUi.when, '?', meetUi.show), meetUi.co === '?', pick('co', '?'), '#B36E24');
+    }
+    head('Show');
+    for (const [k, label] of MEET_SHOW) item(label, base(meetUi.when, meetUi.co, k), meetUi.show === k, pick('show', k));
+  }
+  function meetRender() {
+    const P = $('meetPanel'); if (!P || !meetOn()) return;
+    meetSideRender();
+    const main = currentApp === 'meet';
+    P.replaceChildren();
+    const head = document.createElement('div'); head.className = 'meet-head';
+    head.appendChild(Object.assign(document.createElement('h1'), { textContent: 'Meetings' }));
+    const sub = Object.assign(document.createElement('span'), { className: 'sub' }); head.appendChild(sub);
+    const sel = (opts, val, on, title) => { const x = document.createElement('select'); x.title = title; for (const [v, l] of opts) x.appendChild(Object.assign(document.createElement('option'), { value: v, textContent: l })); x.value = val; x.addEventListener('change', () => on(x.value)); head.appendChild(x); return x; };
+    head.appendChild(Object.assign(document.createElement('span'), { style: 'flex:1' }));
+    if (!main) {          // beside another app there is no sidebar: the same choices sit in the bar
+      sel(MEET_WHEN, meetUi.when, v => { meetUi.when = v; meetSave(); meetRender(); }, 'When');
+      if (profiles().length > 1) sel([['', 'All companies'], ...profiles().map(z => [z.id, z.name]), ['?', 'Not sure which']], meetUi.co, v => { meetUi.co = v; meetSave(); meetRender(); }, 'Company');
+      sel(MEET_SHOW, meetUi.show, v => { meetUi.show = v; meetSave(); meetRender(); }, 'Show');
+    }
+    const find = document.createElement('input'); find.type = 'search'; find.placeholder = 'Search meetings or people'; find.value = meetUi.q || ''; head.appendChild(find);
+    const re = document.createElement('button'); re.type = 'button'; re.className = 'btn'; re.textContent = 'Check Again'; re.title = 'Read the meetings from Granola again'; re.addEventListener('click', () => { re.disabled = true; re.textContent = 'Checking\u2026'; granLoad(true).then(() => meetRender()).catch(() => meetRender()); }); head.appendChild(re);
+    P.appendChild(head);
+    const empty = (text, btnLabel, run) => { const e = document.createElement('div'); e.className = 'meet-empty'; e.appendChild(Object.assign(document.createElement('div'), { textContent: text })); if (btnLabel) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-primary'; b.textContent = btnLabel; b.addEventListener('click', run); e.appendChild(b); } P.appendChild(e); };
+    if (!gran.on) { sub.textContent = ''; find.hidden = re.hidden = true; if (!gran.at && !gran.busy) { granLoad(false).then(() => meetRender()).catch(() => {}); return empty('Checking Granola\u2026'); } return empty('Connect Granola and your recorded meetings are listed here, with their notes and the actions to give out.', 'Connect Granola\u2026', () => granolaDlg()); }
+    if (gran.err && !gran.list.length) return empty(`The meetings could not be read: ${gran.err}`, 'Try Again', () => granLoad(true).then(() => meetRender()));
+    const list = gran.list.filter(g => meetIn(g, meetUi.when) && meetCoOk(g, meetUi.co) && meetShowOk(g, meetUi.show));
+    // read the notes of meetings not read yet (two at a time), so the Actions column fills in
+    list.filter(g => !gran.notes.get(g.id) && !g.reading).slice(0, 2).forEach(g => { g.reading = true; granNotes(g.id).catch(() => null).then(() => { g.reading = false; meetSoon(); }); });
+    const who = g => g.people.map(z => z.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '').replace(/\S+@\S+/g, m => m.split('@')[0])).filter(Boolean).slice(0, 5).join(', ');
+    const coName = g => { const pid = granProfOf(g); const z = pid && profiles().find(q => q.id === pid); return z ? z.name : ''; };
+    const left = g => { const n = gran.notes.get(g.id); return n ? granLeft(g.id, n) : -1; };
+    const cols = [{ k: 'title', label: 'Meeting', def: 'minmax(240px, 2.4fr)', min: 160 }, { k: 'when', label: 'When', def: '130px', min: 90 }, { k: 'people', label: 'People', def: '1.6fr', min: 100 }, { k: 'co', label: 'Company', def: '1.1fr', min: 90 }, { k: 'act', label: 'Actions', def: '120px', min: 80 }];
+    const l = document.createElement('div'); l.className = 'cos-list';
+    const hd = document.createElement('div'); hd.className = 'crow h'; l.appendChild(gridHead(hd, l, 'meetList', cols, { canClear: true, onSort: meetRender }));
+    const vals = { title: g => g.title, when: g => g.at, people: g => who(g), co: g => coName(g) || '~', act: g => (granDone.has(g.id) ? -2 : left(g)) };
+    const st = gridSortOf('meetList'); const items = st && vals[st.col] ? list.slice().sort(gridCmp(st.dir, vals[st.col])) : list;
+    const rows = [];
+    for (const g of items) {
+      const r = document.createElement('div'); r.className = 'crow';
+      const c = (cls, text) => Object.assign(document.createElement('span'), { className: cls, textContent: text });
+      const co = document.createElement('span');
+      { const pid = granProfOf(g), z = pid && profiles().find(q => q.id === pid), b = document.createElement('button'); b.type = 'button';
+        if (z) { b.className = 'co'; b.innerHTML = '<i></i><span></span>'; b.querySelector('i').style.background = z.color || '#999'; b.querySelector('span').textContent = z.name; b.title = 'Click to move this meeting to another company'; } else { b.className = 'gwhich'; b.textContent = profiles().length > 1 ? 'Which company?' : ''; b.title = 'Say which company this meeting belongs to. It is remembered for the people who were in it.'; b.hidden = profiles().length < 2; }
+        b.addEventListener('click', e => { e.stopPropagation(); const q = b.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(y => ({ label: y.name, dot: y.color, checked: y.id === pid, run: () => { granProfSet(g, y.id); meetRender(); } }))); });
+        co.appendChild(b); }
+      const n = left(g), act = granDone.has(g.id) ? c('done', 'Dealt with') : n < 0 ? c('mu', 'Reading\u2026') : n ? c('todo', `${n} to give out`) : c('mu', (gran.notes.get(g.id) || { actions: [] }).actions.length ? 'All given out' : 'None');
+      r.append(c('mt', g.title), c('mu', `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(g.at)}`), c('mu', who(g)), co, act);
+      r.dataset.q = `${g.title} ${g.people.join(' ')} ${coName(g)}`.toLowerCase();
+      r.addEventListener('click', () => granMeetingDlg(g));
+      l.appendChild(r); rows.push(r);
+    }
+    const none = Object.assign(document.createElement('div'), { className: 'meet-empty', textContent: list.length ? 'Nothing matches that search.' : 'No meetings here. Try a longer time, or another company, in the list on the left.' }); l.appendChild(none);
+    const filter = () => { const q = find.value.trim().toLowerCase(); meetUi.q = find.value; let k = 0; for (const r of rows) { const ok = !q || q.split(/\s+/).every(w => r.dataset.q.includes(w)); r.hidden = !ok; if (ok) k++; } none.hidden = !!k; sub.textContent = `${q ? k + ' of ' : ''}${list.length} meeting${list.length === 1 ? '' : 's'}`; };
+    find.addEventListener('input', filter); filter();
+    P.appendChild(l);
+  }
   // ----- Actions from meetings, in the Chief of Staff's own tab -----
   // Which company a meeting belongs to: said by its title where it can be (the company's name is in it), otherwise
   // you say once and it is remembered, for that meeting and for the people who were in it. Only ids, a company and
@@ -17019,7 +17130,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // (the count on the tab and in the weekly note: what is still to give out or dismiss, in the notes read so far)
   function granOpenCount(p) { let n = 0; try { for (const g of granRecent(p, granActDays())) n += granLeft(g.id, gran.notes.get(g.id)); } catch (e) { /* not ready */ } return n; }
   let granPaneTimer = null;
-  const granPaneSoon = () => { clearTimeout(granPaneTimer); granPaneTimer = setTimeout(() => { try { if (currentApp === 'cos' && cosUi.tab === 'meetings' && !document.querySelector('.gma select:focus')) renderCos(); } catch (e) { /* not showing */ } }, 350); };
+  const granPaneSoon = () => { try { meetSoon(); } catch (e) { /* not showing */ } clearTimeout(granPaneTimer); granPaneTimer = setTimeout(() => { try { if (currentApp === 'cos' && cosUi.tab === 'meetings' && !document.querySelector('.gma select:focus')) renderCos(); } catch (e) { /* not showing */ } }, 350); };
   function granActionsPane(p) {
     const el = document.createElement('div'); el.className = 'gma';
     // Two lists on one page: what meetings threw up and nobody has yet, and what each member of staff already holds.
