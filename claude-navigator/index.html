@@ -358,6 +358,16 @@
   dialog.gran-dlg .gact { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; margin: 6px 0; background: color-mix(in srgb, var(--accent) 4%, transparent); } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
   dialog.gran-dlg .gact .gx { flex: none; border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; width: 24px; height: 24px; border-radius: 6px; cursor: pointer; padding: 0; } dialog.gran-dlg .gact .gx:hover { background: var(--hover); color: var(--text); }
   dialog.gran-dlg .gback { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 2px 4px; cursor: pointer; text-decoration: underline; }
+  .gma { padding: 4px 18px 24px; overflow: auto; flex: 1; min-height: 0; } .gma-lead { color: var(--muted); font-size: 13px; margin: 10px 0 12px; }
+  .gma-t { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--win); }
+  .gma-r { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.3fr) 96px 250px; gap: 14px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); } .gma-r:first-child { border-top: 0; }
+  .gma-h { background: color-mix(in srgb, var(--text) 4%, transparent); padding: 6px 14px; } .gma-h button { font: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border: 0; background: none; text-align: left; padding: 2px 0; cursor: pointer; } .gma-h button:hover { color: var(--text); }
+  .gma .ga b { display: block; font-weight: 600; font-size: 13.5px; } .gma .ga span { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; line-height: 1.4; }
+  .gma .gm { display: grid; gap: 3px; justify-items: start; min-width: 0; } .gma .gm .lnk { font: inherit; font-size: 12.5px; border: 0; background: none; color: var(--text); text-align: left; padding: 0; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; } .gma .gm .lnk:hover { text-decoration: underline; }
+  .gma .gwhich { font: inherit; font-size: 11px; border: 1px dashed var(--line); border-radius: 999px; background: none; color: #B36E24; padding: 1px 8px; cursor: pointer; }
+  .gma .gw { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .gma .gdo { display: flex; gap: 8px; justify-content: flex-end; } .gma .gdo select { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); max-width: 150px; } .gma .gdo .btn { font-size: 12px; padding: 4px 10px; white-space: nowrap; }
+  .gma-back { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 10px 4px; cursor: pointer; text-decoration: underline; }
   dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
   dialog.gran-dlg .gseg { flex: none; align-self: flex-start; display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); margin: 0 0 10px; } dialog.gran-dlg .gseg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 4px 16px; border-radius: 7px; cursor: pointer; } dialog.gran-dlg .gseg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
   dialog.gran-dlg .dlg-actions { flex-wrap: wrap; gap: 8px; } dialog.gran-dlg .dlg-actions .btn, dialog.gran-dlg .dlg-actions .btn-primary { white-space: nowrap; flex: none; }
@@ -8292,6 +8302,7 @@
     if (n.clara) tabs.push(['clara', 'Scheduling']);
     if (n.dashboard) { if (n.dashFirst) tabs.unshift(['dashboard', 'Dashboard']); else tabs.push(['dashboard', 'Dashboard']); }
     if (n.whiteboard) tabs.push(['whiteboard', 'Whiteboard']);
+    try { if (n.chief && gran.on) tabs.splice(1, 0, ['meetings', 'Meeting Actions']); } catch (e) { /* Granola not ready yet */ }
     return tabs;
   }
   function openStaff(id) {
@@ -9275,7 +9286,7 @@
       if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
       if (k === 'whiteboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosBoardMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length && !r.past).length : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length && !r.past).length : k === 'meetings' ? granOpenCount(activeProfile()) : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -9341,8 +9352,17 @@
       btn(`<span class="ic">${UI.reload}</span>`, 'Reload Clara\u2019s dashboard', () => { try { claraViewEnsure().reload(); } catch (e) { /* starting */ } });
       btn(UI.more, 'More', e => { const r = e.currentTarget.getBoundingClientRect(); cosClaraMenu(r.left, r.bottom + 4, n); });
     }
+    if (cosUi.tab === 'meetings' && n.chief) {
+      const tb = newTabBar('Actions from your meetings');
+      const mk = (label, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
+      const days = granActDays();
+      mk(days === 7 ? 'This Week' : days === 14 ? 'Last 14 Days' : 'Last 30 Days', 'How far back to look. Click to change.', () => { ls.set('claudeNavigator.granActDays', String(days === 7 ? 14 : days === 14 ? 30 : 7)); renderCos(); });
+      mk('Check Again', 'Read the meetings from Granola again', () => { granLoad(true).then(() => renderCos()).catch(() => {}); });
+      mk('All Meetings\u2026', 'Every recorded meeting, with its notes', () => granListDlg());
+    }
     page.append(...[who, setup, tabs, tabBar].filter(Boolean));
     body.appendChild(page);
+    if (cosUi.tab === 'meetings' && n.chief && cosUi.setupFor !== n.id) { page.appendChild(granActionsPane(activeProfile())); cosUi.toFolder = false; return; }
     if (cosUi.setupFor === n.id) {
       page.appendChild(cosSetupSteps(n));
       if (cosUi.adding) cosSourcePane();
@@ -13187,7 +13207,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
       if (mailMulti.has(x.id)) r.classList.add('multi');
-      if (isClaraAddr(addrOf(x.from)) && !CLARA_DIGEST.test(x.subject || '') && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const fl = r.querySelector('.fl'); if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }
+      if (isClaraAddr(addrOf(x.from)) && !CLARA_DIGEST.test(x.subject || '') && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const sjw = wide ? r.querySelector('.sjw') : null, fl = r.querySelector('.fl'); if (sjw) sjw.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); else if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }          // (in columns it sits with the subject, not over it)
       r.addEventListener('click', e => {
         // Ctrl-click (Cmd on a Mac) adds or removes one; Shift-click takes everything from the last one you clicked to this one.
         if (e.metaKey || e.ctrlKey || e.shiftKey) {
@@ -16440,6 +16460,10 @@ body { width: max-content !important; min-width: 0 !important; }
       const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a.getTime() + 864e5);
       for (const i of calVisible(a, b)) { if (i.allDay || i.end < now) continue; today.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: (i.ev && i.ev.location) ? String(i.ev.location).slice(0, 60) : (i.start <= now ? 'On now' : ''), go: 'Open', run: () => setApp('cal') }); if (today.length >= 4) break; }
     } catch (e) { /* no calendar yet */ }
+    try { if (granReviewDue()) { const n = granOpenCount(p); out.push({ h: 'Weekly review', items: [
+      { ic: 'meet', title: 'Go through this week\u2019s meeting actions', sub: n ? `${n} to give out or dismiss` : 'Give out what needs doing, dismiss the rest', go: 'Review', run: granReviewOpen },
+      { ic: 'meet', title: 'Not now', sub: 'Ask me again in three hours', go: 'Later', run: () => { ls.set(GRAN_REVIEW, JSON.stringify({ week: granWeek(Date.now()), later: Date.now() + 3 * 3600e3 })); cosBotRender(); } },
+      { ic: 'meet', title: 'Skip this week', sub: 'The Meeting Actions tab is always there', go: 'Skip', run: () => { granReviewDone(); cosBotRender(); } }] }); } } catch (e) { /* Granola not ready */ }
     if (today.length) out.push({ h: 'Today', items: today });
     const tomorrow = [];
     try {
@@ -16893,6 +16917,100 @@ body { width: max-content !important; min-width: 0 !important; }
   const granSkipSave = () => ls.set(GRAN_SKIP, JSON.stringify([...granSkip].slice(-1500)));
   const granKey = (id, a) => { let h = 5381; for (const c of String(a).toLowerCase().replace(/\W+/g, '')) h = ((h * 33) ^ c.charCodeAt(0)) >>> 0; return String(id).slice(0, 12) + ':' + h.toString(36); };
   const granLeft = (id, n) => (n && n.actions ? n.actions.filter(a => !granSkip.has(granKey(id, a))).length : 0);
+  // ----- Actions from meetings, in the Chief of Staff's own tab -----
+  // Which company a meeting belongs to: said by its title where it can be (the company's name is in it), otherwise
+  // you say once and it is remembered, for that meeting and for the people who were in it. Only ids, a company and
+  // addresses are kept: never anything that was said.
+  const GRAN_PROF = 'claudeNavigator.granolaProfile.v1';
+  const granProfS = (() => { try { return Object.assign({ m: {}, who: {} }, JSON.parse(ls.get(GRAN_PROF) || '{}')); } catch (e) { return { m: {}, who: {} }; } })();
+  const granProfSave = () => { const mk = Object.keys(granProfS.m); if (mk.length > 600) for (const k of mk.slice(0, mk.length - 600)) delete granProfS.m[k]; ls.set(GRAN_PROF, JSON.stringify(granProfS)); };
+  function granProfOf(g) {
+    const ps = profiles(); if (ps.length < 2) return ps[0] ? ps[0].id : '';
+    if (granProfS.m[g.id] && ps.some(p => p.id === granProfS.m[g.id])) return granProfS.m[g.id];
+    const hay = (g.title + ' ' + g.people.join(' ')).toLowerCase(), hits = ps.filter(p => { const nm = String(p.name || '').toLowerCase().trim(); return nm.length > 2 && hay.includes(nm); });
+    if (hits.length === 1) return hits[0].id;
+    const votes = {}; for (const a of granAddrs(g)) { const pid = granProfS.who[a]; if (pid && ps.some(p => p.id === pid)) votes[pid] = (votes[pid] || 0) + 1; }
+    const top = Object.entries(votes).sort((x, y) => y[1] - x[1]);
+    return top.length && (top.length === 1 || top[0][1] > top[1][1]) ? top[0][0] : '';
+  }
+  function granProfSet(g, pid) { granProfS.m[g.id] = pid; const mine = new Set((mailUi.accounts || []).map(a => String(a.email || '').toLowerCase())); for (const a of granAddrs(g)) if (!mine.has(a)) granProfS.who[a] = pid; granProfSave(); }
+  const granActDays = () => { const d = +(ls.get('claudeNavigator.granActDays') || 7); return d === 14 || d === 30 ? d : 7; };
+  const granRecent = (p, days) => gran.list.filter(g => { const age = Date.now() - g.at; if (age < 0 || age > days * 864e5 || granDone.has(g.id)) return false; const pid = granProfOf(g); return !pid || !p || pid === p.id; });
+  // (the count on the tab and in the weekly note: what is still to give out or dismiss, in the notes read so far)
+  function granOpenCount(p) { let n = 0; try { for (const g of granRecent(p, granActDays())) n += granLeft(g.id, gran.notes.get(g.id)); } catch (e) { /* not ready */ } return n; }
+  let granPaneTimer = null;
+  const granPaneSoon = () => { clearTimeout(granPaneTimer); granPaneTimer = setTimeout(() => { try { if (currentApp === 'cos' && cosUi.tab === 'meetings' && !document.querySelector('.gma select:focus')) renderCos(); } catch (e) { /* not showing */ } }, 350); };
+  function granActionsPane(p) {
+    const el = document.createElement('div'); el.className = 'gma';
+    const days = granActDays(), meets = granRecent(p, days), t = cosTeam(p), staff = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief) : [];
+    // read the notes of any meeting not read yet, two at a time, and draw again as they arrive
+    const need = meets.filter(g => !gran.notes.get(g.id) && !g.reading);
+    need.slice(0, 2).forEach(g => { g.reading = true; granNotes(g.id).catch(() => null).then(() => { g.reading = false; granPaneSoon(); }); });
+    const rows = [];
+    for (const g of meets) { const n = gran.notes.get(g.id); if (!n || !n.actions) continue; n.actions.forEach((a, i) => { if (!granSkip.has(granKey(g.id, a))) rows.push({ g, a, sub: (n.actions.subs && n.actions.subs[i]) || '' }); }); }
+    const sort = (() => { try { return JSON.parse(ls.get('claudeNavigator.granActSort') || '{}'); } catch (e) { return {}; } })(), k = sort.k || 'when', dir = sort.dir === 1 ? 1 : -1;
+    const val = r => (k === 'action' ? r.a.toLowerCase() : k === 'meeting' ? r.g.title.toLowerCase() : r.g.at);
+    rows.sort((x, y) => (val(x) < val(y) ? -1 : val(x) > val(y) ? 1 : 0) * (k === 'when' ? dir : -dir) || y.g.at - x.g.at);
+    const reading = meets.filter(g => !gran.notes.get(g.id)).length, gone = meets.reduce((c, g) => { const n = gran.notes.get(g.id); return c + (n && n.actions ? n.actions.filter(a => granSkip.has(granKey(g.id, a))).length : 0); }, 0);
+    const lead = document.createElement('p'); lead.className = 'gma-lead';
+    lead.textContent = `${rows.length ? rows.length + ' action' + (rows.length === 1 ? '' : 's') + ' to give out or dismiss' : reading ? 'Reading the notes\u2026' : 'Nothing left to give out'}, from ${meets.length} meeting${meets.length === 1 ? '' : 's'} ${days === 7 ? 'this week' : 'in the last ' + days + ' days'}${p ? ' for ' + p.name : ''}.${reading && rows.length ? ' Still reading ' + reading + ' more.' : ''}`;
+    el.appendChild(lead);
+    if (rows.length) {
+      const tbl = document.createElement('div'); tbl.className = 'gma-t';
+      const head = document.createElement('div'); head.className = 'gma-r gma-h';
+      for (const [key, label] of [['action', 'Action'], ['meeting', 'Meeting'], ['when', 'When']]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label + (k === key ? (((key === 'when' ? dir : -dir) > 0) ? ' \u2191' : ' \u2193') : ''); b.title = 'Sort by this'; b.addEventListener('click', () => { ls.set('claudeNavigator.granActSort', JSON.stringify({ k: key, dir: k === key ? -dir : (key === 'when' ? -1 : -1) })); renderCos(); }); head.appendChild(b); }
+      head.appendChild(document.createElement('span')); tbl.appendChild(head);
+      for (const r of rows) {
+        const row = document.createElement('div'); row.className = 'gma-r';
+        const c1 = document.createElement('div'); c1.className = 'ga'; c1.appendChild(Object.assign(document.createElement('b'), { textContent: r.a })); if (r.sub) c1.appendChild(Object.assign(document.createElement('span'), { textContent: r.sub }));
+        const c2 = document.createElement('div'); c2.className = 'gm';
+        const mt = document.createElement('button'); mt.type = 'button'; mt.className = 'lnk'; mt.textContent = r.g.title; mt.title = 'Open this meeting\u2019s notes'; mt.addEventListener('click', () => granMeetingDlg(r.g)); c2.appendChild(mt);
+        if (!granProfOf(r.g) && profiles().length > 1) { const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'gwhich'; wb.textContent = 'Which company?'; wb.title = 'This meeting could belong to any of your companies. Say which, and it is remembered for the people who were in it.'; wb.addEventListener('click', e => { const q = e.currentTarget.getBoundingClientRect(); showMenu(q.left, q.bottom + 4, profiles().map(z => ({ label: z.name, dot: z.color, run: () => { granProfSet(r.g, z.id); renderCos(); } }))); }); c2.appendChild(wb); }
+        const c3 = document.createElement('div'); c3.className = 'gw'; c3.textContent = new Date(r.g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+        const c4 = document.createElement('div'); c4.className = 'gdo';
+        const sel = document.createElement('select'); sel.title = 'Put this on a staff member\u2019s list of actions';
+        sel.appendChild(Object.assign(document.createElement('option'), { value: '', textContent: 'Give to\u2026' }));
+        for (const st of staff) sel.appendChild(Object.assign(document.createElement('option'), { value: st.id, textContent: st.name }));
+        sel.addEventListener('change', () => { const st = staff.find(z => z.id === sel.value); if (!st) return; const why = `${r.sub ? r.sub.replace(/[.\s]+$/, '') + '. ' : ''}From the meeting \u201C${r.g.title}\u201D on ${new Date(r.g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}${r.g.people.length ? ', with ' + r.g.people.map(z => z.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '').replace(/\S+@\S+/g, m => m.split('@')[0])).slice(0, 4).join(', ') : ''}.`; if (botAddAction(st, r.a, why)) { granSkip.add(granKey(r.g.id, r.a)); granSkipSave(); try { cosBotSoon(); } catch (e) { /* not showing */ } renderCos(); } else sel.value = ''; });
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'btn'; x.textContent = 'Dismiss'; x.title = 'Already done, or not needed'; x.addEventListener('click', () => { granSkip.add(granKey(r.g.id, r.a)); granSkipSave(); try { cosBotSoon(); } catch (e) { /* not showing */ } renderCos(); });
+        c4.append(sel, x); row.append(c1, c2, c3, c4); tbl.appendChild(row);
+      }
+      el.appendChild(tbl);
+    }
+    if (gone) { const back = document.createElement('button'); back.type = 'button'; back.className = 'gma-back'; back.textContent = `${gone} given or dismissed. Show ${gone === 1 ? 'it' : 'them'} again`; back.addEventListener('click', () => { for (const g of meets) { const n = gran.notes.get(g.id); if (n && n.actions) n.actions.forEach(a => granSkip.delete(granKey(g.id, a))); } granSkipSave(); renderCos(); }); el.appendChild(back); }
+    if (!rows.length && !reading) granReviewDone();          // (cleared: the weekly note stops asking)
+    return el;
+  }
+  // The weekly review: from Friday midday the Chief of Staff asks, once, whether you want to go through the week's
+  // meeting actions. Say later and it asks again in three hours; ignore it and nothing is lost: the tab is always there.
+  const GRAN_REVIEW = 'claudeNavigator.granolaReview.v1';
+  const granWeek = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.toISOString().slice(0, 10); };          // (the Monday of that week)
+  const granReviewS = () => { try { return JSON.parse(ls.get(GRAN_REVIEW) || '{}') || {}; } catch (e) { return {}; } };
+  const granReviewDone = () => { const r = granReviewS(); if (r.week === granWeek(Date.now()) && r.done) return; ls.set(GRAN_REVIEW, JSON.stringify({ week: granWeek(Date.now()), done: true })); };
+  function granReviewDue() {
+    if (!gran.on) return false;
+    const now = new Date(), day = now.getDay(), after = (day === 5 && now.getHours() >= 12) || day === 6 || day === 0; if (!after) return false;
+    const r = granReviewS(); if (r.week === granWeek(now) && (r.done || (r.later && Date.now() < r.later))) return false;
+    return true;
+  }
+  function granReviewOpen() {
+    const t = cosTeam(), chief = t && t.nodes.find(x => x.chief); if (!chief) return toast('Set up a team in Chief of Staff first.');
+    try { bot.open = false; saveBot(); cosBotRender(); } catch (e) { /* not showing */ }
+    try { if (currentApp !== 'cos') setApp('cos'); } catch (e) { /* already there */ }
+    try { openStaff(chief.id); } catch (e) { /* drawn below */ }
+    cosUi.tab = 'meetings'; cosUi.toFolder = false; renderCos();
+  }
+  let granAsked = '';
+  function granReviewTick() {
+    try {
+      if (!granReviewDue() || SOLO) return;
+      const key = granWeek(Date.now()) + '|' + (granReviewS().later || 0); if (granAsked === key) return; granAsked = key;
+      const n = granOpenCount(activeProfile());
+      chime('ready'); try { cosBotSoon(); } catch (e) { /* not showing */ }
+      try { const note = new Notification('Weekly review: actions from your meetings', { body: n ? `${n} action${n === 1 ? '' : 's'} from this week\u2019s meetings to give out or dismiss.` : 'Go through this week\u2019s meetings and give out what needs doing.', silent: true }); note.onclick = () => { try { window.focus(); } catch (e) { /* in front already */ } granReviewOpen(); }; } catch (e) { /* notifications are off: the Chief of Staff still shows it */ }
+    } catch (e) { /* asked next time */ }
+  }
+  setInterval(granReviewTick, 5 * 60e3); setTimeout(granReviewTick, 45000);
   function granActions(text) {
     const out = []; out.subs = []; let inside = false;
     for (const raw of String(text || '').split(/\n/)) {
