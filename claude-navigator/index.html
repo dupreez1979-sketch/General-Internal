@@ -342,7 +342,42 @@
   body.bot-dock .bot-size:hover, body.bot-over .bot-size:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
   #botScrim { position: fixed; inset: 0; background: var(--scrim); z-index: 61; } #botScrim[hidden] { display: none; }
   body.bot-dock #notesPanel, body.bot-dock.cos-acts-pop #actPanel { margin-right: var(--bot-dock, 0px); }
-  #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }   /* kept laid out, so the chat never reloads */
+  #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }
+  /* ---- Design system, step 4: the rail, the profile control and the toolbars ---- */
+  /* The rail is quiet: every app is a plain glyph, and only the app you are in wears the profile colour. */
+  #dock .dock-b { opacity: 1; }
+  #dock .app-ic.mini { background: transparent !important; box-shadow: none !important; color: var(--muted); transition: background .12s, color .12s; }
+  #dock .app-ic.mini svg [stroke="#fff"], #dock .app-ic.mini svg [stroke="#FFF"], #dock .app-ic.mini svg [stroke="white"], #dock .app-ic.mini svg [stroke="#ffffff"] { stroke: currentColor; }
+  #dock .app-ic.mini svg [fill="#fff"], #dock .app-ic.mini svg [fill="#FFF"], #dock .app-ic.mini svg [fill="white"], #dock .app-ic.mini svg [fill="#ffffff"] { fill: currentColor; }
+  #dock .app-ic.mini.monday svg { filter: grayscale(1); opacity: .75; }
+  #dock .dock-b:hover .app-ic.mini, #dock .dock-b.on .app-ic.mini { color: var(--text); }
+  #dock .dock-b.main { background: none; box-shadow: none; }
+  #dock .dock-b.main .app-ic.mini { background: var(--accent) !important; color: var(--accent-text, #fff); }
+  #dock .dock-b.main .app-ic.mini.monday { background: color-mix(in srgb, var(--accent) 22%, var(--win)) !important; } #dock .dock-b.main .app-ic.mini.monday svg { filter: none; opacity: 1; }
+  /* The profile control: a swatch with the profile's initial, its name, and underneath what it holds in this app. */
+  .profile-btn { gap: 8px; padding: 4px 8px 4px 5px; border-radius: var(--r-control); background: none; text-align: left; height: 40px; }
+  .profile-btn:hover { background: var(--hover); }
+  .profile-btn .pdot { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: #fff; font-size: var(--fs-caption); font-weight: var(--fw-bold); box-shadow: none; }
+  .profile-btn .ptext { display: grid; min-width: 0; line-height: 1.2; }
+  .profile-btn .pname { font-size: var(--fs-body); font-weight: var(--fw-bold); }
+  .profile-btn .psub { font-size: var(--fs-label); font-weight: var(--fw-regular); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .profile-btn .psub:empty { display: none; }
+  /* Toolbars: an icon-only button, the Chief of Staff button, and a banner for anything that needs saying. */
+  .tb.ico .t { display: none; } .mail-acts .tb.ico { padding: 0 7px; }
+  .tb.bot-tool { position: relative; padding: 0 4px; flex: none; margin-left: 2px; } .tb.bot-tool[hidden] { display: none; }
+  .tb.bot-tool .av { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: var(--fw-bold); letter-spacing: .02em; color: var(--muted); box-shadow: inset 0 0 0 1.4px currentColor; }
+  .tb.bot-tool:hover .av { color: var(--text); }
+  .tb.bot-tool.on .av { background: var(--accent); color: var(--accent-text, #fff); box-shadow: none; }
+  .tb.bot-tool .n { position: absolute; top: 2px; right: 0; width: 8px; height: 8px; border-radius: 50%; background: #E3A452; box-shadow: 0 0 0 2px var(--win); } .tb.bot-tool .n[hidden] { display: none; }
+  #cosBot .bot-btn { display: none; }
+  #bar #bBot { order: 999; }
+  .banner { flex: none; display: flex; align-items: center; gap: var(--sp-3); padding: 8px 14px; background: var(--caution-soft, #fdf3e2); border-bottom: 1px solid var(--line); font-size: var(--fs-caption); }
+  .banner .needs-dot { width: 8px; height: 8px; border-radius: 50%; background: #E3A452; flex: none; }
+  .banner b { font-weight: var(--fw-bold); white-space: nowrap; } .banner .d { color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .banner .btn { flex: none; }
+  .cos-cvwrap { flex: 1; min-width: 0; min-height: 0; display: flex; position: relative; }
+  .cos-zoom { position: absolute; left: 14px; bottom: 14px; display: inline-flex; align-items: center; gap: 1px; padding: 2px; border-radius: var(--r-card); background: var(--win); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .cos-zoom .tb { height: 26px; min-width: 28px; padding: 0 7px; }   /* kept laid out, so the chat never reloads */
   #cosBot.open .bot-tips { display: none; }
   .bot-head { flex: none; display: flex; align-items: center; gap: var(--sp-2); padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); }
   .bot-head .av { width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-text, #fff); display: grid; place-items: center; font-size: var(--fs-label); }
@@ -549,7 +584,7 @@
   .mac-app #topLeft { left: 80px; }
   #topLeft #sideToggle { color: var(--muted); padding: 4px 5px; }
   #topLeft #sideToggle.on { color: var(--text); }
-  #topLeft .profile-btn { max-width: calc(var(--side-w) - 130px); }
+  #topLeft .profile-btn { max-width: calc(var(--side-w) - 56px); } .mac-app #topLeft .profile-btn { max-width: calc(var(--side-w) - 90px); }
   body.side-off #topLeft .profile-btn { max-width: 170px; }
   #edgeSide { display: none !important; }
   /* With the sidebar hidden, the top bars start clear of the profile picker. */
@@ -1993,7 +2028,7 @@
   <div class="side-top"><span class="brand">Claude Navigator</span>
     <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator and Notes"><span data-icon="apps"></span></button>
     <span id="topLeft"><button class="tb" id="sideToggle" title="Hide or show the sidebar"><svg width="18" height="18" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.6v4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></span>
-    <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="pname">All Profiles</span><span class="pchev" data-icon="chev"></span></button>
+    <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="ptext"><span class="pname">All Profiles</span><span class="psub"></span></span><span class="pchev" data-icon="chev"></span></button>
   </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
   <div id="cosSide" hidden aria-label="Team"></div>
@@ -2041,6 +2076,7 @@
       <span data-icon="search" title="Search all your folders, or filter the Library list you are viewing (Ctrl+F)"></span>
       <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" title="Search all your folders, or the Claude list you are viewing (Ctrl+F).&#10;cape town: both words, any order&#10;&quot;cape town&quot;: exact phrase&#10;zanzibar OR safari: either&#10;board -minutes: leave out a word">
     </div>
+    <button class="tb bot-tool" id="bBot" hidden><span class="av">CS</span><i class="n" hidden></i></button>
   </div>
   <div id="tbPalette" hidden>
     <div class="tbp-tip">Drag items along the toolbar to move them, drag them down here to take them off, or drag them up into the toolbar to add them. Use Flexible Space to push things to the middle or the right.</div>
@@ -8221,6 +8257,7 @@
     head.className = 'cos-head';
     const t = cosTeam(p);
     head.innerHTML = `<h1></h1><span class="sp"></span>`;
+    let notice = null;
     head.querySelector('h1').textContent = p ? `${p.name} · Chief of Staff` : 'Chief of Staff';
     const staff = t && cosUi.page && cosNode(t, cosUi.page);
     if (!staff) cosUi.page = null;
@@ -8257,20 +8294,17 @@
       const btn = (label, title, run, html) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = html || `<span class="t"></span>`; if (!html) b.firstChild.textContent = label; b.addEventListener('click', run); return b; };
       const noProject = t.nodes.filter(x => x.kind === 'staff' && !x.claudeProject);
       if (noProject.length) {
-        const np = btn('', `Every staff member works in their own Claude Project. Click to set up the next one: ${noProject.map(x => x.name).join(', ')}`, () => openStaff(noProject[0].id), `<span class="needs-dot"></span><span class="t">${noProject.length} need${noProject.length === 1 ? 's' : ''} a Claude Project</span>`);
-        np.classList.add('needs-btn');
-        head.append(np);
+        notice = document.createElement('div'); notice.className = 'banner';
+        notice.innerHTML = '<span class="needs-dot"></span><b></b><span class="d"></span><button class="btn">Set Up</button>';
+        notice.querySelector('b').textContent = `${noProject.length} need${noProject.length === 1 ? 's' : ''} a Claude Project`;
+        notice.querySelector('.d').textContent = `${noProject.map(x => x.name).join(', ')} cannot take work until ${noProject.length === 1 ? 'it has' : 'they have'} one.`;
+        notice.querySelector('button').title = `Every staff member works in their own Claude Project. Set up ${noProject[0].name} now.`;
+        notice.querySelector('button').addEventListener('click', () => openStaff(noProject[0].id));
       }
       head.append(
-        btn('', `Add a staff member under the one selected (${K.mod}N)`, () => cosAdd('staff', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Staff</span>`),
-        btn('', `Add a department under the one selected (${K.mod}${K.shift}N)`, () => cosAdd('dept', cosUi.sel), `<span class="ic">${UI.plus}</span><span class="t">Department</span>`),
-        ...(cosUi.view === 'week' ? [] : cosUi.view === 'chart' ? [
-          btn('', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); }, '<span class="t">−</span>'),
-          btn('', 'Fit to window', () => cosFit(), '<span class="t">Fit</span>'),
-          btn('', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); }, '<span class="t">+</span>'),
-          btn('', cosUi.tall ? 'Show the chart across (wide)' : 'Show the chart top to bottom: easier when the team is too wide for the window', () => { cosUi.tall = !cosUi.tall; ls.set('claudeNavigator.cosTall', cosUi.tall ? '1' : ''); renderCos(); },
-            `<span class="t">${cosUi.tall ? 'Wide' : 'Tall'}</span>`),
-        ] : []),
+        btn('', 'Add a staff member or a department under the one selected', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [
+          { label: 'New Staff Member', key: `${K.mod}N`, run: () => cosAdd('staff', cosUi.sel) },
+          { label: 'New Department', key: `${K.mod}${K.shift}N`, run: () => cosAdd('dept', cosUi.sel) }]); }, `<span class="ic">${UI.plus}</span><span class="t">Add</span>`),
         seg);
     }
     if (p) {
@@ -8281,12 +8315,14 @@
       more.addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); cosMoreMenu(b.right - 240, b.bottom + 4); });
       // Refresh: pick up what was done on the phone now, and send the phone the latest, without waiting for the next check.
       const sync = document.createElement('button');
-      sync.className = 'tb'; sync.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">Refresh</span>`;
+      sync.className = 'tb ico'; sync.innerHTML = `<span class="ic">${UI.reload}</span><span class="t">Refresh</span>`;
       sync.title = 'Refresh now: bring in what you did on your phone, and send your phone the latest';
       sync.addEventListener('click', () => phoneSyncNow());
       head.append(sync, cosSearchBox(t), more);
     }
+    head.append(botToolBtn());
     main.appendChild(head);
+    if (notice) main.appendChild(notice);
     renderCosSide(t, p);
     const body = document.createElement('div');
     body.className = 'cos-body';
@@ -8318,7 +8354,18 @@
       if (cosUi.sel && !cosNode(t, cosUi.sel)) cosUi.sel = null;
       if (cosUi.view === 'week') body.appendChild(cosTeamWeek(t));
       else if (cosUi.view === 'list') body.appendChild(cosListEl(t));
-      else { const cv = document.createElement('div'); cv.className = 'cos-canvas'; cv.appendChild(cosChartEl(t)); body.appendChild(cv); }
+      else {
+        const cv = document.createElement('div'); cv.className = 'cos-canvas'; cv.appendChild(cosChartEl(t));
+        // The zoom lives on the chart it changes, not in the toolbar.
+        const wrap = document.createElement('div'); wrap.className = 'cos-cvwrap';
+        const zm = document.createElement('div'); zm.className = 'cos-zoom';
+        const zb = (label, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.title = title; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.addEventListener('click', run); zm.appendChild(b); };
+        zb('\u2212', 'Zoom out', () => { cosUi.zoom = Math.max(0.4, +(cosUi.zoom - 0.1).toFixed(2)); renderCos(); });
+        zb('Fit', 'Fit to window', () => cosFit());
+        zb('+', 'Zoom in', () => { cosUi.zoom = Math.min(1.6, +(cosUi.zoom + 0.1).toFixed(2)); renderCos(); });
+        zb(cosUi.tall ? 'Wide' : 'Tall', cosUi.tall ? 'Show the chart across (wide)' : 'Show the chart top to bottom: easier when the team is too wide for the window', () => { cosUi.tall = !cosUi.tall; ls.set('claudeNavigator.cosTall', cosUi.tall ? '1' : ''); renderCos(); });
+        wrap.append(cv, zm); body.appendChild(wrap);
+      }
       cosPlaceDetail(body, renderCosDetail(t));
     }
     main.appendChild(body);
@@ -11060,6 +11107,7 @@ body { width: max-content !important; min-width: 0 !important; }
     head.append(tb('<span class="t">Today</span>', 'Go to today', () => { calUi.date = new Date(); calUi.scrolled = false; calRender(); }),
       tb(UI.back, 'Back', () => move(-1)), tb(UI.fwd, 'Forward', () => move(1)), title, Object.assign(document.createElement('span'), { className: 'sp' }), upd,
       tb(UI.reload, 'Read your calendars again', () => { calRefresh(true); calGReload(); }), seg);
+    if (currentApp === 'cal') head.append(botToolBtn());
     if (currentApp !== 'cal') {
       const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Event'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
       nm.addEventListener('click', () => calGEdit(null));
@@ -13184,6 +13232,32 @@ body { width: max-content !important; min-width: 0 !important; }
     const flagged = m && m.flag && m.flag.flagStatus === 'flagged';
     // What you can do with the open message. (With the reading pane off, the same buttons also sit on the pop-up itself.)
     const msgTools = () => {
+    if (into === acts) {
+      // The window's own toolbar: the three you use most carry their names, Move and Flag are icons, and the rest are under More
+      // (they are also on the right-click menu and their keys).
+      tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
+      tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+      tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
+      tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }).classList.add('ico');
+      tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }).classList.add('ico');
+      const c = claraOpenCount();
+      const mb = document.createElement('button'); mb.className = 'tb ico mail-more'; mb.innerHTML = UI.more; mb.title = 'More: Reply All, Forward, Mark as Unread, Send To, Clara, Check for New Mail';
+      mb.addEventListener('click', e => {
+        const r0 = e.currentTarget.getBoundingClientRect();
+        showMenu(r0.left, r0.bottom + 4, [
+          { label: 'Reply All', key: `${K.mod}${K.shift}R`, disabled: none, run: () => mailCompose('replyAll', m) },
+          { label: 'Forward', key: `${K.mod}J`, disabled: none, run: () => mailCompose('forward', m) },
+          '-',
+          { label: m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', disabled: none, run: () => mailAct(m, 'read', !m.isRead) },
+          { label: 'Send To\u2026', disabled: none, run: () => mailSendTo(m, r0.left, r0.bottom + 4) },
+          '-',
+          { label: c ? `Clara (${c})\u2026` : 'Clara\u2026', run: () => claraPanel() },
+          { label: 'Check for New Mail', run: () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail\u2026'); } },
+        ]);
+      });
+      into.appendChild(mb);
+      return;
+    }
     tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
     tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
@@ -13208,6 +13282,7 @@ body { width: max-content !important; min-width: 0 !important; }
     pn.title = paneOn ? 'Reading pane is on: a message opens beside the list. Click to turn it off (messages then open in a pop-up, and the list shows columns).' : 'Reading pane is off: a message opens in a pop-up. Click to show it beside the list.';
     pn.addEventListener('click', () => { mailState.pane = !paneOn; mailSave(); mailRenderMain(); });
     head.appendChild(pn);
+    if (currentApp === 'mail') head.appendChild(botToolBtn());
     P.appendChild(head);
     const body = document.createElement('div'); body.className = 'mail-body' + (popped ? ' nopane' : '') + (popped && !inSide ? ' wide' : '');
     const col = document.createElement('div'); col.className = 'mail-col';
@@ -16031,6 +16106,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (wasBeside && sideCan(prev) && !sideHas(prev)) sideOpen(prev, !!sideState.app);
   }
   function dockRender() {
+    try { profileSubPaint(); } catch (e) { /* starting up */ }
     const d = $('dock');
     if (!d || !isApp || SOLO) return;
     d.replaceChildren();
@@ -16654,6 +16730,22 @@ body { width: max-content !important; min-width: 0 !important; }
   // The panel's place in the window. Wide enough, and it is a column: the content is given that much less room.
   // Narrow, and it slides over a dimmed window. (Called whenever the panel is drawn, and when the window changes size.)
   const BOT_DOCK_MIN = 1100;
+  // The button that shows and hides the Chief of Staff column. Each app's toolbar ends with one.
+  function botToolBtn() {
+    const b = document.createElement('button'); b.className = 'tb bot-tool'; b.innerHTML = '<span class="av">CS</span><i class="n" hidden></i>';
+    b.addEventListener('click', () => $('cosBot').querySelector('.bot-btn').click());
+    botToolPaint(b); return b;
+  }
+  function botToolPaint(one) {
+    try {
+      const el = $('cosBot'), rb = el.querySelector('.bot-btn');
+      for (const b of one ? [one] : document.querySelectorAll('.bot-tool')) {
+        b.hidden = !!el.hidden; b.classList.toggle('on', !!bot.open && !el.hidden);
+        b.querySelector('.n').hidden = rb.querySelector('.badge').hidden;
+        b.title = bot.open ? 'Hide the Chief of Staff' : (rb.title || 'Show the Chief of Staff');
+      }
+    } catch (e) { /* starting up: painted when the panel is first drawn */ if (one) one.hidden = true; }
+  }
   function botDock(showing) {
     const el = $('cosBot'), B = document.body; if (!el) return;
     const open = !!showing && !!bot.open && !el.hidden, wide = innerWidth >= BOT_DOCK_MIN;
@@ -17253,7 +17345,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if ((to.missing || []).length) toast(`No address found for ${to.missing.join(', ')}. Add it in To.`);
       return;
     }
-    if (a.k === 'meeting') { bot.open = false; saveBot(); cosBotRender(); try { setApp('cal'); } catch (er) { /* already there */ } return calHelper($('cosBot').querySelector('.bot-btn'), activeProfile(), a.text); }
+    if (a.k === 'meeting') { bot.open = false; saveBot(); cosBotRender(); try { setApp('cal'); } catch (er) { /* already there */ } return calHelper(document.querySelector('#calPanel .bot-tool') || $('cosBot').querySelector('.bot-btn'), activeProfile(), a.text); }
   }
   // An answer is one clear line, then short points: never one block of text.
   function botFill(a, e) {
@@ -17875,7 +17967,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const t = cosTeam();
     const on = !!activeProfile() && !!t && ['cos', 'mail', 'cal', 'navigator'].includes(currentApp);
     el.hidden = !on;
-    if (!on) { botDock(false); return; }
+    if (!on) { botDock(false); botToolPaint(); return; }
     // Open or closed is remembered for each app: open in Chief of Staff and closed elsewhere, until you choose otherwise.
     if (botS.forApp !== currentApp) { botS.forApp = currentApp; const by = bot.openBy || {}; bot.open = by[currentApp] !== undefined ? !!by[currentApp] : currentApp === 'cos'; }
     // A different profile has its own Chief of Staff chat.
@@ -17891,6 +17983,7 @@ body { width: max-content !important; min-width: 0 !important; }
     badge.hidden = !count || bot.open;
     badge.textContent = count > 9 ? '9+' : String(count);
     btn.title = `Chief of Staff: ${count ? `${count} thing${count === 1 ? '' : 's'} for you` : 'nothing to flag right now'}. Click to ask, talk, or see today.${bot.quiet ? ' (Quiet: nothing pops up.)' : ''}`;
+    botToolPaint();
     el.querySelector('[data-a="more"]').innerHTML = UI.more;
     el.querySelector('[data-a="min"]').innerHTML = FICON.hide;
     // New suggestions pop up briefly beside the button (not while the panel is open, or when Quiet).
@@ -18233,6 +18326,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
   }
   (() => {
     const el = $('cosBot');
+    $('bBot').addEventListener('click', () => el.querySelector('.bot-btn').click());
     el.querySelector('.bot-btn').addEventListener('click', () => { bot.open = !bot.open; if (!bot.open) { botS.chat = false; try { speechSynthesis.cancel(); } catch (e) { /* no voice */ } } saveBot(); cosBotRender(); if (bot.open) setTimeout(() => { try { botIn().focus(); } catch (e) { /* hidden */ } }, 60); });
     el.querySelector('[data-a="min"]').addEventListener('click', () => { bot.open = false; botS.chat = false; try { speechSynthesis.cancel(); } catch (e) { /* no voice */ } saveBot(); cosBotRender(); });
     el.querySelector('.bot-talk').addEventListener('click', () => botTalk());
@@ -19204,8 +19298,24 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
     const dot = btn.querySelector('.pdot');
     dot.className = 'pdot' + (p ? '' : ' all');
     dot.style.background = p ? p.color : '';
+    dot.textContent = p ? (p.name || '').trim().slice(0, 1).toUpperCase() : '';
+    dot.style.color = p && luminance(p.color || '#000000') > 0.6 ? '#000' : '#fff';
+    if (isMac) btn.title = 'Switch profile (\u2325\u23181, 2, 3... and \u2325\u23180 for All Profiles)';
+    profileSubPaint();
     document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
+  }
+  // The line under the profile's name: what the profile holds in the app you are in.
+  function profileSubPaint() {
+    const el = document.querySelector('#profileBtn .psub'); if (!el) return;
+    let tx = '';
+    try {
+      const p = activeProfile();
+      if (!p) { const n = profiles().length; tx = `${n} profile${n === 1 ? '' : 's'}`; }
+      else if (currentApp === 'cos') { const t = cosTeam(p), n = t ? t.nodes.filter(x => x.kind === 'staff').length : 0; tx = t ? `${n} staff` : 'No team yet'; }
+      else { const a = mailVisible(); tx = a.length === 1 ? (a[0].email || a[0].name || '') : a.length ? `${a.length} mail accounts` : ''; }
+    } catch (e) { /* starting up */ }
+    el.textContent = tx;
   }
   function setProfile(id, { quiet = false } = {}) {
     try { cosEndMaking(); cosUi.adding = false; cosUi.page = null; cosUi.sel = null; } catch (e) { /* starting up */ }
