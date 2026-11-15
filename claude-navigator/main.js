@@ -22,7 +22,7 @@ const isMac = process.platform === 'darwin';
 // times only: no names, mail, files or sign-ins. Kept in memory; "Copy Startup Log" in the Help menu copies it.
 const T0 = Date.now();
 const startLog = [];
-const mark = (what, ms) => { if (startLog.length < 500) startLog.push(`${((Date.now() - T0) / 1000).toFixed(1).padStart(7)}s  ${what}${ms != null ? ` (${ms} ms)` : ''}`); };
+const mark = (what, ms) => { if (startLog.length >= 600) startLog.splice(200, 100); startLog.push(`${((Date.now() - T0) / 1000).toFixed(1).padStart(7)}s  ${what}${ms != null ? ` (${ms} ms)` : ''}`); };
 const timed = (what, fn) => { const t = Date.now(); try { return fn(); } finally { mark(what, Date.now() - t); } };
 let lastJob = '', lastBeat = Date.now();
 // A heartbeat four times a second: when one arrives late, the app was frozen (the spinning wheel) for that long.
@@ -35,7 +35,7 @@ const rawHandle = ipcMain.handle.bind(ipcMain);
 ipcMain.handle = (ch, fn) => rawHandle(ch, (...a) => {
   const t = Date.now(); lastJob = ch; let r;
   try { r = fn(...a); } finally { const d = Date.now() - t; if (d > 250) mark(`job ${ch} held the app`, d); }
-  if (r && typeof r.then === 'function' && Date.now() - T0 < 5 * 60e3) r.then(() => {}, () => {}).then(() => { const d = Date.now() - t; if (d > 3000) mark(`job ${ch} answered`, d); });
+  if (r && typeof r.then === 'function') r.then(() => {}, () => {}).then(() => { const d = Date.now() - t; if (d > 3000) mark(`job ${ch} answered`, d); });
   return r;
 });
 ipcMain.handle('startup-log', e => (mainWindow && e.sender === mainWindow.webContents ? startLogText() : ''));
