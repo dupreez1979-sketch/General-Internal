@@ -341,13 +341,17 @@
   .bot-list .brow .go { flex: none; font-size: 12px; color: var(--accent); font-weight: 600; }
   .bot-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-foot span { flex: 1; } .bot-foot button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; }
   dialog.granola-dlg { width: min(520px, 92vw); } dialog.granola-dlg .gl { display: grid; gap: 6px; margin: 8px 0 14px; font-size: 13px; } dialog.granola-dlg .gline.good { color: #328276; font-weight: 600; } dialog.granola-dlg .gline.bad { color: #b3261e; font-weight: 600; }
-  dialog.gran-dlg { width: min(680px, 94vw); height: min(720px, 88vh); resize: both; overflow: hidden; min-width: 420px; min-height: 320px; } dialog.gran-dlg[open] { display: flex; flex-direction: column; }
+  dialog.mail-sigdlg.gran-dlg { width: min(860px, 94vw); max-width: 96vw; height: min(780px, 90vh); resize: both; overflow: hidden; min-width: 420px; min-height: 320px; } dialog.gran-dlg[open] { display: flex; flex-direction: column; }
   dialog.gran-dlg h2, dialog.gran-dlg .hint, dialog.gran-dlg .dlg-actions { flex: none; } dialog.gran-dlg p.hint { margin: 0 0 8px !important; padding: 0 !important; text-align: left; }
-  dialog.gran-dlg .gbody { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); padding: 10px 2px; font-size: 13px; line-height: 1.5; user-select: text; }
+  dialog.gran-dlg .gbody { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); padding: 14px 6px 18px; font-size: 14px; line-height: 1.6; user-select: text; }
+  dialog.gran-dlg .gbody > * { max-width: 720px; }
+  dialog.gran-dlg .gh2 { font-size: 15px; font-weight: 700; margin: 20px 0 6px; } dialog.gran-dlg .gh + .gh2 { margin-top: 6px; }
+  dialog.gran-dlg .gs { padding-left: 20px; margin: 0 0 6px; color: var(--muted); font-size: 13px; }
+  dialog.gran-dlg .gact span b { display: block; font-weight: 600; } dialog.gran-dlg .gact span i { display: block; font-style: normal; color: var(--muted); font-size: 12.5px; margin-top: 1px; }
   dialog.gran-dlg .gwait { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 20px 4px; } dialog.gran-dlg .gwait .wave { height: 16px; gap: 2px; } dialog.gran-dlg .gwait .wave i { width: 2.5px; }
-  dialog.gran-dlg .gh { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 12px 0 4px; } dialog.gran-dlg .gh:first-child { margin-top: 0; }
-  dialog.gran-dlg .gb { padding-left: 16px; position: relative; margin: 2px 0; } dialog.gran-dlg .gb::before { content: '\2022'; position: absolute; left: 4px; color: var(--muted); } dialog.gran-dlg .gp { margin: 4px 0; }
-  dialog.gran-dlg .gact { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; margin: 5px 0; } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
+  dialog.gran-dlg .gh { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 22px 0 6px; } dialog.gran-dlg .gh:first-child { margin-top: 0; }
+  dialog.gran-dlg .gb { padding-left: 20px; position: relative; margin: 5px 0 1px; } dialog.gran-dlg .gb::before { content: '\2022'; position: absolute; left: 6px; color: var(--accent); } dialog.gran-dlg .gp { margin: 6px 0; }
+  dialog.gran-dlg .gact { display: flex; align-items: center; gap: 12px; border: 1px solid var(--line); border-radius: 11px; padding: 9px 12px; margin: 6px 0; background: color-mix(in srgb, var(--accent) 4%, transparent); } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
   dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
   dialog.gran-dlg .gtr { white-space: pre-wrap; color: var(--text); }
   .cal-pop .gran-b { justify-self: start; margin-top: 4px; }
@@ -16581,21 +16585,22 @@ body { width: max-content !important; min-width: 0 !important; }
     const r = await window.navigatorApp.granolaMeeting(id);
     if (!r || !r.ok) return { err: (r && r.status) || 'could not read', text: '', actions: [], at: 0 };
     const m = /<meeting\s[^>]*>([\s\S]*?)<\/meeting>/.exec(r.text), inner = m ? m[1] : r.text;
-    const text = granText(inner.replace(/<known_participants[\s\S]*?<\/known_participants>/g, '').replace(/<attachments[\s\S]*?<\/attachments>/g, '').replace(/<\/?(summary|ai_summary|notes|enhanced_notes)[^>]*>/g, '\n').replace(/<private_notes[^>]*>/g, '\n## Your own notes\n').replace(/<\/private_notes>/g, '\n').replace(/<[^>]+>/g, '')).replace(/\n{3,}/g, '\n\n').trim();
+    const text = granText(inner.replace(/<known_participants[\s\S]*?<\/known_participants>/g, '').replace(/<attachments[\s\S]*?<\/attachments>/g, '').replace(/<\/?(summary|ai_summary|notes|enhanced_notes)[^>]*>/g, '\n').replace(/<private_notes[^>]*>/g, '\n## Your own notes\n').replace(/<\/private_notes>/g, '\n').replace(/<[^>]+>/g, '')).replace(/The summary below is a condensed overview[\s\S]*?just answer from the\s+transcript\.?/i, '').replace(/^.*\b(search_transcripts|get_meeting_transcript)\b.*$/gm, '').replace(/\n## Your own notes\s*(?=\n\s*(#{1,6}\s|\*\*|$))/g, '\n').replace(/\n## Your own notes\s*$/, '').replace(/\n{3,}/g, '\n\n').trim();
     const got = { text, actions: granActions(text), at: Date.now() };
     gran.notes.set(id, got); if (gran.notes.size > 60) gran.notes.delete(gran.notes.keys().next().value);
     return got;
   }
   // The action items in a set of notes: the points under a heading such as Next Steps or Action Items.
   function granActions(text) {
-    const out = []; let inside = false;
+    const out = []; out.subs = []; let inside = false;
     for (const raw of String(text || '').split(/\n/)) {
       const l = raw.trim(); if (!l) continue;
       const head = /^(#{1,6}\s*|\*\*)?([^#*:]{2,60}?)(\*\*)?:?$/.exec(l), isHead = /^#{1,6}\s/.test(l) || /^\*\*[^*]+\*\*:?$/.test(l) || (head && !/^[-*•\d]/.test(l) && l.length < 50 && !/[.!?]$/.test(l) && /^(next steps?|action items?|actions?|follow[- ]?ups?|to[- ]?dos?)$/i.test(head[2].trim()));
       if (isHead) { inside = /next steps?|action items?|^#*\s*\**actions?\b|follow[- ]?ups?|to[- ]?dos?/i.test(l); continue; }
       if (!inside) continue;
-      const b = /^(?:[-*•]|\d+[.)])\s+(.+)$/.exec(l); if (!b) continue;
-      const t = b[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); if (t.length > 3 && out.length < 12) out.push(t.slice(0, 200));
+      const b = /^(?:[-*\u2022]|\d+[.)])\s+(.+)$/.exec(l);
+      if (!b) { if (out.length && !out.subs[out.length - 1]) out.subs[out.length - 1] = l.replace(/\*\*/g, '').slice(0, 240); continue; }          // (a line of detail under the point before it)
+      const t = b[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); if (t.length > 3 && out.length < 12) { out.push(t.slice(0, 200)); out.subs.push(''); }
     }
     return out;
   }
@@ -16616,7 +16621,10 @@ body { width: max-content !important; min-width: 0 !important; }
     d.querySelector('h2').textContent = (lead ? lead + ': ' : '') + g.title;
     d.querySelector('.hint').textContent = `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(g.at)}${g.people.length ? ' · ' + g.people.map(p => p.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '')).slice(0, 5).join(', ') : ''}`;
     const body = d.querySelector('.gbody'), wait = t => { body.replaceChildren(); const w = document.createElement('div'); w.className = 'gwait'; w.appendChild(waveEl(9, 'busy')); w.appendChild(Object.assign(document.createElement('span'), { textContent: t })); body.appendChild(w); };
-    const prose = (host, text) => { for (const raw of String(text).split(/\n/)) { const l = raw.trim(); if (!l) continue; const h = /^#{1,6}\s+(.*)$/.exec(l) || /^\*\*([^*]+)\*\*:?$/.exec(l), b = /^(?:[-*•]|\d+[.)])\s+(.+)$/.exec(l); host.appendChild(Object.assign(document.createElement('div'), { className: h ? 'gh' : b ? 'gb' : 'gp', textContent: (h ? h[1] : b ? b[1] : l).replace(/\*\*/g, '') })); } };
+    const prose = (host, text) => { let after = '';
+      for (const raw of String(text).split(/\n/)) { const l = raw.trim(); if (!l) continue;
+        const h = /^#{1,6}\s+(.*)$/.exec(l) || /^\*\*([^*]+)\*\*:?$/.exec(l), b = /^(?:[-*\u2022]|\d+[.)])\s+(.+)$/.exec(l), cls = h ? 'gh2' : b ? 'gb' : after === 'gb' || after === 'gs' ? 'gs' : 'gp';
+        host.appendChild(Object.assign(document.createElement('div'), { className: cls, textContent: (h ? h[1] : b ? b[1] : l).replace(/\*\*/g, '') })); after = cls; } };
     const dealt = d.querySelector('[data-x="dealt"]'); const paintDealt = () => { dealt.textContent = granDone.has(g.id) ? 'Show in the Brief Again' : 'Dealt With'; dealt.title = granDone.has(g.id) ? 'Put this meeting back in the Chief of Staff’s brief' : 'Take this meeting out of the Chief of Staff’s brief'; };
     dealt.addEventListener('click', () => { if (granDone.has(g.id)) granDone.delete(g.id); else granDone.add(g.id); granDoneSave(); paintDealt(); try { cosBotSoon(); } catch (e) { /* not showing */ } }); paintDealt();
     const showNotes = async () => {
@@ -16626,13 +16634,13 @@ body { width: max-content !important; min-width: 0 !important; }
       if (n.err) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: `The notes could not be read: ${n.err}` }));
       if (n.actions.length) {
         body.appendChild(Object.assign(document.createElement('div'), { className: 'gh', textContent: 'Actions from this meeting' }));
-        for (const a of n.actions) { const r = document.createElement('div'); r.className = 'gact'; r.appendChild(Object.assign(document.createElement('span'), { textContent: a })); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Give To…'; b.title = 'Put this on a staff member’s list of actions'; b.addEventListener('click', () => {          // (the choices sit in the window itself: a menu would open behind it)
+        n.actions.forEach((a, ai) => { const r = document.createElement('div'); r.className = 'gact'; const tx = document.createElement('span'); tx.appendChild(Object.assign(document.createElement('b'), { textContent: a })); if (n.actions.subs && n.actions.subs[ai]) tx.appendChild(Object.assign(document.createElement('i'), { textContent: n.actions.subs[ai] })); r.appendChild(tx); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Give To…'; b.title = 'Put this on a staff member’s list of actions'; b.addEventListener('click', () => {          // (the choices sit in the window itself: a menu would open behind it)
             const next = r.nextElementSibling; if (next && next.classList.contains('gwho')) return next.remove();
             const t = cosTeam(); if (!t) return toast('Set up a team in Chief of Staff first.');
             const w = document.createElement('div'); w.className = 'gwho';
             for (const st of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'btn'; sb.textContent = st.name; sb.addEventListener('click', () => { if (botAddAction(st, a)) { w.remove(); b.textContent = `With the ${st.name}`; b.disabled = true; } }); w.appendChild(sb); }
             r.after(w);
-          }); r.appendChild(b); body.appendChild(r); }
+          }); r.appendChild(b); body.appendChild(r); });
         body.appendChild(Object.assign(document.createElement('div'), { className: 'gh', textContent: 'Notes' }));
       }
       if (n.text) prose(body, n.text); else body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: 'Granola has no notes for this meeting yet.' }));
