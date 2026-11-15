@@ -367,6 +367,8 @@
   .gma .gwhich { font: inherit; font-size: 11px; border: 1px dashed var(--line); border-radius: 999px; background: none; color: #B36E24; padding: 1px 8px; cursor: pointer; }
   .gma .gw { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
   .gma .gdo { display: flex; gap: 8px; justify-content: flex-end; } .gma .gdo select { font: inherit; font-size: 12.5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); max-width: 150px; } .gma .gdo .btn { font-size: 12px; padding: 4px 10px; white-space: nowrap; }
+  .gma-seg { display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); margin: 12px 0 0; } .gma-seg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 5px 16px; border-radius: 7px; cursor: pointer; } .gma-seg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+  .gma-t.st .gma-r { grid-template-columns: minmax(0, 2.4fr) minmax(0, 1.1fr) 96px 150px; }
   .gma-back { font: inherit; font-size: 12px; color: var(--muted); border: 0; background: none; padding: 10px 4px; cursor: pointer; text-decoration: underline; }
   dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
   dialog.gran-dlg .gseg { flex: none; align-self: flex-start; display: inline-flex; padding: 2px; border-radius: 9px; background: color-mix(in srgb, var(--text) 8%, transparent); margin: 0 0 10px; } dialog.gran-dlg .gseg button { font: inherit; font-size: 12.5px; font-weight: 600; border: 0; background: none; color: var(--muted); padding: 4px 16px; border-radius: 7px; cursor: pointer; } dialog.gran-dlg .gseg button.on { background: var(--win); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
@@ -783,6 +785,13 @@
   dialog.mail-sigdlg { border: 0; border-radius: 14px; padding: 18px 20px; width: 520px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
   dialog.mail-sigdlg h2 { margin: 0 0 6px; font-size: 16px; }
   dialog.mail-sigdlg .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; line-height: 1.45; }
+  dialog.mail-sigdlg.sigman { width: min(900px, 94vw); } dialog.sigman p.hint { margin: 0 0 10px !important; padding: 0 !important; text-align: left; }
+  dialog.sigman .sm { display: grid; grid-template-columns: 200px 1fr; gap: 14px; min-height: 300px; } dialog.sigman .sm-l { display: grid; gap: 4px; align-content: start; border-right: 1px solid var(--line); padding-right: 10px; }
+  dialog.sigman .sm-i { display: flex; justify-content: space-between; align-items: center; gap: 8px; font: inherit; text-align: left; border: 0; background: none; color: var(--text); padding: 7px 9px; border-radius: 8px; cursor: pointer; } dialog.sigman .sm-i:hover { background: var(--hover); } dialog.sigman .sm-i.on { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  dialog.sigman .sm-i b { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } dialog.sigman .sm-i span { font-size: 10.5px; color: var(--muted); flex: none; } dialog.sigman .sm-none { color: var(--muted); font-size: 12.5px; padding: 8px; }
+  dialog.sigman .sm-r { display: grid; gap: 8px; align-content: start; min-width: 0; } dialog.sigman .sm-name, dialog.sigman .sm-logo input { font: inherit; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--win); color: var(--text); }
+  dialog.sigman .sm-row { display: flex; gap: 8px; } dialog.sigman .sm-logo { display: grid; gap: 4px; font-size: 12.5px; margin-top: 12px; } dialog.sigman .dlg-actions { flex-wrap: wrap; } dialog.sigman .dlg-actions .btn, dialog.sigman .dlg-actions .btn-primary { white-space: nowrap; flex: none; }
+  .sig-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 60; display: flex; align-items: center; gap: 12px; background: var(--win); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 12px 34px rgba(0,0,0,.22); padding: 10px 14px; max-width: min(820px, 92vw); font-size: 13px; } .sig-bar .t { color: var(--muted); flex: 1; min-width: 0; } .sig-bar .t i { font-style: normal; font-weight: 600; color: var(--text); } .sig-bar .btn { white-space: nowrap; flex: none; }
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13px; outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: 600; }
   .mail-f.all { margin-bottom: 4px; }
@@ -8302,7 +8311,7 @@
     if (n.clara) tabs.push(['clara', 'Scheduling']);
     if (n.dashboard) { if (n.dashFirst) tabs.unshift(['dashboard', 'Dashboard']); else tabs.push(['dashboard', 'Dashboard']); }
     if (n.whiteboard) tabs.push(['whiteboard', 'Whiteboard']);
-    try { if (n.chief && gran.on) tabs.splice(1, 0, ['meetings', 'Meeting Actions']); } catch (e) { /* Granola not ready yet */ }
+    if (n.chief) tabs.splice(1, 0, ['meetings', 'Actions']);
     return tabs;
   }
   function openStaff(id) {
@@ -9286,7 +9295,7 @@
       if (k === 'dashboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosDashMenu(e.clientX, e.clientY, n); });
       if (k === 'whiteboard') b.addEventListener('contextmenu', e => { e.preventDefault(); cosBoardMenu(e.clientX, e.clientY, n); });
       const sk = skillsFolder(n);
-      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length && !r.past).length : k === 'meetings' ? granOpenCount(activeProfile()) : cosRoutines(n).filter(r => !r.paused).length;
+      const cnt = k === 'dashboard' || k === 'whiteboard' ? 0 : k === 'work' ? workItems(f).filter(x => !x.done && !inSkills(x.id) && !inArchive(x.id)).length : k === 'skills' ? workItems(sk).filter(x => !inArchive(x.id)).length : k === 'outputs' ? staffOutputs(n).filter(r => !r.homes.length && !r.past).length : k === 'meetings' ? (gran.on ? granOpenCount(activeProfile()) : 0) : cosRoutines(n).filter(r => !r.paused).length;
       if (cnt) { const c = document.createElement('span'); c.className = 'n'; c.textContent = cnt; b.appendChild(c); }
       b.addEventListener('click', () => { cosUi.tab = k; cosUi.adding = false; cosUi.setupFor = null; cosUi.toFolder = true; renderCos(); });
       tabs.appendChild(b);
@@ -9353,12 +9362,15 @@
       btn(UI.more, 'More', e => { const r = e.currentTarget.getBoundingClientRect(); cosClaraMenu(r.left, r.bottom + 4, n); });
     }
     if (cosUi.tab === 'meetings' && n.chief) {
-      const tb = newTabBar('Actions from your meetings');
+      const staffView = ls.get('claudeNavigator.actView') === 'staff';
+      const tb = newTabBar(staffView ? 'Actions with your staff' : 'Actions from your meetings');
       const mk = (label, title, run) => { const b = document.createElement('button'); b.className = 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', run); tb.appendChild(b); return b; };
       const days = granActDays();
-      mk(days === 7 ? 'This Week' : days === 14 ? 'Last 14 Days' : 'Last 30 Days', 'How far back to look. Click to change.', () => { ls.set('claudeNavigator.granActDays', String(days === 7 ? 14 : days === 14 ? 30 : 7)); renderCos(); });
-      mk('Check Again', 'Read the meetings from Granola again', () => { granLoad(true).then(() => renderCos()).catch(() => {}); });
-      mk('All Meetings\u2026', 'Every recorded meeting, with its notes', () => granListDlg());
+      if (!staffView && gran.on) {
+        mk(days === 7 ? 'This Week' : days === 14 ? 'Last 14 Days' : 'Last 30 Days', 'How far back to look. Click to change.', () => { ls.set('claudeNavigator.granActDays', String(days === 7 ? 14 : days === 14 ? 30 : 7)); renderCos(); });
+        mk('Check Again', 'Read the meetings from Granola again', () => { granLoad(true).then(() => renderCos()).catch(() => {}); });
+        mk('All Meetings\u2026', 'Every recorded meeting, with its notes', () => granListDlg());
+      }
     }
     page.append(...[who, setup, tabs, tabBar].filter(Boolean));
     body.appendChild(page);
@@ -13565,19 +13577,81 @@ body { width: max-content !important; min-width: 0 !important; }
     add.querySelector('button').addEventListener('click', async () => { const done = mailAddAccount(p.id); mailProfileRows(p); await done; if (pf.editing === p && $('profileDlg').open) mailProfileRows(p); });
     box.appendChild(add);
   }
-  function mailEditSignature(a, pid = state.profileId) {
-    const p = pid ? nodeOf(pid) : null;
-    const d = document.createElement('dialog'); d.className = 'mail-sigdlg';
-    d.innerHTML = `<h2></h2><p class="hint"></p><div class="sig-ed" contenteditable="true"></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
-    d.querySelector('h2').textContent = `Signature for ${a.email}`;
-    d.querySelector('.hint').textContent = p ? `Used when you write from this account in ${p.name}. Type it, or copy your signature from an Outlook email and paste it here (pictures and links come too).` : 'Used when you write from this account in any profile that has no signature of its own. Type it, or paste it from an Outlook email.';
-    d.querySelector('.sig-ed').innerHTML = mailSigOf(a.id, pid);
+  // ----- Signatures: several for each account in each profile, one of them the usual one. -----
+  // The usual one is also kept where it always was (mailState.sigs), so everything that puts a signature in still works.
+  const sigListOf = (accId, pid = state.profileId) => {
+    mailState.sigList = mailState.sigList || {}; const k = mailSigKey(accId, pid);
+    if (!mailState.sigList[k]) { const cur = mailSigOf(accId, pid); mailState.sigList[k] = cur ? [{ id: uid(), name: 'Standard', html: cur, usual: true }] : []; }
+    return mailState.sigList[k];
+  };
+  const sigSync = (accId, pid) => { const l = sigListOf(accId, pid), u = l.find(x => x.usual) || l[0]; if (u) l.forEach(x => { x.usual = x === u; }); mailState.sigs = mailState.sigs || {}; mailState.sigs[mailSigKey(accId, pid)] = u ? u.html : ''; mailSave(); };
+  // Only what an email can safely carry is kept from a design: no scripts, no forms, nothing that runs.
+  function sigClean(src) {
+    let text = String(src || '').trim(); const fence = /```(?:html)?\s*([\s\S]*?)```/i.exec(text); if (fence) text = fence[1];
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    doc.querySelectorAll('script,iframe,object,embed,form,input,button,link,meta,title,style,base,noscript,svg,video,audio').forEach(x => x.remove());
+    doc.querySelectorAll('*').forEach(el => { for (const at of [...el.attributes]) { const n = at.name.toLowerCase(), v = String(at.value || ''); if (n.startsWith('on') || n === 'srcdoc' || n === 'contenteditable' || ((n === 'href' || n === 'src') && !/^(https?:|mailto:|tel:|data:image\/|cid:|#)/i.test(v.trim()))) el.removeAttribute(at.name); } });
+    return (doc.body ? doc.body.innerHTML : '').trim().slice(0, 300000);
+  }
+  const sigLooksLikeDesign = t => { const x = String(t || ''); return x.length > 120 && x.length < 400000 && /<(table|div|td|p|span|img|a)\b/i.test(x) && /<\/(table|div|td|p|span|a)>/i.test(x); };
+  let sigDesign = null;          // a design being made in Claude right now: { acc, pid, was, bar, timer }
+  function sigDesignStop() { if (!sigDesign) return; clearInterval(sigDesign.timer); if (sigDesign.bar) sigDesign.bar.remove(); sigDesign = null; }
+  // Designing happens in Claude, on screen, with the profile's design system. When you press Copy on the design there
+  // (or download it), the app notices and offers it as a new signature: nothing to paste, and nothing read off Claude's page.
+  async function sigDesignStart(a, pid, base) {
+    sigDesignStop();
+    const pf = pid ? nodeOf(pid) : null, ds = pf && pf.designSystem, look = (pf && pf.look) || {}, logo = (pf && pf.logoUrl) || '';
+    const tmp = document.createElement('div'); tmp.innerHTML = base || ''; const details = (tmp.innerText || tmp.textContent || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 900);
+    const brief = [
+      `Design an email signature for ${a.name || 'me'}${pf ? ' at ' + pf.name : ''}, as a live HTML artifact I can see.`,
+      ds ? `Use my design system “${ds.name}” for the look (${ds.url}).` : '',
+      [look.accent ? `Brand colour ${look.accent}` : '', (look.headFont || look.bodyFont) ? `brand typeface ${look.headFont || look.bodyFont}` : ''].filter(Boolean).join(', '),
+      logo ? `The logo is at this address; use it exactly as an <img> with a fixed width and a height that keeps its shape: ${logo}` : 'There is no logo address yet, so leave a clearly marked place for one.',
+      details ? `The details to carry over from my current signature:\n${details}` : `Use the name ${a.name || ''} and the address ${a.email}, and mark anything else for me to fill in.`,
+      'It has to survive Outlook and Gmail, so: one self-contained piece of HTML; layout with tables; every style written inline on the element (no <style> block, no classes); web-safe fonts with a fallback (Arial, Helvetica, sans-serif), because custom fonts do not reach the reader; pictures only by https address; no scripts, no SVG, no background images; at most 600 pixels wide; and it must read well in dark mode.',
+      'Show me two or three different directions first. When I choose one, give me that one alone as a single HTML artifact, ready to copy.',
+    ].filter(Boolean).join('\n\n');
+    let was = ''; try { was = String(await window.navigatorApp.clipText() || ''); } catch (e) { /* older app */ }
+    const bar = document.createElement('div'); bar.className = 'sig-bar';
+    bar.innerHTML = '<b>Designing a signature in Claude</b><span class="t">When you like one, press <i>Copy</i> on it in Claude (or download it). It will appear here by itself.</span><button class="btn" data-x="manual">Use What I Copied</button><button class="btn" data-x="stop">Finish</button>';
+    document.body.appendChild(bar);
+    sigDesign = { acc: a, pid, was, bar, timer: null };
+    const offer = html => { const clean = sigClean(html); if (!clean) return toast('That did not look like a signature design.'); const S = sigDesign; sigDesignStop(); mailEditSignature(S.acc, S.pid, { name: 'Designed in Claude', html: clean }); chime('made'); };
+    sigDesign.offer = offer;
+    bar.addEventListener('click', async e => { const x = e.target.dataset && e.target.dataset.x; if (x === 'stop') return sigDesignStop(); if (x === 'manual') { let t = ''; try { t = String(await window.navigatorApp.clipText() || ''); } catch (er) { /* nothing */ } if (!sigLooksLikeDesign(t)) return toast('Nothing that looks like a design is copied yet. Press Copy on the design in Claude first.'); offer(t); } });
+    sigDesign.timer = setInterval(async () => { if (!sigDesign) return; let t = ''; try { t = String(await window.navigatorApp.clipText() || ''); } catch (e) { return; } if (t && t !== sigDesign.was && sigLooksLikeDesign(t)) offer(t); else if (t !== sigDesign.was && t) sigDesign.was = t; }, 1500);
+    try { if (currentApp === 'mail' && typeof openClaude === 'function' && pane.hidden) openClaude(); } catch (e) { /* shown by go() */ }
+    go({ kind: 'page', url: 'https://claude.ai/new?q=' + encodeURIComponent(brief) });
+  }
+  function mailEditSignature(a, pid = state.profileId, add) {
+    const p = pid ? nodeOf(pid) : null, list = sigListOf(a.id, pid);
+    if (add) { list.push({ id: uid(), name: add.name || 'New signature', html: add.html || '', usual: !list.length }); sigSync(a.id, pid); }
+    const d = mailDlg('sigman', '<h2></h2><p class="hint"></p><div class="sm"><div class="sm-l"></div><div class="sm-r"><input class="sm-name" maxlength="60" placeholder="A name for this signature"><div class="sig-ed" contenteditable="true"></div><div class="sm-row"><button class="btn" data-x="usual"></button><button class="btn" data-x="del">Delete</button></div></div></div><label class="sm-logo">Logo address for this profile<input type="url" placeholder="https://… where the logo picture is kept on the web" spellcheck="false"></label><div class="dlg-actions"><button class="btn" data-x="new">New Signature</button><button class="btn" data-x="design" title="Opens Claude on screen with this profile’s design system and a brief. When you copy the design there, it comes back here by itself."></button><span style="flex:1"></span><button class="btn-primary" data-x="ok">Done</button></div>');
+    d.querySelector('h2').textContent = `Signatures for ${a.email}`;
+    d.querySelector('.hint').textContent = p ? `Used when you write from this account in ${p.name}. The usual one goes in by itself; choose another from the ⋯ menu while writing.` : 'Used when you write from this account in any profile that has no signatures of its own.';
+    d.querySelector('[data-x="design"]').textContent = p && p.designSystem ? `Design in Claude (${p.designSystem.name})…` : 'Design in Claude…';
+    const L = d.querySelector('.sm-l'), ed = d.querySelector('.sig-ed'), nm = d.querySelector('.sm-name'), lg = d.querySelector('.sm-logo input'), R = d.querySelector('.sm-r');
+    d.querySelector('.sm-logo').hidden = !p; if (p) { lg.value = p.logoUrl || ''; if (!lg.value) inviteKit(pid).then(k => { const u = k && k.hero && k.hero.logo; if (u && /^https:\/\//i.test(u) && !lg.value) { lg.value = u; p.logoUrl = u; save(); } }).catch(() => {}); }
+    lg.addEventListener('change', () => { const v = lg.value.trim(); if (v && !/^https:\/\/\S+$/i.test(v)) return toast('The address needs to start with https://'); if (p) { if (v) p.logoUrl = v; else delete p.logoUrl; save(); } });
+    let cur = add ? list[list.length - 1] : (list.find(x => x.usual) || list[0] || null);
+    const keep = () => { if (cur) { cur.html = ed.innerHTML.trim(); cur.name = nm.value.trim() || cur.name || 'Signature'; } };
+    const paint = () => {
+      L.replaceChildren();
+      for (const x of list) { const b = document.createElement('button'); b.type = 'button'; b.className = 'sm-i' + (x === cur ? ' on' : ''); b.appendChild(Object.assign(document.createElement('b'), { textContent: x.name || 'Signature' })); if (x.usual) b.appendChild(Object.assign(document.createElement('span'), { textContent: 'Usual' })); b.addEventListener('click', () => { keep(); cur = x; paint(); }); L.appendChild(b); }
+      if (!list.length) L.appendChild(Object.assign(document.createElement('div'), { className: 'sm-none', textContent: 'No signatures yet.' }));
+      R.style.visibility = cur ? 'visible' : 'hidden';
+      if (cur) { nm.value = cur.name || ''; ed.innerHTML = cur.html || ''; const ub = d.querySelector('[data-x="usual"]'); ub.textContent = cur.usual ? 'This Is the Usual One' : 'Make It the Usual One'; ub.disabled = !!cur.usual; }
+    };
     d.addEventListener('click', e => {
-      const x = e.target.dataset && e.target.dataset.x;
-      if (x === 'ok') { mailState.sigs = mailState.sigs || {}; mailState.sigs[mailSigKey(a.id, pid)] = d.querySelector('.sig-ed').innerHTML.trim(); mailSave(); toast('Signature saved'); }
-      if (x) { d.close(); d.remove(); }
+      const x = e.target.dataset && e.target.dataset.x; if (!x) return;
+      if (x === 'new') { keep(); cur = { id: uid(), name: 'New signature', html: '', usual: !list.length }; list.push(cur); paint(); nm.focus(); nm.select(); return; }
+      if (x === 'usual' && cur) { keep(); list.forEach(z => { z.usual = z === cur; }); sigSync(a.id, pid); paint(); return toast('That is now the usual signature'); }
+      if (x === 'del' && cur) { if (!confirm(`Delete the signature “${cur.name}”?`)) return; const was = cur.usual; list.splice(list.indexOf(cur), 1); if (was && list[0]) list[0].usual = true; cur = list.find(z => z.usual) || list[0] || null; sigSync(a.id, pid); paint(); return; }
+      if (x === 'design') { keep(); sigSync(a.id, pid); const base = cur ? cur.html : mailSigOf(a.id, pid); d.close(); return sigDesignStart(a, pid, base); }
+      if (x === 'ok') { keep(); sigSync(a.id, pid); toast('Signatures saved'); d.close(); }
     });
-    document.body.appendChild(d); d.showModal(); d.querySelector('.sig-ed').focus();
+    d.addEventListener('close', () => { try { sigSync(a.id, pid); } catch (e) { /* saved next time */ } });
+    paint(); if (cur) ed.focus();
   }
   // Writing: a new message, a reply or a forward opens over the reading side. Outlook holds it as a draft from the
   // start, so closing keeps it in Drafts; Send sends it from the account, with your signature.
@@ -13799,6 +13873,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (what === 'sig') {
         const r0 = x.getBoundingClientRect();
         return showMenu(r0.left, r0.bottom + 4, [
+          ...sigListOf(acc.id).filter(z => !z.usual && z.html).map(z => ({ label: `Signature: ${z.name}`, run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = z.html; if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } })),
           { label: 'Put My Signature In', disabled: !mailSigOf(acc.id), run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = mailSigOf(acc.id); if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } },
           { label: 'Take It Out', disabled: !ed.querySelector('.mc-sig'), run: () => { const old = ed.querySelector('.mc-sig'); if (old) old.remove(); } },
           '-',
@@ -16942,6 +17017,38 @@ body { width: max-content !important; min-width: 0 !important; }
   const granPaneSoon = () => { clearTimeout(granPaneTimer); granPaneTimer = setTimeout(() => { try { if (currentApp === 'cos' && cosUi.tab === 'meetings' && !document.querySelector('.gma select:focus')) renderCos(); } catch (e) { /* not showing */ } }, 350); };
   function granActionsPane(p) {
     const el = document.createElement('div'); el.className = 'gma';
+    // Two lists on one page: what meetings threw up and nobody has yet, and what each member of staff already holds.
+    // Giving a meeting action to someone moves it from the first list to the second.
+    const view = ls.get('claudeNavigator.actView') === 'staff' ? 'staff' : 'meet', tm = cosTeam(p), people = tm ? tm.nodes.filter(x => x.kind === 'staff' && !x.chief) : [];
+    const held = []; for (const st of people) { const f = staffFolder(st, p); if (f) for (const x of workItems(f)) if (!x.done && !inSkills(x.id) && !inArchive(x.id)) held.push({ st, x }); }
+    { const seg = document.createElement('div'); seg.className = 'gma-seg';
+      for (const [k, label] of [['meet', `From meetings${gran.on ? ' (' + granOpenCount(p) + ')' : ''}`], ['staff', `With staff (${held.length})`]]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.className = view === k ? 'on' : ''; b.addEventListener('click', () => { ls.set('claudeNavigator.actView', k); renderCos(); }); seg.appendChild(b); }
+      el.appendChild(seg); }
+    if (view === 'staff') {
+      const sort = (() => { try { return JSON.parse(ls.get('claudeNavigator.staffActSort') || '{}'); } catch (e) { return {}; } })(), k = sort.k || 'who', dir = sort.dir === -1 ? -1 : 1;
+      const val = r => (k === 'action' ? String(r.x.name || '').toLowerCase() : k === 'when' ? (r.x.added || 0) : r.st.name.toLowerCase());
+      held.sort((x, y) => (val(x) < val(y) ? -1 : val(x) > val(y) ? 1 : 0) * dir || (y.x.added || 0) - (x.x.added || 0));
+      el.appendChild(Object.assign(document.createElement('p'), { className: 'gma-lead', textContent: held.length ? `${held.length} open action${held.length === 1 ? '' : 's'} across ${people.length} staff${p ? ' in ' + p.name : ''}.` : 'Nobody has anything open.' }));
+      if (held.length) {
+        const tbl = document.createElement('div'); tbl.className = 'gma-t st';
+        const head = document.createElement('div'); head.className = 'gma-r gma-h';
+        for (const [key, label] of [['action', 'Action'], ['who', 'With'], ['when', 'Added']]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = label + (k === key ? (dir > 0 ? ' \u2191' : ' \u2193') : ''); b.title = 'Sort by this'; b.addEventListener('click', () => { ls.set('claudeNavigator.staffActSort', JSON.stringify({ k: key, dir: k === key ? -dir : (key === 'when' ? -1 : 1) })); renderCos(); }); head.appendChild(b); }
+        head.appendChild(document.createElement('span')); tbl.appendChild(head);
+        for (const r of held) {
+          const row = document.createElement('div'); row.className = 'gma-r';
+          const c1 = document.createElement('div'); c1.className = 'ga'; c1.appendChild(Object.assign(document.createElement('b'), { textContent: r.x.name || '(No name)' })); if (r.x.why) c1.appendChild(Object.assign(document.createElement('span'), { textContent: r.x.why }));
+          const c2 = document.createElement('div'); c2.className = 'gm'; const wb = document.createElement('button'); wb.type = 'button'; wb.className = 'lnk'; wb.textContent = r.st.name; wb.title = 'Open this staff member\u2019s page'; wb.addEventListener('click', () => { try { openStaff(r.st.id); cosUi.tab = 'work'; renderCos(); } catch (e) { /* not ready */ } }); c2.appendChild(wb);
+          const c3 = document.createElement('div'); c3.className = 'gw'; c3.textContent = r.x.added && r.x.added > 1e11 ? new Date(r.x.added).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }) : '';
+          const c4 = document.createElement('div'); c4.className = 'gdo';
+          const op = document.createElement('button'); op.type = 'button'; op.className = 'btn'; op.textContent = 'Open'; op.title = 'Open it'; op.addEventListener('click', () => { try { openNode(r.x); } catch (e) { /* nothing to open */ } });
+          const dn = document.createElement('button'); dn.type = 'button'; dn.className = 'btn'; dn.textContent = 'Done'; dn.title = 'Mark it done (it moves to their Archive)'; dn.addEventListener('click', () => { try { toggleDone(r.x.id); } catch (e) { /* drawn again */ } renderCos(); });
+          c4.append(op, dn); row.append(c1, c2, c3, c4); tbl.appendChild(row);
+        }
+        el.appendChild(tbl);
+      }
+      return el;
+    }
+    if (!gran.on) { el.appendChild(Object.assign(document.createElement('p'), { className: 'gma-lead', textContent: 'Connect Granola and the actions from your meetings are listed here, ready to give to your staff or dismiss.' })); const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'btn'; cb.textContent = 'Connect Granola\u2026'; cb.addEventListener('click', () => granolaDlg()); el.appendChild(cb); return el; }
     const days = granActDays(), meets = granRecent(p, days), t = cosTeam(p), staff = t ? t.nodes.filter(x => x.kind === 'staff' && !x.chief) : [];
     // read the notes of any meeting not read yet, two at a time, and draw again as they arrive
     const need = meets.filter(g => !gran.notes.get(g.id) && !g.reading);
@@ -18513,6 +18620,7 @@ body { width: max-content !important; min-width: 0 !important; }
 
     // Files saved from Claude land in Downloads.
     window.navigatorApp.onDownload(d => {
+      try { if (sigDesign && d && d.state === 'completed' && /\.html?$/i.test(d.name || '') && window.navigatorApp.readDownloadedHtml) window.navigatorApp.readDownloadedHtml(d.path).then(t => { if (sigDesign && t && sigLooksLikeDesign(t)) sigDesign.offer(t); }).catch(() => {}); } catch (e) { /* handled as a normal download */ }
       if (d.state === 'started') toast(`Downloading “${d.name}”…`);
       else if (d.state === 'completed') toast(`Downloaded “${d.name}”`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(d.path) });
       else toast(`Download of “${d.name}” did not finish`);

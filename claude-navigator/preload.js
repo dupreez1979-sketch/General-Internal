@@ -9,6 +9,8 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   apiKeySet: (key) => ipcRenderer.invoke('api-key-set', key),
   apiRun: (req) => ipcRenderer.invoke('api-run', req),
   apiAsk: (system, turns, max) => ipcRenderer.invoke('api-ask', system, turns, max),
+  clipText: () => ipcRenderer.invoke('clip-text'),
+  readDownloadedHtml: (file) => ipcRenderer.invoke('read-downloaded-html', file),
   startupLog: () => ipcRenderer.invoke('startup-log'),
   startNote: (text) => ipcRenderer.send('start-note', String(text)),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),

@@ -1465,6 +1465,13 @@ ipcMain.handle('backup-reveal', () => { fs.mkdirSync(backupDir(), { recursive: t
 
 // ---------- Messages from the folder page ----------
 ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.openExternal(url); });
+// For a signature designed in Claude: what you copied there (asked for only while a design is under way), and a design
+// you downloaded (an .html file in Downloads, read as text and never run).
+ipcMain.handle('clip-text', e => (fromOwnWindow(e) ? String(clipboard.readText() || '').slice(0, 400000) : ''));
+ipcMain.handle('read-downloaded-html', async (e, file) => {
+  if (!fromOwnWindow(e) || typeof file !== 'string' || !/\.html?$/i.test(file) || !inDownloads(file)) return '';
+  try { const st = await fs.promises.stat(file); if (!st.isFile() || st.size > 400000) return ''; return await fs.promises.readFile(file, 'utf8'); } catch (er) { return ''; }
+});
 // Starts an email in the Mac's mail app (used for Clara). Only mailto: links, and nothing that could attach files.
 ipcMain.handle('open-mail', (_e, url) => {
   if (typeof url !== 'string' || !/^mailto:/i.test(url) || url.length > 8000 || /[?&](attach|attachment)=/i.test(url)) return false;
