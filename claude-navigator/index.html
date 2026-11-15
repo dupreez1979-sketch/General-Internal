@@ -327,6 +327,21 @@
   .bot-panel { width: min(var(--bot-w, 400px), calc(100vw - 60px)); height: min(var(--bot-h, 600px), calc(100vh - 110px)); background: var(--win); border: 1px solid var(--line); border-radius: var(--r-sheet); box-shadow: var(--e-sheet); display: flex; flex-direction: column; overflow: hidden; position: relative; }
   .bot-size { position: absolute; left: 0; top: 0; width: 18px; height: 18px; cursor: nwse-resize; z-index: 6; } .bot-size::before { content: ''; position: absolute; left: 5px; top: 5px; width: 7px; height: 7px; border-left: 2px solid var(--muted); border-top: 2px solid var(--muted); border-radius: 3px 0 0 0; opacity: .55; } .bot-size:hover::before { opacity: 1; }
   .bot-conv .ba .lead { font-weight: var(--fw-bold); } .bot-conv .ba ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: var(--sp-1); } .bot-conv .ba p { margin: 6px 0 0; }
+  /* The Chief of Staff as a column of the window (an inspector on the right): when it is open the content reflows
+     beside it and nothing is covered. On a narrow window there is no room for a fourth column, so it slides over a
+     dimmed window instead. Closed, only its round button shows. */
+  html body.bot-dock #main { margin-right: calc(var(--sp-now, 0px) + var(--bot-dock, 0px)); }
+  html body.bot-dock #sidePanel { right: var(--bot-dock, 0px); }
+  html body.side-right.has-dock.bot-dock #main { margin-right: var(--bot-dock, 0px); }
+  body.bot-dock { --sp-def: calc((100vw - var(--dock-w, 0px) - var(--side-now) - var(--bot-dock, 0px)) * var(--sp-f, .5)); }
+  body.bot-dock #cosBot, body.bot-over #cosBot { top: 0; bottom: 0; right: 0; width: var(--bot-dock, 400px); align-items: stretch; gap: 0; z-index: var(--z-inspector); }
+  body.bot-dock #cosBot .bot-panel, body.bot-over #cosBot .bot-panel { width: 100%; height: 100%; border-radius: 0; border: 0; border-left: 1px solid var(--line); box-shadow: none; }
+  body.bot-over #cosBot { z-index: 62; } body.bot-over #cosBot .bot-panel { box-shadow: -14px 0 40px rgba(0,0,0,.22); }
+  body.bot-dock #cosBot .bot-btn, body.bot-dock #cosBot .bot-tips, body.bot-over #cosBot .bot-btn, body.bot-over #cosBot .bot-tips { display: none; }
+  body.bot-dock .bot-size, body.bot-over .bot-size { top: 0; bottom: 0; left: -3px; width: 8px; height: auto; cursor: ew-resize; } body.bot-dock .bot-size::before, body.bot-over .bot-size::before { display: none; }
+  body.bot-dock .bot-size:hover, body.bot-over .bot-size:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+  #botScrim { position: fixed; inset: 0; background: var(--scrim); z-index: 61; } #botScrim[hidden] { display: none; }
+  body.bot-dock #notesPanel, body.bot-dock.cos-acts-pop #actPanel { margin-right: var(--bot-dock, 0px); }
   #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }   /* kept laid out, so the chat never reloads */
   #cosBot.open .bot-tips { display: none; }
   .bot-head { flex: none; display: flex; align-items: center; gap: var(--sp-2); padding: 8px 8px 8px 12px; border-bottom: 1px solid var(--line); }
@@ -16417,8 +16432,8 @@ body { width: max-content !important; min-width: 0 !important; }
   // in its panel. The panel also holds an ongoing chat with the Chief of Staff (a real Claude chat in their
   // Claude Project, so it can use what your Claude account can, such as Granola meeting notes).
   const BOT_STORE = 'claudeNavigator.cosBot';
-  const bot = Object.assign({ open: false, tab: 'tips', quiet: false, dismissed: [] }, (() => { try { return JSON.parse(ls.get(BOT_STORE) || '{}'); } catch (e) { return {}; } })());
-  const saveBot = () => ls.set(BOT_STORE, JSON.stringify({ open: bot.open, tab: bot.tab, quiet: bot.quiet, dismissed: bot.dismissed.slice(-300) }));
+  const bot = Object.assign({ open: false, openBy: {}, tab: 'tips', quiet: false, dismissed: [] }, (() => { try { return JSON.parse(ls.get(BOT_STORE) || '{}'); } catch (e) { return {}; } })());
+  const saveBot = () => { try { if (currentApp) (bot.openBy = bot.openBy || {})[currentApp] = !!bot.open; } catch (e) { /* starting up */ } return (ls.set(BOT_STORE, JSON.stringify({ open: bot.open, openBy: bot.openBy || {}, tab: bot.tab, quiet: bot.quiet, dismissed: bot.dismissed.slice(-300) }))); };
   let botTimer = null, botShown = new Set(), botTipTimer = null, botView = null, botViewReady = false, botPending = null, botList = [];
   function cosBotSoon() { clearTimeout(botTimer); botTimer = setTimeout(() => { try { cosBotRender(); } catch (e) { console.error('Chief of Staff helper', e); } }, 350); cosNotesSoon(); }
   // Words that say what something is about (for "this looks like that").
@@ -16636,6 +16651,24 @@ body { width: max-content !important; min-width: 0 !important; }
   // Simple questions are answered on this Mac from what the app already holds; anything that needs thinking goes to the
   // Chief of Staff's Claude chat (kept out of sight in the panel) and the answer is shown here, with what to do next.
   const botS = { conv: [], tidy: false, chat: false, n: 0, poll: null, ruled: null, turns: [] };
+  // The panel's place in the window. Wide enough, and it is a column: the content is given that much less room.
+  // Narrow, and it slides over a dimmed window. (Called whenever the panel is drawn, and when the window changes size.)
+  const BOT_DOCK_MIN = 1100;
+  function botDock(showing) {
+    const el = $('cosBot'), B = document.body; if (!el) return;
+    const open = !!showing && !!bot.open && !el.hidden, wide = innerWidth >= BOT_DOCK_MIN;
+    let w = 400; try { w = parseInt(el.style.getPropertyValue('--bot-w'), 10) || 400; } catch (e) { /* the usual width */ }
+    w = Math.round(Math.max(320, Math.min(w, innerWidth * (wide ? 0.42 : 0.9))));
+    const was = (B.classList.contains('bot-dock') ? 'd' : B.classList.contains('bot-over') ? 'o' : '') + (B.style.getPropertyValue('--bot-dock') || '');
+    B.classList.toggle('bot-dock', open && wide); B.classList.toggle('bot-over', open && !wide);
+    B.style.setProperty('--bot-dock', open ? w + 'px' : '0px'); B.style.setProperty('--bot-pad', '0px');
+    let sc = $('botScrim'); if (!sc) { sc = document.createElement('div'); sc.id = 'botScrim'; sc.hidden = true; sc.addEventListener('click', () => { bot.open = false; botS.chat = false; saveBot(); cosBotRender(); }); document.body.appendChild(sc); }
+    sc.hidden = !(open && !wide);
+    const now = (B.classList.contains('bot-dock') ? 'd' : B.classList.contains('bot-over') ? 'o' : '') + (B.style.getPropertyValue('--bot-dock') || '');
+    // the apps lay themselves out by the room they have: tell them it changed (the calendar, lists and Claude's pages)
+    if (now !== was) { clearTimeout(botDock.t); botDock.t = setTimeout(() => { botDock.quiet = true; try { window.dispatchEvent(new Event('resize')); } catch (e) { /* laid out on the next change */ } botDock.quiet = false; }, 40); }
+  }
+  addEventListener('resize', () => { if (botDock.quiet) return; clearTimeout(botDock.r); botDock.r = setTimeout(() => { try { botDock(!$('cosBot').hidden); } catch (e) { /* starting up */ } }, 120); });
   const BOT_MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
   const botIn = () => $('cosBot').querySelector('.bot-in');
   const botListening = () => !!(dict.on && dict.on.box === botIn());
@@ -17238,7 +17271,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // The panel can be dragged bigger or smaller from its top left corner; the size is remembered.
   (() => {
     const el = $('cosBot'), h = el && el.querySelector('.bot-size'), pn = el && el.querySelector('.bot-panel'); if (!h || !pn) return;
-    const put = (w, ht) => { el.style.setProperty('--bot-w', Math.round(Math.max(340, Math.min(1000, w))) + 'px'); el.style.setProperty('--bot-h', Math.round(Math.max(360, Math.min(1200, ht))) + 'px'); };
+    const put = (w, ht) => { el.style.setProperty('--bot-w', Math.round(Math.max(340, Math.min(1000, w))) + 'px'); el.style.setProperty('--bot-h', Math.round(Math.max(360, Math.min(1200, ht))) + 'px'); try { botDock(!el.hidden); } catch (e) { /* drawn next time */ } };
     try { const k = JSON.parse(ls.get('claudeNavigator.botSize') || 'null'); if (k && k.w && k.h) put(k.w, k.h); } catch (e) { /* default size */ }
     h.addEventListener('pointerdown', ev => {
       ev.preventDefault(); const r = pn.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY; let w = r.width, ht = r.height;
@@ -17842,13 +17875,14 @@ body { width: max-content !important; min-width: 0 !important; }
     const t = cosTeam();
     const on = !!activeProfile() && !!t && ['cos', 'mail', 'cal', 'navigator'].includes(currentApp);
     el.hidden = !on;
-    if (!on) return;
+    if (!on) { botDock(false); return; }
+    // Open or closed is remembered for each app: open in Chief of Staff and closed elsewhere, until you choose otherwise.
+    if (botS.forApp !== currentApp) { botS.forApp = currentApp; const by = bot.openBy || {}; bot.open = by[currentApp] !== undefined ? !!by[currentApp] : currentApp === 'cos'; }
     // A different profile has its own Chief of Staff chat.
     if (botView && botView.dataset.profile !== (state.profileId || '')) { botView.remove(); botView = null; botViewReady = false; botS.ruled = null; botS.conv = []; el.querySelector('.bot-wait').hidden = false; }
     botList = botSuggestions();
     el.classList.toggle('open', !!bot.open);
-    // (the Actions list keeps its buttons clear of the open panel, which floats over the right-hand side)
-    try { const pn = el.querySelector('.bot-panel'); document.body.style.setProperty('--bot-pad', bot.open && pn ? (pn.offsetWidth || 400) + 28 + 'px' : '0px'); } catch (e) { /* drawn next time */ }
+    botDock(true);
     el.classList.toggle('chat-on', !!botS.chat);
     const btn = el.querySelector('.bot-btn');
     btn.classList.toggle('quiet', !!bot.quiet);
