@@ -80,6 +80,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "apiKey": drive.api.askForKey(from: topController()) { self.drive.tell("driveFastState", ["hasKey": self.drive.api.hasKey, "model": FastClaude.model, "granola": self.drive.gran.connected, "mail": self.drive.mail.emails]) }
         case "apiAsk":
             if let id = body["id"] as? String, let system = body["system"] as? String, let turns = body["turns"] as? [[String: String]] { drive.api.ask(id: id, system: system, turns: turns, maxTokens: (body["max"] as? Int) ?? 300, mail: (body["lookups"] as? Bool) == true ? drive.mail : nil) }
+        case "mailRun": Task { @MainActor in let out = await self.drive.mail.run((body["name"] as? String) ?? "", (body["input"] as? [String: Any]) ?? [:]); self.drive.tell("driveMailRun", ["id": (body["id"] as? String) ?? "", "text": out]) }
         case "mailConnect": drive.mail.connect()
         case "mailDisconnect": drive.mail.disconnect((body["email"] as? String) ?? "")
         case "mailCheck": Task { @MainActor in let line = await self.drive.mail.check(); self.drive.tell("driveMailCheck", ["id": (body["id"] as? String) ?? "", "text": line]) }
