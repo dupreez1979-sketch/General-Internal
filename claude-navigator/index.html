@@ -21,6 +21,7 @@
     --good-ink: #2a7266; --caution-ink: #9a5c1c; --danger-ink: #99351E;          /* the same meanings as text: darker in light, lighter in dark */
     --focus: color-mix(in srgb, var(--accent-ink) 75%, transparent);
     --good-soft: color-mix(in srgb, var(--good) 14%, transparent); --caution-soft: color-mix(in srgb, var(--caution) 16%, transparent); --danger-soft: color-mix(in srgb, var(--danger) 13%, transparent);
+    --seg-on: #ffffff; --on-fill: #ffffff;
     --accent-ink: var(--accent-ink-light, var(--accent));          /* the accent as text or an icon: kept readable on the window in light and in dark */
     --scrim: rgba(20,24,28,.30);          /* what dims the window behind a sheet */
 
@@ -48,6 +49,7 @@
       --field: rgba(255,255,255,.08); --menu: rgba(42,42,42,.94); --menu-line: rgba(255,255,255,.12);
       --shadow: 0 10px 34px rgba(0,0,0,.55), 0 0 0 .5px rgba(255,255,255,.14);
       --tile-sel: rgba(255,255,255,.1); --scrim: rgba(0,0,0,.5);
+      --seg-on: rgba(255,255,255,.17);
       --accent-ink: var(--accent-ink-dark, color-mix(in srgb, var(--accent) 60%, #ffffff));
       --good-ink: #6cc3b2; --caution-ink: #e2a45c; --danger-ink: #f08a78;
       color-scheme: dark;
@@ -398,6 +400,24 @@
   #bar, .cos-head, #main > #mailPanel > .cal-head, #main > #calPanel > .cal-head, #main > #notesPanel > .fhead, #main > #meetPanel > .meet-head { padding-left: 46px !important; }
   .mac-app body.side-off #bar, .mac-app body.side-right #bar, .mac-app body.side-off .cos-head, .mac-app body.side-right .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-right #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-right #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-right #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head, .mac-app body.side-right #main > #meetPanel > .meet-head { padding-left: max(46px, calc(118px - var(--dock-w, 0px))) !important; }
   body.cos-mode #bar { padding-left: 10px !important; }
+  /* ---- Step 6: the things you notice ---- */
+  /* With the sidebar hidden, a small swatch beside the sidebar button still names the profile and opens its menu. */
+  #tlProf { display: none; width: 22px; height: 22px; border-radius: var(--r-control); border: 0; padding: 0; place-items: center; color: #fff; font-size: var(--fs-label); font-weight: var(--fw-bold); }
+  #tlProf.all { background: conic-gradient(#FF4C80, #ECEB00, #6FC483, #1B5A68, #FF4C80); }
+  body.side-off #tlProf { display: grid; }
+  body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead, body.side-off #main > #meetPanel > .meet-head { padding-left: 76px !important; }
+  .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: max(76px, calc(148px - var(--dock-w, 0px))) !important; }
+  body.cos-mode.side-off #bar { padding-left: 10px !important; }
+  /* The links at the foot of a sidebar are ordinary links, not greyed out. */
+  .mailnav button.add, .calnav button.add, #notesSide button.add { color: var(--text) !important; } .mailnav button.add svg, .calnav button.add svg, #notesSide button.add svg { color: var(--muted); }
+  .mailnav button.add:hover, .calnav button.add:hover, #notesSide button.add:hover { background: var(--hover); }
+  /* One filled button per view: the microphone beside it is a bordered button of the same height. */
+  .cal-newrow > .cal-mic, .cal-newrow > .cal-mic.btn-primary { background: var(--win); color: var(--accent-ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .cal-newrow > .cal-mic:hover { background: color-mix(in srgb, var(--accent) 10%, var(--win)); filter: none; }
+  /* The chosen part of a switch reads in light and in dark. */
+  html .seg .tb.on { background: var(--seg-on); color: var(--text); }
+  .meet-head .tb { flex: none; }
+
   /* Its menu: a square swatch for each profile, and the one you are in filled with its colour. */
   #menu.prof { min-width: 250px; padding: 6px; border-radius: var(--r-card); }
   #menu.prof button { height: 30px; padding: 0 10px; border-radius: var(--r-control); }
@@ -1122,13 +1142,11 @@
   dialog.mail-rules .sw input:checked + i::after { transform: translateX(12px); }
   dialog.mail-sigdlg .dlg-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: 14px; }
   /* Calendar app: always every profile, so neutral colours (not the current profile's) and no profile switcher */
-  body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; }
-  body.cal-mode .cal-head .tb.on { background: #DCE4EC; color: #1F3346; }
+  body.cal-mode { --accent: #3D6A8A; --accent-text: #ffffff; --tint: #8A9BB0; --accent-ink-light: #3D6A8A; --accent-ink-dark: #9db9d0; }
   body.cal-mode #main > :not(#calPanel) { display: none !important; }
   body.cal-mode #tree, body.cal-mode #sNewFolder { display: none !important; }
   #calSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; }
   body.cal-mode #calSide { display: block; }
-  body.meet-mode { --accent: var(--good); --accent-text: #ffffff; --tint: #8FB5AE; }
   body.meet-mode #main > :not(#meetPanel) { display: none !important; }
   body.meet-mode #tree, body.meet-mode #sNewFolder { display: none !important; }
   #meetSide { display: none; flex: 1; min-height: 0; overflow: auto; padding: 6px 8px; } body.meet-mode #meetSide { display: block; }
@@ -2077,7 +2095,7 @@
 <aside id="side" aria-label="Sidebar">
   <div class="side-top"><span class="brand">Claude Navigator</span>
     <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator and Notes"><span data-icon="apps"></span></button>
-    <span id="topLeft"><button class="tb" id="sideToggle" title="Hide or show the sidebar"><svg width="18" height="18" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.6v4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></span>
+    <span id="topLeft"><button id="tlProf" class="all" title="Switch profile"></button><button class="tb" id="sideToggle" title="Hide or show the sidebar"><svg width="18" height="18" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.6v4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></span>
     <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="ptext"><span class="pname">All Profiles</span><span class="psub"></span></span><span class="pchev" data-icon="chev"></span></button>
   </div>
   <div id="tree" role="tree" tabindex="0" aria-label="Folders"></div>
@@ -4276,7 +4294,7 @@
         const r = document.createElement('div'); r.className = 'crow'; r.append(...cells(it, draw));
         if (q && !q.split(/\s+/).every(w => r.textContent.toLowerCase().includes(w))) continue; n++;
         if (opt.rowClass) { const c = opt.rowClass(it); if (c) r.classList.add(c); }
-        if (opt.onRow) { r.classList.add('go'); r.title = opt.rowTitle || 'Double-click to open';
+        if (opt.onRow) { r.classList.add('go');
           r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); });
           r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; opt.onRow(it); }); }
         l.appendChild(r);
@@ -7651,7 +7669,8 @@
   // The sidebar button sits at the left of the main toolbar, whether the sidebar is showing or not. (The profile control is the sidebar's title.)
   (() => {
     const tl = $('topLeft'); if (!tl) return;
-    document.body.appendChild(tl);
+    document.body.appendChild(tl); tl.appendChild($('tlProf'));
+    $('tlProf').addEventListener('click', e => { const b = e.currentTarget.getBoundingClientRect(); showProfileMenu(b.left, b.bottom + 6); });
     $('sideToggle').addEventListener('click', () => { if (fr('side').hidden) showFrame('side'); else frameAction('side', 'hide'); });
   })();
   // Put every panel where its settings say.
@@ -8340,7 +8359,7 @@
       back.title = 'Back to the team';
       back.addEventListener('click', () => { cosUi.page = null; cosUi.sel = null; cosUi.adding = false; cosUi.setupFor = null; renderCos(); });
       head.insertBefore(back, head.firstChild);
-      head.querySelector('h1').textContent = `${staff.name} · ${p.name}`;
+      head.querySelector('h1').textContent = staff.name;
     }
     if (t && !staff) {
       const seg = document.createElement('div');
@@ -9743,7 +9762,7 @@
       wb.addEventListener('dblclick', e => e.stopPropagation());
       if (x.why) meta.appendChild(Object.assign(document.createElement('div'), { className: 'why', textContent: x.why }));
       row.append(chk, nm, wb, meta);
-      row.title = `${x.name}${x.why ? '\n' + x.why : ''}\nDouble-click to open; right-click for more.`;
+      row.title = `${x.name}${x.why ? '\n' + x.why : ''}`;
       row.addEventListener('click', () => { state.browseSel = x.id; try { applyBrowseSel(); } catch (e) { /* not shown */ } });
       row.addEventListener('dblclick', () => openNode(x));
       row.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, menuFor(x, browseEl).filter(Boolean)); });
@@ -10263,7 +10282,7 @@
         row.querySelector('.wh').textContent = routineWhen(r);
         row.querySelector('.nx').textContent = next ? fmtNext(next) : '\u2013';
         row.querySelector('.st').textContent = r.missing ? 'Not found in Claude' : r.paused ? 'Paused' : (r.link || r.fromProject) ? 'Active' : 'Not linked';
-        row.title = `${r.name}\n${r.what || ''}\nDouble-click to open in Claude; right-click for more.`;
+        row.title = `${r.name}\n${r.what || ''}`;
         row.addEventListener('dblclick', () => cosOpenRoutine(n, r));
         grid.appendChild(row);
         continue;
@@ -13511,7 +13530,6 @@ body { width: max-content !important; min-width: 0 !important; }
         mailUi.msg = x; mailUi.msgOpen = false; mailUi.msgBody = null; mailRenderMain();          // chosen: the buttons above act on it
         mailPreDraft(x._acc || (mailState.sel || {}).acc, x);
       });
-      r.title = (r.title ? r.title + '\n' : '') + (mailPopped() ? 'Double-click to open' : '');
       r.addEventListener('contextmenu', e => { e.preventDefault(); if (mailMulti.size > 1 && mailMulti.has(x.id)) return showMenu(e.clientX, e.clientY, mailBulkItems()); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
     }
@@ -16208,7 +16226,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!isMain && hid.includes(k === 'folders' ? 'navigator' : k)) continue;
       const on = isMain ? false : dockNative(k) ? dockClaudeShowing() : sideHas(k);
       const badge = k === 'mail' && mailUi.unread ? `<i class="dock-badge">${mailUi.unread > 99 ? '99+' : mailUi.unread}</i>` : '';
-      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} is open in its own window. Click to bring it forward.` : k === 'chats' && !isMain ? `All your Claude chats, to drag into folders: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}` : (isMain ? `${label} is the main app` : `${label}: click to make it the main app, double-click to ${on ? 'close it' : 'open it beside'}`) + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
+      mk(k, label, dockIcon(cls) + badge, on, appWins.includes(k === 'folders' ? 'navigator' : k) ? `${label} (in its own window)` : label + (badge ? ` (${mailUi.unread} unread)` : ''), isMain);
     }
     if (currentApp === 'cos' && document.body.classList.contains('cos-work') && cosUi.tab === 'work') {
       d.appendChild(Object.assign(document.createElement('span'), { className: 'dock-sep' }));
@@ -17605,8 +17623,12 @@ body { width: max-content !important; min-width: 0 !important; }
       if (profiles().length > 1) sel([['', 'All profiles'], ...profiles().map(z => [z.id, z.name]), ['?', 'Not sure which']], meetUi.co, v => { meetUi.co = v; meetSave(); meetRender(); }, 'Profile');
       sel(MEET_SHOW, meetUi.show, v => { meetUi.show = v; meetSave(); meetRender(); }, 'Show');
     }
-    const find = document.createElement('input'); find.type = 'search'; find.placeholder = 'Search meetings or people'; find.value = meetUi.q || ''; head.appendChild(find);
-    const re = document.createElement('button'); re.type = 'button'; re.className = 'btn'; re.textContent = 'Check Again'; re.title = 'Read the meetings from Granola again'; re.addEventListener('click', () => { re.disabled = true; re.textContent = 'Checking\u2026'; granLoad(true).then(() => meetRender()).catch(() => meetRender()); }); head.appendChild(re);
+    const re = document.createElement('button'); re.type = 'button'; re.className = 'tb'; re.innerHTML = UI.more; re.title = 'More: read the meetings from Granola again, Granola settings';
+    re.addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [
+      { label: 'Read the Meetings From Granola Again', run: () => { toast('Checking Granola\u2026'); granLoad(true).then(() => meetRender()).catch(() => meetRender()); } },
+      { label: 'Granola Settings\u2026', run: () => granolaDlg() }]); });
+    head.appendChild(re);
+    const find = document.createElement('input'); find.type = 'search'; find.className = 'cal-search'; find.placeholder = 'Search'; find.title = 'Search meetings or people'; find.value = meetUi.q || ''; head.appendChild(find);
     P.appendChild(head);
     const empty = (text, btnLabel, run) => { const e = document.createElement('div'); e.className = 'meet-empty'; e.appendChild(Object.assign(document.createElement('div'), { textContent: text })); if (btnLabel) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-primary'; b.textContent = btnLabel; b.addEventListener('click', run); e.appendChild(b); } P.appendChild(e); };
     if (!gran.on) { sub.textContent = ''; find.hidden = re.hidden = true; if (!gran.at && !gran.busy) { granLoad(false).then(() => meetRender()).catch(() => {}); return empty('Checking Granola\u2026'); } return empty('Connect Granola and your recorded meetings are listed here, with their notes and the actions to give out.', 'Connect Granola\u2026', () => granolaDlg()); }
@@ -17634,7 +17656,6 @@ body { width: max-content !important; min-width: 0 !important; }
       const n = left(g), act = granDone.has(g.id) ? c('done', 'Dealt with') : n < 0 ? c('mu', 'Reading\u2026') : n ? c('todo', `${n} to give out`) : c('mu', (gran.notes.get(g.id) || { actions: [] }).actions.length ? 'All given out' : 'None');
       r.append(c('mt', g.title), c('mu', `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}, ${calFmtTime(g.at)}`), c('mu', who(g)), co, act);
       r.dataset.q = `${g.title} ${g.people.join(' ')} ${coName(g)}`.toLowerCase();
-      r.title = 'Double-click to open the notes';
       r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); });
       r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; granMeetingDlg(g); });
       l.appendChild(r); rows.push(r);
@@ -17692,7 +17713,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const st = gridSortOf(key); if (st && vals[st.col]) items = items.slice().sort(gridCmp(st.dir, vals[st.col]));
       const rows = [], heads = [];
       const addRow = it => { const r = document.createElement('div'); r.className = 'crow'; const cs = cells(it); r.append(...cs); r.dataset.q = cs.slice(0, 3).map(c => c.textContent).join(' ').toLowerCase(); r.dataset.g = groupOf(it);
-        if (onRow) { r.classList.add('go'); r.title = 'Double-click to open'; r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); }); r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; onRow(it); }); }
+        if (onRow) { r.classList.add('go'); r.addEventListener('click', e => { if (e.target.closest('button, select, a, input')) return; for (const z of l.querySelectorAll('.crow.sel')) z.classList.remove('sel'); r.classList.add('sel'); }); r.addEventListener('dblclick', e => { if (e.target.closest('button, select, a, input')) return; onRow(it); }); }
         l.appendChild(r); rows.push(r); };
       if (grouped) for (const [gid, label] of groups) {
         const mine = items.filter(it => groupOf(it) === gid); if (!mine.length) continue;
@@ -19380,6 +19401,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400), due =
     dot.style.color = p && luminance(p.color || '#000000') > 0.6 ? '#000' : '#fff';
     if (isMac) btn.title = 'Switch profile (\u2303\u23251, 2, 3... and \u2303\u23250 for All Profiles)';
     profileSubPaint();
+    { const sw = $('tlProf'); if (sw) { sw.className = p ? '' : 'all'; sw.style.background = p ? p.color : ''; sw.textContent = dot.textContent; sw.style.color = dot.style.color; sw.title = `${p ? p.name : 'All Profiles'}: switch profile`; } }
     document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
   }
@@ -19750,6 +19772,8 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     if (r.width > 260) x = Math.min(Math.max(6, lastMouseX + 8), innerWidth - t.width - 6);
     let y = r.bottom + 6;
     if (y + t.height > innerHeight - 6) y = r.top - t.height - 6;
+    // On the rail the label sits beside the icon, level with it, so it never lands on the row below.
+    if (el.closest && el.closest('#dock')) { x = r.right + 8; y = r.top + r.height / 2 - t.height / 2; }
     tipBox.style.left = x + 'px';
     tipBox.style.top = y + 'px';
     tipBox.classList.add('show');
@@ -19764,7 +19788,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     if (el.hasAttribute('title')) { el.dataset.tip = el.getAttribute('title'); el.removeAttribute('title'); }
     if (!el.dataset.tip) return;
     tipFor = el;
-    tipTimer = setTimeout(() => placeTip(el), Date.now() - tipHiddenAt < 600 ? 0 : 550);
+    tipTimer = setTimeout(() => placeTip(el), Date.now() - tipHiddenAt < 400 ? 150 : 1000);
   });
   document.addEventListener('mouseleave', hideTip);
   ['mousedown', 'keydown', 'dragstart', 'wheel'].forEach(ev => document.addEventListener(ev, hideTip, true));
