@@ -1820,7 +1820,7 @@
   /* Settings: one window, sections down the left, the chosen one on the right. A section is an ordinary sheet shown in place. */
   dialog.settings-win { width: min(880px, 94vw); height: min(640px, 88vh); padding: 0; overflow: hidden; }
   dialog.settings-win[open] { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
-  .set-nav { background: color-mix(in srgb, var(--tint, #8a8f98) 7%, var(--side)); border-right: 1px solid var(--line); padding: 44px 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+  .set-nav { background: color-mix(in srgb, var(--tint, #8a8f98) 7%, var(--side)); border-right: 1px solid var(--line); padding: 16px 8px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
   .set-nav button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: var(--sp-2); padding: 6px 10px; border-radius: var(--r-control); font-size: var(--fs-body); cursor: default; }
   .set-nav button:hover { background: var(--hover); } .set-nav button.on { background: color-mix(in srgb, var(--accent) 18%, transparent); font-weight: var(--fw-bold); }
   .set-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -12371,31 +12371,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const up = () => { removeEventListener('mousemove', mv); removeEventListener('mouseup', up); };
     addEventListener('mousemove', mv); addEventListener('mouseup', up);
   });
-  // Every dialog gets the same dots as the other pop-ups: red closes it (as its Cancel button would), green makes it full size.
-  (() => {
-    const show = HTMLDialogElement.prototype.showModal;
-    HTMLDialogElement.prototype.showModal = function () {
-      try {
-        if (!this.querySelector(':scope > .dlg-lights')) {
-          const d = this;
-          const close = () => {
-            const btn = [...d.querySelectorAll('button')].find(b => /^(cancel|close|not now|done)$/i.test((b.textContent || '').trim()) && !b.disabled);
-            if (btn) return btn.click();
-            if (d.dispatchEvent(new Event('cancel', { cancelable: true }))) d.close();
-          };
-          // (kept in a closed-off corner of the page, so no dialog's own code mistakes the dots for its buttons)
-          const host = document.createElement('span'); host.className = 'dlg-lights';
-          const sh = host.attachShadow({ mode: 'open' });
-          sh.innerHTML = '<style>:host{display:inline-flex;gap:8px;align-items:center}button{width:12px;height:12px;box-sizing:border-box;border-radius:50%;border:.5px solid rgba(0,0,0,.2);padding:0;margin:0;font:700 9px/11px -apple-system,Helvetica,Arial,sans-serif;color:transparent;text-align:center;cursor:default}.r{background:#FF5F57}.g{background:#28C840}.off{background:rgba(128,128,128,.3);border-color:transparent;pointer-events:none}:host(:hover) button:not(.off){color:rgba(0,0,0,.6)}</style><button class="r" title="Close">\u00d7</button><button class="off" disabled tabindex="-1"></button><button class="g" title="Full size">+</button>';
-          sh.querySelector('.r').addEventListener('click', e => { e.stopPropagation(); close(); });
-          sh.querySelector('.g').addEventListener('click', e => { e.stopPropagation(); d.classList.toggle('full'); });
-          for (const b of sh.querySelectorAll('button')) b.tabIndex = -1;
-          d.classList.add('has-lights'); d.appendChild(host);
-        }
-      } catch (e) { /* the dialog still opens */ }
-      return show.apply(this, arguments);
-    };
-  })();
+  // (A sheet has no window dots: it closes with its own buttons or Escape, and resizes from its corner. The dots are
+  //  kept for the true floating windows below, which can be closed, minimised and made full size.)
   function macLights(o) {
     const w = document.createElement('span'); w.className = 'lights';
     for (const [c, g, k, t] of [['r', '\u00d7', 'close', 'Close'], ['y', '\u2212', 'min', 'Minimise'], ['g', '+', 'zoom', 'Full size']]) {
