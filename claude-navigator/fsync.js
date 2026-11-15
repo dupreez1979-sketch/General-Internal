@@ -117,6 +117,7 @@ class FolderSync {
   // The same list as scan(), read without ever holding the app up: a folder kept in iCloud or OneDrive can take
   // seconds to answer each question, and minutes in all. Link files are only opened again when they have changed.
   async scanAsync() {
+    if (this.applying) await this.applying.catch(() => {});      // (never read it half-changed)
     await fs.promises.readdir(this.root);     // (throws if the folder cannot be read, exactly as scan() does)
     if (!this.links) { this.links = new Map(); try { for (const [k, v] of JSON.parse(await fs.promises.readFile(this.cacheFile, 'utf8'))) this.links.set(k, v); } catch (e) { /* none kept yet */ } }
     const stats = { entries: 0, folders: 0, linksRead: 0, started: Date.now() }, seen = new Set();
@@ -159,9 +160,35 @@ class FolderSync {
 
   // Makes disk match the app. `nodes` are in tree order (parents first): { id, type, name, url, parentId, path }.
   // `trash` lists paths of things deleted in the app. Returns where each node now lives.
-  async apply({ nodes = [], trash = [] }) {
-    if (!isDir(this.root)) return { map: {}, errors: [], unreachable: true };
-    this.quietUntil = Date.now() + 2000;
+  // One at a time, and never while the folder is being read: each waits for the one before.
+  apply(args) {
+    const run = () => this.applyNow(args || {});
+    this.applying = (this.applying || Promise.resolve()).then(run, run);
+    return this.applying;
+  }
+
+  // Nothing here holds the app up: every question to the disk is asked in the background. An item that has not
+  // changed costs one question (asked for all items at once, up front), so a slow cloud folder stays quick.
+  async applyNow({ nodes = [], trash = [] }) {
+    const P = fs.promises;
+    const lst = async p => { try { return await gate(() => P.lstat(p)); } catch (e) { return null; } };
+    const rootSt = await lst(this.root);
+    if (!rootSt || !rootSt.isDirectory() || rootSt.isSymbolicLink()) return { map: {}, errors: [], unreachable: true };
+    this.quietUntil = Date.now() + 15 * 60e3;       // (our own changes are not news: set properly when done)
+    const stats = { started: Date.now(), nodes: nodes.length, changed: 0 };
+    this.links = this.links || new Map();
+    const pre = new Map();                  // path -> what is there now (dropped as soon as we change that path)
+    await Promise.all(nodes.filter(n => n.path).map(async n => { const a = this.abs(n.path); pre.set(a, await lst(a)); }));
+    const statOf = async p => (pre.has(p) ? pre.get(p) : lst(p));
+    const touched = (...ps) => { stats.changed++; for (const q of ps) { pre.delete(q); this.links.delete(this.rel(q)); } };
+    const linkUrlOf = async (abs, st) => {
+      if (!st) return '';
+      const rel = this.rel(abs), key = `${st.ino}|${st.mtimeMs}|${st.size}`, c = this.links.get(rel);
+      if (c && c.key === key) return c.url;
+      let url = ''; try { url = linkUrl(await gate(() => P.readFile(abs, 'utf8'))); } catch (e) { /* unreadable: no link */ }
+      this.links.set(rel, { key, url }); this.linksDirty = true;
+      return url;
+    };
     const result = {};
     const errors = [];
     const moved = [];                       // [oldAbsPrefix, newAbsPrefix] for folders already moved
@@ -174,17 +201,24 @@ class FolderSync {
     };
     const dirOf = new Map();                // node id -> folder on disk its children live in
     const taken = new Map();                // folder -> names used this pass (lower case)
-    // `adopt(path)`: true if something already there is this very item (a folder of that name, or a link to that
-    // address), so a folder that already exists is used rather than a second "Name 2" being made beside it.
-    const claim = (dir, base, current, adopt) => {
+    const made = new Set();
+    // `adopt(path, what is there)`: true if something already there is this very item (a folder of that name, or a
+    // link to that address), so a folder that already exists is used rather than a second "Name 2" being made beside it.
+    const claim = async (dir, base, current, curSt, adopt) => {
       const used = taken.get(dir) || new Set();
       const ext = path.extname(base);
       const stem = ext && !base.startsWith('.') ? base.slice(0, -ext.length) : base;
       let name = base;
       for (let i = 2; ; i++) {
         const candidate = path.join(dir, name);
-        const free = !used.has(name.toLowerCase()) &&
-          (!exists(candidate) || (current && statIno(candidate) === statIno(current)) || (!current && adopt && adopt(candidate)));
+        let free = false;
+        if (!used.has(name.toLowerCase())) {
+          if (current && candidate === current) free = true;
+          else {
+            const st = await statOf(candidate);
+            free = !st || (!!current && !!curSt && String(st.ino) === String(curSt.ino)) || (!current && !!adopt && await adopt(candidate, st));
+          }
+        }
         if (free) break;
         name = `${stem} ${i}${ext}`;
       }
@@ -193,12 +227,14 @@ class FolderSync {
       return path.join(dir, name);
     };
 
+    try {
     for (const n of nodes) {
       try {
         const parentDir = n.parentId ? dirOf.get(n.parentId) : this.root;
         if (!parentDir) continue;
         const current = n.path ? translate(this.abs(n.path)) : null;
-        const currentOk = current && exists(current);
+        const curSt = current ? await statOf(current) : null;
+        const currentOk = !!curSt;
         let base;
         if (n.type === 'folder') base = safeName(n.name);
         else if (n.type === 'link') base = safeName(n.name) + (current && LINK_EXTS.includes(path.extname(current).toLowerCase()) ? path.extname(current) : LINK_EXT);
@@ -208,31 +244,40 @@ class FolderSync {
           const stem = safeName(n.name).replace(new RegExp(`${ext.replace('.', '\\.')}$`, 'i'), '');
           base = stem + ext;
         }
-        const adopt = n.type === 'folder' ? isDir : n.type === 'link' ? (c => !!n.url && readLinkFile(c) === n.url) : null;
-        const desired = claim(parentDir, base, currentOk ? current : null, adopt);
-        fs.mkdirSync(parentDir, { recursive: true });
+        const adopt = n.type === 'folder' ? (async (c, st) => st.isDirectory() && !st.isSymbolicLink()) : n.type === 'link' ? (async (c, st) => !!n.url && (await linkUrlOf(c, st)) === n.url) : null;
+        const desired = await claim(parentDir, base, currentOk ? current : null, curSt, adopt);
+        if (!made.has(parentDir)) { if (!(await statOf(parentDir))) await P.mkdir(parentDir, { recursive: true }); made.add(parentDir); }
+        let st = null;
         if (currentOk) {
+          st = curSt;
           if (current !== desired) {
             if (current.toLowerCase() === desired.toLowerCase()) {   // only the capitals changed
               const tmp = desired + '.renaming';
-              fs.renameSync(current, tmp);
-              fs.renameSync(tmp, desired);
+              await P.rename(current, tmp);
+              await P.rename(tmp, desired);
             } else {
-              fs.renameSync(current, desired);
+              await P.rename(current, desired);
             }
+            touched(current, desired); st = null;
             if (n.type === 'folder') moved.push([current, desired]);
           }
-          if (n.type === 'link' && n.url && readLinkFile(desired) !== n.url) fs.writeFileSync(desired, linkFileContents(n.url));
+          if (n.type === 'link' && n.url) {
+            if (!st) st = await lst(desired);
+            if ((await linkUrlOf(desired, st)) !== n.url) { await P.writeFile(desired, linkFileContents(n.url)); touched(desired); st = null; }
+          }
         } else if (n.type === 'folder') {
-          fs.mkdirSync(desired, { recursive: true });
+          await P.mkdir(desired, { recursive: true }); touched(desired);
         } else if (n.type === 'link') {
-          if (!exists(desired)) fs.writeFileSync(desired, linkFileContents(n.url || ''));
+          st = await statOf(desired);
+          if (!st) { await P.writeFile(desired, linkFileContents(n.url || '')); touched(desired); }
         } else {
           result[n.id] = { missing: true };       // a normal file the app cannot recreate
           continue;
         }
+        if (n.type === 'folder') made.add(desired);
         dirOf.set(n.id, n.type === 'folder' ? desired : parentDir);
-        result[n.id] = { path: this.rel(desired), ino: statIno(desired) };
+        if (!st) st = await lst(desired);
+        result[n.id] = { path: this.rel(desired), ino: st ? String(st.ino) : null };
       } catch (e) {
         errors.push(`${n.name}: ${e.message}`);
       }
@@ -246,10 +291,10 @@ class FolderSync {
         if (!rel) continue;
         const p = translate(this.abs(rel));
         if (p === this.root || inUse.has(p) || [...inUse].some(u => u.startsWith(p + path.sep))) continue;
-        if (exists(p)) await shell.trashItem(p);
+        if (await lst(p)) { await shell.trashItem(p); touched(p); }
       } catch (e) { errors.push(`${rel}: ${e.message}`); }
     }
-    this.quietUntil = Date.now() + 2000;
+    } finally { this.quietUntil = Date.now() + 2000; stats.ms = Date.now() - stats.started; this.lastApply = stats; }
     return { map: result, errors };
   }
 

@@ -1178,7 +1178,8 @@ ipcMain.handle('fs-scan', () => {
 });
 ipcMain.handle('fs-apply', async (_e, payload) => {
   if (!folderSync) return null;
-  try { return await folderSync.apply(payload || {}); } catch (e) { return { map: {}, errors: [e.message] }; }
+  const fsync = folderSync;
+  try { const r = await fsync.apply(payload || {}); const st = fsync.lastApply || {}; if (st.ms > 1500) mark(`folder written: ${st.nodes} items checked, ${st.changed} changed`, st.ms); return r; } catch (e) { return { map: {}, errors: [e.message] }; }
 });
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
 // The Chief of Staff's reference files, kept by the app in a hidden folder in each company folder (the folder
