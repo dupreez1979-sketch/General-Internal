@@ -184,7 +184,20 @@ async function test() {
   }
 }
 
+// Every meeting between two days (the list comes a page at a time).
+async function meetings(from, to) {
+  let text = '', cursor = '';
+  for (let page = 0; page < 5; page++) {
+    const part = await call('search_meetings', cursor ? { cursor } : { from_date: from, to_date: to, limit: 100, max_participants: 8 });
+    text += part + '\n';
+    const m = /<pagination\b[^>]*\bnext_cursor="([^"]+)"/.exec(part);
+    if (!m || !/has_more="true"/.test(part)) break;
+    cursor = m[1];
+  }
+  return text;
+}
+
 function status() { const s = load(); return { connected: !!(s.client && (s.refresh || s.access)) }; }
 function disconnect() { store = {}; access = null; session = null; try { fs.rmSync(file(), { force: true }); } catch (e) { /* already gone */ } return { connected: false }; }
 
-module.exports = { connect, disconnect, status, test, call, tools };
+module.exports = { connect, disconnect, status, test, call, tools, meetings };

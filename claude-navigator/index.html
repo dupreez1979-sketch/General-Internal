@@ -341,6 +341,17 @@
   .bot-list .brow .go { flex: none; font-size: 12px; color: var(--accent); font-weight: 600; }
   .bot-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); } .bot-foot span { flex: 1; } .bot-foot button { font: inherit; font-size: 12px; border: 0; background: none; color: var(--accent); font-weight: 600; cursor: pointer; padding: 0; }
   dialog.granola-dlg { width: min(520px, 92vw); } dialog.granola-dlg .gl { display: grid; gap: 6px; margin: 8px 0 14px; font-size: 13px; } dialog.granola-dlg .gline.good { color: #328276; font-weight: 600; } dialog.granola-dlg .gline.bad { color: #b3261e; font-weight: 600; }
+  dialog.gran-dlg { width: min(680px, 94vw); height: min(720px, 88vh); resize: both; overflow: hidden; min-width: 420px; min-height: 320px; } dialog.gran-dlg[open] { display: flex; flex-direction: column; }
+  dialog.gran-dlg h2, dialog.gran-dlg .hint, dialog.gran-dlg .dlg-actions { flex: none; } dialog.gran-dlg p.hint { margin: 0 0 8px !important; padding: 0 !important; text-align: left; }
+  dialog.gran-dlg .gbody { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); padding: 10px 2px; font-size: 13px; line-height: 1.5; user-select: text; }
+  dialog.gran-dlg .gwait { display: flex; align-items: center; gap: 10px; color: var(--muted); padding: 20px 4px; } dialog.gran-dlg .gwait .wave { height: 16px; gap: 2px; } dialog.gran-dlg .gwait .wave i { width: 2.5px; }
+  dialog.gran-dlg .gh { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 12px 0 4px; } dialog.gran-dlg .gh:first-child { margin-top: 0; }
+  dialog.gran-dlg .gb { padding-left: 16px; position: relative; margin: 2px 0; } dialog.gran-dlg .gb::before { content: '\2022'; position: absolute; left: 4px; color: var(--muted); } dialog.gran-dlg .gp { margin: 4px 0; }
+  dialog.gran-dlg .gact { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; margin: 5px 0; } dialog.gran-dlg .gact span { flex: 1; } dialog.gran-dlg .gact .btn { font-size: 12px; padding: 3px 10px; flex: none; }
+  dialog.gran-dlg .gwho { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px 10px; } dialog.gran-dlg .gwho .btn { font-size: 12px; padding: 3px 10px; }
+  dialog.gran-dlg .gtr { white-space: pre-wrap; color: var(--text); }
+  .cal-pop .gran-b { justify-self: start; margin-top: 4px; }
+  .bot-list .brow .ic.meet { background: color-mix(in srgb, #6FC483 22%, transparent); color: #328276; }
   dialog.bot-learn-dlg { width: min(520px, 92vw); } dialog.bot-learn-dlg .bl { max-height: 60vh; overflow: auto; margin: 6px 0 12px; }
   .bot-quick { flex: none; display: flex; flex-wrap: wrap; gap: 5px; padding: 0 12px 10px; }
   .bot-quick button { font: inherit; font-size: 11.5px; border: 1px solid var(--line); background: var(--win); color: var(--text); border-radius: 12px; padding: 3px 9px; cursor: pointer; }
@@ -11148,6 +11159,10 @@ body { width: max-content !important; min-width: 0 !important; }
     if (e.location) row('Where', e.location);
     if (e.organizer) row('Organiser', e.organizer);
     if (e.attendees.length) row(`${e.attendees.length} invited`, e.attendees.join(', '));
+    try {          // Granola: the notes from this meeting, or from the last time it was held
+      const gm = inst.start <= Date.now() ? granFor(inst) : null, gl = gm ? null : granLastTime(inst);
+      if (gm || gl) { const nb = document.createElement('button'); nb.className = 'btn gran-b'; nb.textContent = gm ? 'Meeting Notes' : 'Notes From Last Time'; nb.title = gm ? 'Granola\u2019s notes and action items from this meeting' : `What was said and agreed last time (${new Date(gl.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })})`; nb.addEventListener('click', () => { calClosePop(); granMeetingDlg(gm || gl, gm ? '' : 'Last time'); }); rows.appendChild(nb); }
+    } catch (er) { /* Granola not connected */ }
     if (inst.g) {
       row('Calendar', `${inst.g.calName} (${inst.g.email})`);
       const acts = document.createElement('div'); acts.className = 'cal-acts';
@@ -16326,6 +16341,15 @@ body { width: max-content !important; min-width: 0 !important; }
     try { const cn = claraDash.items ? claraDashLive().filter(x => x.needs) : claraState.items.filter(x => x.st.k === 'needs'); if (cn.length) needs.push({ ic: 'warn', title: cn.length === 1 ? 'Clara needs you on one meeting' : `Clara needs you on ${cn.length} meetings`, sub: String(cn[0].title || '').slice(0, 70), go: 'Open', run: () => claraPanel() }); } catch (e) { /* Clara not set up */ }
     try { const n = mailBadgeCount(); if (n) needs.push({ ic: 'mail', title: `${n} unread email${n === 1 ? '' : 's'} in your Inbox`, sub: '', go: 'See', run: () => setApp('mail') }); } catch (e) { /* no mail yet */ }
     if (needs.length) out.push({ h: 'Needs you', items: needs });
+    const met = [];
+    try {
+      for (const g of gran.list) {
+        if (now - g.at > 3 * 864e5 || g.at > now || granDone.has(g.id) || met.length >= 4) continue;
+        const n = gran.notes.get(g.id); if (!n && !g.asked) { g.asked = true; granNotes(g.id).then(() => { try { cosBotSoon(); } catch (e) { /* not showing */ } }).catch(() => {}); }
+        met.push({ ic: 'meet', title: g.title, sub: `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'short' })} ${calFmtTime(g.at)} \u00b7 ${n ? (n.actions.length ? `${n.actions.length} action${n.actions.length === 1 ? '' : 's'} to give out` : 'no actions listed') : 'reading the notes\u2026'}`, go: 'Notes', run: () => granMeetingDlg(g) });
+      }
+    } catch (e) { /* Granola not connected */ }
+    if (met.length) out.push({ h: 'From your meetings', items: met });
     const team = [];
     if (t) {
       const counts = []; let phone = null;
@@ -16415,9 +16439,9 @@ body { width: max-content !important; min-width: 0 !important; }
     chime('made'); toast(`Added to the ${st.name}’s actions.`);
     return true;
   }
-  function botPickStaff(anchor, text) {
-    const t = cosTeam(), r = anchor.getBoundingClientRect(); if (!t) return;
-    showMenu(r.left, r.top - 8, [{ head: 'An action for…' }].concat(t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(st => ({ label: st.name, dot: st.color, run: () => botAddAction(st, text) }))));
+  function botPickStaff(anchor, text, then) {
+    const t = cosTeam(), r = anchor.getBoundingClientRect(); if (!t) return toast('Set up a team in Chief of Staff first.');
+    showMenu(r.left, r.top - 8, [{ head: 'An action for\u2026' }].concat(t.nodes.filter(x => x.kind === 'staff' && !x.chief).map(st => ({ label: st.name, dot: st.color, run: () => { if (botAddAction(st, text) && then) then(st); } }))));
   }
   async function botRunAct(a, btn, e) {
     if (a.k === 'action') { const st = botStaffNamed(a.who); if (!st) return botPickStaff(btn, a.text); if (botAddAction(st, a.text)) { a.did = true; botPaintConv(); } return; }
@@ -16472,7 +16496,121 @@ body { width: max-content !important; min-width: 0 !important; }
     cosBotRender();
     clearInterval(botS.poll); botS.poll = setInterval(() => { const big = $('cosBot').querySelector('.bot-big .said'); if (!botListening()) { clearInterval(botS.poll); return cosBotRender(); } if (big) big.textContent = inp.value.trim() ? `“${inp.value.trim().slice(-140)}”` : 'Say it…'; }, 300);
   }
-  // Granola: connect the app to your meeting notes, and see that it works. (This step only proves the connection.)
+  // ===== Granola: your meeting notes, read through Granola's own connection. =====
+  // Notes and transcripts are fetched when you look at them and held only while the app is open: they are never
+  // saved to disk here and never go to the phone. (An action you choose to add to someone's list is saved, as any action is.)
+  const gran = { on: false, list: [], at: 0, busy: false, notes: new Map(), err: '' };
+  const GRAN_DONE = 'claudeNavigator.granolaDone.v1';          // (ids of meetings you have dealt with: ids only)
+  const granDone = (() => { try { return new Set(JSON.parse(ls.get(GRAN_DONE) || '[]')); } catch (e) { return new Set(); } })();
+  const granDoneSave = () => ls.set(GRAN_DONE, JSON.stringify([...granDone].slice(-400)));
+  const granText = s => String(s || '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;|&#39;/g, '’').replace(/&amp;/g, '&');
+  function granParse(xml) {
+    const out = [], re = /<meeting\s([^>]*)>([\s\S]*?)<\/meeting>/g; let m;
+    while ((m = re.exec(String(xml || '')))) {
+      const a = {}; let k; const ar = /([\w-]+)="([^"]*)"/g; while ((k = ar.exec(m[1]))) a[k[1]] = granText(k[2]);
+      if (!a.id) continue;
+      const tag = n => { const t = new RegExp('<' + n + '[^>]*>([\\s\\S]*?)</' + n + '>').exec(m[2]); return t ? granText(t[1]).trim() : ''; };
+      const at = Date.parse(a.meeting_at || a.date || '') || 0;
+      out.push({ id: a.id, title: a.title || 'Meeting', at, url: /^https:\/\/notes\.granola\.ai\//.test(a.url || '') ? a.url : '', people: tag('known_participants').split(/,\s*(?![^()]*\))/).map(x => x.trim()).filter(Boolean), heads: tag('note_headers').split(/\n+/).map(x => x.trim()).filter(Boolean) });
+    }
+    return out;
+  }
+  async function granLoad(force) {
+    if (!isApp || !window.navigatorApp.granolaMeetings || gran.busy) return gran;
+    if (!force && gran.at && Date.now() - gran.at < 10 * 60e3) return gran;
+    gran.busy = true;
+    try {
+      gran.on = !!(await window.navigatorApp.granolaStatus()).connected;
+      if (gran.on) {
+        const day = d => { const x = new Date(Date.now() + d * 864e5); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
+        const r = await window.navigatorApp.granolaMeetings(day(-30), day(0));
+        if (r && r.ok) { const seen = new Set(); gran.list = granParse(r.text).filter(x => x.at && !seen.has(x.id) && seen.add(x.id)).sort((a, b) => b.at - a.at); gran.err = ''; } else gran.err = (r && r.status) || 'could not read';
+      } else gran.list = [];
+      gran.at = Date.now();
+    } catch (e) { gran.err = String(e && e.message || e); }
+    gran.busy = false;
+    try { cosBotSoon(); } catch (e) { /* starting up */ }
+    return gran;
+  }
+  // The notes for one meeting: Granola's summary, and your own notes if you typed any.
+  async function granNotes(id) {
+    const have = gran.notes.get(id); if (have && Date.now() - have.at < 20 * 60e3) return have;
+    const r = await window.navigatorApp.granolaMeeting(id);
+    if (!r || !r.ok) return { err: (r && r.status) || 'could not read', text: '', actions: [], at: 0 };
+    const m = /<meeting\s[^>]*>([\s\S]*?)<\/meeting>/.exec(r.text), inner = m ? m[1] : r.text;
+    const text = granText(inner.replace(/<known_participants[\s\S]*?<\/known_participants>/g, '').replace(/<attachments[\s\S]*?<\/attachments>/g, '').replace(/<\/?(summary|ai_summary|notes|enhanced_notes)[^>]*>/g, '\n').replace(/<private_notes[^>]*>/g, '\n## Your own notes\n').replace(/<\/private_notes>/g, '\n').replace(/<[^>]+>/g, '')).replace(/\n{3,}/g, '\n\n').trim();
+    const got = { text, actions: granActions(text), at: Date.now() };
+    gran.notes.set(id, got); if (gran.notes.size > 60) gran.notes.delete(gran.notes.keys().next().value);
+    return got;
+  }
+  // The action items in a set of notes: the points under a heading such as Next Steps or Action Items.
+  function granActions(text) {
+    const out = []; let inside = false;
+    for (const raw of String(text || '').split(/\n/)) {
+      const l = raw.trim(); if (!l) continue;
+      const head = /^(#{1,6}\s*|\*\*)?([^#*:]{2,60}?)(\*\*)?:?$/.exec(l), isHead = /^#{1,6}\s/.test(l) || /^\*\*[^*]+\*\*:?$/.test(l) || (head && !/^[-*•\d]/.test(l) && l.length < 50 && !/[.!?]$/.test(l) && /^(next steps?|action items?|actions?|follow[- ]?ups?|to[- ]?dos?)$/i.test(head[2].trim()));
+      if (isHead) { inside = /next steps?|action items?|^#*\s*\**actions?\b|follow[- ]?ups?|to[- ]?dos?/i.test(l); continue; }
+      if (!inside) continue;
+      const b = /^(?:[-*•]|\d+[.)])\s+(.+)$/.exec(l); if (!b) continue;
+      const t = b[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); if (t.length > 3 && out.length < 12) out.push(t.slice(0, 200));
+    }
+    return out;
+  }
+  // The Granola meeting that goes with a calendar entry: the same start (within a quarter of an hour), or else the same name that day.
+  function granFor(inst) {
+    if (!gran.on || !inst || inst.allDay) return null;
+    const title = String((inst.ev && inst.ev.title) || '').toLowerCase().trim();
+    return gran.list.find(g => Math.abs(g.at - inst.start) <= 15 * 60e3) || gran.list.find(g => title && g.title.toLowerCase().trim() === title && Math.abs(g.at - inst.start) < 6 * 3600e3) || null;
+  }
+  // The last time this meeting (or one with the same name) was held.
+  function granLastTime(inst) {
+    if (!gran.on || !inst) return null;
+    const title = String((inst.ev && inst.ev.title) || '').toLowerCase().trim(); if (!title) return null;
+    return gran.list.find(g => g.at < inst.start - 3600e3 && g.title.toLowerCase().trim() === title) || null;
+  }
+  function granMeetingDlg(g, lead) {
+    const d = mailDlg('gran-dlg', '<h2></h2><p class="hint"></p><div class="gbody"><div class="gwait"></div></div><div class="dlg-actions"><button class="btn" data-x="tr">Transcript</button><button class="btn" data-x="open">Open in Granola</button><span style="flex:1"></span><button class="btn" data-x="dealt"></button><button class="btn-primary" data-x="close">Done</button></div>');
+    d.querySelector('h2').textContent = (lead ? lead + ': ' : '') + g.title;
+    d.querySelector('.hint').textContent = `${new Date(g.at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(g.at)}${g.people.length ? ' · ' + g.people.map(p => p.replace(/\s*\([^)]*\)/g, '').replace(/\s+from\s+.*$/, '')).slice(0, 5).join(', ') : ''}`;
+    const body = d.querySelector('.gbody'), wait = t => { body.replaceChildren(); const w = document.createElement('div'); w.className = 'gwait'; w.appendChild(waveEl(9, 'busy')); w.appendChild(Object.assign(document.createElement('span'), { textContent: t })); body.appendChild(w); };
+    const prose = (host, text) => { for (const raw of String(text).split(/\n/)) { const l = raw.trim(); if (!l) continue; const h = /^#{1,6}\s+(.*)$/.exec(l) || /^\*\*([^*]+)\*\*:?$/.exec(l), b = /^(?:[-*•]|\d+[.)])\s+(.+)$/.exec(l); host.appendChild(Object.assign(document.createElement('div'), { className: h ? 'gh' : b ? 'gb' : 'gp', textContent: (h ? h[1] : b ? b[1] : l).replace(/\*\*/g, '') })); } };
+    const dealt = d.querySelector('[data-x="dealt"]'); const paintDealt = () => { dealt.textContent = granDone.has(g.id) ? 'Show in the Brief Again' : 'Dealt With'; dealt.title = granDone.has(g.id) ? 'Put this meeting back in the Chief of Staff’s brief' : 'Take this meeting out of the Chief of Staff’s brief'; };
+    dealt.addEventListener('click', () => { if (granDone.has(g.id)) granDone.delete(g.id); else granDone.add(g.id); granDoneSave(); paintDealt(); try { cosBotSoon(); } catch (e) { /* not showing */ } }); paintDealt();
+    const showNotes = async () => {
+      wait('Reading the notes…');
+      const n = await granNotes(g.id); if (!d.isConnected) return;
+      body.replaceChildren();
+      if (n.err) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: `The notes could not be read: ${n.err}` }));
+      if (n.actions.length) {
+        body.appendChild(Object.assign(document.createElement('div'), { className: 'gh', textContent: 'Actions from this meeting' }));
+        for (const a of n.actions) { const r = document.createElement('div'); r.className = 'gact'; r.appendChild(Object.assign(document.createElement('span'), { textContent: a })); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Give To…'; b.title = 'Put this on a staff member’s list of actions'; b.addEventListener('click', () => {          // (the choices sit in the window itself: a menu would open behind it)
+            const next = r.nextElementSibling; if (next && next.classList.contains('gwho')) return next.remove();
+            const t = cosTeam(); if (!t) return toast('Set up a team in Chief of Staff first.');
+            const w = document.createElement('div'); w.className = 'gwho';
+            for (const st of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const sb = document.createElement('button'); sb.type = 'button'; sb.className = 'btn'; sb.textContent = st.name; sb.addEventListener('click', () => { if (botAddAction(st, a)) { w.remove(); b.textContent = `With the ${st.name}`; b.disabled = true; } }); w.appendChild(sb); }
+            r.after(w);
+          }); r.appendChild(b); body.appendChild(r); }
+        body.appendChild(Object.assign(document.createElement('div'), { className: 'gh', textContent: 'Notes' }));
+      }
+      if (n.text) prose(body, n.text); else body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: 'Granola has no notes for this meeting yet.' }));
+    };
+    let onTr = false;
+    d.querySelector('[data-x="tr"]').addEventListener('click', async e => {
+      onTr = !onTr; e.currentTarget.textContent = onTr ? 'Notes' : 'Transcript';
+      if (!onTr) return showNotes();
+      wait('Reading the transcript…');
+      const r = await window.navigatorApp.granolaTranscript(g.id); if (!d.isConnected || !onTr) return;
+      body.replaceChildren();
+      let t = ''; try { const j = JSON.parse(r.text); t = (j && (j.transcript || (j.meetings && j.meetings[0] && j.meetings[0].transcript))) || ''; } catch (er) { t = r && r.text || ''; }
+      if (!r || !r.ok || !t) return body.appendChild(Object.assign(document.createElement('div'), { className: 'gp', textContent: r && !r.ok ? `The transcript could not be read: ${r.status}` : 'There is no transcript for this meeting.' }));
+      body.appendChild(Object.assign(document.createElement('div'), { className: 'gtr', textContent: granText(String(t).replace(/<[^>]+>/g, '')).slice(0, 60000) }));
+    });
+    const ob = d.querySelector('[data-x="open"]'); ob.hidden = !g.url; ob.addEventListener('click', () => openExternal(g.url));
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    showNotes();
+  }
+  setTimeout(() => granLoad(false), 9000); setInterval(() => { if (document.visibilityState === 'visible') granLoad(false); }, 15 * 60e3);
+  // Granola: connect the app to your meeting notes.
   function granolaDlg() {
     if (!isApp || !window.navigatorApp.granolaConnect) return toast('This works in the desktop app.');
     const d = mailDlg('granola-dlg', '<h2>Granola</h2><p class="hint"></p><div class="gl"></div><div class="dlg-actions"><button class="btn" data-x="details" hidden>Copy Details</button><button class="btn" data-x="off" hidden>Disconnect</button><span style="flex:1"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go"></button></div>');
@@ -16493,8 +16631,8 @@ body { width: max-content !important; min-width: 0 !important; }
       hint.textContent = busy ? (on ? 'Checking\u2026' : 'Your web browser has opened. Sign in to Granola there, then come back.') : on ? 'The app is signed in to Granola\u2019s own connection, the one Claude uses. It only reads.' : 'Sign in once in your web browser. The sign-in is kept encrypted on this Mac. The app only reads your meeting notes; it never changes them.';
       go.textContent = on ? 'Check Again' : 'Connect Granola'; go.disabled = busy; off.hidden = !on || busy;
     };
-    go.addEventListener('click', async () => { busy = true; paint(); let r = null; try { r = on ? await window.navigatorApp.granolaTest() : await window.navigatorApp.granolaConnect(); } catch (e) { r = { ok: false, step: 'connecting', status: String(e && e.message || e) }; } busy = false; try { on = (await window.navigatorApp.granolaStatus()).connected; } catch (e) { /* unchanged */ } show(r); paint(); if (r && r.ok !== false && !r.failed) chime('made'); });
-    off.addEventListener('click', async () => { await window.navigatorApp.granolaDisconnect(); on = false; show(null); paint(); toast('Granola is disconnected.'); });
+    go.addEventListener('click', async () => { busy = true; paint(); let r = null; try { r = on ? await window.navigatorApp.granolaTest() : await window.navigatorApp.granolaConnect(); } catch (e) { r = { ok: false, step: 'connecting', status: String(e && e.message || e) }; } busy = false; try { on = (await window.navigatorApp.granolaStatus()).connected; } catch (e) { /* unchanged */ } show(r); paint(); if (r && r.ok !== false && !r.failed) chime('made'); gran.at = 0; granLoad(true); });
+    off.addEventListener('click', async () => { await window.navigatorApp.granolaDisconnect(); on = false; gran.on = false; gran.list = []; gran.notes.clear(); try { cosBotSoon(); } catch (e) { /* not showing */ } show(null); paint(); toast('Granola is disconnected.'); });
     det.addEventListener('click', async () => { try { await navigator.clipboard.writeText(`Claude Navigator: Granola connection\n${last && last.step ? 'Stopped while ' + last.step + ': ' + last.status + '\n' : ''}${(last && last.details) || ''}`); toast('Copied. It holds the steps and answers, no sign-in values and no meeting content.'); } catch (e) { toast('Could not copy it.'); } });
     d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
     paint(); window.navigatorApp.granolaStatus().then(s => { on = !!s.connected; paint(); }).catch(() => {});
@@ -16562,7 +16700,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const brief = botBrief();
       for (const s of brief) {
         list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: s.h }));
-        for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').textContent = { cal: '▦', warn: '!', mail: '✉', ok: '✓', note: '✎', team: '◎' }[i.ic] || '•'; r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
+        for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').textContent = { cal: '▦', warn: '!', mail: '✉', ok: '✓', note: '✎', team: '◎', meet: '\u25C9' }[i.ic] || '•'; r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
       }
       if (!brief.length && !botList.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'bot-empty', textContent: 'Nothing needs you right now. Ask a question, or press the button and talk.' }));
       if (botS.tidy && botList.length) { list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: 'Tidy up' })); for (const sg of botList) list.appendChild(botCard(sg, 'bot-item')); }
