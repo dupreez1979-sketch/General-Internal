@@ -40,7 +40,8 @@ ipcMain.handle = (ch, fn) => rawHandle(ch, (...a) => {
 });
 ipcMain.handle('startup-log', e => (mainWindow && e.sender === mainWindow.webContents ? startLogText() : ''));
 ipcMain.on('start-note', (e, text) => { if (mainWindow && e.sender === mainWindow.webContents) mark('window: ' + String(text).replace(/[^\w .,:()-]/g, '').slice(0, 120)); });
-const startLogText = () => [`Claude Navigator ${app.getVersion()} startup log, copied ${((Date.now() - T0) / 1000).toFixed(0)} s after opening`, `macOS ${process.getSystemVersion ? process.getSystemVersion() : ''}, ${process.arch}`, ...startLog].join('\n');
+const counts = { reads: 0, writes: 0 };
+const startLogText = () => [`Claude Navigator ${app.getVersion()} startup log, copied ${((Date.now() - T0) / 1000).toFixed(0)} s after opening`, `macOS ${process.getSystemVersion ? process.getSystemVersion() : ''}, ${process.arch}`, ...startLog, `folder read ${counts.reads} times and written ${counts.writes} times since opening`].join('\n');
 const PARTITION = 'persist:claude'; // keeps you signed in between launches
 // Passkeys (Face ID, Touch ID, security keys through the system) cannot work inside the app: Electron has no way
 // to reach them, so a sign-in that asks for one (Microsoft's, for Clara) waits for ever. With passkey sign-in
@@ -1098,10 +1099,30 @@ const defaultRoot = () => {
   return path.join(docs, 'Claude Navigator');
 };
 let folderSync = null;
+// For the startup log: what kind of place the folder is in (never its name), and how long the disk takes to answer
+// one question there, measured against the same question about the app's own data folder on this Mac's own disk.
+async function diskProbe(root) {
+  try {
+    const home = app.getPath('home'), r = path.resolve(root);
+    let where = 'this Mac';
+    if (r.includes(path.join('Library', 'Mobile Documents'))) where = 'iCloud Drive';
+    else if (r.includes(path.join('Library', 'CloudStorage'))) where = 'a cloud storage folder (OneDrive, Dropbox, Google Drive or similar)';
+    else if (/onedrive|dropbox|google ?drive/i.test(r)) where = 'a cloud storage folder (by its name)';
+    else {
+      const inDocs = r.startsWith(path.join(home, 'Documents') + path.sep), inDesk = r.startsWith(path.join(home, 'Desktop') + path.sep);
+      let icloudDocs = false; try { await fs.promises.lstat(path.join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs', inDesk ? 'Desktop' : 'Documents')); icloudDocs = true; } catch (e) { /* not kept in iCloud */ }
+      where = inDocs || inDesk ? `your ${inDesk ? 'Desktop' : 'Documents'} folder${icloudDocs ? ', which iCloud keeps (Desktop & Documents is on)' : ', not kept in iCloud'}` : 'another folder on this Mac';
+    }
+    const time = async p => { const t = process.hrtime.bigint(); for (let i = 0; i < 20; i++) { try { await fs.promises.lstat(p); } catch (e) { /* still timed */ } } return Number(process.hrtime.bigint() - t) / 20e6; };
+    const there = await time(r), here = await time(app.getPath('userData'));
+    mark(`synced folder is in ${where}; one question to the disk takes ${there.toFixed(1)} ms there, ${here.toFixed(1)} ms on this Mac's own disk`);
+  } catch (e) { /* log only */ }
+}
 function startSync(root) {
   if (folderSync) folderSync.unwatch();
   folderSync = new FolderSync(root);
   folderSync.cacheFile = path.join(app.getPath('userData'), 'link-cache.json');
+  diskProbe(root);
   try { folderSync.ensureRoot(); folderSync.watch(() => send('fs-changed')); } catch (e) { /* reported when the app next reads the folder */ }
 }
 ipcMain.handle('fs-status', () => {
@@ -1165,6 +1186,7 @@ ipcMain.handle('fs-scan', () => {
   const fsync = folderSync;
   const p = (async () => {
     try {
+      counts.reads++;
       const out = await fsync.scanAsync();
       const st = fsync.lastScan || {};
       if (st.ms > 1500) mark(`folder read: ${st.entries} items in ${st.folders} folders, ${st.linksRead} link files opened`, st.ms);
@@ -1179,6 +1201,7 @@ ipcMain.handle('fs-scan', () => {
 ipcMain.handle('fs-apply', async (_e, payload) => {
   if (!folderSync) return null;
   const fsync = folderSync;
+  counts.writes++;
   try { const r = await fsync.apply(payload || {}); const st = fsync.lastApply || {}; if (st.ms > 1500) mark(`folder written: ${st.nodes} items checked, ${st.changed} changed`, st.ms); return r; } catch (e) { return { map: {}, errors: [e.message] }; }
 });
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
@@ -1203,7 +1226,7 @@ ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolde
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
 ipcMain.handle('fs-copy', (_e, srcRel, destDirRel, keepName) => {
   if (!folderSync) return { error: 'Folders on this Mac are not turned on' };
-  try { return folderSync.copy(srcRel, destDirRel, !!keepName); } catch (e) { return { error: e.message }; }
+  return folderSync.copy(srcRel, destDirRel, !!keepName).catch(e => ({ error: e.message }));
 });
 ipcMain.handle('fs-import', (_e, paths, destRel) => (folderSync ? folderSync.importFiles(paths, destRel) : []));
 // New Word / Excel / PowerPoint / text file from a blank template, then open it in its own app.

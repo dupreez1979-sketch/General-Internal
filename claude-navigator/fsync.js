@@ -299,7 +299,7 @@ class FolderSync {
   }
 
   // Copies a file or folder: next to itself as "Name copy", or into another folder keeping its name.
-  copy(srcRel, destDirRel, keepName) {
+  async copy(srcRel, destDirRel, keepName) {
     const src = this.abs(srcRel);
     if (!exists(src)) return { error: 'it is no longer there' };
     const dir = destDirRel != null ? this.abs(destDirRel) : path.dirname(src);
@@ -309,7 +309,7 @@ class FolderSync {
     let name = keepName ? base : `${stem} copy${ext}`;
     for (let i = 2; exists(path.join(dir, name)); i++) name = `${stem}${keepName ? '' : ' copy'} ${i}${ext}`;
     fs.mkdirSync(dir, { recursive: true });
-    fs.cpSync(src, path.join(dir, name), { recursive: true });
+    await fs.promises.cp(src, path.join(dir, name), { recursive: true });
     return { rel: this.rel(path.join(dir, name)) };
   }
 
@@ -324,7 +324,7 @@ class FolderSync {
         const ext = path.extname(base);
         let target = path.join(dest, base);
         for (let i = 2; exists(target); i++) target = path.join(dest, `${base.slice(0, base.length - ext.length)} ${i}${ext}`);
-        fs.cpSync(src, target, { recursive: true });
+        await fs.promises.cp(src, target, { recursive: true });
         done.push(this.rel(target));
       } catch (e) { /* skip files that cannot be copied */ }
     }

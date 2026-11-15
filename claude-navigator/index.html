@@ -2499,6 +2499,10 @@
       const used = new Set(nodes.map(n => n.path).filter(Boolean));
       trash = trash.filter(p => !used.has(p));
       trash = trash.filter(p => !trash.some(o => o !== p && p.startsWith(o + '/')));     // only the outermost
+      // Most saves change nothing a folder on disk would show (a tick, a note, a setting): then there is nothing to write.
+      const sigOf = () => { const a = []; walk(state.tree, n => a.push(n.id, n.type, n.name, n.url || '', n.path || '')); return a.join('\u0001'); };
+      const order = nodes.map(n => n.id + '>' + (n.parentId || '')).join('\u0001');
+      if (!trash.length && fsState.sig && fsState.sig === sigOf() + order) return;
       const res = await window.navigatorApp.fsApply({ nodes, trash });
       if (!res || res.unreachable) { if (res) { fsState.suspect = true; fsState.pullAfter = true; } return; }
       ls.set(FS_TRASH, '[]');
@@ -2516,7 +2520,10 @@
       ls.set(STORE, JSON.stringify(state.tree));
       if (removed) renderAll();
       if (res.errors && res.errors.length) toast(`Some changes could not be made on disk: ${res.errors[0]}`);
+      { const after = []; const v2 = (list, parentId) => list.forEach(n => { after.push(n.id + '>' + (parentId || '')); if (n.children) v2(n.children, n.id); }); v2(state.tree, null);
+        fsState.sig = res.errors && res.errors.length ? '' : sigOf() + after.join('\u0001'); }
     } catch (e) {
+      fsState.sig = '';
       toast(`Could not update the folders on disk: ${e.message || e}`);
     } finally {
       fsState.applying = false;
@@ -2529,6 +2536,7 @@
     if (!fsState.enabled) return;
     if (fsState.applying || fsState.timerPending) { fsState.pullAfter = true; return; }
     const scanAt = Date.now();
+    fsState.sig = '';                  // the disk may have changed: the next write checks everything again
     const entries = await window.navigatorApp.fsScan();
     if (!entries) return;
     if (entries.error || !Array.isArray(entries)) {
