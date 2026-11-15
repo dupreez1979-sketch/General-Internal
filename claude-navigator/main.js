@@ -1078,6 +1078,51 @@ ipcMain.handle('chat-file-open', async (e, chatUrl, name) => {
   } catch (err) { return { ok: false, why: String(err && err.message || err) }; }
   finally { clearTimeout(guard); if (!win.isDestroyed()) win.destroy(); }
 });
+// Unpin (unstar) Claude Projects, so staff projects do not crowd the pinned list in Claude's sidebar. Done the way
+// Claude's own page does it, with your signed-in session: each project is asked to drop its star. Given no addresses
+// it unpins every project that is pinned; given some, only those. Nothing else about a project is touched.
+const UNPIN_SCRIPT = only => `(async () => {
+  const out = { seen: 0, pinned: 0, unpinned: 0, failed: 0, note: '' };
+  const want = ${JSON.stringify(only || [])};
+  const j = async (u, init) => { const r = await fetch(u, Object.assign({ credentials: 'include', headers: { accept: 'application/json', 'content-type': 'application/json' } }, init || {})); return { ok: r.ok, status: r.status, data: await r.json().catch(() => null) }; };
+  const list = (x) => Array.isArray(x) ? x : (x && (x.data || x.projects || x.items)) || [];
+  try {
+    const orgs = await j('/api/organizations'); if (!orgs.ok) { out.note = 'Claude answered ' + orgs.status; return out; }
+    for (const o of list(orgs.data)) {
+      if (!o || !o.uuid) continue;
+      const ps = await j('/api/organizations/' + o.uuid + '/projects'); if (!ps.ok) continue;
+      for (const p of list(ps.data)) {
+        if (!p || !p.uuid) continue; out.seen++;
+        const named = want.some(u => String(u).includes(p.uuid));
+        if (want.length ? !named : p.is_starred !== true) continue;
+        if (p.is_starred === false) continue;
+        out.pinned++;
+        const r = await j('/api/organizations/' + o.uuid + '/projects/' + p.uuid, { method: 'PUT', body: JSON.stringify({ is_starred: false }) });
+        if (r.ok) out.unpinned++; else { out.failed++; out.note = 'Claude answered ' + r.status + ' when asked to unpin'; }
+      }
+    }
+  } catch (e) { out.note = String(e && e.message || e).slice(0, 160); }
+  return out;
+})()`;
+let unpinRun = null;
+ipcMain.handle('claude-unpin-projects', (e, only) => {
+  if (!fromOwnWindow(e)) return null;
+  if (unpinRun) return unpinRun;
+  unpinRun = (async () => {
+    const win = new BrowserWindow({ show: false, width: 1100, height: 800, webPreferences: { partition: PARTITION, contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false } });
+    win.webContents.setAudioMuted(true);
+    const guard = setTimeout(() => { if (!win.isDestroyed()) win.destroy(); }, 90000);
+    try {
+      const cleared = await openHidden(win, 'https://claude.ai/projects');
+      if (/\/(login|logout|signup)/.test(win.webContents.getURL())) return { signedIn: false };
+      if (!cleared) return { blocked: true };
+      const list = Array.isArray(only) ? only.filter(u => typeof u === 'string' && /^https:\/\/claude\.ai\/project\//.test(u)).slice(0, 50) : [];
+      return await win.webContents.executeJavaScript(UNPIN_SCRIPT(list), true);
+    } catch (er) { return { note: String(er && er.message || er).slice(0, 160) }; }
+    finally { clearTimeout(guard); if (!win.isDestroyed()) win.destroy(); unpinRun = null; }
+  })();
+  return unpinRun;
+});
 ipcMain.handle('library-refresh', (_e, opts) => libraryRun || (libraryRun = fetchLibrary(opts || {}).finally(() => { libraryRun = null; })));
 
 // Quick look at the links Claude is showing in the visible pane (its sidebar of recent chats).

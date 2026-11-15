@@ -4851,6 +4851,8 @@
 
   function fileNewItem(a, url, title) {
     state.autoFile = null;
+    // A project made for a staff member is not left pinned in Claude's sidebar.
+    if (a.onMade && a.kind === 'project') setTimeout(() => claudeUnpin([url], true), 4000);
     if (a.onMade) return a.onMade(url, title);           // Chief of Staff links it instead of filing it
     if (!nodeOf(a.folderId)) return;
     const link = addLink(a.folderId, realTitle(title), url, { autoName: true });
@@ -15803,6 +15805,16 @@ body { width: max-content !important; min-width: 0 !important; }
     ls.set('claudeNavigator.appOrder', JSON.stringify(o)); appApplyOrder();
   }
   function appSetHidden(k, hide) { const h = appHidden().filter(x => x !== k); if (hide) h.push(k); ls.set('claudeNavigator.appHidden', JSON.stringify(h)); appApplyOrder(); }
+  // Claude Projects made for staff are kept out of Claude's pinned list. Once, every project that is pinned now is
+  // unpinned; after that only a newly made staff project is. (Pin one yourself in Claude and it stays pinned.)
+  async function claudeUnpin(only, quiet) {
+    if (!isApp || !window.navigatorApp.claudeUnpinProjects) return null;
+    let r = null; try { r = await window.navigatorApp.claudeUnpinProjects(only || null); } catch (e) { r = { note: String(e && e.message || e) }; }
+    try { startNote(`unpin projects: ${r ? (r.signedIn === false ? 'not signed in' : r.blocked ? 'blocked' : `${r.unpinned || 0} of ${r.pinned || 0} pinned unpinned, ${r.failed || 0} failed${r.note ? ', ' + r.note : ''}`) : 'no answer'}`); } catch (e) { /* log only */ }
+    if (!quiet && r) toast(r.signedIn === false ? 'Sign in to Claude first, then try again.' : r.blocked ? 'Claude was not ready. Try again in a moment.' : r.failed ? `Claude would not unpin ${r.failed} project${r.failed === 1 ? '' : 's'}: ${r.note || 'try again'}` : r.pinned ? `Unpinned ${r.unpinned} project${r.unpinned === 1 ? '' : 's'} in Claude.` : 'No projects are pinned in Claude.');
+    return r;
+  }
+  setTimeout(async () => { try { if (SOLO || ls.get('claudeNavigator.unpinnedAll') === '2') return; const r = await claudeUnpin(null, true); if (r && r.signedIn !== false && !r.blocked && !r.failed && !r.note) ls.set('claudeNavigator.unpinnedAll', '2'); } catch (e) { /* tried again next time */ } }, 25000);
   // Each app's icon and colour can be changed (right-click the app). The icons are a set of 137 from Lucide, an
   // openly licensed collection (ISC), kept with the app in vendor/. What you choose is kept on this Mac.
   const APP_LOOK = 'claudeNavigator.appLook.v1';
@@ -17900,6 +17912,7 @@ body { width: max-content !important; min-width: 0 !important; }
         { label: 'Granola\u2026', run: granolaDlg },
         { label: 'Fast Answers (API Key)\u2026', run: fastDlg },
         { label: 'Words It Mishears\u2026', run: hearDlg },
+        { label: 'Unpin All Projects in Claude', run: () => { toast('Unpinning your projects in Claude\u2026'); claudeUnpin(null, false); } },
         { label: 'Run Checks', run: runChecks },
         { label: 'Copy the Chief of Staff\u2019s Project Instructions', run: () => { const t = cosTeam(), c = t && t.nodes.find(x => x.chief); if (c) cosCopyInstructions(c); } },
       ]);
