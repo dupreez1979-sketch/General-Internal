@@ -15826,8 +15826,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = mailDlg('granola-dlg applook', '<h2></h2><p class="hint">Choose a colour and an icon. It changes in the dock, the app switcher and anywhere else this app shows.</p><div class="al-top"><span class="app-ic al-prev"></span><div class="al-cols"></div></div><input type="search" class="al-find" placeholder="Search the icons, for example: calendar, people, money"><div class="al-grid"></div><div class="dlg-actions"><button class="btn" data-x="reset">Back to the Original</button><span style="flex:1"></span><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>');
     d.querySelector('h2').textContent = `Icon and colour for ${APP_NAMES[k] || 'this app'}`;
     const prev = d.querySelector('.al-prev'), cols = d.querySelector('.al-cols'), grid = d.querySelector('.al-grid'), find = d.querySelector('.al-find'), own = appTileIc(k);
-    prev.className = 'app-ic al-prev ' + ((own && [...own.classList].find(c => c !== 'app-ic')) || '');
-    const paint = () => { prev.style.background = L.color || ''; prev.innerHTML = L.icon && set[L.icon] ? appIconSvg(set[L.icon], 26) : (own ? own.dataset.own || own.innerHTML : ''); cols.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === (L.color || ''))); grid.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.n === (L.icon || ''))); };
+    prev.className = 'app-ic al-prev ' + ((own && [...own.classList].find(c => c !== 'app-ic')) || (k === 'chats' ? 'claude' : ''));
+    const paint = () => { prev.style.background = L.color || ''; prev.innerHTML = L.icon && set[L.icon] ? appIconSvg(set[L.icon], 26) : (own ? own.dataset.own || own.innerHTML : k === 'chats' ? CHATS_ICON : ''); cols.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.c === (L.color || ''))); grid.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.n === (L.icon || ''))); };
     for (const c of APP_COLOURS) { const b = document.createElement('button'); b.type = 'button'; b.dataset.c = c; b.style.background = c; b.title = c; b.addEventListener('click', () => { L.color = c; paint(); }); cols.appendChild(b); }
     { const cu = document.createElement('input'); cu.type = 'color'; cu.title = 'Any other colour'; cu.value = /^#[0-9a-f]{6}$/i.test(L.color || '') ? L.color : '#1B5A68'; cu.addEventListener('input', () => { L.color = cu.value; paint(); }); cols.appendChild(cu); }
     const fill = () => { const q = find.value.trim().toLowerCase(); grid.replaceChildren(); for (const n of names) { if (q && !q.split(/\s+/).every(w => n.includes(w))) continue; const b = document.createElement('button'); b.type = 'button'; b.dataset.n = n; b.title = n.replace(/-/g, ' '); b.innerHTML = appIconSvg(set[n], 22).replace('stroke="#fff"', 'stroke="currentColor"'); b.addEventListener('click', () => { L.icon = n; paint(); }); grid.appendChild(b); } if (!grid.children.length) grid.appendChild(Object.assign(document.createElement('div'), { className: 'al-none', textContent: names.length ? 'No icon with that name. Try a simpler word.' : 'The icon set could not be read.' })); paint(); };
@@ -15864,7 +15864,7 @@ body { width: max-content !important; min-width: 0 !important; }
           k === 'mail' ? { label: 'Mail Health\u2026', run: () => mailHealth() } : null,
           '-',
         ].filter(Boolean) : []),
-        ...(k !== 'chats' ? [{ label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-'] : []),
+        { label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-',
         { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
         { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
         '-',
@@ -15884,7 +15884,9 @@ body { width: max-content !important; min-width: 0 !important; }
   const sideSave = () => ls.set('claudeNavigator.side.v1', JSON.stringify(sideState));
   const sideViews = {};
   const DOCK = [['cos', 'Chief of Staff', 'cos'], ['claude', 'Claude', 'claude'], ['chats', 'All Chats', 'chats'], ['folders', 'Folders', 'nav'], ['mail', 'Mail', 'mail'], ['cal', 'Calendar', 'cal'], ['meet', 'Meetings', 'meet'], ['monday', 'monday.com', 'monday']];
-  const dockIcon = cls => cls === 'chats' ? '<span class="app-ic mini claude"><svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg></span>' : `<span class="app-ic mini ${cls}"${(($('appPop').querySelector('.app-ic.' + cls) || {}).style || {}).background ? ` style="background:${$('appPop').querySelector('.app-ic.' + cls).style.background}"` : ''}>${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
+  const CHATS_ICON = '<svg width="20" height="20" viewBox="0 0 16 16"><path d="M3 4.5h10M3 8h10M3 11.5h6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  // (All Chats has no tile in the app switcher, so its icon and colour are read straight from what you chose)
+  const dockIcon = cls => cls === 'chats' ? `<span class="app-ic mini claude"${/^#[0-9a-f]{6}$/i.test((appLooks.chats || {}).color || '') ? ` style="background:${appLooks.chats.color}"` : ''}>${(appLooks.chats || {}).icon && appIconSet && appIconSet[appLooks.chats.icon] ? appIconSvg(appIconSet[appLooks.chats.icon]) : CHATS_ICON}</span>` : `<span class="app-ic mini ${cls}"${(($('appPop').querySelector('.app-ic.' + cls) || {}).style || {}).background ? ` style="background:${$('appPop').querySelector('.app-ic.' + cls).style.background}"` : ''}>${($('appPop').querySelector('.app-ic.' + cls) || {}).innerHTML || ''}</span>`;
   // Every app opens beside the main one in the same way: as a frame of its own in the side panel. The one exception
   // is Claude while File Navigator, Claude or Chief of Staff is the main app: there a chat opens in the app's own
   // Claude pane, which the lists and the staff pages are wired to.
