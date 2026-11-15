@@ -13620,8 +13620,9 @@ body { width: max-content !important; min-width: 0 !important; }
     sigDesign.offer = offer;
     bar.addEventListener('click', async e => { const x = e.target.dataset && e.target.dataset.x; if (x === 'stop') return sigDesignStop(); if (x === 'manual') { let t = ''; try { t = String(await window.navigatorApp.clipText() || ''); } catch (er) { /* nothing */ } if (!sigLooksLikeDesign(t)) return toast('Nothing that looks like a design is copied yet. Press Copy on the design in Claude first.'); offer(t); } });
     sigDesign.timer = setInterval(async () => { if (!sigDesign) return; let t = ''; try { t = String(await window.navigatorApp.clipText() || ''); } catch (e) { return; } if (t && t !== sigDesign.was && sigLooksLikeDesign(t)) offer(t); else if (t !== sigDesign.was && t) sigDesign.was = t; }, 1500);
-    try { if (currentApp === 'mail' && typeof openClaude === 'function' && pane.hidden) openClaude(); } catch (e) { /* shown by go() */ }
-    go({ kind: 'page', url: 'https://claude.ai/new?q=' + encodeURIComponent(brief) });
+    // Claude opens in a window of its own, so it is on screen whichever part of the app you were in (Mail and
+    // Chief of Staff have no Claude pane to show it in).
+    openNewWindow('https://claude.ai/new?q=' + encodeURIComponent(brief));
   }
   function mailEditSignature(a, pid = state.profileId, add) {
     const p = pid ? nodeOf(pid) : null, list = sigListOf(a.id, pid);
