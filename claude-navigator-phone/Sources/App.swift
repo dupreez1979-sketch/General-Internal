@@ -37,7 +37,6 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         // "Hey Siri, talk to my Chief of Staff": go to Drive and start listening (tried a few times while the page loads).
         NotificationCenter.default.addObserver(forName: .startDrive, object: nil, queue: .main) { [weak self] _ in self?.startDriveFromSiri(tries: 0) }
         if Date().timeIntervalSince1970 - UserDefaults.standard.double(forKey: "startDriveAt") < 20 { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startDriveFromSiri(tries: 0) } }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4) { self.drive.restoreModel() }      // a drive that was cut short: put Claude's model back
         ui.scrollView.contentInsetAdjustmentBehavior = .never
         ui.scrollView.bounces = false
         ui.isOpaque = false
@@ -69,9 +68,9 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "hush": drive.hush()
         case "copy": if let text = body["text"] as? String { UIPasteboard.general.string = text }
         case "chime": if let name = body["name"] as? String { drive.chime(name) }
-        case "fastModel": drive.fastModel()
-        case "restoreModel": drive.restoreModel()
-        case "warm": if let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https", let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") { drive.warm(url: url) }
+        case "fastModel": break                 // (no longer done: Claude's page is only used when you open it and can see it)
+        case "restoreModel": break
+        case "warm": break
         case "voiceGet": sendVoice()
         case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
         case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
@@ -93,11 +92,7 @@ final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumen
         case "names": drive.names = ((body["list"] as? [String]) ?? []).prefix(80).map { String($0.prefix(60)) }
         case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
         case "voiceTry": drive.say("This is how I will sound when you are driving.")
-        case "ask":
-            guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
-                  let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai"),
-                  let prompt = body["prompt"] as? String, let nonce = body["nonce"] as? String else { return }
-            drive.ask(url: url, prompt: prompt, nonce: nonce)
+        case "ask": break                       // (the hidden-page lane is gone: questions go to the API, your lists, your email and Granola)
         case "chat":
             guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
                   let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") else { return }

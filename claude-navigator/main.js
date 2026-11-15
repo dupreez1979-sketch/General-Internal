@@ -1922,14 +1922,18 @@ ipcMain.handle('api-run', async (e, req) => {
   const body = { model: T.model, max_tokens: Math.max(64, Math.min(T.top, +req.max || 400)), system: String(req.system || '').slice(0, 20000), messages, output_config: { effort: tier === 'fast' ? 'low' : 'medium' } };
   if (tier === 'fast') body.thinking = { type: 'disabled' };
   if (tools.length) body.tools = tools;
-  const started = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 45000);
+  if (tools.length && req.lastRound) body.tool_choice = { type: 'none' };      // the last round: it must answer, not look again
+  const wait = Math.max(5000, Math.min(45000, +req.wait || 45000));
+  const started = Date.now(), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), wait);
   try {
     const r = await net.fetch(apiBase() + '/v1/messages', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2026-10-21' }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({})), ms = Date.now() - started, u = j.usage || {};
     if (!r.ok) return { error: String((j.error && j.error.message) || `the API answered ${r.status}`).slice(0, 200), status: r.status, ms, tier };
-    const content = Array.isArray(j.content) ? j.content : [];
-    return { content, text: content.filter(c => c.type === 'text').map(c => c.text).join('\n'), stop: j.stop_reason || '', ms, in: u.input_tokens || 0, out: u.output_tokens || 0, model: j.model || '', tier };
-  } catch (er) { return { error: ctl.signal.aborted ? 'no answer in 45 seconds' : String(er && er.message || er).slice(0, 160), ms: Date.now() - started, tier }; }
+    const content = Array.isArray(j.content) ? j.content : [], said = content.filter(c => c.type === 'text').map(c => c.text).join('\n');
+    if (j.stop_reason === 'refusal') return { error: 'Claude declined to answer that', ms, in: u.input_tokens || 0, out: u.output_tokens || 0, tier };
+    if (j.stop_reason === 'max_tokens' && !said.trim()) return { error: 'the answer ran out of room', ms, in: u.input_tokens || 0, out: u.output_tokens || 0, tier };
+    return { content, text: said, stop: j.stop_reason || '', ms, in: u.input_tokens || 0, out: u.output_tokens || 0, model: j.model || '', tier };
+  } catch (er) { return { error: ctl.signal.aborted ? `no answer in ${Math.round(wait / 1000)} seconds` : String(er && er.message || er).slice(0, 160), ms: Date.now() - started, tier }; }
   finally { clearTimeout(timer); }
 });
 ipcMain.handle('api-ask', async (e, system, turns, max) => {

@@ -55,10 +55,11 @@ const clean = t => String(t || '').replace(/\r/g, '').replace(/[ \t ]+/g, ' ').
 const people = l => (l || []).map(x => x.emailAddress).filter(Boolean).map(e => `${e.name || ''} ${e.address || ''}`.trim()).join(', ');
 function toDoc(key, folderId, m) {
   const f = (m.from && m.from.emailAddress) || {};
-  const body = m.body && m.body.contentType && String(m.body.contentType).toLowerCase() === 'text' ? clean(m.body.content).slice(0, TEXT_MAX) : '';
+  // (A draft is indexed by its subject and people only: its words are not kept, as a draft can hold notes from a meeting.)
+  const body = m.isDraft ? '' : m.body && m.body.contentType && String(m.body.contentType).toLowerCase() === 'text' ? clean(m.body.content).slice(0, TEXT_MAX) : '';
   return {
     k: `${key}|${m.id}`, i: m.id, a: key, f: folderId, s: m.subject || '', fn: f.name || '', fa: f.address || '', w: `${f.name || ''} ${f.address || ''}`.trim(),
-    t: people((m.toRecipients || []).concat(m.ccRecipients || [])), d: Date.parse(m.receivedDateTime) || 0, p: m.bodyPreview || '', x: body || clean(m.bodyPreview),
+    t: people((m.toRecipients || []).concat(m.ccRecipients || [])), d: Date.parse(m.receivedDateTime) || 0, p: m.isDraft ? '' : m.bodyPreview || '', x: m.isDraft ? '' : body || clean(m.bodyPreview),
     h: m.hasAttachments ? 1 : 0, r: m.isRead ? 1 : 0, dr: m.isDraft ? 1 : 0, c: m.conversationId || '',
   };
 }
