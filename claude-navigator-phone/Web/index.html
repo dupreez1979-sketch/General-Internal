@@ -315,7 +315,7 @@
   function driveEnd() { send({ do: 'hush' }); send({ do: 'restoreModel' }); send({ do: 'awake', on: false }); clearTimeout(drive.timer); drive.on = false; if (drive.log.length) { ls.set('lastDrive', JSON.stringify({ at: Date.now(), pid: ui.pid, log: drive.log.slice(-40) })); ui.tab = 'today'; ui.staff = null; } render(); send({ do: 'load' }); }
   function driveListen(wait) { drive.state = 'listening'; drive.heard = ''; render(); chime('listen'); if (!send({ do: 'listen', wait: wait || 8 })) { drive.state = 'idle'; drive.line = 'Voice works in the app on your phone.'; render(); } }
   function driveSay(text, then) { drive.state = 'speaking'; drive.line = text; drive.after = then || 'listen'; drive.stream = { left: 1, done: true }; render(); if (!send({ do: 'say', text })) { drive.state = 'idle'; render(); } }
-  function driveStop() { send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; drive.pending = null; drive.stream = null; drive.ackLeft = 0; drive.localAsk = null; render(); }
+  function driveStop() { dnote('stopped by you', { was: drive.state, stage: drive.stage || '' }); const was = drive.state; send({ do: 'hush' }); clearTimeout(drive.timer); drive.state = 'idle'; if (was === 'thinking') { drive.line = 'Stopped. Tap to talk.'; chime('no'); } drive.pending = null; drive.stream = null; drive.ackLeft = 0; drive.localAsk = null; render(); }
   const snapshot = () => { const t = team(), L = []; if (!t) return '';
     for (const n of t.nodes.filter(x => x.kind === 'staff' && !x.chief)) { const w = workOf(n.id); L.push(`${n.name}${n.role ? ' (' + n.role + ')' : ''}: ${w.open.length ? 'open: ' + w.open.slice(0, 8).map(x => x.name).join('; ') : 'nothing open'}${w.done.length ? '. Finished lately: ' + w.done.slice(0, 4).map(x => x.name).join('; ') : ''}`); }
     const td = (t.today || []).map(x => x.text); if (td.length) L.push('Needs my attention: ' + td.slice(0, 8).join(' '));
@@ -404,7 +404,7 @@
     if (localOn() && !/^(ask|tell|get)\b/.test(low) && LOCALISH.test(low)) return driveLocalAsk(said, target);
     driveAsk(said, target);
   }
-  window.driveHeard = h => { if (!drive.on) return; if (h.problem) { chime('no'); drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { chime('heard'); if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
+  window.driveHeard = h => { if (!drive.on) return; if (h.problem) { chime('no'); drive.state = 'idle'; drive.line = h.problem; return render(); } drive.heard = h.text || ''; if (h.final) { drive.heardAt = Date.now(); chime('heard'); if (!drive.heard.trim()) { drive.state = 'idle'; render(); } else driveHandle(drive.heard); } else render(); };
   // After an answer it listens again for a moment, so you can carry on without touching the screen.
   window.driveSpoke = () => { if (drive.ackLeft > 0) { drive.ackLeft--; return; }       // (that was the few words said while Claude thinks)
     if (!drive.on || drive.state !== 'speaking') return; const st = drive.stream; if (st) { st.left = Math.max(0, st.left - 1); if (st.left > 0 || !st.done) return; }       // more of this answer is still to be spoken
@@ -481,7 +481,14 @@
     const label = { idle: who.chief ? 'Talk to your Chief of Staff' : `Talk to the ${who.name}`, listening: 'Listening', thinking: 'Thinking', speaking: who.chief ? 'Chief of Staff' : who.name }[drive.state];
     big.innerHTML = mic + '<span></span>'; big.querySelector('span').textContent = label;
     if (drive.state !== 'idle') { big.querySelector('svg').replaceWith(waveEl(13, drive.state === 'listening' ? (drive.heard ? 'loud' : 'live') : drive.state === 'thinking' ? 'busy' : 'talk')); }
-    big.onclick = () => { if (drive.state === 'idle') driveListen(8); else if (drive.state === 'listening') send({ do: 'stopListening' }); else driveStop(); };
+    // A tap to say "I have finished" can land just after the phone has already heard you: that tap must not cancel the
+    // question. While Claude is working the big button never cancels (only Stop does); it tells you where things are up to.
+    big.onclick = () => {
+      if (drive.state === 'idle') return driveListen(8);
+      if (drive.state === 'listening') return send({ do: 'stopListening' });
+      if (drive.state === 'thinking') { dnote('tap while thinking', { stage: drive.stage || '' }); if (Date.now() - (drive.heardAt || 0) > 4000) { drive.ackLeft = (drive.ackLeft || 0) + 1; send({ do: 'say', text: `Still ${drive.stage === 'working' || drive.stage === 'sent' ? 'waiting for Claude' : 'getting your question to Claude'}. Press Stop to cancel.` }); } return; }
+      driveStop();
+    };
     const side = el('div', 'dside');
     if (drive.state === 'listening') side.append(el('div', 'dwho', 'You'), el('div', 'dline', drive.heard || 'Say it… finish with “over”, or just pause'));
     else if (drive.line) side.append(el('div', 'dwho', drive.state === 'idle' ? '' : who.chief ? 'Chief of Staff' : who.name), el('div', 'dline', drive.line.length > 150 ? drive.line.slice(0, 147) + '…' : drive.line));
