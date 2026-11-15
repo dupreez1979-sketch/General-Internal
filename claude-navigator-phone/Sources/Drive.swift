@@ -333,14 +333,25 @@ final class Drive: NSObject {
         let mine = askID
         answerTimer?.invalidate()
         tell("driveTrace", ["k": "ask", "want": url.path, "at": claude.url?.path ?? "none", "loading": claude.isLoading])
-        if !same(claude.url, url) { claude.load(URLRequest(url: url)); tell("driveStage", ["stage": "opening"]) }
+        let moving = !same(claude.url, url)
+        if moving { claude.load(URLRequest(url: url)); tell("driveStage", ["stage": "opening"]) }
         var tries = 0
         func trySend() {
             guard mine == self.askID else { return }
             tries += 1
+            let thisTry = tries
+            var answered = false
             self.tell("driveStage", ["stage": tries == 1 ? "typing" : "retyping", "n": tries])
+            // If the page changes under it, the typing can vanish without ever reporting back: give it 12 seconds, then try again.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 12) {
+                guard mine == self.askID, !answered, thisTry == tries else { return }
+                answered = true
+                self.tell("driveTrace", ["k": "send", "try": thisTry, "outcome": "silent", "at": self.claude.url?.path ?? "none", "loading": self.claude.isLoading])
+                if tries < 8 { trySend() } else { self.tell("driveAnswer", ["text": "", "done": true, "problem": "Claude did not take the question."]) }
+            }
             claude.callAsyncJavaScript("return await \(sendScript(prompt))", arguments: [:], in: nil, in: .page) { result in
-                guard mine == self.askID else { return }
+                guard mine == self.askID, !answered else { return }
+                answered = true
                 var failure = ""
                 if case .failure(let error) = result { failure = String(error.localizedDescription.prefix(120)) }
                 let outcome = (try? result.get()) as? String ?? "none"
@@ -350,7 +361,17 @@ final class Drive: NSObject {
                 else { self.tell("driveAnswer", ["text": "", "done": true, "problem": outcome == "none" ? "Claude did not open. Check you are signed in." : "Claude did not take the question."]) }
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { trySend() }
+        // Moving to another project: wait until that page has opened (up to 20 seconds) before typing into it.
+        var waited = 0
+        func whenOpen() {
+            guard mine == self.askID else { return }
+            waited += 1
+            if !moving || waited > 40 || (!self.claude.isLoading && self.same(self.claude.url, url)) {
+                if moving { self.tell("driveTrace", ["k": "open", "waited": waited, "at": self.claude.url?.path ?? "none", "loading": self.claude.isLoading]) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + (moving ? 0.8 : 0.2)) { trySend() }
+            } else { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { whenOpen() } }
+        }
+        whenOpen()
     }
 
     // Reads Claude's page until the spoken answer (between [[SAY]] and [[END]]) is complete.
