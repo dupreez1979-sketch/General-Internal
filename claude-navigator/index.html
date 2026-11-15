@@ -16625,7 +16625,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const today = [];
     try {
       const a = new Date(); a.setHours(0, 0, 0, 0); const b = new Date(a.getTime() + 864e5);
-      for (const i of calVisible(a, b)) { if (i.allDay || i.end < now) continue; today.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: (i.ev && i.ev.location) ? String(i.ev.location).slice(0, 60) : (i.start <= now ? 'On now' : ''), go: 'Open', run: () => setApp('cal') }); if (today.length >= 4) break; }
+      for (const i of calVisible(a, b)) { if (i.allDay || i.end < now) continue; const last = i.start > now ? granLastTime(i) : null; today.push({ ic: 'cal', title: `${calFmtTime(i.start)} ${(i.ev && (i.ev.title || i.ev.summary)) || 'Meeting'}`, sub: last ? `Last time: ${new Date(last.at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}. Click for those notes.` : (i.ev && i.ev.location) ? String(i.ev.location).slice(0, 60) : (i.start <= now ? 'On now' : ''), go: last ? 'Prep' : 'Open', run: last ? () => granMeetingDlg(last, 'Last time') : () => setApp('cal') }); if (today.length >= 4) break; }
     } catch (e) { /* no calendar yet */ }
     try { if (granReviewDue()) { const n = granOpenCount(p); out.push({ h: 'Weekly review', items: [
       { ic: 'meet', title: 'Go through this week\u2019s meeting actions', sub: n ? `${n} to give out or dismiss` : 'Give out what needs doing, dismiss the rest', go: 'Review', run: granReviewOpen },
@@ -16677,6 +16677,59 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     if (team.length) out.push({ h: 'The team', items: team });
     return out;
+  }
+  // ---------- The brief advises ----------
+  // Above the lists, the Chief of Staff says what it would do today and why: at most three things, judged from your
+  // calendar, who is waiting on you, what is due or overdue with staff, and what it knows about you. Written by
+  // Claude's fuller model through your API key, a few times a day at most. Kept in memory only, never on disk.
+  // "Not useful" on a line is remembered, so the advice learns what you do not want to hear.
+  const botAdvice = { key: '', at: 0, items: null, busy: false, failed: 0 };
+  function botAdviceFacts(p) {
+    const L = [], now = Date.now(), dd = t => new Date(t).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' });
+    try { const b = botBriefText(); if (b) L.push('The day as the app sees it: ' + b.slice(0, 2500)); } catch (e) { /* starting up */ }
+    try {
+      const t = cosTeam(p), today0 = new Date(); today0.setHours(0, 0, 0, 0); const due = [], old = [];
+      for (const st of (t ? t.nodes : []).filter(x => x.kind === 'staff' && !x.chief)) { const f = staffFolder(st, p); if (!f) continue;
+        for (const x of workItems(f)) { if (x.done) continue; const from = x.src && x.src.label ? `, from ${(ACT_SRC_WORD[x.src.kind] || 'a').toLowerCase()} “${String(x.src.label).slice(0, 50)}”${(x.src.people || []).length ? ' with ' + x.src.people.slice(0, 3).join(', ') : ''}` : '';
+          if (x.due) { const d = +new Date(x.due + 'T00:00:00'), days = Math.round((d - today0) / 864e5); if (days <= 7) due.push([d, `- “${String(x.name).slice(0, 90)}” with the ${st.name}: ${days < 0 ? `OVERDUE by ${-days} day${days === -1 ? '' : 's'}` : days === 0 ? 'due today' : `due ${dd(d)}`}${from}`]); }
+          else if (x.added > 1e11 && now - x.added > 14 * 864e5) old.push([x.added, `- “${String(x.name).slice(0, 90)}” with the ${st.name}: open since ${dd(x.added)}, no due date${from}`]); } }
+      if (due.length) L.push('Actions with staff that are due:\n' + due.sort((a, b) => a[0] - b[0]).slice(0, 8).map(x => x[1]).join('\n'));
+      if (old.length) L.push('Actions that have sat open longest:\n' + old.sort((a, b) => a[0] - b[0]).slice(0, 4).map(x => x[1]).join('\n'));
+    } catch (e) { /* no team yet */ }
+    try { const w = mailWait.items || []; if (w.length) L.push('Emails that may be waiting on his reply (oldest first):\n' + w.slice(0, 6).map(o => `- ${((o.from || {}).emailAddress || {}).name || 'someone'}: “${String(o.subject || '').slice(0, 70)}”, received ${dd(o.receivedDateTime)}`).join('\n')); } catch (e) { /* no mail yet */ }
+    return L.join('\n\n');
+  }
+  async function botAdviceMake(force) {
+    const p = activeProfile(); if (!p || botAdvice.busy || !fastOn()) return;
+    const key = p.id + '|' + new Date().toDateString(), fresh = botAdvice.key === key && Date.now() - botAdvice.at < 4 * 36e5;
+    if (!force && (fresh || Date.now() - botAdvice.failed < 30 * 60e3)) return;
+    const facts = botAdviceFacts(p); if (facts.length < 40) return;
+    botAdvice.busy = true; if (botAdvice.key !== key) botAdvice.items = null; try { cosBotRender(); } catch (e) { /* not showing */ }
+    const first = meFirst();
+    const system = `You are the Chief of Staff${p ? ' at ' + p.name : ''}. Say what ${first} should put first today: at most three things, most important first. Judge, do not list: weigh what is overdue or due, who is waiting on him and for how long, and what today’s and tomorrow’s meetings need from him beforehand. Leave out anything routine that needs nothing from him. If little is pressing, give one or two, or just the one line: Nothing pressing today.\n\nUse only the facts given. Never invent a name, a date or a figure. Do not suggest anything he has said was not useful. Australian English. No dashes.\n\nAnswer with only the lines, each in exactly this form:\n1. what to do, as an instruction in under 12 words | why it comes first, in under 18 words\n\nToday is ${new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}, ${calFmtTime(Date.now())}.`;
+    let r = null; try { r = await Promise.race([apiRun('smart', system, [{ role: 'user', content: facts }], null, 400), new Promise(res => setTimeout(() => res({ error: 'slow' }), 40000))]); } catch (e) { r = { error: String(e) }; }
+    botAdvice.busy = false;
+    if (!r || r.error) { botAdvice.failed = Date.now(); startNote('advice: failed: ' + ((r && r.error) || 'no answer')); }
+    else { const items = []; for (const l of String(r.text || '').split('\n')) { const m = /^\s*\d[.)]\s*(.+)$/.exec(l); if (!m || items.length >= 3) continue; const f = m[1].split('|').map(x => x.replace(/\s*[—–]\s*/g, ', ').trim()); if (f[0]) items.push({ title: f[0].replace(/[.\s]+$/, '').slice(0, 120), why: (f[1] || '').slice(0, 160) }); }
+      botAdvice.items = items; botAdvice.key = key; botAdvice.at = Date.now(); botAdvice.none = !items.length; startNote(`advice: ${items.length} lines`); }
+    try { cosBotRender(); } catch (e) { /* not showing */ }
+  }
+  function botAdvicePaint(list) {
+    if (!fastOn() || !activeProfile()) return;
+    setTimeout(() => botAdviceMake(false), Math.max(0, 12000 - performance.now()));   // (not before the calendar and mail have had time to load)
+    const items = botAdvice.key.startsWith(activeProfile().id + '|') ? botAdvice.items : null;
+    if (!items && !botAdvice.busy) return;
+    const h = Object.assign(document.createElement('div'), { className: 'bh', textContent: 'What I would do today' }); h.style.cssText = 'display:flex;align-items:center;gap:8px';
+    if (items) { const rf = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Think again', title: 'Look at the day afresh' }); rf.style.cssText = 'margin-left:auto;font:inherit;font-size:11px;border:0;background:none;color:var(--muted);cursor:pointer;text-transform:none;letter-spacing:0'; rf.addEventListener('click', () => botAdviceMake(true)); h.appendChild(rf); }
+    list.appendChild(h);
+    if (!items) { const w = Object.assign(document.createElement('div'), { className: 'bot-empty', textContent: 'Looking at your day…' }); list.appendChild(w); return; }
+    if (!items.length) { list.appendChild(Object.assign(document.createElement('div'), { className: 'bot-empty', textContent: 'Nothing pressing today.' })); return; }
+    items.forEach((i, n) => { const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;align-items:stretch';
+      const r = document.createElement('button'); r.type = 'button'; r.className = 'brow adv'; r.style.flex = '1'; r.style.minWidth = '0'; r.innerHTML = '<span class="ic ok"></span><span class="tx"><b></b><span></span></span><span class="go">Help</span>'; r.querySelector('.ic').textContent = String(n + 1); r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.why; r.title = 'Ask the Chief of Staff to help with this';
+      r.addEventListener('click', () => botAskNew(`Help me with this, which you put ${['first', 'second', 'third'][n]} for today: ${i.title}.${i.why ? ' (' + i.why + ')' : ''} What is the first step, and can a staff member take any of it?`, { label: i.title }));
+      const x = Object.assign(document.createElement('button'), { type: 'button', textContent: '✕', title: 'Not useful. It is remembered, so the advice learns what you do not want.' }); x.style.cssText = 'border:0;background:none;color:var(--muted);cursor:pointer;padding:0 8px;font-size:12px';
+      x.addEventListener('click', () => { remember('noted', `Advice for the day he said was not useful: ${i.title}`); botAdvice.items = botAdvice.items.filter(z => z !== i); toast('Noted. I will leave that sort of thing out.'); cosBotRender(); });
+      wrap.append(r, x); list.appendChild(wrap); });
   }
   const botBriefText = () => botBrief().map(s => `${s.h}: ${s.items.map(i => i.title + (i.sub ? ' (' + i.sub + ')' : '')).join('; ')}.`).join(' ');
   // Short notes about the team, for answering on this Mac.
@@ -17425,7 +17478,16 @@ body { width: max-content !important; min-width: 0 !important; }
   function granLastTime(inst) {
     if (!gran.on || !inst) return null;
     const title = String((inst.ev && inst.ev.title) || '').toLowerCase().trim(); if (!title) return null;
-    return gran.list.find(g => g.at < inst.start - 3600e3 && g.title.toLowerCase().trim() === title) || null;
+    const before = gran.list.filter(g => g.at < inst.start - 3600e3);
+    const same = before.find(g => g.title.toLowerCase().trim() === title); if (same) return same;
+    // nearly the same name ("Board catch up" and "Board catch-up, November")
+    const words = t => new Set(String(t).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !/^(the|and|with|for|meeting|call|catch|chat|weekly|monthly|january|february|march|april|may|june|july|august|september|october|november|december|\d+)$/.test(w)));
+    const tw = words(title);
+    if (tw.size >= 2) { const near = before.find(g => { const gw = words(g.title); let hit = 0; for (const w of tw) if (gw.has(w)) hit++; return hit >= 2 && hit >= Math.ceil(Math.min(tw.size, gw.size) * 0.6); }); if (near) return near; }
+    // the same people: everyone else invited was in that meeting, and it was not a much bigger one
+    try { const mine = new Set((mailUi.accounts || []).map(x => String(x.email || '').toLowerCase())), others = [...new Set(((inst.ev && inst.ev.attendees) || []).map(x => String(x).toLowerCase()).filter(a => /@/.test(a) && !mine.has(a)))];
+      if (others.length) { const who = before.find(g => { const ga = granAddrs(g).map(a => String(a).toLowerCase()).filter(a => !mine.has(a)); return ga.length && others.every(a => ga.includes(a)) && ga.length <= others.length + 1; }); if (who) return who; } } catch (e) { /* no addresses to go on */ }
+    return null;
   }
   function granMeetingDlg(g, lead) {
     const d = mailDlg('gran-dlg', '<h2></h2><p class="hint"></p><div class="gseg" role="tablist"><button type="button" data-x="nt" class="on" role="tab">Notes</button><button type="button" data-x="tr" role="tab">Transcript</button></div><div class="gbody"><div class="gwait"></div></div><div class="dlg-actions"><button class="btn" data-x="fu" title="Start an email to the people who were there, with what was agreed. Nothing is sent until you press Send.">Draft Follow-Up</button><button class="btn" data-x="open">Open in Granola</button><span style="flex:1"></span><button class="btn" data-x="dealt"></button><button class="btn-primary" data-x="close">Done</button></div>');
@@ -17684,6 +17746,7 @@ body { width: max-content !important; min-width: 0 !important; }
     list.replaceChildren();
     if (!botS.conv.length && !listening) {
       const brief = botBrief();
+      try { botAdvicePaint(list); } catch (e) { /* the lists below still show */ }
       for (const s of brief) {
         list.appendChild(Object.assign(document.createElement('div'), { className: 'bh', textContent: s.h }));
         for (const i of s.items) { const r = document.createElement('button'); r.type = 'button'; r.className = 'brow'; r.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span><span class="go"></span>'; r.querySelector('.ic').className = 'ic ' + i.ic; r.querySelector('.ic').textContent = { cal: '▦', warn: '!', mail: '✉', ok: '✓', note: '✎', team: '◎', meet: '\u25C9' }[i.ic] || '•'; r.querySelector('b').textContent = i.title; r.querySelector('.tx span').textContent = i.sub || ''; r.querySelector('.go').textContent = i.go || ''; r.addEventListener('click', i.run); list.appendChild(r); }
