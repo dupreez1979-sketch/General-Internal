@@ -275,6 +275,9 @@ function contextMenuFor(contents, p) {
 
 // ---------- Every web page the app creates ----------
 app.on('web-contents-created', (_event, contents) => {
+  // The Claude pane sits in a see-through window (the frosted sidebar). Without a solid backing of its own, parts of
+  // Claude's page that fade at the edges (its list of connectors) can draw as a black patch.
+  try { if (contents.getType() === 'webview') contents.setBackgroundColor(require('electron').nativeTheme.shouldUseDarkColors ? '#1f1e1d' : '#ffffff'); } catch (e) { /* drawn as before */ }
   // Lock down the embedded Claude pane: no Node access, fixed session.
   contents.on('will-attach-webview', (_e, webPreferences, params) => {
     delete webPreferences.preload;

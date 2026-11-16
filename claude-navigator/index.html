@@ -9314,7 +9314,9 @@
       return sf ? workItems(sf).filter(x => !inArchive(x.id) && x.type === 'link').map(x => (x.name || '').trim()).filter(Boolean) : [];
     } catch (e) { return []; }
   }
-  const staffSkillSig = n => staffSkillNames(n).slice().sort().join('|');
+  const connOnFlag = () => ls.get('claudeNavigator.connOn') === '1';
+  const staffSkillsOnly = n => staffSkillNames(n).slice().sort().join('|');
+  const staffSkillSig = n => staffSkillsOnly(n) + (connOnFlag() ? '|+app connector' : '');          // (what their project instructions were written from)
   function cosProjectInstructions(n) {
     const p = activeProfile();
     const skills = n.chief ? [] : staffSkillNames(n);
@@ -9327,7 +9329,8 @@
       ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
     ] : [];
     const outputLine = n.chief ? '' : 'When a piece of work is finished, give me the final version as its own output: an artifact, a document, a PDF or a file, with a clear title that says what it is. Outputs are what get filed in the company folders. This chat is the working and stays with you, so do not leave the final version only in the middle of a chat.';
-    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, outputLine, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
+    const appLine = connOnFlag() ? 'To put anything in my calendar, change or remove a calendar entry, draft an email, set up a meeting, add an action for one of my staff, make a mail rule or folder, or save a document for me, use the Chief of Staff app connector (its show_for_approval tool). It shows me what you propose and I approve it in my app. Never use the Microsoft 365 or Outlook connector, Gmail, or any other tool to create, change, send or delete: use those only to read.' : '';
+    return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, outputLine, appLine, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
     navigator.clipboard.writeText(cosProjectInstructions(n)).catch(() => toast('That could not be copied. Try again.'));
@@ -9694,9 +9697,10 @@
       setup = document.createElement('div');
       setup.className = 'cos-setup';
       setup.innerHTML = `<span class="ic">${small('skill', KIND_COLOUR.skill || 'currentColor')}</span><div class="tx"><b></b><span></span></div><div class="bt"></div>`;
-      setup.querySelector('b').textContent = `Tell Claude about ${n.name}’s skills`;
+      const appOnly = staffSkillsOnly(n) === String(n.instructionsSkills || '').replace(/\|\+app connector$/, '');          // (only the connector changed)
+      setup.querySelector('b').textContent = appOnly ? `Tell ${n.name} to use the app connector` : `Tell Claude about ${n.name}’s skills`;
       const names = staffSkillNames(n);
-      setup.querySelector('.tx span').textContent = names.length
+      setup.querySelector('.tx span').textContent = appOnly ? (connOnFlag() ? `Update their project instructions so that calendar entries, emails and meetings come to this app for you to approve, and never go straight through Outlook.` : `The app connector is off. Update their project instructions so Claude stops trying to use it.`) : names.length
         ? `Claude only knows which skills ${n.name} uses from their project instructions. Update them to include ${names.length === 1 ? `“${names[0]}”` : `their ${names.length} skills`}.`
         : `${n.name} no longer has skills here. Update their project instructions so Claude stops using the old ones.`;
       const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Update Instructions';
@@ -16002,6 +16006,10 @@ body { width: max-content !important; min-width: 0 !important; }
     ];
     // Nothing selected: there is one thing to do, so it starts. Anything Claude has already set out that has not been
     // opened yet is opened straight away; otherwise the short form comes up.
+    if (!picked && connOnFlag()) {                 // the connector is on: Claude hands it straight to the app, nothing is read off the page
+      let tries = 0; const send = () => viewExec(SEND_PROMPT('Hand what we have worked out in this chat to my Chief of Staff app for me to approve, using its show_for_approval tool: the emails, meetings, calendar changes, actions for my staff and documents that are ready. Put it all in one call.')).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
+      send(); return toast('Asked Claude to hand it to this app. It appears under From Claude when it is ready.');
+    }
     if (!picked) { const g = await chatRead(); if (g.length && !chatTaken.has(g)) return all('', '', undefined, g); return askForm(); }
     showMenu(Math.max(8, x - 200), y, picked ? [
       { head: 'The words you selected' },
@@ -18138,7 +18146,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const st = connUi.status;
         if (!st) { row('Claude Connector', 'Checking\u2026'); window.navigatorApp.connStatus().then(r => { connUi.status = r || { on: false }; show(); }); return; }
         row('Connect Claude to This App', st.on ? 'On. In any Claude chat you can say \u201cput this in my calendar\u201d or \u201cdraft that email\u201d, and it appears here for you to approve. Nothing is sent or changed until you say so.' : 'Off. When on, Claude can hand emails, meetings and calendar changes straight to this app for you to approve, from any chat.',
-          [st.on ? 'Turn Off' : 'Turn On', async () => { if (st.on) { if (!confirm('Turn the connector off? Claude will no longer be able to hand things to this app. Remove it from Claude\u2019s connectors too.')) return; await window.navigatorApp.connOff(); connUi.status = { on: false }; } else { const r = await window.navigatorApp.connOn(); if (!r || !r.ok) toast((r && r.error) || 'The connector could not be set up.'); connUi.status = await window.navigatorApp.connStatus(); connPoll(); } show(); }]);
+          [st.on ? 'Turn Off' : 'Turn On', async () => { if (st.on) { if (!confirm('Turn the connector off? Claude will no longer be able to hand things to this app. Remove it from Claude\u2019s connectors too.')) return; await window.navigatorApp.connOff(); connUi.status = { on: false }; ls.set('claudeNavigator.connOn', '0'); } else { const r = await window.navigatorApp.connOn(); if (!r || !r.ok) toast((r && r.error) || 'The connector could not be set up.'); connUi.status = await window.navigatorApp.connStatus(); ls.set('claudeNavigator.connOn', connUi.status && connUi.status.on ? '1' : '0'); connPoll(); } show(); }]);
         if (st.on) {
           row('Add It in Claude, Once', 'Copy the address, then in Claude open Settings, Connectors, Add custom connector. Name it \u201cChief of Staff app\u201d, paste the address and choose no sign-in. Keep the address to yourself: anyone who has it could put suggestions on your approval card (they could not read or change anything).', ['Copy the Address', async () => { try { await navigator.clipboard.writeText(st.url); toast('Copied. Paste it into Claude\u2019s Add custom connector box.'); } catch (e) { toast('Could not copy it.'); } }], ['Open Claude\u2019s Connectors', leave(() => go({ kind: 'page', url: 'https://claude.ai/settings/connectors' }))]);
           row('If the Address Gets Out', 'Make a new one. The old address stops working at once, and you add the new one in Claude in its place.', ['New Address\u2026', async () => { if (!confirm('Make a new address? The one in Claude stops working until you replace it there.')) return; const r = await window.navigatorApp.connRotate(); if (!r || !r.ok) return toast((r && r.error) || 'The address could not be changed.'); connUi.status = await window.navigatorApp.connStatus(); try { await navigator.clipboard.writeText(r.url); toast('The new address is copied. Replace the connector in Claude with it.'); } catch (e) { /* copied from the row above */ } show(); }]);
@@ -18419,7 +18427,6 @@ body { width: max-content !important; min-width: 0 !important; }
     const prof = profiles().find(p => String(p.name || '').toLowerCase() === h) || profiles().find(p => { const n = String(p.name || '').toLowerCase(); return n && (n.includes(h) || h.includes(n)); });
     if (prof) { const a = accs.find(x => mailProf(x.id).includes(prof.id)); if (a) return a.id; }
     const byDom = accs.find(a => String(a.email || '').toLowerCase().split('@')[1] && String(a.email).toLowerCase().split('@')[1].replace(/\.(com|org|net)(\.au)?$/, '').includes(h.replace(/\s+/g, ''))); return byDom ? byDom.id : ''; };
-  const connCount = it => (it.emails || []).length + (it.meetings || []).length + (it.changes || []).filter(c => !c._st).length;
   function connPaint() {
     let c = $('connChip'); const n = connUi.items.length;
     if (!c) { c = document.createElement('button'); c.id = 'connChip'; c.type = 'button'; c.title = 'What Claude has handed over, waiting for you to check';
@@ -18437,15 +18444,21 @@ body { width: max-content !important; min-width: 0 !important; }
     const meets = blocks.length ? await calMeetRead(blocks, { title: 'Meeting' }) : [];
     it.changes = (Array.isArray(it.changes) ? it.changes : []).filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder'].includes(c.do)).slice(0, 80);
     const changes = it.changes;
-    if (!emails.length && !meets.length && !changes.length) { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); return connPaint(); }
+    const acts = (Array.isArray(it.actions) ? it.actions : []).filter(a => a && String(a.action || '').trim()).slice(0, 30);
+    const docs = (Array.isArray(it.documents) ? it.documents : []).filter(x => x && String(x.text || '').trim()).slice(0, 10);
+    if (!emails.length && !meets.length && !changes.length && !acts.length && !docs.length) { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); return connPaint(); }
     const acc = connAccFor(it.for_account);
     connUi.open[it.id] = true;
     const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn" data-x="later" title="It stays under From Claude until you have finished with it">Keep for Later</button><button class="btn-primary" data-x="close" title="Takes it off the waiting list">Finished</button></div>');
     d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
-    const row = (title, sub, raw, run) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary"></button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; const b = r.querySelector('button'); b.textContent = raw._opened ? 'Open Again\u2026' : 'Open\u2026'; b.addEventListener('click', () => { raw._opened = true; b.textContent = 'Open Again\u2026'; run(); }); d.querySelector('.mt-list').appendChild(r); };
+    const row = (title, sub, raw, run, words = ['Open\u2026', 'Open Again\u2026']) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary"></button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; const b = r.querySelector('button'); b.textContent = raw._opened ? words[1] : words[0]; b.addEventListener('click', () => { raw._opened = true; b.textContent = words[1]; run(b); }); d.querySelector('.mt-list').appendChild(r); };
     for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', m._raw, () => chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})));
     meets.forEach((M, i) => { if (acc) M.acc = acc; row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', mraw[i] || {}, () => calMeetOpen([M])); });
-    if (!emails.length && !meets.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
+    for (const a of acts) { const st = botStaffNamed(a.for), text = String(a.action).replace(/\s+/g, ' ').trim(), why = String(a.why || '').trim();
+      row(`Action${st ? ' for the ' + st.name : ''}: ${text.slice(0, 120)}`, why || (st ? 'Goes on their list of actions' : 'Choose who it is for'), a, b => { if (st) botAddAction(st, text, why, { kind: 'ask', label: 'From a Claude chat' }); else botPickStaff(b, text, null, why, { kind: 'ask', label: 'From a Claude chat' }); }, ['Add', 'Added']); }
+    for (const x of docs) { const title = String(x.title || 'From Claude').slice(0, 120), text = String(x.text);
+      row(`Document: ${title}`, 'A Word document in a company folder you choose', x, () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => { const r = await window.navigatorApp.fsNewDocx(f.path, title, [{ text: title, head: true }, ...text.split(/\n{2,}/).map(t => ({ text: t }))]); if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`); await pullFromDisk(); toast(`\u201c${r.name}\u201d is in ${f.name} and opening in Word`); })), ['Make It\u2026', 'Make Another\u2026']); }
+    if (!emails.length && !meets.length && !acts.length && !docs.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
     if (changes.length) { const plan = it._plan = it._plan || { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail` }; plan.changes = changes; if (acc && !plan.acc) { plan.acc = acc; plan.accSet = true; } d.querySelector('.pl-host').appendChild(planCard({ plan, planRefs: [] })); }
     // what was done on the card is remembered with it, so opening it again never offers the same change twice
     const tidy = () => JSON.parse(JSON.stringify(it, (k, v) => (k === '_hit' ? undefined : v)));
@@ -18461,7 +18474,7 @@ body { width: max-content !important; min-width: 0 !important; }
     clearTimeout(connUi.timer);
     if (!isApp || !window.navigatorApp.connPull) return;
     try {
-      if (!connUi.status) { connUi.status = (await window.navigatorApp.connStatus()) || { on: false }; if (connUi.status.on) { connUi.items = (await window.navigatorApp.connWaiting()) || []; connPaint(); } }
+      if (!connUi.status) { connUi.status = (await window.navigatorApp.connStatus()) || { on: false }; ls.set('claudeNavigator.connOn', connUi.status.on ? '1' : '0'); if (connUi.status.on) { connUi.items = (await window.navigatorApp.connWaiting()) || []; connPaint(); } }
       if (connUi.status.on && !connUi.busy && navigator.onLine !== false && !offIs()) {
         connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
         if (r && r.gone) connUi.status = { on: false };
