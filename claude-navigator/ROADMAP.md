@@ -40,6 +40,10 @@ Without it, everything still works. You just approve it once in Privacy & Securi
 Store the folders online (for example in your Supabase account, which is already connected) behind your own sign-in. The browser version of index.html then shows the same folders on any device, including an iPhone home-screen shortcut. Links still open in the Claude app or claude.ai.
 Only worth doing if you find yourself wanting your folders away from your Macs.
 
+## Done since this was written
+
+- **Claude hands work to the app.** A custom connector (a small relay, see `connector/README.md`) lets Claude in any chat pass emails, meetings, calendar changes, actions and documents to the app for approval. It replaced reading Claude's answers off the page.
+
 ## Things that will stay different
 
 - **Desktop extensions and local connectors** (Claude reaching files and apps on your Mac) belong to Anthropic's own Claude desktop app. This app shows claude.ai, so it cannot run them. Keep the official app installed for those tasks. A "Open in Claude app" option can be added if the official app accepts links.

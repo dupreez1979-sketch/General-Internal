@@ -1602,7 +1602,7 @@ ipcMain.handle('mail-health', () => {
 ipcMain.handle('mail-log-show', () => { try { shell.showItemInFolder(maillog.file()); } catch (e) { /* no log yet */ } return true; });
 ipcMain.handle('acct-graph', (_e, id, req) => accounts.graph(String(id), req));
 // What Claude proposes and you approve goes through a narrower door (see graphAi in accounts.js).
-ipcMain.handle('acct-graph-ai', (_e, id, req) => accounts.graphAi(String(id), req));
+ipcMain.handle('acct-graph-ai', (e, id, req) => (fromOwnWindow(e) ? accounts.graphAi(String(id), req) : { ok: false, error: 'Not from this app' }));
 // Sending an email takes two steps, and both must come from the app's own window (never a web page inside it):
 // 1. "arm": asked the instant Send is clicked. It is accepted only while the window reports a real click or key
 //    press by a person in the last moments (a script cannot fake that), and it names the one draft to send.

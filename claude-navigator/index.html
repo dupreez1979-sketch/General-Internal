@@ -930,10 +930,6 @@
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
   dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
   .staff-run .sr-ask { display: flex; gap: var(--sp-2); align-items: flex-start; margin: var(--sp-2) 0; } .staff-run .sr-ask textarea { flex: 1; font: inherit; padding: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field); color: var(--text); resize: vertical; }
-  dialog.send-from { width: min(640px, calc(100vw - 32px)); }
-  .send-from .sf-kinds { display: flex; flex-wrap: wrap; gap: var(--sp-1h) var(--sp-4); margin: var(--sp-2) 0 var(--sp-3); font-size: var(--fs-body); } .send-from .sf-kinds label { display: inline-flex; align-items: center; gap: var(--sp-1); }
-  .send-from .sf-box { margin-top: var(--sp-3); } .send-from .sf-l { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-1); } .send-from .sf-l span { flex: 1; color: var(--muted); font-size: var(--fs-sm); }
-  .send-from textarea { width: 100%; box-sizing: border-box; font: inherit; padding: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field); color: var(--text); resize: vertical; }
   dialog.plan-dlg { width: min(640px, calc(100vw - 32px)); } dialog.plan-dlg .bplan { margin: var(--sp-2) 0; }
   .bplan .bp-into { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1h) var(--sp-3); font-size: var(--fs-sm); color: var(--muted); border-bottom: 1px solid var(--line); } .bplan .bp-into select { font: inherit; max-width: 60%; }
   .bplan { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); margin: var(--sp-1) 0 var(--sp-2); overflow: hidden; }
@@ -2270,7 +2266,7 @@
     <div class="tbgroup" data-tb="save"><button class="tb" id="bSave" title="Save this page (Ctrl+S)"><span data-icon="star"></span><span class="t" id="bSaveText">Save</span></button><button class="tb" id="bSaveMore" title="Save As, move to another folder, show in folder"><span data-icon="chevDown"></span></button></div>
     <button class="tb" id="bExternal" data-tb="bExternal" title="Open in your web browser"><span data-icon="external"></span></button>
     <button class="tb" id="bFolderRef" data-tb="bFolderRef" title="Company Folders: choose a folder and its location goes into the chat (and is copied), so you can tell Claude where to save or find things"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 7.2v3.6M6.2 9h3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span class="t">Folders</span></button>
-    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: make an email or a meeting from this chat. Claude lays it out, and it opens for you to check. Nothing is sent or saved until you do it."><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
+    <button class="tb" id="bSendTo" data-tb="bSendTo" title="Send To: Claude hands what this chat worked out (emails, meetings, calendar changes, actions) to this app for you to approve. Select words first to send only those."><svg width="16" height="16" viewBox="0 0 16 16"><path d="M2.5 8l11-5-4 11-2.2-4.4zM7.3 9.6l3-3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="t">Send To</span></button>
     <button class="tb" id="bNewChat" data-tb="bNewChat" title="New Chat (Ctrl+N)"><span data-icon="compose"></span></button>
     <button class="tb" id="bMore" title="More: new chat, reload, open in your web browser"></button>
     <button class="tb" id="bNewMenu" data-tb="bNewMenu" title="New: a chat, doc, slides, design, project, folder or file here"><span data-icon="plus"></span></button>
@@ -15630,42 +15626,6 @@ body { width: max-content !important; min-width: 0 !important; }
   };
   const chatSelection = async () => { try { return String(await viewExec('String(window.getSelection() || "")') || '').trim(); } catch (e) { return ''; } };
   // Ask in the chat on screen, and wait for an answer wrapped in [[KIND]] ... [[END]].
-  function chatAsk(prompt, kind, what, tagged) {
-    return new Promise(resolve => {
-      const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-      let tries = 0, ticks = 0, last = '', stable = 0, seen = '', idle = 0;
-      toast(what ? `Asking Claude to lay out the ${what}…` : 'Claude is writing it out. It opens here when it is ready.');
-      const send = () => viewExec(SEND_PROMPT(`${prompt}\n\nDo not repeat this line in your answer: ${nonce}`)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
-      send();
-      const re = new RegExp(`\\[\\[\\s*(${kind})\\s*\\]\\]([\\s\\S]*?)\\[\\[\\s*END\\s*\\]\\]`, 'gi');
-      const timer = setInterval(async () => {
-        if (++ticks > 600) { clearInterval(timer); return resolve(null); }                // fifteen minutes at the very most
-        let page = ''; try { page = String(await viewExec('document.body ? document.body.innerText : ""') || ''); } catch (e) { return; }
-        const at = page.lastIndexOf(nonce); if (at < 0) { if (ticks > 60) { clearInterval(timer); resolve(null); } return; }
-        const text = page.slice(at + nonce.length), found = []; let mm; re.lastIndex = 0;
-        // a long answer is waited for as long as Claude is still writing: it is given up only after two quiet minutes
-        if (text.length !== seen.length || text.slice(-200) !== seen.slice(-200)) { seen = text; idle = 0; } else if (++idle > 80) { clearInterval(timer); return resolve(null); }
-        while ((mm = re.exec(text))) if (mm[2].trim()) { const t = mm[2].replace(/^\n+|\s+$/g, ''); found.push(tagged ? { kind: mm[1].toUpperCase(), text: t } : t); }
-        if (!found.length) return;
-        const sig = found.map(f => f.text || f).join('\u0001');
-        stable = sig === last ? stable + 1 : 0; last = sig;
-        // (a long answer is only taken once Claude has written its last line and the page has stopped changing, so
-        // nothing half-written, and nothing from its thinking, is ever taken for the answer)
-        if (tagged ? /\[\[\s*DONE\s*\]\]/i.test(text.slice(text.search(/\[\[\s*END\s*\]\](?![\s\S]*\[\[\s*END\s*\]\])/i))) && idle >= 5 : /\[\[\s*DONE\s*\]\]/i.test(text) || stable >= 3) { clearInterval(timer); resolve(found); }
-      }, 1500);
-    });
-  }
-  // What Claude has already set out in the chat, read off the page without asking again (the blocks after the last ask).
-  async function chatRead() {
-    let page = ''; try { page = String(await viewExec('document.body ? document.body.innerText : ""') || ''); } catch (e) { return []; }
-    let at = -1, m; const nre = /ref NAV-[A-Z0-9]{6}/g; while ((m = nre.exec(page))) at = m.index + m[0].length;
-    const text = at < 0 ? page : page.slice(at), found = [], re = /\[\[\s*(EMAIL|MEETING|CHANGES|DOCUMENT)\s*\]\]([\s\S]*?)\[\[\s*END\s*\]\]/gi;
-    while ((m = re.exec(text))) if (m[2].trim()) found.push({ kind: m[1].toUpperCase(), text: m[2].replace(/^\n+|\s+$/g, '') });
-    return found;
-  }
-  const chatSig = g => { let h = 0; for (const ch of g.map(x => x.kind + x.text).join('\u0001')) h = (h * 31 + ch.charCodeAt(0)) | 0; return String(h); };
-  const chatTaken = { has: g => { try { return (JSON.parse(ls.get('claudeNavigator.sendTaken') || '[]') || []).includes(chatSig(g)); } catch (e) { return false; } }, add: g => { try { const a = JSON.parse(ls.get('claudeNavigator.sendTaken') || '[]') || []; a.push(chatSig(g)); ls.set('claudeNavigator.sendTaken', JSON.stringify(a.slice(-60))); } catch (e) { /* remembered next time */ } } };
-  const chatHeads = block => { const o = {}, lines = block.split('\n'); let i = 0; for (; i < lines.length; i++) { const mm = /^\s*([A-Za-z ]{2,14}):\s*(.*)$/.exec(lines[i]); if (!mm) break; o[mm[1].trim().toLowerCase()] = mm[2].trim(); } return { heads: o, rest: lines.slice(i).join('\n').trim() }; };
   // Open Mail beside the chat (or use it where it already is) and start a message with these words in it.
   async function chatToEmail(seed) {
     if (!isApp) return;
@@ -15934,91 +15894,28 @@ body { width: max-content !important; min-width: 0 !important; }
   const CAL_MIC = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="5.8" y="1.8" width="4.4" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2.2M5.8 14.2h4.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   async function chatSendTo(x, y) {
     const here = chatHere(), picked = await chatSelection();
-    // One ask for everything the chat worked out. Claude writes it out in blocks the app can read: emails open for you
-    // to check and send, meetings open as invitations for you to check and save, and entries in your own calendar,
-    // rules and folders show on the approval card. `only` is a few words naming one part, instead of selecting it.
-    const all = async (only, extra, K = { email: true, meet: true, cal: true, rules: true, doc: false }, have) => {
-      const meetShape = CAL_MEET_FORMAT.slice(CAL_MEET_FORMAT.indexOf('[[MEETING]]'), CAL_MEET_FORMAT.indexOf('[[END]]') + 7);
-      const calLines = '\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "remove_event": find (the title of the entry exactly as it shows in my calendar), date ("YYYY-MM-DD", the day it is on).\n- "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.';
-      const ruleLines = '\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).';
-      const wants = [K.email && 'emails', K.meet && 'meetings with other people', K.cal && 'entries in my own calendar', K.rules && 'mail rules and folders', K.doc && 'a document'].filter(Boolean);
-      const got = have || await chatAsk([`Set out what we have worked out in this chat so my app can take it in for me to check.${only ? ` Only this part: ${only}.` : ' Include everything that is ready.'} Set out only these kinds: ${wants.join(', ')}. For an email with more than one version, use the latest one I was happy with.`,
-        extra ? `More from me, to follow as you set it out: ${extra}` : '',
-        'Do not send, create or change anything yourself and do not use any email or calendar tools: only write it out here. Never use em dashes. Use only the kinds of block that apply, one block for each email, meeting or document, with nothing outside the blocks, and finish with [[DONE]] on its own line.',
-        K.email ? 'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]' : '',
-        K.meet ? 'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape : '',
-        K.cal || K.rules ? `${[K.cal && 'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder)', K.rules && 'mail rules and mail folders'].filter(Boolean).join(', and ')}, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:${K.cal ? calLines : ''}${K.rules ? ruleLines : ''}\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.` : '',
-        K.doc ? 'A document:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]' : ''].filter(Boolean).join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', '', true);
-      if (!got) {                // Claude is taking a long time: keep an eye on this chat, and open it when it is there
-        toast('Claude is still working on it. It opens here when it is ready.');
-        let n = 0; const t = setInterval(async () => { if (++n > 240) return clearInterval(t); if ((chatHere() || {}).ref !== here.ref) return; const g = await chatRead(); if (g.length && !chatTaken.has(g)) { clearInterval(t); all('', '', K, g); } }, 5000);
-        return;
-      }
-      chatTaken.add(got);
-      const of = k => got.filter(g => g.kind === k).map(g => g.text);
-      const emails = of('EMAIL').map(t => { const { heads, rest } = chatHeads(t); return { to: heads.to || '', cc: heads.cc || '', subject: heads.subject || '', text: rest, from: here.ref }; });
-      const meets = of('MEETING').length ? await calMeetRead(of('MEETING'), { title: here.name || 'Meeting', ref: here.ref }) : [];
-      const docs = of('DOCUMENT').map(t => { const { heads, rest } = chatHeads(t); return { title: heads.title || here.name || 'From a chat', text: rest }; });
-      let changes = [];
-      for (const t of of('CHANGES')) { try { const a = t.indexOf('['), b = t.lastIndexOf(']'), l = JSON.parse(t.slice(a, b + 1).replace(/[“”]/g, '"')); if (Array.isArray(l)) changes = changes.concat(l); } catch (e) { /* not readable */ } }
-      changes = changes.filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(c.do)).slice(0, 60);
-      const n = emails.length + meets.length + docs.length + (changes.length ? 1 : 0);
-      if (!n) { if (have) return; let k = 0; const t = setInterval(async () => { if (++k > 240) return clearInterval(t); if ((chatHere() || {}).ref !== here.ref) return; const g = await chatRead(); if (g.length && !chatTaken.has(g)) { clearInterval(t); all('', '', K, g); } }, 5000); return; }
-      // one thing only: it opens straight away
-      if (n === 1 && emails.length) return chatToEmail(emails[0]);
-      if (n === meets.length) return calMeetOpen(meets, 'Meetings from this chat');
-      if (n === 1 && docs.length) return toDoc(docs[0].text, docs[0].title);
-      const d = mailDlg('plan-dlg', '<h2></h2><p class="hint">Open each one you want and check it. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>');
-      d.classList.add('mail-meets');
-      d.querySelector('h2').textContent = here.name ? `From “${String(here.name).slice(0, 60)}”` : 'From This Chat';
-      const row = (title, sub, run) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open…</button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; run(); }); d.querySelector('.mt-list').appendChild(r); };
-      for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', () => chatToEmail(m));
-      for (const M of meets) row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' · invites ' + M.att : ''}` : 'No date given', () => calMeetOpen([M]));
-      for (const x of docs) row(`Document: ${x.title}`, 'A Word document in a company folder', () => toDoc(x.text, x.title));
-      if (!emails.length && !meets.length && !docs.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
-      if (changes.length) d.querySelector('.pl-host').appendChild(planCard({ plan: { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail`, changes }, planRefs: [] }));
-      d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    // The whole chat: Claude hands what was worked out straight to this app through the connector (emails, meetings,
+    // calendar changes, actions, documents), and it shows under From Claude for you to approve. Nothing is read off the page.
+    const hand = () => {
+      if (!connOnFlag()) return toast('Sending from a chat uses the Claude Connector, which is off.', { label: 'Set It Up', run: () => botSettingsDlg('connector') });
+      let tries = 0; const send = () => viewExec(SEND_PROMPT('Hand what we have worked out in this chat to my Chief of Staff app for me to approve, using its show_for_approval tool: the emails, meetings, calendar changes, actions for my staff and documents that are ready. Put it all in one call.')).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
+      send(); toast('Asked Claude to hand it to this app. It appears under From Claude when it is ready.');
     };
-    // Two plain choices for the whole chat. The choices for selected words only show when you have selected some.
-    const toDoc = (text = picked, title = here.name) => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
-      const r = await window.navigatorApp.fsNewDocx(f.path, title || text.slice(0, 40), [{ text: title || 'From a chat', head: true }, ...text.split(/\n{2,}/).map(t => ({ text: t }))]);
+    if (!picked) return hand();
+    const toDoc = () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
+      const r = await window.navigatorApp.fsNewDocx(f.path, here.name || picked.slice(0, 40), [{ text: here.name || 'From a chat', head: true }, ...picked.split(/\n{2,}/).map(t => ({ text: t }))]);
       if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
       await pullFromDisk(); toast(`“${r.name}” is in ${f.name} and opening in Word`);
     }));
-    // Before anything is asked of the chat: say what to take, which part, and anything to add. Both boxes can be dictated.
-    const askForm = () => {
-      const d = mailDlg('send-from no-dict', '<h2>Send to My Mail and Calendar</h2><p class="hint">Claude writes out what this chat worked out, and it opens here for you to check. Nothing is sent or changed until you say so.</p><div class="sf-kinds"></div><div class="sf-box"><div class="sf-l"><b>Which part</b><span>Leave empty for everything.</span></div><textarea rows="3" data-k="only" placeholder="For example: the shorter email to the board, or the table as a document"></textarea></div><div class="sf-box"><div class="sf-l"><b>Anything to change first</b><span>Optional.</span></div><textarea rows="5" data-k="extra" placeholder="For example: make the email warmer, move the Tuesday session to 2 pm, leave out the dinner"></textarea></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Go Ahead</button></div>');
-      let K = { email: true, meet: true, cal: true, rules: true, doc: false }; try { K = Object.assign(K, JSON.parse(ls.get('claudeNavigator.sendFrom') || '{}')); } catch (e) { /* the usual ones */ }
-      for (const [k, t] of [['email', 'Emails'], ['meet', 'Meetings with other people'], ['cal', 'Entries in my own calendar'], ['rules', 'Mail rules and folders'], ['doc', 'A document']]) {
-        const l = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!K[k]; cb.addEventListener('change', () => { K[k] = cb.checked; }); l.append(cb, ' ' + t); d.querySelector('.sf-kinds').appendChild(l); }
-      for (const ta of d.querySelectorAll('textarea')) ta.previousElementSibling.appendChild(dictateBtn(ta));
-      const shut = () => { try { dictStop(); } catch (e) { /* not listening */ } d.close(); d.remove(); };
-      d.querySelector('[data-x="cancel"]').addEventListener('click', shut);
-      d.querySelector('[data-x="ok"]').addEventListener('click', () => {
-        if (!Object.values(K).some(Boolean)) return toast('Tick at least one thing to take from the chat.');
-        const v = k => d.querySelector(`[data-k="${k}"]`).value.trim().slice(0, 1500);
-        const only = v('only'), extra = v('extra'); ls.set('claudeNavigator.sendFrom', JSON.stringify(K)); shut(); all(only, extra, K);
-      });
-      setTimeout(() => d.querySelector('[data-k="only"]').focus(), 60);
-    };
-    const whole = [
-      { label: 'My Mail and Calendar…', sub: 'The emails, meetings and calendar changes this chat worked out, opened for you to check.', svg: ST_ICON.cal, tint: '#328276', run: askForm },
-    ];
-    // Nothing selected: there is one thing to do, so it starts. Anything Claude has already set out that has not been
-    // opened yet is opened straight away; otherwise the short form comes up.
-    if (!picked && connOnFlag()) {                 // the connector is on: Claude hands it straight to the app, nothing is read off the page
-      let tries = 0; const send = () => viewExec(SEND_PROMPT('Hand what we have worked out in this chat to my Chief of Staff app for me to approve, using its show_for_approval tool: the emails, meetings, calendar changes, actions for my staff and documents that are ready. Put it all in one call.')).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
-      send(); return toast('Asked Claude to hand it to this app. It appears under From Claude when it is ready.');
-    }
-    if (!picked) { const g = await chatRead(); if (g.length && !chatTaken.has(g)) return all('', '', undefined, g); return askForm(); }
-    showMenu(Math.max(8, x - 200), y, picked ? [
+    showMenu(Math.max(8, x - 200), y, [
       { head: 'The words you selected' },
       { label: 'A New Email', sub: 'Start an email with those words in it.', svg: ST_ICON.mail, tint: '#4A90D9', run: () => chatToEmail({ text: picked, subject: here.name || '', from: here.ref }) },
       { label: 'A New Meeting', sub: 'Open a meeting with those words as its notes.', svg: ST_ICON.cal, tint: '#D4574E', run: () => calGEdit(null, false, null, { title: here.name || '', notes: picked }) },
-      { label: 'A Word Document', sub: 'Put them in a document in a company folder.', svg: ST_ICON.doc, tint: '#2B5797', run: () => toDoc() },
+      { label: 'A Word Document', sub: 'Put them in a document in a company folder.', svg: ST_ICON.doc, tint: '#2B5797', run: toDoc },
       { label: 'A Snippet', sub: 'Keep them to drop into emails later.', svg: ST_ICON.snip, tint: '#B36E24', run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { mailLearnOf().snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
-      { head: 'The whole chat' }, ...whole,
-    ] : []);
+      { head: 'The whole chat' },
+      { label: 'Hand It to This App', sub: 'Claude sends the emails, meetings and changes it worked out here, for you to approve.', svg: ST_ICON.cal, tint: '#328276', run: hand },
+    ]);
   }
   $('bSendTo').addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); chatSendTo(r0.left, r0.bottom + 4); });
 
@@ -18496,7 +18393,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const fastCost = u => (u.cost != null ? u.cost : (u.in * 0.10 + u.out * 0.50) / 1e6);       // US dollars, at each model's own price
   function fastDlg() {
     if (!isApp || !window.navigatorApp.apiStatus) return toast('This works in the desktop app.');
-    const d = mailDlg('granola-dlg', '<h2>Fast answers</h2><p class="hint">Quick questions are answered in a second or two through your own Anthropic API key. It can read your email, calendar and meetings, and can never send or change anything.</p><div class="gl"></div><label class="fkey" style="display:grid;gap:4px;margin:10px 0 2px;font-size:12.5px">API key<input type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-\u2026" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text)"></label><div class="dlg-actions"><button class="btn" data-x="off" hidden>Remove the Key</button><button class="btn" data-x="test" hidden>Test It</button><button class="btn" data-x="tog" hidden></button><button class="btn" data-x="cap" hidden></button><span class="dlg-spacer"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go">Save the Key</button></div>');
+    const d = mailDlg('granola-dlg', '<h2>Fast answers</h2><p class="hint">Quick questions are answered in a second or two through your own Anthropic API key. It can read your email, calendar and meetings. It never sends anything, and it changes your calendar or mail only when you approve what it proposes.</p><div class="gl"></div><label class="fkey" style="display:grid;gap:4px;margin:10px 0 2px;font-size:12.5px">API key<input type="password" autocomplete="off" spellcheck="false" placeholder="sk-ant-\u2026" style="font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--win);color:var(--text)"></label><div class="dlg-actions"><button class="btn" data-x="off" hidden>Remove the Key</button><button class="btn" data-x="test" hidden>Test It</button><button class="btn" data-x="tog" hidden></button><button class="btn" data-x="cap" hidden></button><span class="dlg-spacer"></span><button class="btn" data-x="close">Done</button><button class="btn-primary" data-x="go">Save the Key</button></div>');
     const gl = d.querySelector('.gl'), inp = d.querySelector('input'), q = x => d.querySelector(`[data-x="${x}"]`);
     const line = (t, cls) => gl.appendChild(Object.assign(document.createElement('div'), { className: 'gline ' + (cls || ''), textContent: t }));
     const paint = extra => { gl.replaceChildren(); const u = fastNow(), on = ls.get('claudeNavigator.fastApi') !== 'off';
@@ -20129,7 +20026,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   const TB_ITEMS = {
     nav: 'Back and Forward', title: 'Title and Path', viewSeg: 'Icons or List', libFilterBtn: 'Filter', libSelectBtn: 'Select',
     libAttachedBtn: 'Outputs', subAllBtn: 'Expand or Collapse All', splitBtn: 'Split View', bRefreshLib: 'Refresh from Claude', bReload: 'Reload',
-    save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bSendTo: 'Send To (Email or Meeting)', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
+    save: 'Save', bExternal: 'Open in Browser', bFolderRef: 'Company Folders for the Chat', bSendTo: 'Send To (This App)', bNewChat: 'New Chat', bNewMenu: 'New Item', search: 'Search',
   };
   const TB_DEFAULT = Object.keys(TB_ITEMS);
   const isGap = id => /^(flex|space)-\w+$/.test(id);
