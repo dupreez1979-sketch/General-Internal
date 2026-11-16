@@ -15620,16 +15620,18 @@ body { width: max-content !important; min-width: 0 !important; }
   function chatAsk(prompt, kind, what, tagged) {
     return new Promise(resolve => {
       const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
-      let tries = 0, ticks = 0, last = '', stable = 0;
+      let tries = 0, ticks = 0, last = '', stable = 0, seen = '', idle = 0;
       toast(`Asking Claude to lay out the ${what}…`);
       const send = () => viewExec(SEND_PROMPT(`${prompt}\n\nDo not repeat this line in your answer: ${nonce}`)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
       send();
       const re = new RegExp(`\\[\\[\\s*(${kind})\\s*\\]\\]([\\s\\S]*?)\\[\\[\\s*END\\s*\\]\\]`, 'gi');
       const timer = setInterval(async () => {
-        if (++ticks > 80) { clearInterval(timer); return resolve(null); }                 // two minutes
+        if (++ticks > 600) { clearInterval(timer); return resolve(null); }                // fifteen minutes at the very most
         let page = ''; try { page = String(await viewExec('document.body ? document.body.innerText : ""') || ''); } catch (e) { return; }
-        const at = page.lastIndexOf(nonce); if (at < 0) return;
+        const at = page.lastIndexOf(nonce); if (at < 0) { if (ticks > 60) { clearInterval(timer); resolve(null); } return; }
         const text = page.slice(at + nonce.length), found = []; let mm; re.lastIndex = 0;
+        // a long answer is waited for as long as Claude is still writing: it is given up only after two quiet minutes
+        if (text.length !== seen.length || text.slice(-200) !== seen.slice(-200)) { seen = text; idle = 0; } else if (++idle > 80) { clearInterval(timer); return resolve(null); }
         while ((mm = re.exec(text))) if (mm[2].trim()) { const t = mm[2].replace(/^\n+|\s+$/g, ''); found.push(tagged ? { kind: mm[1].toUpperCase(), text: t } : t); }
         if (!found.length) return;
         const sig = found.map(f => f.text || f).join('\u0001');
@@ -15637,6 +15639,14 @@ body { width: max-content !important; min-width: 0 !important; }
         if (/\[\[\s*DONE\s*\]\]/i.test(text) || stable >= 3) { clearInterval(timer); resolve(found); }
       }, 1500);
     });
+  }
+  // What Claude has already set out in the chat, read off the page without asking again (the blocks after the last ask).
+  async function chatRead() {
+    let page = ''; try { page = String(await viewExec('document.body ? document.body.innerText : ""') || ''); } catch (e) { return []; }
+    let at = -1, m; const nre = /ref NAV-[A-Z0-9]{6}/g; while ((m = nre.exec(page))) at = m.index + m[0].length;
+    const text = at < 0 ? page : page.slice(at), found = [], re = /\[\[\s*(EMAIL|MEETING|CHANGES|DOCUMENT)\s*\]\]([\s\S]*?)\[\[\s*END\s*\]\]/gi;
+    while ((m = re.exec(text))) if (m[2].trim()) found.push({ kind: m[1].toUpperCase(), text: m[2].replace(/^\n+|\s+$/g, '') });
+    return found;
   }
   const chatHeads = block => { const o = {}, lines = block.split('\n'); let i = 0; for (; i < lines.length; i++) { const mm = /^\s*([A-Za-z ]{2,14}):\s*(.*)$/.exec(lines[i]); if (!mm) break; o[mm[1].trim().toLowerCase()] = mm[2].trim(); } return { heads: o, rest: lines.slice(i).join('\n').trim() }; };
   // Open Mail beside the chat (or use it where it already is) and start a message with these words in it.
@@ -15910,19 +15920,19 @@ body { width: max-content !important; min-width: 0 !important; }
     // One ask for everything the chat worked out. Claude writes it out in blocks the app can read: emails open for you
     // to check and send, meetings open as invitations for you to check and save, and entries in your own calendar,
     // rules and folders show on the approval card. `only` is a few words naming one part, instead of selecting it.
-    const all = async (only, extra, K = { email: true, meet: true, cal: true, rules: true, doc: false }) => {
+    const all = async (only, extra, K = { email: true, meet: true, cal: true, rules: true, doc: false }, have) => {
       const meetShape = CAL_MEET_FORMAT.slice(CAL_MEET_FORMAT.indexOf('[[MEETING]]'), CAL_MEET_FORMAT.indexOf('[[END]]') + 7);
       const calLines = '\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "remove_event": find (the title of the entry exactly as it shows in my calendar), date ("YYYY-MM-DD", the day it is on).\n- "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.';
       const ruleLines = '\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).';
       const wants = [K.email && 'emails', K.meet && 'meetings with other people', K.cal && 'entries in my own calendar', K.rules && 'mail rules and folders', K.doc && 'a document'].filter(Boolean);
-      const got = await chatAsk([`Set out what we have worked out in this chat so my app can take it in for me to check.${only ? ` Only this part: ${only}.` : ' Include everything that is ready.'} Set out only these kinds: ${wants.join(', ')}. For an email with more than one version, use the latest one I was happy with.`,
+      const got = have || await chatAsk([`Set out what we have worked out in this chat so my app can take it in for me to check.${only ? ` Only this part: ${only}.` : ' Include everything that is ready.'} Set out only these kinds: ${wants.join(', ')}. For an email with more than one version, use the latest one I was happy with.`,
         extra ? `More from me, to follow as you set it out: ${extra}` : '',
         'Do not send, create or change anything yourself and do not use any email or calendar tools: only write it out here. Never use em dashes. Use only the kinds of block that apply, one block for each email, meeting or document, with nothing outside the blocks, and finish with [[DONE]] on its own line.',
         K.email ? 'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]' : '',
         K.meet ? 'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape : '',
         K.cal || K.rules ? `${[K.cal && 'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder)', K.rules && 'mail rules and mail folders'].filter(Boolean).join(', and ')}, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:${K.cal ? calLines : ''}${K.rules ? ruleLines : ''}\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.` : '',
         K.doc ? 'A document:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]' : ''].filter(Boolean).join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', 'work from this chat', true);
-      if (!got) return toast('Could not read Claude’s answer. Wait for it to finish, then use Send To again.');
+      if (!got) return toast('Could not read Claude\u2019s answer. When it has finished writing, use Send To and choose Take In Claude\u2019s Answer.');
       const of = k => got.filter(g => g.kind === k).map(g => g.text);
       const emails = of('EMAIL').map(t => { const { heads, rest } = chatHeads(t); return { to: heads.to || '', cc: heads.cc || '', subject: heads.subject || '', text: rest, from: here.ref }; });
       const meets = of('MEETING').length ? await calMeetRead(of('MEETING'), { title: here.name || 'Meeting', ref: here.ref }) : [];
@@ -15971,6 +15981,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     const whole = [
       { label: 'What This Chat Worked Out…', sub: 'Emails, meetings, calendar entries and rules. You say what to take and add anything first, then check each one.', svg: ST_ICON.cal, tint: '#328276', run: askForm },
+      { label: 'Take In Claude\u2019s Answer', sub: 'If Claude has already set it out in the chat, read it from there without asking again.', svg: ST_ICON.doc, tint: '#4A90D9', run: async () => { const g = await chatRead(); if (!g.length) return toast('Nothing set out for the app was found in this chat yet.'); all('', '', undefined, g); } },
     ];
     showMenu(Math.max(8, x - 200), y, picked ? [
       { head: 'The words you selected' },
