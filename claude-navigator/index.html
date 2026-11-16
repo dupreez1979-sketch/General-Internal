@@ -924,8 +924,8 @@
   .mail-att .att-s { font-size: var(--fs-label); color: var(--muted); }
   .mail-files { max-height: 96px; overflow-y: auto; }
   button.mail-att:hover { background: var(--sel); }
-  .mail-compose { position: absolute; top: 18px; bottom: 18px; left: 7%; right: 7%; z-index: 8; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-  .mail-cshade { position: absolute; inset: 0; z-index: 6; background: rgba(0,0,0,.16); }
+  .mail-compose { position: absolute; top: 18px; bottom: 18px; left: 7%; right: 7%; z-index: 11; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .mail-cshade { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,.16); }
   .mail-compose .mc-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1h); padding: var(--sp-2) var(--sp-3h); border-bottom: 1px solid var(--line); }
   .mail-compose .mc-bar > * { flex: none; white-space: nowrap; }
   .mail-compose .mc-bar .sp { flex: 1; }
@@ -14346,6 +14346,19 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const fl of C.files) {
         const c = mailFileTile('span', fl.name, fl.sent ? mailSize(fl.size) : fl.pct ? `Adding ${fl.pct}%` : 'Adding…'); c.title = fl.name;
         if (fl.sent && fl.id) { const x = document.createElement('button'); x.className = 'att-x'; x.textContent = '\u00d7'; x.title = 'Take this file off the message'; x.addEventListener('click', async () => { x.disabled = true; const r = await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}/attachments/${fl.id}` }); if (r.ok) { C.files = C.files.filter(z => z !== fl); paintFiles(); } else { x.disabled = false; toast(`Could not take it off: ${r.error || 'try again'}`); } }); c.appendChild(x); }
+        if (fl.sent) {          // an attached file opens with a double-click, as it does in a message you have received
+          c.title = `${fl.name}\nDouble-click to open.`; c.style.cursor = 'default';
+          c.addEventListener('dblclick', async e => {
+            if (e.target.closest('.att-x')) return;
+            let id = fl.id;
+            if (!id) { const now = await mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size` }); const hit = now.ok && ((now.data && now.data.value) || []).find(z => z.name === fl.name); if (hit) id = fl.id = hit.id; }
+            if (!id) return toast(`Could not open “${fl.name}”: it is still being attached.`);
+            toast(`Opening “${fl.name}”…`);
+            const [own, bx] = C.acc.split('>'); const r = await window.navigatorApp.acctAttachment(own, C.id, id, fl.name, bx || '');
+            if (!r || !r.ok) return toast(`Could not open “${fl.name}”: ${(r && r.error) || 'try again'}`);
+            toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
+          });
+        }
         box.appendChild(c);
       }
     };
