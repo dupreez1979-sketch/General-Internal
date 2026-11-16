@@ -15018,7 +15018,7 @@ body { width: max-content !important; min-width: 0 !important; }
           }
           C.sending = false; x.textContent = 'Send'; chime('no');
           const back = () => { if (mailUi.compose && mailUi.compose !== C) return toast('Finish or close the message you are writing, then press Show It again.', { label: 'Show It', run: back }); el.hidden = false; if (C.shade) C.shade.hidden = false; mailUi.compose = C; mailUi.composeEl = el; };
-          const why = `“${String(v.body.subject || 'Your email').slice(0, 50)}” was not sent: ${(sn && sn.error) || 'try again'}.`;
+          const why = `“${String(v.body.subject || 'Your email').slice(0, 50)}” was not sent: ${String((sn && sn.error) || 'try again').replace(/[.\s]+$/, '')}.`;
           if (mailUi.compose) toast(`${why} It is kept as you wrote it.`, { label: 'Show It', run: back }); else { back(); toast(`${why} It is back on screen.`); }
         })();
       }
