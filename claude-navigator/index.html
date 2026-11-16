@@ -899,6 +899,13 @@
   html.is-app #sNewFolder { display: none !important; }
   .mailnav > .cal-newrow { margin: var(--sp-1) var(--sp-1) var(--sp-2); }
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: calc(100% - 8px); margin: var(--sp-1) var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-bold); border-radius: var(--r-card); }
+  #offChip { position: fixed; left: calc(var(--dock-w, 0px) + var(--side-now, 0px) + 14px); bottom: 12px; z-index: 58; font: inherit; font-size: var(--fs-caption); font-weight: var(--fw-medium); padding: var(--sp-1) var(--sp-2h); border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--win); color: var(--muted); box-shadow: var(--e-raise); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #offChip[hidden] { display: none; } #offChip.is-off { background: var(--caution); border-color: var(--caution); color: #fff; } #offChip.is-bad { color: var(--danger-ink); border-color: var(--danger); }
+  dialog.off-outbox { width: min(620px, calc(100vw - 48px)); } dialog.off-outbox .hint { margin-left: 0; padding-left: 0; text-align: left; } .ob-list { display: grid; gap: 0; max-height: 52vh; overflow: auto; margin: var(--sp-2) 0; }
+  .ob-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2h) 0; border-top: 1px solid var(--line); }
+  .ob-row .st { font-size: var(--fs-caption); color: var(--muted); } .ob-row .st.queued { color: var(--caution-ink); font-weight: var(--fw-bold); } .ob-row .st.failed { color: var(--danger-ink); font-weight: var(--fw-bold); }
+  .ob-row .tx { display: grid; gap: 2px; min-width: 0; } .ob-row .tx b, .ob-row .tx i { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ob-row .tx i { font-style: normal; color: var(--muted); font-size: var(--fs-caption); } .ob-row .tx em { font-style: normal; color: var(--danger-ink); font-size: var(--fs-caption); }
+  .ob-row .bt { display: flex; gap: var(--sp-1h); }
   .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
@@ -12517,13 +12524,270 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailSave = () => ls.set(MAIL_KEY, JSON.stringify(mailState));
   const mailUi = { accounts: null, folders: {}, kids: {}, msgs: null, msgsFor: '', next: null, loading: false, msg: null, msgBody: null, err: '', adding: false };
   // (A shared mailbox is 'account id>its address': the same sign-in, asking for that mailbox instead of your own.)
-  const mailApi = (id, req) => {
+  const mailApiNet = (id, req) => {
     const i = String(id).indexOf('>');
     if (i < 0) return window.navigatorApp.acctGraph(id, req);
     const r = Object.assign({}, req);
     if (/^\/me\//.test(r.path) && !/^\/me\/people/.test(r.path)) r.path = '/users/' + encodeURIComponent(id.slice(i + 1)) + r.path.slice(3);
     return window.navigatorApp.acctGraph(id.slice(0, i), r);
   };
+  // ---------- Working offline ----------
+  // Every mail and calendar request goes through mailApi, so this is the one place that knows about being offline.
+  // Online: what is read is also kept on this Mac. Offline: reading is answered from what was kept; deleting, moving,
+  // flagging and marking wait in a list; and a message you write is kept in the Outbox. Back online, the waiting
+  // changes are made and the emails you pressed Send on are sent (see offline.js for the send rule).
+  const off = { manual: ls.get('claudeNavigator.offline') === '1', auto: false, box: { items: [], ops: [] }, keep: null, flushing: false, keptAt: +(ls.get('claudeNavigator.offKeptAt') || 0) };
+  const offApp = () => isApp && !!(window.navigatorApp && window.navigatorApp.offGet);
+  const offIs = () => offApp() && (off.manual || off.auto || navigator.onLine === false);
+  const offKey = (id, req) => `${id}\n${req.path}\n${req.prefer || ''}`;
+  const offCacheable = p => /^\/me\/(mailFolders|messages|calendars?|calendarView|events)\b/.test(p) && !/[?&]\$search=/.test(p);
+  const isLocalId = x => /^local-/.test(String(x || ''));
+  const offMsgPath = p => { const m = /^\/me\/messages\/([^\/?]+)(\/[^?]*)?(\?.*)?$/.exec(p); if (!m) return null; let id = m[1]; try { id = decodeURIComponent(id); } catch (e) { /* as it stands */ } return { id, rest: m[2] || '', q: m[3] || '' }; };
+  const mailBodyReq = id => ({ path: `/me/messages/${id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
+  const MAIL_LIST_Q = 'messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId';
+  const offFolderId = (acc, f) => { if (!MAIL_ORDER.includes(f)) return f; const hit = ((mailUi.folders[acc] || {}).list || []).find(x => x.wk === f); if (hit) return hit.id; const wk = (mailUi.wk || {})[acc] || {}; return Object.keys(wk).find(x => wk[x] === f) || f; };
+  // What is waiting to be done is laid over what was kept, so an email you deleted offline stays gone from the list.
+  const offOverlay = (id, data) => {
+    const ops = off.box.ops.filter(o => o.acc === id); if (!ops.length || !data || typeof data !== 'object') return data;
+    const gone = new Set(ops.filter(o => o.kind !== 'patch').map(o => o.msg)), patch = {};
+    for (const o of ops) if (o.kind === 'patch') patch[o.msg] = Object.assign(patch[o.msg] || {}, o.body);
+    const fix = m => (patch[m.id] ? Object.assign({}, m, patch[m.id]) : m);
+    if (Array.isArray(data.value)) return Object.assign({}, data, { value: data.value.filter(m => !gone.has(m.id)).map(fix) });
+    return data.id ? fix(data) : data;
+  };
+  async function offRead(id, req) {
+    let d = await window.navigatorApp.offGet(offKey(id, req));
+    const lm = /^\/me\/mailFolders\/([^\/]+)\/messages\?/.exec(req.path);
+    if (lm && !/skiptoken|\$skip/i.test(req.path)) { const L = await window.navigatorApp.offListGet(`${id}|${offFolderId(id, decodeURIComponent(lm[1]))}`); if (L && L.length) d = { value: L }; }     // (the kept list is fuller than a remembered first page)
+    return d;
+  }
+  const offNo = why => ({ ok: false, status: 0, offline: true, error: why || 'You are offline. This will work when you are back online' });
+  async function offOp(op) { const r = await window.navigatorApp.outboxOp(op); if (r && r.box) off.box = r.box; offPaint(); return r && r.ok ? { ok: true, status: 202, queued: true, data: {} } : offNo((r && r.error) || ''); }
+  const offItem = id => off.box.items.find(x => x.id === id);
+  const offAsDraft = it => ({ id: it.id, isDraft: true, subject: it.subject || '', toRecipients: it.to || [], ccRecipients: it.cc || [], bccRecipients: it.bcc || [], body: { contentType: 'html', content: it.body || '' }, conversationId: it.conv || '' });
+  async function offItemSave(it) { const r = await window.navigatorApp.outboxSave(it); if (r && r.box) off.box = r.box; offPaint(); return r; }
+  // A message started offline. A reply or forward is built from the copy of the email kept on this Mac.
+  async function offNewDraft(acc, kind, origId, body) {
+    const it = { id: 'local-' + uid(), acc, kind, origId: origId || '', subject: (body && body.subject) || '', body: (body && body.body && body.body.content) || '', to: (body && body.toRecipients) || [], cc: (body && body.ccRecipients) || [], bcc: (body && body.bccRecipients) || [], conv: '' };
+    if (origId) {
+      const o = (await window.navigatorApp.offGet(offKey(acc, mailBodyReq(origId)))) || (mailUi.msg && mailUi.msg.id === origId && mailUi.msgBody && !mailUi.msgBody.error ? mailUi.msgBody : null);
+      if (!o) return offNo('This email was not kept on your Mac, so it cannot be answered offline');
+      const me = String((mailAccById(acc) || {}).email || '').toLowerCase(), notMe = l => (l || []).filter(z => z.emailAddress && String(z.emailAddress.address || '').toLowerCase() !== me);
+      const nm = z => (z && z.emailAddress ? `${mailEsc(z.emailAddress.name || '')} &lt;${mailEsc(z.emailAddress.address || '')}&gt;` : ''), subj = String(o.subject || '');
+      it.subject = kind === 'forward' ? (/^\s*fwd?:/i.test(subj) ? subj : 'FW: ' + subj) : (/^\s*re:/i.test(subj) ? subj : 'RE: ' + subj);
+      if (kind !== 'forward') { it.to = o.from ? [o.from] : []; if (kind === 'replyAll') { const seen = new Set(it.to.map(z => String(z.emailAddress.address).toLowerCase())); it.to = it.to.concat(notMe(o.toRecipients).filter(z => !seen.has(String(z.emailAddress.address).toLowerCase()))); it.cc = notMe(o.ccRecipients); } }
+      const when = o.receivedDateTime ? new Date(o.receivedDateTime).toLocaleString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+      it.body = `<hr style="border:0;border-top:1px solid #ccc;margin:14px 0 8px"><div style="font-family:Calibri,Arial,sans-serif;font-size:11pt"><b>From:</b> ${nm(o.from)}<br><b>Sent:</b> ${mailEsc(when)}<br><b>To:</b> ${(o.toRecipients || []).map(nm).join('; ')}<br>${(o.ccRecipients || []).length ? `<b>Cc:</b> ${o.ccRecipients.map(nm).join('; ')}<br>` : ''}<b>Subject:</b> ${mailEsc(subj)}</div><br>${(o.body && o.body.content) || mailEsc(o.bodyPreview || '')}`;
+      it.conv = o.conversationId || '';
+    }
+    const r = await offItemSave(it);
+    return r && r.ok ? { ok: true, status: 201, data: offAsDraft(offItem(it.id) || it), offline: true } : offNo((r && r.error) || 'The message could not be kept on this Mac');
+  }
+  // A message that lives in the Outbox on this Mac: everything the writing window asks of a draft is answered here.
+  async function offLocal(acc, method, mp, req) {
+    const it = offItem(mp.id); if (!it) return { ok: false, status: 404, error: 'That message is no longer in the Outbox' };
+    const N = window.navigatorApp, b = req.body || {};
+    if (!mp.rest) {
+      if (method === 'GET') return { ok: true, status: 200, data: offAsDraft(it) };
+      if (method === 'DELETE') { const r = await N.outboxRemove(it.id); if (r && r.box) off.box = r.box; offPaint(); return { ok: true, status: 204, data: {} }; }
+      if (method === 'PATCH') {
+        const r = await offItemSave(Object.assign({}, it, { acc, subject: b.subject !== undefined ? b.subject : it.subject, body: b.body ? b.body.content : it.body, to: b.toRecipients || it.to, cc: b.ccRecipients || it.cc, bcc: b.bccRecipients || it.bcc }));
+        return r && r.ok ? { ok: true, status: 200, data: offAsDraft(offItem(it.id) || it) } : { ok: false, status: 0, error: (r && r.error) || 'It could not be kept' };
+      }
+    }
+    if (mp.rest === '/attachments') {
+      if (method === 'GET') { const full = !/\$select=/.test(mp.q); const out = []; for (const f of it.files || []) out.push(Object.assign({ id: f.id, name: f.name, size: f.size, isInline: !!f.isInline, contentType: f.contentType, contentId: f.contentId || undefined }, full ? { contentBytes: await N.outboxFileBytes(it.id, f.id) } : {})); return { ok: true, status: 200, data: { value: out } }; }
+      if (method === 'POST') { const r = await N.outboxFileAdd(it.id, b); off.box = await N.outboxAll(); return r && r.ok ? { ok: true, status: 201, data: r.data } : { ok: false, status: 0, error: (r && r.error) || 'The file could not be kept' }; }
+    }
+    const am = /^\/attachments\/([^\/]+)$/.exec(mp.rest);
+    if (am && method === 'DELETE') { await N.outboxFileRemove(it.id, am[1]); off.box = await N.outboxAll(); return { ok: true, status: 204, data: {} }; }
+    return offNo();
+  }
+  async function offAnswer(id, method, path, req, mp) {
+    if (method === 'GET') { const d = await offRead(id, req); return d ? { ok: true, status: 200, data: offOverlay(id, d), offline: true } : offNo('You are offline, and this was not kept on your Mac'); }
+    if (method === 'POST' && path === '/me/messages') return offNewDraft(id, 'new', null, req.body);
+    const cr = /^\/me\/messages\/([^\/]+)\/create(Reply|ReplyAll|Forward)$/.exec(path);
+    if (method === 'POST' && cr) return offNewDraft(id, cr[2] === 'Reply' ? 'reply' : cr[2] === 'ReplyAll' ? 'replyAll' : 'forward', decodeURIComponent(cr[1]));
+    if (method === 'POST' && mp && mp.rest === '/move') return offOp({ acc: id, kind: 'move', msg: mp.id, method, path, body: req.body });
+    if (mp && !mp.rest && method === 'PATCH') {
+      const b = req.body || {};
+      if (b.body || b.subject !== undefined || b.toRecipients) {          // a draft begun online, saved now that you are offline: a copy is kept here and takes its place when you are back
+        const lid = 'local-s-' + mp.id.replace(/[^\w-]/g, '').slice(-60), was = offItem(lid) || {};
+        const r = await offItemSave({ id: lid, acc: id, kind: 'new', serverId: mp.id, subject: b.subject !== undefined ? b.subject : was.subject, body: b.body ? b.body.content : was.body, to: b.toRecipients || was.to, cc: b.ccRecipients || was.cc, bcc: b.bccRecipients || was.bcc });
+        return r && r.ok ? { ok: true, status: 200, data: {}, localId: lid } : offNo((r && r.error) || '');
+      }
+      return offOp({ acc: id, kind: 'patch', msg: mp.id, method, path, body: b });
+    }
+    if (mp && !mp.rest && method === 'DELETE') return offOp({ acc: id, kind: 'delete', msg: mp.id, method, path });
+    return offNo();
+  }
+  const offNetDown = r => r && !r.ok && r.status === 0 && !r.timeout && !r.needsSignIn && /No internet|could not be reached|ERR_INTERNET|ERR_NAME_NOT|ERR_NETWORK|ERR_CONNECTION|fetch failed/i.test(String(r.error || ''));
+  const mailApi = async (id, req) => {
+    req = req || {};
+    if (!offApp()) return mailApiNet(id, req);
+    const method = String(req.method || 'GET').toUpperCase(), path = String(req.path || ''), mp = offMsgPath(path);
+    if (mp && isLocalId(mp.id)) return offLocal(id, method, mp, req);
+    if (offIs()) return offAnswer(id, method, path, req, mp);
+    const r = await mailApiNet(id, req);
+    if (offNetDown(r)) { offAuto(true); return offAnswer(id, method, path, req, mp); }
+    if (r.ok && method === 'GET' && r.data && typeof r.data === 'object' && offCacheable(path)) {
+      window.navigatorApp.offPut(offKey(id, req), r.data);
+      const lm = /^\/me\/mailFolders\/([^\/]+)\/messages\?/.exec(path);
+      if (lm && Array.isArray(r.data.value) && !/skiptoken|\$skip/i.test(path)) window.navigatorApp.offListMerge(`${id}|${offFolderId(id, decodeURIComponent(lm[1]))}`, r.data.value);
+    }
+    return r;
+  };
+  // ----- Offline: the status, going on and off, and what happens when you are back -----
+  const offWaiting = () => off.box.ops.length + off.box.items.filter(x => x.status === 'queued').length;
+  function offPaint() {
+    if (!offApp()) return;
+    let c = $('offChip');
+    if (!c) { c = document.createElement('button'); c.id = 'offChip'; c.type = 'button'; c.addEventListener('click', () => { const r = c.getBoundingClientRect(); showMenu(r.left, r.top - 6, offMenu(), { above: true }); }); document.body.appendChild(c); }
+    const is = offIs(), n = offWaiting(), failed = off.box.items.filter(x => x.status === 'failed').length;
+    const text = is ? `Offline${n ? ` · ${n} waiting` : ''}` : off.flushing ? 'Sending what was waiting…' : off.keep ? `Keeping mail for offline… ${off.keep.total ? `${off.keep.done} of ${off.keep.total}` : ''}` : failed ? `${failed} email${failed === 1 ? '' : 's'} could not be sent` : '';
+    c.hidden = !text; c.textContent = text; c.className = is ? 'is-off' : failed && !off.flushing && !off.keep ? 'is-bad' : '';
+    c.title = is ? 'You are working offline. Mail you write waits in the Outbox.' : '';
+    document.body.classList.toggle('offline', is);
+    const sig = `${off.box.items.length}|${off.box.ops.length}|${is}`;
+    if (sig !== off.sig) { off.sig = sig; try { if (mailOn()) mailSideRender(); } catch (e) { /* mail not showing */ } }
+  }
+  const offAgo = t => { if (!t) return 'not yet'; const m = Math.round((Date.now() - t) / 60000); return m < 2 ? 'just now' : m < 90 ? `${m} minutes ago` : m < 2880 ? `${Math.round(m / 60)} hours ago` : `${Math.round(m / 1440)} days ago`; };
+  const offMenu = () => [
+    { label: 'Work Offline', checked: off.manual, run: () => offSet(!off.manual) },
+    off.auto && !off.manual ? { label: 'Try the Connection Again', run: () => offProbe(true) } : null,
+    '-',
+    { label: `Outbox${off.box.items.length ? ` (${off.box.items.length})` : ''}…`, run: () => offOutbox() },
+    { label: 'Keep Mail for Offline Now', disabled: offIs() || !!off.keep, run: () => offKeep(true) },
+    { label: `Mail last kept ${offAgo(off.keptAt)}`, disabled: true },
+  ].filter(Boolean);
+  function offSet(on) {
+    off.manual = !!on; ls.set('claudeNavigator.offline', on ? '1' : '');
+    if (on) toast('Working offline. Mail you write waits in the Outbox until you are back.'); else { off.auto = false; toast('Back online'); }
+    offPaint(); if (!on) offBack();
+  }
+  let offProbeT = null;
+  function offAuto(on) {
+    if (off.auto === !!on) return;
+    off.auto = !!on; offPaint();
+    clearInterval(offProbeT); offProbeT = null;
+    if (on) { toast('No internet: working offline. Mail you write waits in the Outbox.'); offProbeT = setInterval(() => offProbe(false), 20000); }
+    else if (!off.manual) { toast('Back online'); offBack(); }
+  }
+  async function offProbe(say) {
+    if (off.manual) return;
+    const a = (mailUi.accounts || []).find(z => !z.needsSignIn && !z.shared); if (!a) return;
+    const r = await mailApiNet(a.id, { path: '/me/mailFolders/inbox?$select=id', timeout: 8 });
+    if (r.ok || !offNetDown(r)) offAuto(false); else if (say) toast('Still no internet connection.');
+  }
+  addEventListener('offline', () => offPaint());
+  addEventListener('online', () => { offPaint(); if (off.auto) offProbe(false); else if (!off.manual) offBack(); });
+  async function offBack() {
+    if (!offApp() || offIs() || off.flushing) return;
+    off.box = await window.navigatorApp.outboxAll();
+    const open = mailUi.compose && mailUi.compose.id ? [mailUi.compose.id] : [];
+    if (off.box.ops.length || off.box.items.some(x => !open.includes(x.id) && x.status !== 'failed')) {
+      off.flushing = true; offPaint();
+      const r = await window.navigatorApp.outboxFlush(open);
+      off.flushing = false; if (r && r.box) off.box = r.box;
+      if (r && r.stopped) offAuto(true);
+      const bits = []; if (r && r.sent) bits.push(`${r.sent} email${r.sent === 1 ? '' : 's'} sent`); if (r && r.drafts) bits.push(`${r.drafts} draft${r.drafts === 1 ? '' : 's'} moved to Drafts`); if (r && r.changes) bits.push(`${r.changes} change${r.changes === 1 ? '' : 's'} made`);
+      const bad = (r && r.failed) || [];
+      if (bad.length) toast(`${bits.length ? bits.join(', ') + '. ' : ''}${bad.length} could not be done: ${bad[0].what}: ${bad[0].error}`, { label: 'Open the Outbox', run: () => offOutbox() });
+      else if (bits.length) toast(`Back online: ${bits.join(', ')}.`);
+      offPaint();
+    }
+    try { for (const a of (mailUi.accounts || []).filter(z => !z.needsSignIn)) mailLoadFolders(a).then(mailSideRender); if (mailState.sel && mailOn()) mailLoadMessages(true, true); } catch (e) { /* mail not started */ }
+    try { calG.key = ''; if (calOn()) calRefresh(false); } catch (e) { /* calendar not started */ }
+  }
+  // The Outbox: what you wrote offline. Waiting emails go by themselves when you are back; open one to change it first.
+  function offOutbox() {
+    const d = mailDlg('off-outbox', '<h2>Outbox</h2><p class="hint"></p><div class="ob-list"></div><div class="dlg-actions"><button class="btn" data-x="send" hidden>Send Now</button><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const list = d.querySelector('.ob-list');
+    const paint = () => {
+      const items = off.box.items.slice().sort((a, b) => (b.at || 0) - (a.at || 0)), n = off.box.ops.length;
+      d.querySelector('.hint').textContent = `${offIs() ? 'You are offline. Emails marked Waiting are sent when you are back online.' : 'You are online.'}${n ? ` ${n} change${n === 1 ? '' : 's'} to other emails (delete, move, flag) ${n === 1 ? 'is' : 'are'} also waiting.` : ''}`;
+      d.querySelector('[data-x="send"]').hidden = offIs() || !items.some(x => x.status === 'queued') && !n;
+      list.replaceChildren();
+      if (!items.length) list.appendChild(Object.assign(document.createElement('div'), { className: 'empty-note', textContent: 'Nothing is waiting.' }));
+      for (const it of items) {
+        const r = document.createElement('div'); r.className = 'ob-row';
+        const st = it.status === 'queued' ? 'Waiting to send' : it.status === 'failed' ? 'Not sent' : it.status === 'sending' ? 'Sending' : 'Draft';
+        r.innerHTML = '<span class="st"></span><div class="tx"><b></b><i></i><em hidden></em></div><span class="bt"></span>';
+        r.querySelector('.st').textContent = st; r.querySelector('.st').classList.add(it.status);
+        r.querySelector('b').textContent = it.subject || '(No subject)';
+        r.querySelector('i').textContent = `To ${(it.to || []).concat(it.cc || []).map(z => z.emailAddress.name || z.emailAddress.address).join(', ') || 'nobody yet'} · from ${(mailAccById(it.acc) || {}).email || 'an account no longer here'}`;
+        if (it.error) { const em = r.querySelector('em'); em.hidden = false; em.textContent = it.error; }
+        const bt = r.querySelector('.bt');
+        bt.appendChild(cellBtn('Open', 'Open it to read or change it. If it was waiting, press Send again when you have finished.', async () => {
+          if (mailUi.compose) return toast('Finish or close the message you are writing first.');
+          if (it.status === 'queued' || it.status === 'failed') { const u = await window.navigatorApp.outboxUnqueue(it.id); if (u && u.box) off.box = u.box; offPaint(); }
+          d.close(); d.remove(); mailCompose('draft', { id: it.id, _acc: it.acc, isDraft: true });
+        }));
+        bt.appendChild(cellBtn('Delete', 'Delete this message. It is not sent.', async () => { if (!confirm(`Delete “${it.subject || '(No subject)'}”? It will not be sent.`)) return; const x = await window.navigatorApp.outboxRemove(it.id); if (x && x.box) off.box = x.box; offPaint(); paint(); }));
+        list.appendChild(r);
+      }
+    };
+    d.addEventListener('click', async e => { const k = e.target.dataset && e.target.dataset.x; if (k === 'close') { d.close(); d.remove(); } if (k === 'send') { e.target.disabled = true; await offBack(); e.target.disabled = false; paint(); } });
+    paint();
+  }
+  // Keeping mail for offline: the last 30 days of each Inbox and Sent Items, the words of every one of those emails,
+  // the files on the last week's, and the calendar. Done quietly while you are online; what is already kept is skipped.
+  async function offKeep(say) {
+    if (!offApp() || off.keep || offIs()) return;
+    const K = off.keep = { done: 0, total: 0 }, N = window.navigatorApp, since = Date.now() - 30 * 864e5, week = Date.now() - 7 * 864e5;
+    offPaint();
+    const quiet = async (id, req) => { for (let t = 0; t < 3; t++) { const r = await mailApiNet(id, req); if (r.ok || r.status !== 429) return r; await new Promise(z => setTimeout(z, Math.min(30, r.retryAfter || 5) * 1000)); } return { ok: false }; };
+    let stop = false;
+    try {
+      const todo = [];
+      for (const a of (mailUi.accounts || []).filter(z => !z.needsSignIn && z.provider !== 'google')) {
+        if (!(mailUi.folders[a.id] || {}).list) { try { await mailLoadFolders(a); } catch (e) { /* skip this one */ } }
+        for (const wk of ['inbox', 'sentitems']) {
+          const f = ((mailUi.folders[a.id] || {}).list || []).find(x => x.wk === wk); if (!f) continue;
+          let path = `/me/mailFolders/${f.id}/${MAIL_LIST_Q}`; const all = [];
+          for (let page = 0; path && page < 38 && !stop; page++) {
+            const r = await quiet(a.id, { path }); if (!r.ok) { if (offNetDown(r)) stop = true; break; }
+            const v = r.data.value || []; all.push(...v);
+            if (!v.length || Date.parse(v[v.length - 1].receivedDateTime) < since) break;
+            path = r.data['@odata.nextLink'] || null;
+          }
+          if (!all.length) continue;
+          const kept = all.filter((m, i) => i < 40 || Date.parse(m.receivedDateTime) >= since).slice(0, 1500);
+          await N.offListPut(`${a.id}|${f.id}`, kept);
+          for (const m of kept) if (!m.isDraft) todo.push({ a: a.id, m });
+        }
+      }
+      // the words of each email not kept yet
+      const have = []; for (let i = 0; i < todo.length; i += 500) have.push(...await N.offHas(todo.slice(i, i + 500).map(t => offKey(t.a, mailBodyReq(t.m.id)))));
+      const need = todo.filter((t, i) => !have[i] || (t.m.hasAttachments && Date.parse(t.m.receivedDateTime) >= week));
+      K.total = need.length; offPaint();
+      let at = 0;
+      const worker = async () => {
+        while (at < need.length && !stop && !offIs()) {
+          const t = need[at++], rq = mailBodyReq(t.m.id);
+          if (!(await N.offHas([offKey(t.a, rq)]))[0]) { const r = await quiet(t.a, rq); if (r.ok) await N.offPut(offKey(t.a, rq), r.data); else if (offNetDown(r)) { stop = true; break; } }
+          if (t.m.hasAttachments) {
+            const aq = { path: `/me/messages/${t.m.id}/attachments?$select=id,name,contentType,size,isInline` }, ar = await quiet(t.a, aq);
+            if (ar.ok) { await N.offPut(offKey(t.a, aq), ar.data);
+              if (Date.parse(t.m.receivedDateTime) >= week) for (const f of (ar.data.value || []).filter(z => !z.isInline && z.size <= 10e6).slice(0, 8)) { const [own, bx] = t.a.split('>'); await N.offAttKeep(own, t.m.id, f.id, f.name, bx || ''); } }
+          }
+          K.done++; if (K.done % 5 === 0) offPaint();
+        }
+      };
+      await Promise.all([worker(), worker(), worker()]);
+      // the calendar: this month and the two either side, and the two after that
+      try { const now = new Date(); for (const add of [0, 2]) { const d0 = new Date(now.getFullYear(), now.getMonth() + add, 15); calG.key = ''; await calGLoad(d0, d0, true); } calG.key = ''; } catch (e) { /* the calendar is kept when you look at it */ }
+    } catch (e) { stop = true; }
+    off.keep = null;
+    if (!stop && !offIs()) { off.keptAt = Date.now(); ls.set('claudeNavigator.offKeptAt', String(off.keptAt)); }
+    offPaint();
+    if (say) toast(stop || offIs() ? 'Keeping mail for offline stopped: the connection dropped. It carries on next time.' : `Kept for offline: the last 30 days of Inbox and Sent Items (${todo0(K)}), and the calendar.`);
+  }
+  const todo0 = K => `${K.done} email${K.done === 1 ? '' : 's'} added`;
+  setTimeout(async () => { if (!offApp()) return; try { off.box = await window.navigatorApp.outboxAll(); } catch (e) { /* none */ } offPaint(); if (!offIs()) offBack(); }, 4000);
+  // (quietly, a minute after starting and then every two hours while the app is open and online)
+  setTimeout(() => { if (mailUi.accounts && mailUi.accounts.length) offKeep(false); }, 60e3);
+  setInterval(() => { if (mailUi.accounts && mailUi.accounts.length && Date.now() - off.keptAt > 2 * 3600e3) offKeep(false); }, 15 * 60e3);
   const mailProf = id => mailState.profiles[String(id).split('>')[0]] || [];
   const mailWithShared = list => (list || []).flatMap(a => [a].concat(((mailState.shared || {})[a.id] || []).map(b => ({ id: `${a.id}>${b.address}`, email: b.address, name: b.name || b.address, shared: true, via: a.id, provider: a.provider, needsSignIn: a.needsSignIn, more: a.more }))));
   const mailOn = () => currentApp === 'mail' || sideHas('mail');          // showing as the app, or beside another one
@@ -12769,7 +13033,7 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (fresh || mailUi.msgsFor !== key) { mailUi.msgs = null; mailUi.next = null; mailUi.msgsFor = key; mailUi.msg = null; mailUi.msgBody = null; }
     mailUi.loading = !keep || !mailUi.msgs; mailUi.err = ''; if (mailUi.loading) mailRenderMain();
     // All Inboxes reads every account's Inbox at once and puts the newest first.
-    const first = `/me/mailFolders/${s.acc === '*' ? 'inbox' : s.folder}/messages?$top=40&$orderby=receivedDateTime desc&$select=id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead,hasAttachments,flag,importance,isDraft,conversationId`;
+    const first = `/me/mailFolders/${s.acc === '*' ? 'inbox' : s.folder}/${MAIL_LIST_Q}`;
     const want = mailUi.next && !fresh ? mailUi.next : Object.fromEntries(mailSelAccs().map(id => [id, first]));
     const r = await mailReadLists(want);
     if (mailUi.seq !== seq) return;                        // moved on meanwhile
@@ -12837,7 +13101,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (m.isDraft) return mailCompose('draft', m);
     mailUi.msg = m; mailUi.msgOpen = true; mailUi.popMin = false; mailUi.msgBody = null; mailRenderMain();
     mailPreDraft(A, m);
-    const r = await mailApi(A, { path: `/me/messages/${m.id}?$select=id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,hasAttachments,isRead`, prefer: 'outlook.body-content-type="html"' });
+    const r = await mailApi(A, mailBodyReq(m.id));
     if (mailUi.msg !== m) return;
     mailUi.msgBody = r.ok ? r.data : { error: r.error || 'Could not open the message' };
     mailRenderMain();
@@ -13259,6 +13523,14 @@ body { width: max-content !important; min-width: 0 !important; }
       b.addEventListener('click', () => { mailState.sel = { acc: '*', folder: 'inbox', name: 'All Inboxes' }; mailUi.search = ''; mailSave(); mailSideRender(); mailLoadMessages(true); });
       sd.appendChild(b);
     }
+    if (off.box.items.length || off.box.ops.length) {
+      const b = document.createElement('div'), n = off.box.items.length;
+      b.className = 'mail-f all' + (n ? ' unread' : '');
+      b.innerHTML = `<span class="tw"></span>${mailIcon('sentitems')}<span class="nm">Outbox</span><span class="n">${n || ''}</span>`;
+      b.title = 'What you wrote offline, and what is waiting to be sent';
+      b.addEventListener('click', () => offOutbox());
+      sd.appendChild(b);
+    }
     if (mailUi.warn) { const wn = document.createElement('button'); wn.className = 'mail-warn'; wn.textContent = `${mailUi.warn}. See Mail Health\u2026`; wn.title = 'Open Mail Health to see what is happening'; wn.addEventListener('click', mailHealth); sd.appendChild(wn); }
     mailState.shut = mailState.shut || {};
     for (const a of vis) {
@@ -13477,6 +13749,10 @@ body { width: max-content !important; min-width: 0 !important; }
           { label: c ? `Clara (${c})\u2026` : 'Clara\u2026', run: () => claraPanel() },
           { label: 'Unread Only', checked: !!mailUi.onlyUnread, run: () => { mailUi.onlyUnread = !mailUi.onlyUnread; mailRenderMain(); } },
           { label: 'Keep Conversations Together', checked: mailState.threads !== false, run: () => { mailState.threads = mailState.threads === false; mailSave(); mailRenderMain(); } },
+          '-',
+          { label: 'Work Offline', checked: off.manual, run: () => offSet(!off.manual) },
+          { label: `Outbox${off.box.items.length ? ` (${off.box.items.length})` : ''}\u2026`, run: () => offOutbox() },
+          { label: 'Keep Mail for Offline Now', disabled: offIs() || !!off.keep, run: () => offKeep(true) },
           '-',
           { label: 'Check for New Mail', run: () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail\u2026'); } },
         ]);
@@ -13848,7 +14124,7 @@ body { width: max-content !important; min-width: 0 !important; }
   async function mailOpenAttachment(a) {
     const s = mailState.sel, m = mailUi.msg;
     toast(`Opening “${a.name}”…`);
-    const r = await window.navigatorApp.acctAttachment((m._acc || s.acc).split('>')[0], m.id, a.id, a.name, (m._acc || s.acc).split('>')[1] || '');
+    const r = offIs() ? await window.navigatorApp.offAttOpen((m._acc || s.acc).split('>')[0], m.id, a.id, a.name) : await window.navigatorApp.acctAttachment((m._acc || s.acc).split('>')[0], m.id, a.id, a.name, (m._acc || s.acc).split('>')[1] || '');
     if (!r || !r.ok) return toast(`Could not open “${a.name}”: ${(r && r.error) || 'try again'}`);
     toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
   }
@@ -14354,7 +14630,7 @@ body { width: max-content !important; min-width: 0 !important; }
             if (!id) { const now = await mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size` }); const hit = now.ok && ((now.data && now.data.value) || []).find(z => z.name === fl.name); if (hit) id = fl.id = hit.id; }
             if (!id) return toast(`Could not open “${fl.name}”: it is still being attached.`);
             toast(`Opening “${fl.name}”…`);
-            const [own, bx] = C.acc.split('>'); const r = await window.navigatorApp.acctAttachment(own, C.id, id, fl.name, bx || '');
+            const [own, bx] = C.acc.split('>'); const r = isLocalId(C.id) ? await window.navigatorApp.outboxFileOpen(C.id, id) : offIs() ? await window.navigatorApp.offAttOpen(own, C.id, id, fl.name) : await window.navigatorApp.acctAttachment(own, C.id, id, fl.name, bx || '');
             if (!r || !r.ok) return toast(`Could not open “${fl.name}”: ${(r && r.error) || 'try again'}`);
             toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
           });
@@ -14372,7 +14648,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (file.size > 25e6) { toast(`“${file.name}” is over 25 MB, which is more than most mail systems accept. Share a link to it instead.`); continue; }
         const rec = { name: file.name }; C.files.push(rec); paintFiles();
         let up;
-        if (file.size <= 3e6) {
+        if (file.size <= 3e6 || isLocalId(C.id)) {          // (a message in the Outbox keeps the whole file on this Mac; it goes up in pieces when the email does)
           const b64 = await new Promise(res => { const rd = new FileReader(); rd.onload = () => res(String(rd.result).split(',')[1]); rd.readAsDataURL(file); });
           up = await mailApi(C.acc, { method: 'POST', path: `/me/messages/${C.id}/attachments`, body: { '@odata.type': '#microsoft.graph.fileAttachment', name: file.name, contentType: file.type || 'application/octet-stream', contentBytes: b64 } });
         } else {
@@ -14471,8 +14747,8 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       if (what === 'discard') { if (!confirm('Delete this draft?')) return; await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}` }); toast('Draft deleted'); return shut(); }
       const v = fields();
-      if (what === 'save') { if (C.saving) return; C.saving = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); C.saving = false; if (sv.ok) mailRefreshFolders(); return toast(sv.ok ? 'Saved in Drafts' : `Could not save the draft: ${sv.error || 'try again'}`); }
-      if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? 'Kept in Drafts' : `Could not save the draft: ${sv.error || ''}`); return shut(); }
+      if (what === 'save') { if (C.saving) return; C.saving = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); C.saving = false; if (sv.ok) mailRefreshFolders(); if (sv.ok && sv.localId) C.id = sv.localId; return toast(sv.ok ? (isLocalId(C.id) ? 'Saved in the Outbox, on this Mac' : 'Saved in Drafts') : `Could not save the draft: ${sv.error || 'try again'}`); }
+      if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? (isLocalId(C.id) || sv.localId ? 'Kept in the Outbox as a draft. It moves to Drafts when you are back online.' : 'Kept in Drafts') : `Could not save the draft: ${sv.error || ''}`); return shut(); }
       if (what === 'send') {
         // Only a real press of this button by you sends. (The app's main process checks that again; see THE SEND LOCK.)
         if (!e.isTrusted) return toast('An email is only sent when you press Send yourself.');
@@ -14480,6 +14756,20 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!v.lists.to.length && !v.lists.cc.length && !v.lists.bcc.length) return toast('Add someone to send it to.');
         if (C.files.some(fl => !fl.sent)) return toast('Wait a moment: a file is still being attached.');
         if (!v.body.subject && !confirm('Send without a subject?')) return;
+        // Offline (or a message that lives in the Outbox): it is kept in full on this Mac and joins the waiting list.
+        // The press of Send is checked in the same way as an ordinary one; it is sent when you are back online.
+        if (isLocalId(C.id) || offIs()) {
+          C.sending = true; x.textContent = 'Sending…';
+          const keepIt = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: v.body });
+          if (keepIt.ok && keepIt.localId) C.id = keepIt.localId;
+          const q = keepIt.ok && isLocalId(C.id) ? await window.navigatorApp.outboxQueue(C.id) : { ok: false, error: keepIt.error || 'it could not be kept on this Mac' };
+          if (!q.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${q.error || 'press Send again'}. It is still here.`); }
+          if (q.box) off.box = q.box;
+          mailLearnFromSent(C, v);
+          const id0 = C.id; shut(); mailUi.compose = null; offPaint();
+          if (offIs()) toast('In the Outbox. It will be sent when you are back online.', { label: 'Outbox', run: () => offOutbox() }); else { toast('Sending…'); offBack(); }
+          void id0; return;
+        }
         C.sending = true; x.textContent = 'Sending…';
         const [own, box] = C.acc.split('>');
         const armed = await window.navigatorApp.acctSendArm(own, C.id);
@@ -19644,6 +19934,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
         try { const u = new URL(k.slice(7)), q = u.searchParams; mailCompose('new', null, { to: decodeURIComponent(u.pathname), cc: q.get('cc') || '', subject: q.get('subject') || '', text: q.get('body') || '' }); } catch (e) { toast('That email address could not be read.'); }
         return;
       }
+      if (k === 'offline-toggle') { offSet(!off.manual); return; }
       if (k === 'app-settings') { if (!document.querySelector('dialog.settings-win')) botSettingsDlg(); return; }
       const m = /^profile-(\d)$/.exec(k);
       if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);

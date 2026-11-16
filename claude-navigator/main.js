@@ -14,6 +14,7 @@ const accounts = require('./accounts');
 const mailindex = require('./mailindex');
 const maillog = require('./maillog');
 const granola = require('./granola');
+const offline = require('./offline');
 
 const isMac = process.platform === 'darwin';
 
@@ -421,6 +422,7 @@ function buildMenu() {
         { label: 'New Folder', accelerator: 'Cmd+Shift+N', click: act('new-folder') },
         { type: 'separator' },
         { label: 'Settings\u2026', click: act('app-settings') },
+        { label: 'Work Offline', click: act('offline-toggle') },
         { type: 'separator' },
         { label: 'Save Page to Folder', accelerator: 'Cmd+S', click: act('save') },
         { label: 'Save As\u2026', accelerator: 'Cmd+Shift+S', click: act('save-as') },
@@ -1613,9 +1615,9 @@ function watchRealClicks(win) {
 // The app's own windows: the main one, and any app you have opened in a window of its own.
 const isOwnContents = wc => (!!mainWindow && !mainWindow.isDestroyed() && wc === mainWindow.webContents) || [...appWindows.values()].some(w => !w.isDestroyed() && w.webContents === wc);
 const fromOwnWindow = e => isOwnContents(e.sender) && e.senderFrame === e.sender.mainFrame;
-ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
-  sendArmed = null;
-  if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
+// Was the Send button really pressed, just now, by a person? (Used by Send, and by the Outbox when you are offline.)
+async function sawSendClick(e, id) {
+  if (!fromOwnWindow(e)) return false;
   // A real mouse click, seen here (not reported by the page), in the last two seconds, that landed on the Send button.
   const c = lastClicks.get(e.sender.id) || null; lastClicks.delete(e.sender.id);
   let onSend = false;
@@ -1630,10 +1632,45 @@ ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
   if (!onSend && !app.isPackaged && process.env.NAV_TEST_MS && !process.env.NAV_LOCK_STRICT) {
     try { onSend = await e.sender.executeJavaScript('!!(navigator.userActivation && navigator.userActivation.isActive)', false); } catch (err) { onSend = false; }
   }
-  if (!onSend) { maillog.add({ kind: 'lock', acc: String(id), error: 'Send was refused: no real click on the Send button was seen' }); return { ok: false, error: 'An email is only sent when you press Send yourself' }; }
+  if (!onSend) maillog.add({ kind: 'lock', acc: String(id), error: 'Send was refused: no real click on the Send button was seen' });
+  return onSend;
+}
+ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
+  sendArmed = null;
+  if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
+  if (!(await sawSendClick(e, id))) return { ok: false, error: 'An email is only sent when you press Send yourself' };
   sendArmed = { id: String(id), msgId: String(msgId), until: Date.now() + 120e3 };
   return { ok: true };
 });
+// ---------- Working offline: what has been read, the Outbox, and changes waiting (see offline.js) ----------
+const own = fn => (e, ...a) => (fromOwnWindow(e) ? fn(...a) : { ok: false, error: 'Not allowed' });
+ipcMain.handle('off-get', own(k => offline.get(String(k))));
+ipcMain.handle('off-put', own((k, d) => offline.put(String(k), d)));
+ipcMain.handle('off-has', own(keys => offline.has(Array.isArray(keys) ? keys.slice(0, 2000).map(String) : [])));
+ipcMain.handle('off-list-get', own(n => offline.listGet(String(n))));
+ipcMain.handle('off-list-put', own((n, l) => offline.listPut(String(n), Array.isArray(l) ? l.slice(0, 1500) : [])));
+ipcMain.handle('off-list-merge', own((n, l) => offline.listMerge(String(n), Array.isArray(l) ? l.slice(0, 200) : [])));
+ipcMain.handle('off-att-keep', own((acc, msg, att, name, box) => offline.attKeep(String(acc), String(msg), String(att), String(name || ''), typeof box === 'string' ? box : '')));
+ipcMain.handle('off-att-open', own((acc, msg, att, name) => offline.attOpen(String(acc), String(msg), String(att), String(name || ''))));
+ipcMain.handle('off-size', own(() => offline.size()));
+ipcMain.handle('off-clear', own(() => offline.clear()));
+ipcMain.handle('outbox-all', own(() => offline.view()));
+ipcMain.handle('outbox-save', own(it => offline.itemSave(it)));
+ipcMain.handle('outbox-remove', own(id => offline.itemRemove(String(id))));
+ipcMain.handle('outbox-file-add', own((id, f) => offline.fileAdd(String(id), f)));
+ipcMain.handle('outbox-file-remove', own((id, fid) => offline.fileRemove(String(id), String(fid))));
+ipcMain.handle('outbox-file-bytes', own((id, fid) => offline.fileBytes(String(id), String(fid))));
+ipcMain.handle('outbox-file-open', own((id, fid) => offline.fileOpen(String(id), String(fid))));
+ipcMain.handle('outbox-unqueue', own(id => offline.unqueue(String(id))));
+ipcMain.handle('outbox-op', own(op => offline.opAdd(op)));
+ipcMain.handle('outbox-flush', own(skip => offline.flush(Array.isArray(skip) ? skip.map(String) : [])));
+// An email joins the waiting list only on a real press of Send: the same check as sending straight away.
+ipcMain.handle('outbox-queue', async (e, id) => {
+  if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
+  if (!(await sawSendClick(e, 'outbox'))) return { ok: false, error: 'An email is only sent when you press Send yourself' };
+  return offline.queue(String(id));
+});
+setTimeout(() => { try { offline.tidy(); } catch (e) { /* next time */ } }, 90e3);
 ipcMain.handle('acct-send', async (e, id, msgId, box) => {
   const a = sendArmed; sendArmed = null;
   if (!fromOwnWindow(e) || !a || a.id !== String(id) || a.msgId !== String(msgId) || Date.now() > a.until) return { ok: false, error: 'An email is only sent when you press Send yourself' };

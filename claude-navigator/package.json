@@ -29,6 +29,7 @@
       "mailindex.js",
       "maillog.js",
       "granola.js",
+      "offline.js",
       "mailindex-worker.js",
       "vendor/**",
       "look.js",
