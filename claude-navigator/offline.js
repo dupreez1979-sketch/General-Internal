@@ -106,11 +106,14 @@ function fileBytes(id, fid) { try { return fs.readFileSync(path.join(fileDir(Str
 function fileOpen(id, fid) { const it = find(id), f = it && (it.files || []).find(x => x.id === String(fid)); if (!f) return { ok: false, error: 'That file is no longer on the message' }; try { return copyOut(path.join(fileDir(it.id), f.id), f.name); } catch (e) { return { ok: false, error: String(e.message || e) }; } }
 // Called by main.js only after it has seen a real press of Send.
 function queue(id) { const it = find(id); if (!it) return { ok: false, error: 'That message is no longer here' }; if (!it.to.length && !it.cc.length && !it.bcc.length) return { ok: false, error: 'Add someone to send it to' }; it.status = 'queued'; it.armed = true; it.error = ''; it.queuedAt = Date.now(); save(); return { ok: true, box: view() }; }
+function opRemove(id) { const b = load(); b.ops = b.ops.filter(o => o.id !== String(id)); save(); return { ok: true, box: view() }; }
 function unqueue(id) { const it = find(id); if (!it || it.status === 'sending') return { ok: false, error: 'It is being sent' }; it.status = 'draft'; it.armed = false; it.error = ''; save(); return { ok: true, box: view() }; }
 function opAdd(op) {
-  const b = load(); if (!op || !['move', 'patch', 'delete'].includes(op.kind)) return { ok: false, error: 'Not a change that can wait' };
+  const b = load(); if (!op || !['move', 'patch', 'delete', 'event'].includes(op.kind)) return { ok: false, error: 'Not a change that can wait' };
   const method = String(op.method || '').toUpperCase(), p = String(op.path || '');
-  if (!['POST', 'PATCH', 'DELETE'].includes(method) || !/^\/me\/messages\/[^\/?#]+(\/move)?$/.test(p)) return { ok: false, error: 'Not a change that can wait' };
+  // (a meeting made offline: you pressed Save on it; it is made, and its invitations go, when you are back)
+  const okEvent = op.kind === 'event' && method === 'POST' && /^\/me\/calendars\/[^\/?#]+\/events$/.test(p);
+  if (!okEvent && (op.kind === 'event' || !['POST', 'PATCH', 'DELETE'].includes(method) || !/^\/me\/messages\/[^\/?#]+(\/move)?$/.test(p))) return { ok: false, error: 'Not a change that can wait' };
   b.ops.push({ id: 'o' + crypto.randomBytes(5).toString('hex'), acc: str(op.acc, 400), kind: op.kind, msg: str(op.msg, 600), method, path: p, body: op.body && typeof op.body === 'object' ? op.body : undefined, at: Date.now() });
   save(); return { ok: true, box: view() };
 }
@@ -148,14 +151,15 @@ let flushing = false;
 async function flush(skip) {
   if (flushing) return { ok: false, busy: true, box: view() };
   flushing = true;
-  const b = load(), rep = { ok: true, sent: 0, drafts: 0, changes: 0, failed: [], stopped: false };
+  const b = load(), rep = { ok: true, sent: 0, drafts: 0, changes: 0, events: 0, failed: [], stopped: false };
   try {
     // changes first, in the order they were made
     while (b.ops.length) {
       const op = b.ops[0], r = await call(op.acc, { method: op.method, path: op.path, body: op.body });
       if (netDown(r)) { rep.stopped = true; break; }
       b.ops.shift(); save();
-      if (r.ok || gone(r)) rep.changes++; else rep.failed.push({ what: 'A change to an email', error: r.error || 'It could not be made' });
+      if (op.kind === 'event') { if (r.ok) rep.events++; else rep.failed.push({ what: `The meeting \u201c${(op.body && op.body.subject) || ''}\u201d`, error: r.error || 'It could not be made. Make it again in the calendar.' }); }
+      else if (r.ok || gone(r)) rep.changes++; else rep.failed.push({ what: 'A change to an email', error: r.error || 'It could not be made' });
     }
     for (const it of rep.stopped ? [] : b.items.slice()) {
       if ((skip || []).includes(it.id) || it.status === 'failed' || it.status === 'sending') continue;
@@ -183,4 +187,4 @@ async function flush(skip) {
   return Object.assign(rep, { box: view() });
 }
 
-module.exports = { get, put, has, listGet, listPut, listMerge, attKeep, attOpen, size, tidy, clear, view, itemSave, itemRemove, fileAdd, fileRemove, fileBytes, fileOpen, queue, unqueue, opAdd, flush };
+module.exports = { get, put, has, listGet, listPut, listMerge, attKeep, attOpen, size, tidy, clear, view, itemSave, itemRemove, fileAdd, fileRemove, fileBytes, fileOpen, queue, unqueue, opAdd, opRemove, flush };

@@ -1663,6 +1663,7 @@ ipcMain.handle('outbox-file-bytes', own((id, fid) => offline.fileBytes(String(id
 ipcMain.handle('outbox-file-open', own((id, fid) => offline.fileOpen(String(id), String(fid))));
 ipcMain.handle('outbox-unqueue', own(id => offline.unqueue(String(id))));
 ipcMain.handle('outbox-op', own(op => offline.opAdd(op)));
+ipcMain.handle('outbox-op-remove', own(id => offline.opRemove(String(id))));
 ipcMain.handle('outbox-flush', own(skip => offline.flush(Array.isArray(skip) ? skip.map(String) : [])));
 // An email joins the waiting list only on a real press of Send: the same check as sending straight away.
 ipcMain.handle('outbox-queue', async (e, id) => {

@@ -87,6 +87,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   outboxQueue: id => ipcRenderer.invoke('outbox-queue', id),
   outboxUnqueue: id => ipcRenderer.invoke('outbox-unqueue', id),
   outboxOp: op => ipcRenderer.invoke('outbox-op', op),
+  outboxOpRemove: id => ipcRenderer.invoke('outbox-op-remove', id),
   outboxFlush: skip => ipcRenderer.invoke('outbox-flush', skip),
   acctSend: (id, msgId, box) => ipcRenderer.invoke('acct-send', id, msgId, box),
   acctUpload: (url, bytes, start, total) => ipcRenderer.invoke('acct-upload', url, bytes, start, total),

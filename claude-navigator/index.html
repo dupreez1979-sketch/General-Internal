@@ -954,6 +954,9 @@
   .mail-compose .mc-sug { margin: 0 var(--sp-3h) 0 76px; border: 1px solid var(--line); border-radius: var(--r-control); display: grid; background: var(--win); box-shadow: var(--e-float); position: relative; z-index: 2; }
   .mail-compose .mc-sug[hidden] { display: none; }
   /* People in To, Cc and Bcc are tokens: one Backspace or the cross takes a whole person out. */
+  dialog.cal-evdlg .mc-tok { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); min-width: 0; cursor: text; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--win); padding: 2px var(--sp-1h); min-height: var(--control-h); box-sizing: border-box; }
+  dialog.cal-evdlg .mc-tok:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  dialog.cal-evdlg .mc-tok input { flex: 1 1 140px; min-width: 100px; border: 0 !important; outline: 0 !important; box-shadow: none !important; background: none !important; padding: 2px 0 !important; height: auto !important; }
   .mail-compose .mc-tok { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1); min-width: 0; padding: var(--sp-1) 0; cursor: text; }
   .mail-compose .mc-tok input { flex: 1 1 120px; min-width: 80px; padding: var(--sp-1) 0; }
   .mc-chip { display: inline-flex; align-items: center; gap: var(--sp-h); max-width: 100%; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--text); border-radius: var(--r-control); padding: var(--sp-h) var(--sp-1) var(--sp-h) var(--sp-2); font-size: var(--fs-body); line-height: 1.5; cursor: default; }
@@ -12219,15 +12222,16 @@ body { width: max-content !important; min-width: 0 !important; }
     // People as you type in Invite: the ones you write to and meet with, from the account the meeting is in.
     {
       const inp = f('att'), sug = document.createElement('div'); sug.className = 'cal-sug'; sug.hidden = true;
+      { const was = inp.value; mailTokenField(inp); inp.value = was; }          // people as tokens, as in an email
       inp.closest('.row').after(sug);
       let sugT = null, seq = 0, at = 0;
       const mark = () => { [...sug.children].forEach((b, i) => b.classList.toggle('on', i === at)); };
-      const pick = pp => { const parts = inp.value.split(/([,;])/); parts[parts.length - 1] = ` ${pp.name && pp.name !== pp.address ? `${pp.name} <${pp.address}>` : pp.address}`; inp.value = parts.join('').trim() + ', '; sug.hidden = true; inp.focus(); inp.dispatchEvent(new Event('change')); };
+      const pick = pp => { const typed = inp.typing ? inp.typing() : '', whole = inp.value, kept = typed && whole.endsWith(typed.trim()) ? whole.slice(0, whole.length - typed.trim().length) : whole; inp.value = `${kept}${kept.trim() && !/[,;]\s*$/.test(kept) ? ', ' : ''}${pp.name && pp.name !== pp.address ? `${pp.name} <${pp.address}>` : pp.address}`; sug.hidden = true; inp.focus(); inp.dispatchEvent(new Event('change')); };
       inp.setAttribute('autocomplete', 'off');
       inp.placeholder = 'Start typing a name or an email address';
       inp.addEventListener('input', () => {
         clearTimeout(sugT);
-        const last = inp.value.split(/[,;]/).pop().trim();
+        const last = (inp.typing ? inp.typing() : inp.value).split(/[,;]/).pop().trim();
         if (last.length < 2) { sug.hidden = true; return; }
         sugT = setTimeout(async () => {
           const my = ++seq, A = inst ? accId : (f('cal').value || '').split('\n')[0]; if (!A) return;
@@ -12530,7 +12534,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (ghost || before) { unGhost(); calRender(); if (!d.isConnected) { document.body.appendChild(d); d.showModal(); } }      // back comes the form, with everything you typed
         return toast(`It was not saved: ${r.error || 'try again'}`);
       }
-      chime('made'); toast(inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
+      chime('made'); toast(r.queued ? `In the Outbox. The meeting is made${people.length ? ' and the invitations sent' : ''} when you are back online.` : inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
     });
     document.body.appendChild(d); d.showModal(); f('title').focus();
@@ -12571,7 +12575,7 @@ body { width: max-content !important; min-width: 0 !important; }
   // What is waiting to be done is laid over what was kept, so an email you deleted offline stays gone from the list.
   const offOverlay = (id, data) => {
     const ops = off.box.ops.filter(o => o.acc === id); if (!ops.length || !data || typeof data !== 'object') return data;
-    const gone = new Set(ops.filter(o => o.kind !== 'patch').map(o => o.msg)), patch = {};
+    const gone = new Set(ops.filter(o => o.kind === 'move' || o.kind === 'delete').map(o => o.msg)), patch = {};
     for (const o of ops) if (o.kind === 'patch') patch[o.msg] = Object.assign(patch[o.msg] || {}, o.body);
     const fix = m => (patch[m.id] ? Object.assign({}, m, patch[m.id]) : m);
     if (Array.isArray(data.value)) return Object.assign({}, data, { value: data.value.filter(m => !gone.has(m.id)).map(fix) });
@@ -12641,6 +12645,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (method === 'POST' && path === '/me/messages') return offNewDraft(id, 'new', null, req.body);
     const cr = /^\/me\/messages\/([^\/]+)\/create(Reply|ReplyAll|Forward)$/.exec(path);
     if (method === 'POST' && cr) return offNewDraft(id, cr[2] === 'Reply' ? 'reply' : cr[2] === 'ReplyAll' ? 'replyAll' : 'forward', decodeURIComponent(cr[1]));
+    if (method === 'POST' && /^\/me\/calendars\/[^\/?#]+\/events$/.test(path)) return offOp({ acc: id, kind: 'event', msg: '', method, path, body: req.body });
     if (method === 'POST' && mp && mp.rest === '/move') return offOp({ acc: id, kind: 'move', msg: mp.id, method, path, body: req.body });
     if (mp && !mp.rest && method === 'PATCH') {
       const b = req.body || {};
@@ -12660,6 +12665,11 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!offApp()) return mailApiNet(id, req);
     const method = String(req.method || 'GET').toUpperCase(), path = String(req.path || ''), mp = offMsgPath(path);
     if (mp && isLocalId(mp.id)) return offLocal(id, method, mp, req);
+    if (mp && /^op-/.test(mp.id)) {          // a meeting waiting in the Outbox: it can be taken out, not opened as an email
+      if (method === 'POST' && mp.rest === '/move') { const r = await window.navigatorApp.outboxOpRemove(mp.id.slice(3)); if (r && r.box) off.box = r.box; offPaint(); return { ok: true, status: 201, data: {} }; }
+      if (method === 'GET') return { ok: false, status: 0, error: 'A meeting waiting to be sent cannot be changed here. Delete it from the Outbox and make it again' };
+      return { ok: true, status: 200, data: {} };
+    }
     if (offIs()) return offAnswer(id, method, path, req, mp);
     const r = await mailApiNet(id, req);
     if (offNetDown(r)) { offAuto(true); return offAnswer(id, method, path, req, mp); }
@@ -12676,15 +12686,19 @@ body { width: max-content !important; min-width: 0 !important; }
   // number of rows in that list. The message you are writing at this moment is not in it until you save or send it.
   const offOpenId = () => (mailUi.compose && mailUi.compose.id) || '';
   const offItems = acc => off.box.items.filter(x => x.id !== offOpenId() && (!acc || x.acc === acc));
-  const offCount = acc => offItems(acc).length;
+  const offEvents = acc => off.box.ops.filter(o => o.kind === 'event' && (!acc || o.acc === acc));          // meetings made offline, waiting to be made (and their invitations sent)
+  const offCount = acc => offItems(acc).length + offEvents(acc).length;
   const offWaiting = () => off.box.ops.length + off.box.items.filter(x => x.status === 'queued').length;
   const offTell = () => { try { if (window.navigatorApp.offState) window.navigatorApp.offState(!!off.manual); } catch (e) { /* older app */ } };
   const offIsOutbox = (acc, f) => f === 'outbox' || ((mailUi.folders[acc] || {}).list || []).some(x => x.id === f && x.wk === 'outbox');
   const offPlain = h => { const d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<hr[\s\S]*$/i, ' '); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
-  const offRows = acc => offItems(acc).sort((a, b) => (b.at || 0) - (a.at || 0)).map(it => ({
+  const offEventRow = (acc, o) => { const b = o.body || {}, st = b.start && b.start.dateTime ? new Date(String(b.start.dateTime).slice(0, 19)) : null, who = (b.attendees || []).map(z => z.emailAddress).filter(Boolean);
+    return { id: 'op-' + o.id, _local: 'event', isDraft: true, isRead: true, subject: `Meeting: ${b.subject || '(No title)'}`, from: { emailAddress: { name: (mailAccById(acc) || {}).name || '', address: (mailAccById(acc) || {}).email || '' } }, toRecipients: who.map(e => ({ emailAddress: e })), receivedDateTime: new Date(o.at || Date.now()).toISOString(), hasAttachments: false, flag: { flagStatus: 'notFlagged' }, importance: 'normal', conversationId: '',
+      bodyPreview: `Waiting to be made${who.length ? ' and the invitations sent' : ''} \u00b7 ${st && !isNaN(st) ? st.toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }) : ''}${b.location && b.location.displayName ? ' \u00b7 ' + b.location.displayName : ''}` }; };
+  const offRows = acc => offEvents(acc).map(o => offEventRow(acc, o)).concat(offItems(acc).sort((a, b) => (b.at || 0) - (a.at || 0)).map(it => ({
     id: it.id, _local: it.status, isDraft: true, isRead: true, subject: it.subject || '(No subject)', from: { emailAddress: { name: (mailAccById(acc) || {}).name || '', address: (mailAccById(acc) || {}).email || '' } },
     toRecipients: (it.to || []).concat(it.cc || []), receivedDateTime: new Date(it.queuedAt || it.at || Date.now()).toISOString(), hasAttachments: (it.files || []).some(f => !f.isInline), flag: { flagStatus: 'notFlagged' }, importance: it.status === 'failed' ? 'high' : 'normal', conversationId: it.conv || '',
-    bodyPreview: `${it.status === 'queued' ? 'Waiting to send' : it.status === 'failed' ? `Not sent: ${it.error || 'open it and press Send again'}` : it.status === 'sending' ? 'Sending' : 'Draft, not sent'} · ${offPlain(it.body).slice(0, 140)}` }));
+    bodyPreview: `${it.status === 'queued' ? 'Waiting to send' : it.status === 'failed' ? `Not sent: ${it.error || 'open it and press Send again'}` : it.status === 'sending' ? 'Sending' : 'Draft, not sent'} · ${offPlain(it.body).slice(0, 140)}` })));
   // People to write to, offline: everyone you have had mail from or sent mail to in what is kept on this Mac.
   let offPeopleList = null;
   async function offPeople(term) {
@@ -12753,7 +12767,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const r = await window.navigatorApp.outboxFlush(open);
       off.flushing = false; if (r && r.box) off.box = r.box;
       if (r && r.stopped) offAuto(true);
-      const bits = []; if (r && r.sent) bits.push(`${r.sent} email${r.sent === 1 ? '' : 's'} sent`); if (r && r.drafts) bits.push(`${r.drafts} draft${r.drafts === 1 ? '' : 's'} moved to Drafts`); if (r && r.changes) bits.push(`${r.changes} change${r.changes === 1 ? '' : 's'} made`);
+      const bits = []; if (r && r.sent) bits.push(`${r.sent} email${r.sent === 1 ? '' : 's'} sent`); if (r && r.drafts) bits.push(`${r.drafts} draft${r.drafts === 1 ? '' : 's'} moved to Drafts`); if (r && r.events) bits.push(`${r.events} meeting${r.events === 1 ? '' : 's'} made`); if (r && r.changes) bits.push(`${r.changes} change${r.changes === 1 ? '' : 's'} made`);
       const bad = (r && r.failed) || [];
       if (bad.length) toast(`${bits.length ? bits.join(', ') + '. ' : ''}${bad.length} could not be done: ${bad[0].what}: ${bad[0].error}`, { label: 'Show the Outbox', run: () => offOutbox() });
       else if (bits.length) toast(`Back online: ${bits.join(', ')}.`);
@@ -14523,6 +14537,40 @@ body { width: max-content !important; min-width: 0 !important; }
     C.files.push({ name, id: up.data && up.data.id, size: pdf.size, sent: true }); if (C.paintFiles) C.paintFiles();
     toast(files.length ? `The email is attached as a PDF. Its own ${files.length === 1 ? 'file is' : files.length + ' files are'} named in it, not included.` : 'The email is attached as a PDF');
   }
+  // People in a field as tokens (To, Cc, Bcc in an email; Invite in a meeting). The field still answers to .value as one
+  // line of text, so everything that reads or fills it works as before: a finished address becomes a token, what you
+  // are still typing stays as text. One Backspace takes the last person out.
+  const natVal = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function mailTokenField(inp) {
+      const box = document.createElement('span'), chips = []; box.className = 'mc-tok'; inp.replaceWith(box); box.appendChild(inp);
+      const told = () => { try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { /* gone */ } };
+      const raw = () => natVal.get.call(inp), setRaw = v => natVal.set.call(inp, v);
+      const fmt = e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address;
+      const paint = () => {
+        for (const x of box.querySelectorAll('.mc-chip')) x.remove();
+        for (const c of chips) {
+          const b = document.createElement('span'); b.className = 'mc-chip'; b.title = `${c.address}\nBackspace or the cross takes them out. Double-click to change the address.`;
+          b.innerHTML = '<span class="nm"></span><span class="cx" role="button" aria-label="Remove">\u00d7</span>'; b.querySelector('.nm').textContent = c.name || c.address;
+          b.querySelector('.cx').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); chips.splice(chips.indexOf(c), 1); paint(); inp.focus(); told(); });
+          b.addEventListener('dblclick', e => { e.preventDefault(); chips.splice(chips.indexOf(c), 1); setRaw(fmt(c)); paint(); hold = Date.now(); setTimeout(() => { inp.focus(); inp.select(); }, 0); });
+          b.addEventListener('click', e => { e.preventDefault(); inp.focus(); });
+          box.insertBefore(b, inp);
+        }
+      };
+      const take = text => { const left = []; for (const p of String(text || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)) { const r = mailParse(p)[0]; if (r && !r.bad) { if (!chips.some(c => c.address.toLowerCase() === r.emailAddress.address.toLowerCase())) chips.push(r.emailAddress); } else left.push(p); } return left.join(', '); };
+      let hold = 0;
+      const commit = () => { if (!raw().trim() || Date.now() - hold < 500) return; const n0 = chips.length; setRaw(take(raw())); paint(); if (chips.length !== n0) told(); };
+      Object.defineProperty(inp, 'value', { configurable: true, get: () => [...chips.map(fmt), raw().trim()].filter(Boolean).join(', '), set: v => { chips.length = 0; setRaw(take(v)); paint(); } });
+      inp.typing = raw;
+      inp.addEventListener('keydown', e => {
+        if ((e.key === ',' || e.key === ';' || e.key === 'Enter') && raw().trim()) { e.preventDefault(); commit(); }
+        else if (e.key === 'Tab') commit();
+        else if (e.key === 'Backspace' && !raw() && chips.length) { e.preventDefault(); chips.pop(); paint(); told(); }
+      });
+      inp.addEventListener('blur', () => setTimeout(commit, 160));
+      inp.addEventListener('paste', () => setTimeout(() => { if (/[,;\n]/.test(raw()) || mailParse(raw()).every(z => !z.bad)) commit(); }, 0));
+      box.addEventListener('mousedown', e => { if (e.target === box) { e.preventDefault(); inp.focus(); } });
+  }
   async function mailCompose(mode, m, seed) {
     const s = mailState.sel; let acc = (seed && seed.acc && mailAccById(seed.acc)) || (m && m._acc && mailAccById(m._acc)) || (mode === 'new' && s && s.acc === '*' ? mailVisible()[0] : mailAccOf());
     if (!acc) return toast('Choose an account first');
@@ -14557,36 +14605,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const f = n => el.querySelector(`[name="${n}"]`);
     // To, Cc and Bcc hold people as tokens. The field still answers to .value as one line of text, so everything that
     // reads or fills it works as before: a finished address becomes a token, what you are still typing stays as text.
-    const natVal = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-    for (const n of ['to', 'cc', 'bcc']) {
-      const inp = f(n), box = document.createElement('span'), chips = []; box.className = 'mc-tok'; inp.replaceWith(box); box.appendChild(inp);
-      const raw = () => natVal.get.call(inp), setRaw = v => natVal.set.call(inp, v);
-      const fmt = e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address;
-      const paint = () => {
-        for (const x of box.querySelectorAll('.mc-chip')) x.remove();
-        for (const c of chips) {
-          const b = document.createElement('span'); b.className = 'mc-chip'; b.title = `${c.address}\nBackspace or the cross takes them out. Double-click to change the address.`;
-          b.innerHTML = '<span class="nm"></span><span class="cx" role="button" aria-label="Remove">\u00d7</span>'; b.querySelector('.nm').textContent = c.name || c.address;
-          b.querySelector('.cx').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); chips.splice(chips.indexOf(c), 1); paint(); inp.focus(); });
-          b.addEventListener('dblclick', e => { e.preventDefault(); chips.splice(chips.indexOf(c), 1); setRaw(fmt(c)); paint(); hold = Date.now(); setTimeout(() => { inp.focus(); inp.select(); }, 0); });
-          b.addEventListener('click', e => { e.preventDefault(); inp.focus(); });
-          box.insertBefore(b, inp);
-        }
-      };
-      const take = text => { const left = []; for (const p of String(text || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)) { const r = mailParse(p)[0]; if (r && !r.bad) { if (!chips.some(c => c.address.toLowerCase() === r.emailAddress.address.toLowerCase())) chips.push(r.emailAddress); } else left.push(p); } return left.join(', '); };
-      let hold = 0;
-      const commit = () => { if (!raw().trim() || Date.now() - hold < 500) return; setRaw(take(raw())); paint(); };
-      Object.defineProperty(inp, 'value', { configurable: true, get: () => [...chips.map(fmt), raw().trim()].filter(Boolean).join(', '), set: v => { chips.length = 0; setRaw(take(v)); paint(); } });
-      inp.typing = raw;
-      inp.addEventListener('keydown', e => {
-        if ((e.key === ',' || e.key === ';' || e.key === 'Enter') && raw().trim()) { e.preventDefault(); commit(); }
-        else if (e.key === 'Tab') commit();
-        else if (e.key === 'Backspace' && !raw() && chips.length) { e.preventDefault(); chips.pop(); paint(); }
-      });
-      inp.addEventListener('blur', () => setTimeout(commit, 160));
-      inp.addEventListener('paste', () => setTimeout(() => { if (/[,;\n]/.test(raw()) || mailParse(raw()).every(z => !z.bad)) commit(); }, 0));
-      box.addEventListener('mousedown', e => { if (e.target === box) { e.preventDefault(); inp.focus(); } });
-    }
+    for (const n of ['to', 'cc', 'bcc']) mailTokenField(f(n));
     f('to').value = mailAddrs(d.toRecipients); f('cc').value = mailAddrs(d.ccRecipients); f('bcc').value = mailAddrs(d.bccRecipients); f('subject').value = d.subject || '';
     let paintFrom = () => { el.querySelector('.mc-from').textContent = `${acc.name || ''} (${acc.email})`; }; paintFrom();
     const showRow = n => { el.querySelector(`[data-row="${n}"]`).hidden = false; const b = el.querySelector(`[data-x="${n}"]`); if (b) b.hidden = true; };
