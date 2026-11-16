@@ -15003,12 +15003,24 @@ body { width: max-content !important; min-width: 0 !important; }
         const [own, box] = C.acc.split('>');
         const armed = await window.navigatorApp.acctSendArm(own, C.id);
         if (!armed || !armed.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${(armed && armed.error) || 'press Send again'}. It is still here.`); }
-        const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: v.body });
-        const sn = sv.ok ? await window.navigatorApp.acctSend(own, C.id, box || '') : sv;
-        if (!sn.ok) { C.sending = false; x.textContent = 'Send'; return toast(`It was not sent: ${sn.error || 'try again'}. It is still here.`); }
-        mailLearnFromSent(C, v);
-        if (C.fromRef && C.conv) linkAdd({ t: 'mail', key: `mail:${C.conv}`, acc: C.acc, id: C.id, name: v.body.subject || '(No subject)', from: null, at: new Date().toISOString() }, C.fromRef);
-        toast('Sent'); shut();
+        // The window goes at once and the sending carries on behind. If it cannot be sent, the message comes back
+        // exactly as it was (it is only put away, not closed, until it has really gone).
+        if (C.draftRun) C.draftRun.cancel();
+        el.hidden = true; if (C.shade) C.shade.hidden = true; mailUi.compose = null; mailUi.composeEl = null;
+        toast('Sending…');
+        (async () => {
+          let sn; try { const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: v.body }); sn = sv.ok ? await window.navigatorApp.acctSend(own, C.id, box || '') : sv; } catch (er) { sn = { ok: false, error: String((er && er.message) || er) }; }
+          if (sn && sn.ok) {
+            mailLearnFromSent(C, v);
+            if (C.fromRef && C.conv) linkAdd({ t: 'mail', key: `mail:${C.conv}`, acc: C.acc, id: C.id, name: v.body.subject || '(No subject)', from: null, at: new Date().toISOString() }, C.fromRef);
+            const other = mailUi.compose, otherEl = mailUi.composeEl; shut(); if (other) { mailUi.compose = other; mailUi.composeEl = otherEl; }       // (a message you started meanwhile stays open)
+            return toast('Sent');
+          }
+          C.sending = false; x.textContent = 'Send'; chime('no');
+          const back = () => { if (mailUi.compose && mailUi.compose !== C) return toast('Finish or close the message you are writing, then press Show It again.', { label: 'Show It', run: back }); el.hidden = false; if (C.shade) C.shade.hidden = false; mailUi.compose = C; mailUi.composeEl = el; };
+          const why = `“${String(v.body.subject || 'Your email').slice(0, 50)}” was not sent: ${(sn && sn.error) || 'try again'}.`;
+          if (mailUi.compose) toast(`${why} It is kept as you wrote it.`, { label: 'Show It', run: back }); else { back(); toast(`${why} It is back on screen.`); }
+        })();
       }
     });
     if (seed) { if (seed.to) f('to').value = seed.to; if (seed.cc) { f('cc').value = seed.cc; showRow('cc'); } if (seed.subject) f('subject').value = seed.subject; if (seed.text) C.insert(seed.text); }
