@@ -868,7 +868,7 @@
   .mail-body { position: relative; }
   .mail-body.nopane { grid-template-columns: minmax(0, 1fr); }
   .mail-body.nopane .mail-col { border-right: 0; }
-  .mail-read.pop { position: absolute; z-index: 4; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
+  .mail-read.pop { position: absolute; z-index: 9; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
   .mail-read.pop[hidden] { display: none; }
   .mail-read.pop .mail-rh { padding-right: 46px; }
   .mail-popbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-h); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint, #8a8f98) 6%, var(--win)); }
@@ -899,6 +899,10 @@
   html.is-app #sNewFolder { display: none !important; }
   .mailnav > .cal-newrow { margin: var(--sp-1) var(--sp-1) var(--sp-2); }
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: calc(100% - 8px); margin: var(--sp-1) var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-bold); border-radius: var(--r-card); }
+  .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
+  .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
+  .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
+  .mail-sug .ms i { font-style: normal; color: var(--muted); font-size: var(--fs-caption); } .mail-sug .ms b { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; } .mail-sug .ms span { color: var(--muted); font-size: var(--fs-caption); overflow: hidden; text-overflow: ellipsis; }
   .mail-search { font: inherit; font-size: var(--fs-body); background: var(--field); border: 0; border-radius: var(--r-control); padding: var(--sp-1h) var(--sp-2h); width: 220px; color: var(--text); margin-left: var(--sp-1h); }
   .mail-tools { gap: var(--sp-1h); }
   .mail-m.multi { background: color-mix(in srgb, var(--accent) 18%, transparent) !important; box-shadow: inset 3px 0 0 var(--accent); }
@@ -13495,8 +13499,43 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     msgTools();
     head.appendChild(acts);
-    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search all mail'; sr.title = `Search every account (${K.mod}F). Type words, or say who and when: “from peter last month with a pdf”. Put “exact words” in quotes.`; sr.value = mailUi.search || '';
-    sr.addEventListener('keydown', e => { if (e.key === 'Enter') mailSearch(sr.value.trim()); if (e.key === 'Escape') { sr.value = ''; mailSearch(''); } });
+    const sr = document.createElement('input'); sr.type = 'search'; sr.className = 'mail-search'; sr.placeholder = 'Search all mail'; sr.title = `Search every account (${K.mod}F). Type a name and choose From or To, or type words.`; sr.value = mailUi.search || '';
+    // As you type, the ways to search are offered under the box: from a person, to a person, or the words anywhere.
+    // In Sent Items (and Drafts) "To" comes first; everywhere else "From" does. Enter on its own searches everywhere.
+    {
+      let box = null, at = -1, rows = [], seq = 0, t = null, people = [];
+      const shut = () => { if (box) box.remove(); box = null; at = -1; rows = []; };
+      const sentHere = () => { const z = mailState.sel; return !!(z && z.acc !== '*' && ((mailUi.folders[z.acc] || {}).list || []).some(f => f.id === z.folder && (f.wk === 'sentitems' || f.wk === 'drafts' || f.wk === 'outbox'))); };
+      const go = q => { shut(); sr.value = q; mailSearch(q); };
+      const paint = () => {
+        const v = sr.value.trim(); if (!v || /(^|\s)(from|to|subject):/i.test(v) || document.activeElement !== sr) return shut();
+        if (!box) { box = document.createElement('div'); box.className = 'mail-sug'; box.addEventListener('mousedown', e => e.preventDefault()); document.body.appendChild(box); }
+        const r = sr.getBoundingClientRect(); Object.assign(box.style, { left: Math.max(8, Math.min(r.left, innerWidth - 328)) + 'px', top: r.bottom + 4 + 'px', minWidth: Math.max(260, r.width) + 'px' });
+        const first = sentHere() ? 'to' : 'from', second = first === 'to' ? 'from' : 'to', lab = { from: 'From', to: 'To' }, q = x => '"' + String(x).replace(/["\\]/g, ' ').trim() + '"';
+        const list = [];
+        for (const p of people.slice(0, 4)) list.push({ k: lab[first], text: p.name, sub: p.address, q: `${first}:${q(p.name)}` });
+        list.push({ k: lab[first], text: v, q: `${first}:${q(v)}` }, { k: lab[second], text: v, q: `${second}:${q(v)}` }, { k: 'Subject', text: v, q: `subject:${q(v)}` }, { k: 'Anywhere', text: v, q: v });
+        box.replaceChildren(); rows = list;
+        list.forEach((it, i) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'ms' + (i === at ? ' on' : ''); b.innerHTML = '<i></i><b></b><span></span>'; b.querySelector('i').textContent = it.k; b.querySelector('b').textContent = it.text; b.querySelector('span').textContent = it.sub || ''; b.addEventListener('click', () => go(it.q)); box.appendChild(b); });
+      };
+      const look = () => {
+        const v = sr.value.trim(), mine = ++seq; people = people.filter(p => (p.name + ' ' + p.address).toLowerCase().includes(v.toLowerCase())); paint();
+        clearTimeout(t); if (v.length < 2 || /[:"]/.test(v) || v.split(/\s+/).length > 3) return;
+        t = setTimeout(async () => {
+          const a = mailVisible().filter(z => !z.needsSignIn)[0]; if (!a) return;
+          try { const pr = await mailApi(a.id, { path: `/me/people?$search=${encodeURIComponent('"' + v.replace(/"/g, '') + '"')}&$top=5&$select=displayName,scoredEmailAddresses` }); if (mine !== seq || !pr.ok) return;
+            people = (pr.data.value || []).map(x => ({ name: x.displayName || '', address: ((x.scoredEmailAddresses || [])[0] || {}).address || '' })).filter(x => x.name); at = -1; paint(); } catch (e) { /* the plain choices are still there */ }
+        }, 260);
+      };
+      sr.addEventListener('input', () => { at = -1; look(); });
+      sr.addEventListener('focus', () => { if (sr.value.trim() && sr.value.trim() !== mailUi.search) look(); });
+      sr.addEventListener('blur', () => setTimeout(shut, 120));
+      sr.addEventListener('keydown', e => {
+        if (box && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); at = e.key === 'ArrowDown' ? Math.min(rows.length - 1, at + 1) : Math.max(-1, at - 1); return paint(); }
+        if (e.key === 'Enter') { const pick = box && at >= 0 ? rows[at] : null; if (pick) return go(pick.q); shut(); return mailSearch(sr.value.trim()); }
+        if (e.key === 'Escape') { if (box) { e.stopPropagation(); return shut(); } sr.value = ''; mailSearch(''); }
+      });
+    }
     sr.addEventListener('search', () => { if (!sr.value && mailUi.search) mailSearch(''); });
     head.appendChild(sr);
     const paneOn = mailState.pane === true;
