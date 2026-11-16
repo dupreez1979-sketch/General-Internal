@@ -9067,6 +9067,7 @@
     const link = (text, title, run, cls) => { const b = document.createElement('button'); b.className = 'lk' + (cls ? ' ' + cls : ''); b.textContent = text; b.title = title; b.addEventListener('click', run); return b; };
     // Select several: Cmd/Ctrl-click adds or removes one, Shift-click takes everything between. A bar then acts on them all.
     const shown = rows.slice(0, 400), rk = r => r.st.id + '|' + outKey(r.o);
+    cosUi.outHost = host; cosUi.outAll = () => { for (const r of shown) sel.add(rk(r)); paintOutputs(n, host); };
     const sel = cosUi.outSel = cosUi.outSel || new Set();
     { const live = new Set(shown.map(rk)); for (const k of [...sel]) if (!live.has(k)) sel.delete(k); }
     if (sel.size > 1) {
@@ -11897,13 +11898,32 @@ body { width: max-content !important; min-width: 0 !important; }
     const g = bar.querySelector('.lights .lt.g'); if (g) g.click();
   });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (calUi.pop) calClosePop(); else if (calUi.view && !document.querySelector('dialog[open]') && !mailUi.compose) calViewClose(); } });
+  // Select All (\u2318A) in a list of rows: every email showing, every item in the folder, every output. In a box you type in, it selects the text as usual.
+  document.addEventListener('keydown', e => {
+    try {
+      if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'a') return;
+      const ae = document.activeElement || {};
+      if (/INPUT|TEXTAREA|SELECT/.test(ae.tagName || '') || ae.isContentEditable || document.querySelector('dialog[open]') || mailUi.compose) return;
+      if (currentApp === 'mail') {
+        if (mailUi.msgOpen && mailPopped()) return;          // (an open message: the usual select-all of its words)
+        const shown = (mailUi.msgs || []).filter(x => !mailUi.onlyUnread || !x.isRead); if (!shown.length) return;
+        e.preventDefault(); mailMulti.clear(); for (const x of shown) mailMulti.set(x.id, x); mailUi.multiAnchor = shown[0].id; mailRenderMain(); return;
+      }
+      if (currentApp === 'cos') { if (cosUi.outAll && cosUi.outHost && cosUi.outHost.isConnected) { e.preventDefault(); cosUi.outAll(); } return; }
+      if (currentApp === 'navigator' && browseEl && browseEl.offsetParent) {
+        e.preventDefault();
+        if (state.loc.kind === 'library') { const ks = libKeys(); libSel.clear(); ks.forEach(k => libSel.add(k)); libAnchor = ks[0] || null; applyLibSel(); }
+        else { const ids = browseIds(); multi.browse.clear(); ids.forEach(i => multi.browse.add(i)); if (ids.length) { state.browseSel = ids[ids.length - 1]; multi.browseAnchor = ids[0]; } applyBrowseSel(false); }
+      }
+    } catch (er) { /* the list is not ready */ }
+  });
   // Mail keys on the open message: Delete, \u2318\u21E7R reply all, \u2318J forward, \u2318E archive, \u2318\u21E7U unread.
   document.addEventListener('keydown', e => {
     try {
       if (currentApp !== 'mail' || !mailUi.msg || mailUi.compose || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable)) return;
       const m = mailUi.msg, mod = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
       let run = null;
-      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) run = () => mailAct(m, 'delete');
+      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) run = () => (mailMulti.size > 1 ? mailBulk('delete') : mailAct(m, 'delete'));
       else if (mod && e.shiftKey && key === 'r') run = () => mailCompose('replyAll', m);
       else if (mod && !e.shiftKey && key === 'j') run = () => mailCompose('forward', m);
       else if (mod && !e.shiftKey && key === 'e') run = () => mailAct(m, 'archive');
@@ -13016,12 +13036,17 @@ body { width: max-content !important; min-width: 0 !important; }
   // Which accounts the list on screen is drawn from: the one you chose, or all of them for All Inboxes.
   const mailSelAccs = () => { const s = mailState.sel; return !s ? [] : s.acc === '*' ? mailVisible().filter(a => !a.needsSignIn).map(a => a.id) : [s.acc]; };
   // Read one page of messages from each account ({ account id: path }); every message remembers its account.
+  // An email you have just deleted, archived or moved is gone from the list at once. The change is made at Microsoft
+  // in the background; until that is done (and for a few seconds after, while its lists catch up) a fresh read of the
+  // folder leaves it out, so it never flickers back.
+  const mailGone = new Map();          // 'account|message id' -> when to forget it (Infinity while the change is still being made)
   async function mailReadLists(want) {
     const rs = await Promise.all(Object.entries(want).map(([id, path]) => mailApi(id, { path }).then(r => [id, r])));
     const ok = rs.filter(([, r]) => r.ok);
     if (!ok.length) { const r = (rs[0] || [0, {}])[1]; return { err: r.needsSignIn ? 'This account needs you to sign in again (right-click it in the sidebar).' : r.error || 'Could not read the folder' }; }
     const got = [], next = {};
-    for (const [id, r] of ok) { for (const x of r.data.value || []) { x._acc = id; got.push(x); } if (r.data['@odata.nextLink']) next[id] = r.data['@odata.nextLink']; }
+    const now = Date.now(); for (const [k, t] of mailGone) if (t < now) mailGone.delete(k);
+    for (const [id, r] of ok) { for (const x of r.data.value || []) { if (mailGone.has(`${id}|${x.id}`)) continue; x._acc = id; got.push(x); } if (r.data['@odata.nextLink']) next[id] = r.data['@odata.nextLink']; }
     return { got, next: Object.keys(next).length ? next : null };
   }
   async function mailLoadMessages(fresh, keep) {            // keep: new mail arrived; the message you have open stays open
@@ -14132,10 +14157,13 @@ body { width: max-content !important; min-width: 0 !important; }
   const mailAccById = id => (mailUi.accounts || []).find(a => a.id === id);
   const mailRefreshFolders = () => { const a = mailAccOf(); if (a) mailLoadFolders(a).then(mailSideRender); setTimeout(mailPoll, 1200); };
   // Take a message out of the list at once (the change is then made in Outlook); it comes back if that fails.
-  async function mailAct(m, what, arg) {
-    const s = mailState.sel, A = m._acc || s.acc;
+  async function mailAct(m, what, arg, quiet) {          // quiet: one of many (it has left the list already, and the count is reported once)
+    const s = mailState.sel, A = m._acc || s.acc, gk = `${A}|${m.id}`, leaves = ['answered', 'delete', 'archive', 'move'].includes(what);
+    if (leaves) mailGone.set(gk, Infinity);
+    const settle = r0 => { if (!leaves) return; if (r0 && r0.ok) mailGone.set(gk, Date.now() + 20000); else mailGone.delete(gk); };
     // When the chosen email goes, the one that takes its place in the list is chosen next (or the one above, at the end).
     const drop = () => {
+      if (quiet) return;
       const was = (mailUi.msgs || []).indexOf(m), chosen = mailUi.msg === m;
       mailUi.msgs = (mailUi.msgs || []).filter(x => x !== m);
       if (chosen) {
@@ -14147,14 +14175,17 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     let r;
     // (An invitation you have answered goes the same way, quietly: Outlook has often moved it already, which is not an error.)
-    if (what === 'answered') { drop(); try { await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); } catch (e) { /* already gone */ } return; }
-    if (what === 'delete') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
-    else if (what === 'archive') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
-    else if (what === 'move') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok) toast(`Moved to ${arg.displayName}`); }
+    if (what === 'answered') { drop(); try { await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); } catch (e) { /* already gone */ } mailGone.set(gk, Date.now() + 20000); return; }
+    if (what === 'delete') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok && !quiet) toast('Moved to Deleted Items'); }
+    else if (what === 'archive') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok && !quiet) toast('Archived'); }
+    else if (what === 'move') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok && !quiet) toast(`Moved to ${arg.displayName}`); }
     else if (what === 'read') { m.isRead = arg; mailRenderMain(); r = await mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: arg } }); }
     else if (what === 'flag') { const on = !(m.flag && m.flag.flagStatus === 'flagged'); m.flag = { flagStatus: on ? 'flagged' : 'notFlagged' }; mailRenderMain(); r = await mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: m.flag } }); }
+    settle(r);
+    if (quiet) return r;
     if (r && !r.ok) { toast(`That did not work: ${r.error || 'try again'}`); mailLoadMessages(true); }
     mailRefreshFolders();
+    return r;
   }
   function mailAllFolders(accId) {
     const out = [];
@@ -14165,9 +14196,22 @@ body { width: max-content !important; min-width: 0 !important; }
   // Several emails chosen at once (Ctrl-click or Shift-click): the same few actions, applied to each.
   const mailMulti = new Map();
   async function mailBulk(what, arg) {
-    const list = [...mailMulti.values()]; mailMulti.clear(); mailUi.multiAnchor = null; mailRenderMain();
-    let did = 0; for (const m of list) { try { const r = await mailAct(m, what, arg); if (r !== false && !(r && r.ok === false)) did++; } catch (e) { /* carry on with the rest */ } }
-    toast(`${did} email${did === 1 ? '' : 's'} ${what === 'delete' ? 'moved to Deleted Items' : what === 'archive' ? 'archived' : what === 'move' ? 'moved to ' + arg.displayName : arg ? 'marked as read' : 'marked as unread'}${did < list.length ? `. ${list.length - did} could not be done: try those again.` : ''}`);
+    const list = [...mailMulti.values()]; mailMulti.clear(); mailUi.multiAnchor = null;
+    const leaves = ['delete', 'archive', 'move'].includes(what);
+    if (leaves) {          // all of them leave the list at once; the changes are then made in the background, three at a time
+      const set = new Set(list), s0 = mailState.sel || {};
+      for (const m of list) mailGone.set(`${m._acc || s0.acc}|${m.id}`, Infinity);
+      const was = mailUi.msgs || [], first = was.findIndex(x => set.has(x));
+      mailUi.msgs = was.filter(x => !set.has(x));
+      if (mailUi.msg && set.has(mailUi.msg)) { mailUi.msg = mailUi.msgs[Math.min(Math.max(0, first), mailUi.msgs.length - 1)] || null; mailUi.msgBody = null; mailUi.msgOpen = false; }
+    }
+    mailRenderMain();
+    toast(`${list.length} email${list.length === 1 ? '' : 's'} ${what === 'delete' ? 'moved to Deleted Items' : what === 'archive' ? 'archived' : what === 'move' ? 'moved to ' + arg.displayName : arg ? 'marked as read' : 'marked as unread'}`);
+    let did = 0, at = 0;
+    const worker = async () => { while (at < list.length) { const m = list[at++]; try { const r = await mailAct(m, what, arg, leaves); if (r !== false && !(r && r.ok === false)) did++; } catch (e) { /* carry on with the rest */ } } };
+    await Promise.all(leaves ? [worker(), worker(), worker()] : [worker()]);
+    if (did < list.length) { toast(`${list.length - did} of ${list.length} could not be done and ${list.length - did === 1 ? 'is' : 'are'} back in the list: try ${list.length - did === 1 ? 'it' : 'them'} again.`); mailLoadMessages(true); }
+    mailRefreshFolders();
   }
   const mailBulkItems = () => [
     { label: 'Archive', run: () => mailBulk('archive') },
