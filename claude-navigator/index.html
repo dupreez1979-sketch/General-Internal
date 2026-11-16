@@ -17545,6 +17545,7 @@ body { width: max-content !important; min-width: 0 !important; }
             text: `“${x.name}” is done (${s.name}) but has no finished output to file. The company folders keep outputs; the chat stays with ${s.name}.`,
             actions: [
               { label: 'Ask for It', go: true, title: 'Open the chat and ask for the final version as its own output', run: () => askFinal(x) },
+              { label: 'Open', title: 'Open the chat to see what was done', run: () => { openStaff(s.id); setTimeout(() => openNode(x), 60); } },
               { label: 'File the Chat', title: 'File the chat itself in the company folders', run: () => fileToPicker([x.id]) },
               { label: 'Ignore', title: 'This one needs no output', run: () => { x.outIgnore = true; commit(); cosBotSoon(); } },
             ] });
@@ -18022,7 +18023,6 @@ body { width: max-content !important; min-width: 0 !important; }
       general: row => {
         const off = ls.get('claudeNavigator.sounds') === 'off';
         row('Sounds', off ? 'Off.' : 'On when it listens, answers or makes something.', [off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); }]);
-        row('Suggestions', bot.quiet ? 'Quiet: they wait in the Chief of Staff column.' : 'They pop up as they arrive.', [bot.quiet ? 'Let Them Pop Up' : 'Keep Them Quiet', () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); show(); }]);
         if (isApp) row('Claude\u2019s Own Sidebar', hideClaudeSidebar() ? 'Hidden.' : 'Showing.', [hideClaudeSidebar() ? 'Show It' : 'Hide It', () => { setHideClaudeSidebar(!hideClaudeSidebar()); show(); }]);
         row('Panels', 'Put the sidebar, Claude and split view back as they were.', ['Reset', () => { try { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); } catch (e) { /* not ready */ } toast('Panels are back as they were'); }]);
       },
@@ -18979,7 +18979,9 @@ body { width: max-content !important; min-width: 0 !important; }
     // New suggestions pop up briefly beside the button (not while the panel is open, or when Quiet).
     const tips = el.querySelector('.bot-tips');
     tips.replaceChildren();
-    const fresh = bot.open || bot.quiet ? [] : botList.filter(x => !botShown.has(x.key) && botKindState(x.type) === 'on').slice(0, 2);
+    // (Suggestions no longer pop up over your work. They wait in the Chief of Staff column under Tidy Up, and the CS
+    // button carries a dot when there is something there.)
+    const fresh = [];
     fresh.forEach(x => botShown.add(x.key));
     for (const sg of fresh) tips.appendChild(botCard(sg, 'bot-tip'));
     clearTimeout(botTipTimer);
