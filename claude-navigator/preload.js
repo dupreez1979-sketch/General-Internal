@@ -75,6 +75,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   offAttKeep: (acc, msg, att, name, box) => ipcRenderer.invoke('off-att-keep', acc, msg, att, name, box),
   offAttOpen: (acc, msg, att, name) => ipcRenderer.invoke('off-att-open', acc, msg, att, name),
   offSize: () => ipcRenderer.invoke('off-size'),
+  offState: on => ipcRenderer.send('off-state', !!on),
   offClear: () => ipcRenderer.invoke('off-clear'),
   outboxAll: () => ipcRenderer.invoke('outbox-all'),
   outboxSave: it => ipcRenderer.invoke('outbox-save', it),

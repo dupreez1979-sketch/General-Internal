@@ -422,7 +422,7 @@ function buildMenu() {
         { label: 'New Folder', accelerator: 'Cmd+Shift+N', click: act('new-folder') },
         { type: 'separator' },
         { label: 'Settings\u2026', click: act('app-settings') },
-        { label: 'Work Offline', click: act('offline-toggle') },
+        { label: 'Work Offline', id: 'work-offline', type: 'checkbox', checked: false, click: act('offline-toggle') },
         { type: 'separator' },
         { label: 'Save Page to Folder', accelerator: 'Cmd+S', click: act('save') },
         { label: 'Save As\u2026', accelerator: 'Cmd+Shift+S', click: act('save-as') },
@@ -1670,6 +1670,9 @@ ipcMain.handle('outbox-queue', async (e, id) => {
   if (!(await sawSendClick(e, 'outbox'))) return { ok: false, error: 'An email is only sent when you press Send yourself' };
   return offline.queue(String(id));
 });
+// The File menu's Work Offline carries a tick while it is on (the window says whenever it changes; a click on the
+// item flips the tick by itself first, so it is always set back to what is true).
+ipcMain.on('off-state', (e, on) => { if (!fromOwnWindow(e)) return; try { const it = Menu.getApplicationMenu().getMenuItemById('work-offline'); if (it) it.checked = !!on; } catch (err) { /* no menu yet */ } });
 setTimeout(() => { try { offline.tidy(); } catch (e) { /* next time */ } }, 90e3);
 ipcMain.handle('acct-send', async (e, id, msgId, box) => {
   const a = sendArmed; sendArmed = null;
