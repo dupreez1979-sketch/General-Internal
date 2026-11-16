@@ -12848,6 +12848,16 @@ body { width: max-content !important; min-width: 0 !important; }
     d.invite = Object.assign({ kind: r.data.meetingMessageType || d.meetingMessageType || '' }, r.data.event);
     mailRenderMain();
   }
+  // A cancelled meeting: one press takes it out of the calendar and puts the notice in Deleted Items.
+  async function mailInviteRemove(A, d, b) {
+    const r = await mailApi(A, { method: 'DELETE', path: `/me/events/${d.invite.id}` });
+    if (!r.ok && !/404|not found/i.test(String(r.error || r.status || ''))) { if (b) b.disabled = false; return toast(`Could not remove it from your calendar: ${r.error || 'try again'}`); }
+    try { calG.key = ''; if (calOn()) calRefresh(false); } catch (e) { /* calendar not started */ }
+    const m = mailUi.msg;
+    toast('Removed from your calendar. The email is in Deleted Items.');
+    if (m && mailUi.msgBody === d) return mailAct(m, 'answered');
+    mailRenderMain();
+  }
   async function mailInviteAnswer(A, d, how) {
     const ev = d.invite;
     const r = await mailApi(A, { method: 'POST', path: `/me/events/${ev.id}/${how}`, body: { sendResponse: true } });
@@ -13699,6 +13709,11 @@ body { width: max-content !important; min-width: 0 !important; }
             bar.appendChild(b);
           }
         }
+        else if ((ev.isCancelled || ev.kind === 'meetingCancelled') && ev.id) {
+          const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Remove from Calendar'; b.title = 'Take the cancelled meeting out of your calendar and delete this email';
+          b.addEventListener('click', () => { b.disabled = true; mailInviteRemove(m._acc || s.acc, d, b); });
+          bar.appendChild(b);
+        }
         hd.appendChild(bar);
       }
       try { mailRelatedPaint(m, hd); } catch (e) { /* related is a bonus */ }
@@ -13952,6 +13967,8 @@ body { width: max-content !important; min-width: 0 !important; }
     mailRenderMain();
   }
   // Signatures: one per account, and a different one per profile if you set it (Consulting and Personal can differ).
+  // The signature for a message from this account: the open profile's if the account belongs to it, otherwise the account's own profile's.
+  const mailSigFrom = accId => { let ps = []; try { ps = mailProf(accId) || []; } catch (e) { /* not sorted into profiles */ } return mailSigOf(accId, !ps.length || ps.includes(state.profileId) ? state.profileId : ps[0]); };
   const mailSigKey = (accId, pid = state.profileId) => `${accId}|${pid || ''}`;
   const mailSigOf = (accId, pid = state.profileId) => { const g = mailState.sigs || {}; return g[mailSigKey(accId, pid)] !== undefined ? g[mailSigKey(accId, pid)] : g[`${accId}|`] || ''; };
   // The Mail part of a profile's settings: which accounts belong to it, each one's signature there, and adding one.
@@ -14125,7 +14142,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const C = mailUi.compose = { acc: acc.id, id: d.id, mode, quoted: mode === 'new' ? '' : (d.body && d.body.content) || '', files: [] };
     const el = document.createElement('div'); el.className = 'mail-compose';
     const fb = (cmd, html, title, arg) => `<button type="button" class="tb" data-cmd="${cmd}"${arg ? ` data-arg="${arg}"` : ''} title="${title}">${html}</button>`;
-    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-clara" data-x="clara" title="Copy Clara in to arrange the meeting, with your usual sentence. Nothing is sent: only you can press Send."><span class="t">Bring in Clara</span></button><button class="tb mc-ai" data-x="ai" title="Write a draft for you to edit. It is written on your Mac at once; Claude can improve it if you ask. Nothing is sent: only you can press Send."><span class="t">Draft</span></button></div>
+    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="save" title="Save it in Drafts and keep writing"><span class="t">Save</span></button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-clara" data-x="clara" title="Copy Clara in to arrange the meeting, with your usual sentence. Nothing is sent: only you can press Send."><span class="t">Bring in Clara</span></button><button class="tb mc-ai" data-x="ai" title="Write a draft for you to edit. It is written on your Mac at once; Claude can improve it if you ask. Nothing is sent: only you can press Send."><span class="t">Draft</span></button></div>
       <label class="from"><span>From:</span><span class="mc-from"></span></label>
       <label><span>To:</span><input name="to" autocomplete="off" spellcheck="false"><span class="mc-ccb"><button type="button" class="tb" data-x="cc">Cc</button><button type="button" class="tb" data-x="bcc">Bcc</button></span></label><div class="mc-sug" hidden></div>
       <label data-row="cc" hidden><span>Cc:</span><input name="cc" autocomplete="off" spellcheck="false"></label>
@@ -14237,7 +14254,7 @@ body { width: max-content !important; min-width: 0 !important; }
       ed.insertAdjacentHTML('afterbegin', html + (sg ? '<div><br></div>' : ''));
       if (!quiet) ed.focus();
     };
-    const sig = mailSigOf(acc.id);
+    const sig = mailSigFrom(acc.id);
     C.conv = d.conversationId || ''; C.fromRef = (seed && seed.from) || null;
     if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
     else ed.innerHTML = `<div><br></div>${sig ? `<div><br></div><div class="mc-sig">${sig}</div>` : ''}`;
@@ -14341,7 +14358,7 @@ body { width: max-content !important; min-width: 0 !important; }
       await mailApi(oldAcc, { method: 'DELETE', path: `/me/messages/${oldId}` });
       const now = await mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size,isInline` });
       if (now.ok) { C.files = ((now.data && now.data.value) || []).filter(z => !z.isInline).map(a => ({ name: a.name, id: a.id, size: a.size, sent: true })); paintFiles(); }
-      const oldSig = ed.querySelector('.mc-sig'), sg2 = mailSigOf(to.id);
+      const oldSig = ed.querySelector('.mc-sig'), sg2 = mailSigFrom(to.id);
       if (oldSig) { if (sg2) oldSig.innerHTML = sg2; else oldSig.remove(); } else if (sg2 && mode !== 'draft') { const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = sg2; ed.appendChild(document.createElement('br')); ed.appendChild(sg); }
       C.moving = false; paintFrom();
       toast(lost ? `Now from ${to.email}. ${lost} attached file${lost === 1 ? '' : 's'} could not be carried across: add ${lost === 1 ? 'it' : 'them'} again.` : `Now from ${to.email}`);
@@ -14383,7 +14400,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const r0 = x.getBoundingClientRect();
         return showMenu(r0.left, r0.bottom + 4, [
           ...sigListOf(acc.id).filter(z => !z.usual && z.html).map(z => ({ label: `Signature: ${z.name}`, run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = z.html; if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } })),
-          { label: 'Put My Signature In', disabled: !mailSigOf(acc.id), run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = mailSigOf(acc.id); if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } },
+          { label: 'Put My Signature In', disabled: !mailSigFrom(acc.id), run: () => { const old = ed.querySelector('.mc-sig'); const sg = document.createElement('div'); sg.className = 'mc-sig'; sg.innerHTML = mailSigFrom(acc.id); if (old) old.replaceWith(sg); else { ed.appendChild(document.createElement('br')); ed.appendChild(sg); } } },
           { label: 'Take It Out', disabled: !ed.querySelector('.mc-sig'), run: () => { const old = ed.querySelector('.mc-sig'); if (old) old.remove(); } },
           '-',
           { label: 'Change My Signature\u2026', run: () => mailEditSignature(acc) },
@@ -14391,6 +14408,7 @@ body { width: max-content !important; min-width: 0 !important; }
       }
       if (what === 'discard') { if (!confirm('Delete this draft?')) return; await mailApi(C.acc, { method: 'DELETE', path: `/me/messages/${C.id}` }); toast('Draft deleted'); return shut(); }
       const v = fields();
+      if (what === 'save') { if (C.saving) return; C.saving = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); C.saving = false; if (sv.ok) mailRefreshFolders(); return toast(sv.ok ? 'Saved in Drafts' : `Could not save the draft: ${sv.error || 'try again'}`); }
       if (what === 'close') { C.sending = true; const sv = await mailApi(C.acc, { method: 'PATCH', path: `/me/messages/${C.id}`, body: Object.assign({}, v.body, { toRecipients: v.lists.to.filter(z => !z.bad), ccRecipients: v.lists.cc.filter(z => !z.bad), bccRecipients: v.lists.bcc.filter(z => !z.bad) }) }); toast(sv.ok ? 'Kept in Drafts' : `Could not save the draft: ${sv.error || ''}`); return shut(); }
       if (what === 'send') {
         // Only a real press of this button by you sends. (The app's main process checks that again; see THE SEND LOCK.)
@@ -14413,6 +14431,7 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     if (seed) { if (seed.to) f('to').value = seed.to; if (seed.cc) { f('cc').value = seed.cc; showRow('cc'); } if (seed.subject) f('subject').value = seed.subject; if (seed.text) C.insert(seed.text); }
     mailUi.composeEl = el;
+    el.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); e.stopPropagation(); el.querySelector('[data-x="save"]').click(); } });
     el.addEventListener('click', e => { if (el.classList.contains('min') && !e.target.closest('.lights')) { e.stopPropagation(); el.classList.remove('min'); if (C.shade) C.shade.hidden = false; } }, true);
     const cshade = document.createElement('div'); cshade.className = 'mail-cshade'; C.shade = cshade;
     $('mailPanel').appendChild(cshade);
