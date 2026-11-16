@@ -278,6 +278,10 @@ app.on('web-contents-created', (_event, contents) => {
   // The Claude pane sits in a see-through window (the frosted sidebar). Without a solid backing of its own, parts of
   // Claude's page that fade at the edges (its list of connectors) can draw as a black patch.
   try { if (contents.getType() === 'webview') contents.setBackgroundColor(require('electron').nativeTheme.shouldUseDarkColors ? '#1f1e1d' : '#ffffff'); } catch (e) { /* drawn as before */ }
+  // Claude's page fades the edge of some scrolling lists (its list of connectors) with a mask. Inside this app's
+  // see-through window that mask can draw the whole list black, so the fade is switched off for those lists only.
+  // Nothing else on Claude's page is touched.
+  try { if (contents.getType() === 'webview') contents.on('dom-ready', () => { contents.insertCSS('[class*="mask-image:linear-gradient"],[class*="mask-b-"],[class*="mask-t-"],[class*="mask-y-"],[class*="mask-linear"],[style*="mask-image: linear-gradient"],[style*="mask-image:linear-gradient"]{-webkit-mask-image:none!important;mask-image:none!important}').catch(() => {}); }); } catch (e) { /* drawn as before */ }
   // Lock down the embedded Claude pane: no Node access, fixed session.
   contents.on('will-attach-webview', (_e, webPreferences, params) => {
     delete webPreferences.preload;
