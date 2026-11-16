@@ -24,6 +24,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   acctAdd: (hint, more) => ipcRenderer.invoke('acct-add', hint, more),
   acctRemove: (id) => ipcRenderer.invoke('acct-remove', id),
   acctGraph: (id, req) => ipcRenderer.invoke('acct-graph', id, req),
+  acctGraphAi: (id, req) => ipcRenderer.invoke('acct-graph-ai', id, req),
   acctMessageSave: (id, msgId, name, box, where) => ipcRenderer.invoke('acct-message-save', id, msgId, name, box, where),
   mondayBoardInfo: (id) => ipcRenderer.invoke('monday-board-info', id),
   mondayCreateItem: (opts) => ipcRenderer.invoke('monday-create-item', opts),

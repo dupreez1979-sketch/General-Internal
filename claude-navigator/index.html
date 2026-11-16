@@ -928,6 +928,17 @@
   dialog.cal-evdlg.with-day.ev-win.min { top: auto !important; bottom: 0 !important; left: 18px !important; width: min(360px, 80vw) !important; height: 40px !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box; padding: 0 !important; border-radius: 10px 10px 0 0; cursor: pointer; }
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
   dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
+  .bplan { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); margin: var(--sp-1) 0 var(--sp-2); overflow: hidden; }
+  .bplan .bp-h { padding: var(--sp-2) var(--sp-3); font-weight: var(--fw-bold); font-size: var(--fs-body); background: color-mix(in srgb, var(--accent) 7%, var(--win)); border-bottom: 1px solid var(--line); }
+  .bplan .bp-list { display: grid; max-height: 46vh; overflow-y: auto; }
+  .bplan .bp-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: var(--sp-2); align-items: center; padding: var(--sp-1h) var(--sp-3); border-bottom: 1px solid var(--line); font-size: var(--fs-body); }
+  .bplan .bp-row:last-child { border-bottom: 0; } .bplan .bp-lead { display: grid; place-items: center; color: var(--muted); }
+  .bplan .bp-tx { display: grid; min-width: 0; } .bplan .bp-tx b { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .bplan .bp-tx i { font-style: normal; font-size: var(--fs-caption); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bplan .bp-row.done .bp-lead { color: var(--good-ink); } .bplan .bp-row.done .bp-tx b { color: var(--muted); }
+  .bplan .bp-row.failed .bp-lead, .bplan .bp-row.bad .bp-lead { color: var(--danger-ink); } .bplan .bp-row.failed .bp-tx i, .bplan .bp-row.bad .bp-tx i { color: var(--danger-ink); white-space: normal; }
+  .bplan .bp-row.skipped { opacity: .5; }
+  .bplan .bp-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); }
+  .bplan .bp-note { margin-left: auto; font-size: var(--fs-caption); color: var(--muted); }
   .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
@@ -18086,7 +18097,7 @@ body { width: max-content !important; min-width: 0 !important; }
     { name: 'read_email', description: 'Read one email in full, by the ref that search_email gave. Use it only when the preview is not enough.', input_schema: { type: 'object', properties: { ref: { type: 'string' } }, required: ['ref'] } },
     { name: 'calendar', description: 'List his calendar events between two days, inclusive.', input_schema: { type: 'object', properties: { from: { type: 'string', description: 'YYYY-MM-DD' }, to: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['from', 'to'] } },
   ].concat(gran.on && window.navigatorApp.granolaAsk ? [{ name: 'meetings', description: 'Ask what was said, decided or agreed in his recorded meetings.', input_schema: { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] } }] : []);
-  const BOT_TOOL_SAYS = { search_email: 'Searching your email\u2026', read_email: 'Reading an email\u2026', calendar: 'Checking your calendar\u2026', meetings: 'Looking through your meetings\u2026' };
+  const BOT_TOOL_SAYS = { mail_setup: 'Looking at your folders and rules\u2026', propose_changes: 'Setting out what to change\u2026', search_email: 'Searching your email\u2026', read_email: 'Reading an email\u2026', calendar: 'Checking your calendar\u2026', meetings: 'Looking through your meetings\u2026' };
   const BOT_TOOL_USED = { search_email: 'your email', read_email: 'your email', calendar: 'your calendar', meetings: 'your meetings' };
   async function botTool(name, input, refs) {
     const accs = mailVisible().slice(0, 4), day = d => new Date(d).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -18110,15 +18121,161 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const a of accs) {
         const r = await mailApi(a.id, { path: `/me/calendarView?startDateTime=${encodeURIComponent(from.toISOString())}&endDateTime=${encodeURIComponent(to.toISOString())}&$top=80&$select=id,subject,start,end,isAllDay,location,isCancelled,organizer,webLink` }).catch(er => ({ ok: false, error: String(er && er.message || er) }));
         if (!r || !r.ok) { bad.push(String((r && (r.error || r.status)) || 'no answer').slice(0, 120)); continue; }
-        for (const ev of (r.data && r.data.value) || []) if (!ev.isCancelled && ev.start && ev.start.dateTime) rows.push(ev);
+        for (const ev of (r.data && r.data.value) || []) if (!ev.isCancelled && ev.start && ev.start.dateTime) rows.push(Object.assign(ev, { _acc: a.id }));
       }
       rows.sort((x, y) => when(x.start.dateTime) - when(y.start.dateTime));
       if (!rows.length) return bad.length ? `The calendar could not be read (${bad[0]}). Say that it could not be checked.` : 'Nothing in the calendar between those days.';
       const dayOf = d => d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }), clock = d => d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
-      return `Times are in ${tz}.${bad.length ? ' One calendar could not be read.' : ''}\n` + rows.slice(0, 60).map(ev => { const st = ev.isAllDay ? new Date(String(ev.start.dateTime).slice(0, 10) + 'T12:00:00') : when(ev.start.dateTime), en = ev.end && ev.end.dateTime ? when(ev.end.dateTime) : null; return `e${refs.push({ kind: 'event', title: ev.subject || '(No title)', url: ev.webLink || '', at: st.toISOString() })} | ${dayOf(st)} ${ev.isAllDay ? 'all day' : clock(st) + (en ? ' to ' + clock(en) : '')} | ${ev.subject || '(No title)'}${ev.location && ev.location.displayName ? ' | ' + ev.location.displayName : ''}`; }).join('\n');
+      return `Times are in ${tz}.${bad.length ? ' One calendar could not be read.' : ''}\n` + rows.slice(0, 60).map(ev => { const st = ev.isAllDay ? new Date(String(ev.start.dateTime).slice(0, 10) + 'T12:00:00') : when(ev.start.dateTime), en = ev.end && ev.end.dateTime ? when(ev.end.dateTime) : null; return `e${refs.push({ kind: 'event', title: ev.subject || '(No title)', url: ev.webLink || '', at: st.toISOString(), acc: ev._acc, id: ev.id })} | ${dayOf(st)} ${ev.isAllDay ? 'all day' : clock(st) + (en ? ' to ' + clock(en) : '')} | ${ev.subject || '(No title)'}${ev.location && ev.location.displayName ? ' | ' + ev.location.displayName : ''}`; }).join('\n');
+    }
+    if (name === 'mail_setup') {
+      const A = planAcc(); if (!A) return 'No mail account is connected in the app.';
+      try { if (!(mailUi.folders[A] || {}).list) { const acc = mailAccById(A); if (acc) await mailLoadFolders(acc); } } catch (e) { /* listed as far as known */ }
+      const fs = mailAllFolders(A).slice(0, 80).map(z => '  '.repeat(z.depth) + z.f.displayName).join('\n');
+      const r = await mailApi(A, { path: '/me/mailFolders/inbox/messageRules' }).catch(() => null);
+      const rules = ((r && r.ok && r.data && r.data.value) || []).sort((x, y) => (x.sequence || 0) - (y.sequence || 0)).slice(0, 40).map(x => `- ${x.displayName}${x.isEnabled ? '' : ' (off)'}: ${mailRuleSays(x, A)}`).join('\n');
+      return `Account: ${(mailAccById(A) || {}).email || ''}\nFolders:\n${fs || '(not read)'}\n\nRules on the Inbox, in order:\n${rules || '(none)'}`;
+    }
+    if (name === 'propose_changes') {
+      const ch = (Array.isArray(input.changes) ? input.changes : []).filter(c => c && PLAN_DO.includes(c.do)).slice(0, 40);
+      if (!ch.length) return 'No changes were given. Each change needs "do" and its fields.';
+      refs.plan = { summary: String(input.summary || '').slice(0, 200), changes: (refs.plan ? refs.plan.changes : []).concat(ch).slice(0, 60) };
+      const bad = ch.map(c => planSays(c, refs)).filter(x => x.bad).map(x => `${x.text}: ${x.bad}`);
+      return `Shown to him on a card to approve: ${ch.length} change${ch.length === 1 ? '' : 's'}. Nothing has been changed yet. Tell him in one line what you have proposed; do not say it is done.${bad.length ? ` These cannot be done as given: ${bad.join('; ')}.` : ''}`;
     }
     if (name === 'meetings') { const r = await window.navigatorApp.granolaAsk(String(input.question || '').slice(0, 1500)); return r && r.ok && r.text ? granText(r.text).replace(/This answer comes from meeting notes[\s\S]*?answer from what was said\.?/i, '').replace(/<[^>]+>/g, '').slice(0, 5000) : 'The meeting notes could not be read just now.'; }
     return 'There is no such tool.';
+  }
+  // ---------- Changes Claude proposes, and you approve ----------
+  // The Chief of Staff (and, later, any staff member) can ask for changes to your calendar and mail: new entries, a
+  // rule, a folder, emails moved or flagged, a draft. It only ever PROPOSES them. They show on a card, in plain words,
+  // and nothing happens until you press. What is approved goes through a narrow door on the Mac side (graphAi in
+  // accounts.js) that will not send an email, invite or notify anyone, forward mail, or delete for good, whatever was asked.
+  const PLAN_DO = ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder', 'move_email', 'flag_email', 'mark_email', 'archive_email', 'delete_email', 'draft_email', 'other'];
+  const PLAN_TOOLS = () => [
+    { name: 'mail_setup', description: 'List his mail folders and the rules on his Inbox, so a new rule or folder fits with what is there.', input_schema: { type: 'object', properties: {} } },
+    { name: 'propose_changes', description: 'Propose changes to his calendar or mail. They are shown to him on a card and nothing happens unless he approves. Use this for anything he asks you to add, change, move, file or set up. Each change has "do" and its own fields:\n- add_event: title, start and end as YYYY-MM-DDTHH:MM in his local time (or all_day true with start and end as YYYY-MM-DD), where, notes, remind_minutes, show_as (free, busy, tentative or away). Nobody is ever invited: put names in notes.\n- change_event: ref (from the calendar tool), and any of title, start, end, where, notes.\n- remove_event: ref.\n- add_rule: name, and any of from (addresses or parts of one), subject_has, message_has, sent_to, has_attachment; then move_to (a folder name), mark_read, delete (to Deleted Items), stop.\n- add_folder: name, inside (a folder name, optional).\n- move_email: ref (from search_email), to (a folder name). flag_email: ref, on. mark_email: ref, read. archive_email: ref. delete_email: ref.\n- draft_email: to, cc, subject, body. A draft only: he sends it himself.\n- other: anything else in his mail or calendar: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nYou cannot send email, invite or notify people, set mail to forward, or delete for good.',
+      input_schema: { type: 'object', properties: { summary: { type: 'string', description: 'One short line on what these changes do' }, changes: { type: 'array', items: { type: 'object', properties: { do: { type: 'string', enum: PLAN_DO } }, required: ['do'] } } }, required: ['changes'] } },
+  ];
+  const PLAN_SYS = '\n\nYou can change his calendar and his mail, but only by proposing: call propose_changes with every change, and he approves them on a card. Never say something has been added, moved or set up: say what you have proposed. Never invite anyone to a calendar entry and never send an email. If he gives you several things at once (a list of dates, a schedule), propose them all in one call.';
+  const planAcc = () => { try { const a = calMeetAcc(activeProfile()); if (a) return a.id; } catch (e) { /* no calendar yet */ } return ((mailVisible().filter(a => !a.needsSignIn && !a.shared)[0]) || {}).id || ''; };
+  const planList = v => (Array.isArray(v) ? v : String(v || '').split(/[,;\n]+/)).map(x => String(x).trim()).filter(Boolean);
+  const planWhen = (v, allDay) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(v || '')); if (!m) return null; return allDay || !m[4] ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]); };
+  const planDay = d => d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }), planClock = d => d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
+  const planFolder = (acc, name) => { const want = String(name || '').trim().toLowerCase(); if (!want) return null; const all = mailAllFolders(acc); return (all.find(z => z.f.displayName.toLowerCase() === want) || all.find(z => z.f.displayName.toLowerCase().includes(want)) || {}).f || null; };
+  // What a change does, in plain words, and whether it is one to press on its own (it keeps acting, or cannot be undone here).
+  function planSays(c, refs) {
+    const ref = k => refs[+String(c.ref || '').replace(/\D/g, '') - 1] && refs[+String(c.ref || '').replace(/\D/g, '') - 1].kind === k ? refs[+String(c.ref || '').replace(/\D/g, '') - 1] : null;
+    const span = () => { const a = planWhen(c.start, c.all_day), b = planWhen(c.end, c.all_day); if (!a) return ''; return c.all_day ? `${planDay(a)}${b && b - a > 864e5 ? ' to ' + planDay(new Date(b - 1)) : ''}, all day` : `${planDay(a)}, ${planClock(a)}${b ? ' to ' + planClock(b) : ''}`; };
+    switch (c.do) {
+      case 'add_event': return { icon: 'cal', text: `Add “${c.title || 'Untitled'}”`, sub: [span(), c.where].filter(Boolean).join(' · '), bad: !planWhen(c.start, c.all_day) ? 'no start time was given' : '' };
+      case 'change_event': { const e = ref('event'); return { icon: 'cal', text: `Change “${e ? e.title : 'a calendar entry'}”`, sub: [c.title && `title: ${c.title}`, c.start && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes'].filter(Boolean).join(' · '), bad: e ? '' : 'the entry was not found' }; }
+      case 'remove_event': { const e = ref('event'); return { icon: 'cal', text: `Remove “${e ? e.title : 'a calendar entry'}” from your calendar`, sub: e && e.at ? planDay(new Date(e.at)) : '', risky: true, bad: e ? '' : 'the entry was not found' }; }
+      case 'add_rule': { const w = [planList(c.from).length && `from ${planList(c.from).join(' or ')}`, planList(c.subject_has).length && `subject has “${planList(c.subject_has).join('” or “')}”`, planList(c.message_has).length && `message has “${planList(c.message_has).join('” or “')}”`, planList(c.sent_to).length && `sent to ${planList(c.sent_to).join(', ')}`, c.has_attachment && 'has an attachment'].filter(Boolean);
+        const t = [c.move_to && `move to ${c.move_to}`, c.mark_read && 'mark as read', c.delete && 'move to Deleted Items'].filter(Boolean);
+        return { icon: 'flag', text: `New rule: ${c.name || 'Unnamed'}`, sub: `When mail ${w.join(' and ') || 'arrives (every message)'}: ${t.join(', ') || 'nothing'}`, risky: true, bad: !t.length ? 'the rule does nothing' : '' }; }
+      case 'add_folder': return { icon: 'mail', text: `New mail folder “${c.name || ''}”`, sub: c.inside ? `inside ${c.inside}` : '', bad: c.name ? '' : 'no name was given' };
+      case 'move_email': case 'flag_email': case 'mark_email': case 'archive_email': case 'delete_email': { const m = ref('mail'), nm = m ? `“${String(m.title).slice(0, 60)}”` : 'an email';
+        return { icon: 'mail', text: c.do === 'move_email' ? `Move ${nm} to ${c.to || '?'}` : c.do === 'flag_email' ? `${c.on === false ? 'Clear the flag on' : 'Flag'} ${nm}` : c.do === 'mark_email' ? `Mark ${nm} as ${c.read === false ? 'unread' : 'read'}` : c.do === 'archive_email' ? `Archive ${nm}` : `Move ${nm} to Deleted Items`, sub: '', risky: c.do === 'delete_email', bad: m ? '' : 'the email was not found' }; }
+      case 'draft_email': return { icon: 'pencil', text: `Draft an email${planList(c.to).length ? ' to ' + planList(c.to).join(', ') : ''}`, sub: `${c.subject || '(No subject)'} · a draft only: you send it` };
+      case 'other': return { icon: 'dotc', text: String(c.says || 'A change in your mail or calendar').slice(0, 160), sub: `${String(c.method || 'GET').toUpperCase()} ${String(c.path || '').slice(0, 90)}`, risky: true, bad: /^\/me\//.test(String(c.path || '')) ? '' : 'it is not a mail or calendar request' };
+      default: return { icon: 'dotc', text: 'Something this app does not know how to do', sub: String(c.do || ''), bad: 'unknown' };
+    }
+  }
+  // Carry one approved change out. Returns { ok, error, undo } where undo is the request that takes it back, if there is one.
+  async function planDo(c, refs) {
+    const ai = (acc, req) => window.navigatorApp.acctGraphAi(String(acc).split('>')[0], req), A = planAcc();
+    const refOf = k => { const r = refs[+String(c.ref || '').replace(/\D/g, '') - 1]; return r && r.kind === k ? r : null; };
+    const iso = d => ({ dateTime: d.toISOString().slice(0, 19), timeZone: 'UTC' });
+    const evTimes = () => { const a = planWhen(c.start, c.all_day); if (!a) return null; let b = planWhen(c.end, c.all_day); if (c.all_day) { const d0 = v => ({ dateTime: `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T00:00:00`, timeZone: 'UTC' }); if (!b || b <= a) b = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1); else b = new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); return { isAllDay: true, start: d0(a), end: d0(b) }; } if (!b || b <= a) b = new Date(+a + 30 * 60e3); return { isAllDay: false, start: iso(a), end: iso(b) }; };
+    const need = (acc) => (acc ? null : { ok: false, error: 'no account is connected' });
+    try {
+      if (c.do === 'add_event') {
+        const t = evTimes(); if (!t) return { ok: false, error: 'no start time' }; if (need(A)) return need(A);
+        const body = Object.assign({ subject: String(c.title || 'Untitled').slice(0, 250), attendees: [] }, t, c.where ? { location: { displayName: String(c.where).slice(0, 250) } } : {}, c.notes ? { body: { contentType: 'text', content: String(c.notes).slice(0, 6000) } } : {}, c.show_as ? { showAs: { away: 'oof' }[c.show_as] || c.show_as } : {}, c.remind_minutes != null && !isNaN(+c.remind_minutes) ? { isReminderOn: true, reminderMinutesBeforeStart: Math.max(0, Math.round(+c.remind_minutes)) } : {});
+        const r = await ai(A, { method: 'POST', path: '/me/events', body });
+        return r.ok ? { ok: true, undo: r.data && r.data.id ? { acc: A, method: 'DELETE', path: `/me/events/${r.data.id}` } : null } : r;
+      }
+      if (c.do === 'change_event' || c.do === 'remove_event') {
+        const e = refOf('event'); if (!e || !e.id) return { ok: false, error: 'the entry was not found' };
+        if (c.do === 'remove_event') return ai(e.acc, { method: 'DELETE', path: `/me/events/${e.id}` });
+        const body = Object.assign({}, c.title ? { subject: String(c.title).slice(0, 250) } : {}, c.start ? (evTimes() || {}) : {}, c.where ? { location: { displayName: String(c.where).slice(0, 250) } } : {}, c.notes ? { body: { contentType: 'text', content: String(c.notes).slice(0, 6000) } } : {});
+        return ai(e.acc, { method: 'PATCH', path: `/me/events/${e.id}`, body });
+      }
+      if (c.do === 'add_rule') {
+        if (need(A)) return need(A);
+        const cond = {}, act = {}, fr = planList(c.from), whole = fr.filter(x => /^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(x)), part = fr.filter(x => !whole.includes(x));
+        if (whole.length) cond.fromAddresses = whole.map(x => ({ emailAddress: { address: x } })); if (part.length) cond.senderContains = part;
+        if (planList(c.subject_has).length) cond.subjectContains = planList(c.subject_has); if (planList(c.message_has).length) cond.bodyOrSubjectContains = planList(c.message_has);
+        if (planList(c.sent_to).length) cond.sentToAddresses = planList(c.sent_to).map(x => ({ emailAddress: { address: x } })); if (c.has_attachment) cond.hasAttachments = true;
+        if (c.move_to) { const f = planFolder(A, c.move_to); if (!f) return { ok: false, error: `there is no folder called “${c.move_to}”` }; act.moveToFolder = f.id; }
+        if (c.mark_read) act.markAsRead = true; if (c.delete) act.delete = true;
+        if (!Object.keys(act).length) return { ok: false, error: 'the rule does nothing' };
+        act.stopProcessingRules = c.stop !== false;
+        const base = '/me/mailFolders/inbox/messageRules', cur = await ai(A, { path: base }), seq = ((cur.ok && cur.data && cur.data.value) || []).reduce((n, x) => Math.max(n, x.sequence || 0), 0) + 1;
+        const r = await ai(A, { method: 'POST', path: base, body: { displayName: String(c.name || 'New rule').slice(0, 120), sequence: seq, isEnabled: true, conditions: cond, actions: act } });
+        return r.ok ? { ok: true, undo: r.data && r.data.id ? { acc: A, method: 'DELETE', path: `${base}/${r.data.id}` } : null } : r;
+      }
+      if (c.do === 'add_folder') {
+        if (need(A)) return need(A); if (!c.name) return { ok: false, error: 'no name' };
+        const par = c.inside ? planFolder(A, c.inside) : null; if (c.inside && !par) return { ok: false, error: `there is no folder called “${c.inside}”` };
+        const r = await ai(A, { method: 'POST', path: par ? `/me/mailFolders/${par.id}/childFolders` : '/me/mailFolders', body: { displayName: String(c.name).slice(0, 120) } });
+        if (r.ok) { try { mailUi.kids = {}; delete mailUi.folders[A]; const acc = mailAccById(A); if (acc) mailLoadFolders(acc).then(mailSideRender); } catch (e) { /* shown next time */ } }
+        return r.ok ? { ok: true } : r;
+      }
+      if (['move_email', 'flag_email', 'mark_email', 'archive_email', 'delete_email'].includes(c.do)) {
+        const m = refOf('mail'); if (!m) return { ok: false, error: 'the email was not found' };
+        if (c.do === 'flag_email') return ai(m.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: { flagStatus: c.on === false ? 'notFlagged' : 'flagged' } } });
+        if (c.do === 'mark_email') return ai(m.acc, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { isRead: c.read !== false } });
+        let dest = c.do === 'archive_email' ? 'archive' : c.do === 'delete_email' ? 'deleteditems' : '';
+        if (c.do === 'move_email') { const f = planFolder(m.acc, c.to); if (!f) return { ok: false, error: `there is no folder called “${c.to}”` }; dest = f.id; }
+        return ai(m.acc, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: dest } });
+      }
+      if (c.do === 'draft_email') {
+        if (need(A)) return need(A);
+        const ppl = l => planList(l).filter(x => /^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(x)).map(x => ({ emailAddress: { address: x } }));
+        const r = await ai(A, { method: 'POST', path: '/me/messages', body: { subject: String(c.subject || '').slice(0, 250), toRecipients: ppl(c.to), ccRecipients: ppl(c.cc), body: { contentType: 'html', content: mailEsc(String(c.body || '')).replace(/\n/g, '<br>') } } });
+        return r.ok ? { ok: true, note: 'It is in Drafts.' } : r;
+      }
+      if (c.do === 'other') { if (need(A)) return need(A); return ai(A, { method: String(c.method || 'GET').toUpperCase(), path: String(c.path || ''), body: c.body && typeof c.body === 'object' ? c.body : undefined }); }
+    } catch (e) { return { ok: false, error: String(e && e.message || e) }; }
+    return { ok: false, error: 'this app does not know how to do that' };
+  }
+  // The card: every change on its own line. Ordinary ones are ticked and go together on one press; a rule, a removal
+  // or anything unusual has its own button. What was added can be taken back with Undo.
+  function planCard(e) {
+    const P = e.plan, refs = e.planRefs || [], w = document.createElement('div'); w.className = 'bplan';
+    const rows = P.changes.map(c => ({ c, s: planSays(c, refs) }));
+    w.appendChild(Object.assign(document.createElement('div'), { className: 'bp-h', textContent: P.summary || `${rows.length} change${rows.length === 1 ? '' : 's'} proposed` }));
+    const list = document.createElement('div'); list.className = 'bp-list'; w.appendChild(list);
+    const run = async row => { row.c._st = 'doing'; paint(); const r = await planDo(row.c, refs); row.c._st = r && r.ok ? 'done' : 'failed'; row.c._err = r && r.ok ? '' : (r && r.error) || 'it did not work'; if (r && r.undo) (P.undo = P.undo || []).push(r.undo); if (r && r.note) row.c._note = r.note; paint(); return r && r.ok; };
+    const foot = document.createElement('div'); foot.className = 'bp-foot'; w.appendChild(foot);
+    function paint() {
+      list.replaceChildren();
+      for (const row of rows) {
+        const { c, s } = row, r = document.createElement('label'); r.className = 'bp-row' + (c._st ? ' ' + c._st : '') + (s.bad ? ' bad' : '');
+        const st = c._st || '', can = !st && !s.bad;
+        const lead = document.createElement('span'); lead.className = 'bp-lead';
+        if (st === 'done') lead.innerHTML = ico('check'); else if (st === 'failed' || s.bad) lead.innerHTML = ico('warn'); else if (st === 'doing') lead.appendChild(waveEl(4, 'busy'));
+        else if (s.risky) lead.innerHTML = ico(s.icon); else { const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = c._off !== true; cb.addEventListener('change', () => { c._off = !cb.checked; paintFoot(); }); lead.appendChild(cb); }
+        const tx = document.createElement('span'); tx.className = 'bp-tx'; tx.appendChild(Object.assign(document.createElement('b'), { textContent: s.text }));
+        const sub = st === 'failed' ? `Not done: ${c._err}` : s.bad ? `Cannot be done: ${s.bad}` : c._note || s.sub; if (sub) tx.appendChild(Object.assign(document.createElement('i'), { textContent: sub }));
+        r.append(lead, tx);
+        if (can && s.risky) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn sm'; b.textContent = 'Do It'; b.title = 'This one is done on its own, because it keeps acting or cannot be taken back here'; b.addEventListener('click', ev => { ev.preventDefault(); run(row); }); r.appendChild(b); }
+        list.appendChild(r);
+      }
+      paintFoot();
+    }
+    function paintFoot() {
+      foot.replaceChildren();
+      const todo = rows.filter(x => !x.c._st && !x.s.bad && !x.s.risky && x.c._off !== true), left = rows.filter(x => !x.c._st && !x.s.bad).length;
+      if (todo.length) { const b = document.createElement('button'); b.type = 'button'; b.className = 'btn-primary sm'; b.textContent = todo.length === 1 ? 'Do This' : `Do These ${todo.length}`; b.addEventListener('click', async () => { b.disabled = true; let ok = 0; for (const x of todo) if (await run(x)) ok++; toast(`${ok} of ${todo.length} done${ok < todo.length ? '. The rest are marked on the card.' : '.'}`); try { calG.key = ''; if (calOn()) calRefresh(false); mailRefreshFolders(); } catch (er) { /* not showing */ } }); foot.appendChild(b); }
+      if ((P.undo || []).length) { const u = document.createElement('button'); u.type = 'button'; u.className = 'btn sm'; u.textContent = `Undo ${P.undo.length} Added`; u.title = 'Take back what was added from this card'; u.addEventListener('click', async () => { u.disabled = true; const un = P.undo.splice(0); let n = 0; for (const q of un) { const r = await window.navigatorApp.acctGraphAi(String(q.acc).split('>')[0], { method: q.method, path: q.path }); if (r.ok) n++; } for (const x of rows) if (x.c._st === 'done' && ['add_event', 'add_rule'].includes(x.c.do)) { x.c._st = ''; x.c._off = true; } toast(`${n} taken back`); try { calG.key = ''; if (calOn()) calRefresh(false); } catch (er) { /* not showing */ } paint(); }); foot.appendChild(u); }
+      if (left) { const x = document.createElement('button'); x.type = 'button'; x.className = 'lnk'; x.textContent = 'Not Now'; x.addEventListener('click', () => { for (const z of rows) if (!z.c._st) { z.c._st = 'skipped'; } paint(); }); foot.appendChild(x); }
+      foot.appendChild(Object.assign(document.createElement('span'), { className: 'bp-note', textContent: 'Nobody is invited and nothing is sent.' }));
+    }
+    paint();
+    return w;
   }
   const fastNow = () => { let u = {}; try { u = JSON.parse(ls.get('claudeNavigator.apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
   const fastUse = (i, o, tier) => { const u = fastNow(), pr = API_PRICE[tier] || API_PRICE.fast; if (u.cost == null) u.cost = (u.in * 0.10 + u.out * 0.50) / 1e6; u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; u.cost += ((i || 0) * pr[0] + (o || 0) * pr[1]) / 1e6; ls.set('claudeNavigator.apiUse', JSON.stringify(u)); };
@@ -18206,7 +18363,7 @@ body { width: max-content !important; min-width: 0 !important; }
         // An email open in front of him is read in full, not just its first lines.
         if (e.ctx && e.ctx.kind === 'mail' && e.ctx.msg) { try { const m0 = e.ctx.msg, T0 = await Promise.race([mailTextOf(m0._acc || (mailState.sel || {}).acc, m0), new Promise(res => setTimeout(() => res(null), 5000))]); if (T0) e.ctx.text = `An email I have open.\n${T0.head}\n\n${T0.text.slice(0, 5000)}`; } catch (er) { /* the preview is used */ } }
         const turns = botS.turns.slice(-6).concat([{ role: 'user', text: `${e.ctx ? 'In front of me: ' + e.ctx.text.slice(0, 6000) + '\n\n' : ''}${text}` }]);
-        const messages = turns.map(x => ({ role: x.role, content: x.text })), tools = BOT_TOOLS(), refs = [], used = new Set(), began = Date.now();
+        const messages = turns.map(x => ({ role: x.role, content: x.text })), tools = BOT_TOOLS().concat(PLAN_TOOLS()), refs = [], used = new Set(), began = Date.now();
         let r = null;
         // Never left waiting: each lookup has its own time limit, after three rounds (or 25 seconds) it is told to
         // answer with what it has, and every step is noted in the startup log so a slow one can be traced.
@@ -18215,7 +18372,7 @@ body { width: max-content !important; min-width: 0 !important; }
           e.step = round ? 'Putting the answer together\u2026' : ''; botPaintConv();
           const t0 = Date.now();
           const leftMs = 75000 - (Date.now() - began); if (leftMs < 4000) { r = { error: 'it took too long' }; break; }
-          r = await apiRun(e.tier, system, messages, tools, e.tier === 'smart' ? 2500 : 500, { wait: leftMs, lastRound: round >= 3 || Date.now() - began > 40000 });
+          r = await apiRun(e.tier, system + PLAN_SYS, messages, tools, e.tier === 'smart' ? 3500 : 1800, { wait: leftMs, lastRound: round >= 3 || Date.now() - began > 40000 });
           startNote(`fast answer: round ${round + 1} ${r.error ? 'failed: ' + r.error : r.stop} in ${Date.now() - t0} ms`);
           if (r.error || r.stop !== 'tool_use') break;
           const results = [], last = round >= 2 || Date.now() - began > 25000;
@@ -18241,6 +18398,7 @@ body { width: max-content !important; min-width: 0 !important; }
           for (const l of raw.split('\n')) { const km = /^\s*REMEMBER:\s*(.+)$/i.exec(l); if (km) { if (!fromMeet && !fromOutside && noted.length < 2 && remember('noted', km[1])) noted.push(km[1].trim()); continue; } const m = /^\s*DO:\s*(.+)$/i.exec(l); if (!m) { if (l.trim()) keep.push(l.trim()); continue; } const f = m[1].split('|').map(x => x.trim()), k = (f[0] || '').toLowerCase(); if (acts.length >= 3) continue; if (k === 'action' && f[2]) { acts.push({ k, who: f[1], text: f[2], why: f.slice(3).filter(Boolean).join(', ').replace(/,?\s*\d{4}-\d{2}-\d{2}\s*$/, '') }); } else if (k === 'email' && f[1]) acts.push({ k, who: f[1], subject: f[2] || '', text: f[3] || '' }); else if (k === 'meeting' && f[1]) acts.push({ k, text: f.slice(1).join(', ') }); }
           const opens = []; let shown = keep.join('\n').replace(/\s*\[([me])(\d+)\]/g, (m0, k, n) => { const x = refs[+n - 1]; if (x && !opens.includes(x) && opens.length < 5) opens.push(x); return ''; }).replace(/\s*\[(?:evt|not|doc|mtg)_[A-Za-z0-9]+\]/g, '');
           e.a = shown.replace(/\s*[\u2014\u2013]\s*/g, ', '); e.acts = acts; e.ms = r.ms; e.opens = opens;
+          if (refs.plan && refs.plan.changes.length) { e.plan = refs.plan; e.planRefs = refs; e.noAct = true; }
           botS.turns = botS.turns.concat([{ role: 'user', text, m: used.has('your meetings') ? 1 : fromMeet ? 2 : 0 }, { role: 'assistant', text: e.a, m: used.has('your meetings') ? 1 : fromMeet ? 2 : 0 }]).slice(-8); botTurnsSave();
           if (noted.length) e.a += noted.map(x => `\n- Noted for next time: ${x.replace(/\s+/g, ' ').slice(0, 160)}`).join('');
           return finish();
@@ -18375,6 +18533,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!e.fail && e.src !== 'chat') lnk('Read aloud', () => botSpeak(e.a.split('\n')[0]));
       host.appendChild(src);
       if (e.fail) continue;
+      if (e.plan) { try { host.appendChild(planCard(e)); } catch (er) { /* the answer still shows */ } }
       const acts = document.createElement('div'); acts.className = 'bacts';
       const btn = (cls, ic, title, sub, run) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'bact ' + cls; b.innerHTML = '<span class="ic"></span><span class="tx"><b></b><span></span></span>'; b.querySelector('.ic').innerHTML = ico(ic); b.querySelector('b').textContent = title; b.querySelector('.tx span').textContent = sub; b.addEventListener('click', () => run(b)); acts.appendChild(b); return b; };
       for (const o of (e.opens || [])) {

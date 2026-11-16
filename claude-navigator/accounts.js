@@ -194,6 +194,46 @@ function graphBg(id, req) {
   if (req && sendPath(req.path)) return Promise.resolve({ ok: false, status: 0, error: 'Only the Send button can send an email' });
   return inLane(id, () => graphNow(id, req, true), true);
 }
+// ---------- Changes proposed by Claude (the Chief of Staff, or a staff member) and approved by you ----------
+// They go through this door and no other. Whatever was proposed, these never happen here:
+// sending an email, inviting or notifying other people, setting mail to forward anywhere, deleting for good.
+// Only mail and calendar can be touched at all.
+const AI_AREA = /^\/me\/(events|calendars|calendar|calendarView|calendarGroups|messages|mailFolders|outlook\/masterCategories)(\/|\?|$)/i;
+const AI_NEVER = /\/(permanentDelete|accept|decline|tentativelyAccept|cancel|forward|reply|replyAll|send|sendMail|createReply|createReplyAll|createForward|copy)\/?(\?.*)?$/i;
+const realVal = v => v != null && v !== false && !(Array.isArray(v) && !v.length);
+async function graphAi(id, req) {
+  const no = error => ({ ok: false, status: 0, refused: true, error });
+  const r = Object.assign({}, req || {}), method = String(r.method || 'GET').toUpperCase();
+  let p = String(r.path || '').split('#')[0]; try { p = decodeURIComponent(p); } catch (e) { /* tested as it stands */ }
+  if (p.includes('..') || p.includes('://') || /\$batch/i.test(p)) return no('Not allowed');
+  if (!AI_AREA.test(p)) return no('Only your mail and calendar can be changed this way');
+  if (sendPath(p) || AI_NEVER.test(p.split('?')[0])) return no('That would send something or tell other people, which only you can do');
+  if (method === 'GET') return graph(id, r);
+  const pure = p.split('?')[0], body = r.body && typeof r.body === 'object' ? JSON.parse(JSON.stringify(r.body)) : r.body;
+  const isEvent = /\/events(\/[^\/]+)?$/i.test(pure), oneEvent = /\/events\/([^\/]+)$/i.exec(pure), isRule = /\/messageRules(\/[^\/]+)?$/i.test(pure);
+  if (method === 'DELETE' && /\/messages\/[^\/]+$/i.test(pure)) return no('Emails are moved to Deleted Items, never deleted for good');
+  if (method === 'DELETE' && /\/mailFolders\/[^\/]+$/i.test(pure) && !isRule) return no('A folder is deleted by you, in Mail');
+  if (isEvent) {
+    // A meeting with people on it is yours to change: any change or removal would email them.
+    if (oneEvent && method !== 'POST') {
+      const cur = await graph(id, { path: `/me/events/${encodeURIComponent(oneEvent[1])}?$select=id,attendees,isOrganizer` });
+      if (!cur.ok) return cur;
+      if (((cur.data && cur.data.attendees) || []).length) return no('That meeting has other people on it, so changing or removing it would notify them. Do that one yourself');
+    }
+    if (body && typeof body === 'object') {
+      if (method === 'POST') { body.attendees = []; delete body.isOnlineMeeting; delete body.onlineMeetingProvider; }          // nobody is ever invited from here
+      else if (realVal(body.attendees)) return no('People are invited by you, not from here');
+    }
+  }
+  if (isRule && body && typeof body === 'object') {
+    const a = body.actions || {};
+    for (const k of ['forwardTo', 'forwardAsAttachmentTo', 'redirectTo']) if (realVal(a[k])) return no('A rule that sends mail on to someone can only be made by you, in Outlook');
+    if (realVal(a.permanentDelete)) return no('A rule may move mail to Deleted Items, never delete it for good');
+  }
+  if (/\/messages\/[^\/]+\/move$/i.test(pure) && body && /^(recoverableitemsdeletions|recoverableitemspurges)$/i.test(String(body.destinationId || ''))) return no('Emails are moved to Deleted Items, never deleted for good');
+  maillog.add({ kind: 'ai', acc: id, method, path: pure });
+  return graph(id, Object.assign({}, r, { body }));
+}
 function send(id, msgId, box) {
   const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
   return inLane(id, () => graphNow(id, { method: 'POST', path: `${who}/messages/${encodeURIComponent(String(msgId))}/send`, timeout: 60 }, false, true), false);
@@ -303,4 +343,4 @@ async function uploadPiece(url, bytes, start, total) {
   }
 }
 
-module.exports = { list, add, remove, graph, graphBg, slowUntil, queueOf, send, saveAttachment, saveMime, uploadPiece };
+module.exports = { list, add, remove, graph, graphAi, graphBg, slowUntil, queueOf, send, saveAttachment, saveMime, uploadPiece };
