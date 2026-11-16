@@ -13969,10 +13969,10 @@ body { width: max-content !important; min-width: 0 !important; }
         }
         mailUi.multiAnchor = x.id;
         if (mailMulti.size) { mailMulti.clear(); }
-        if (!mailPopped() || e.detail >= 2 || x.isDraft) return mailOpen(x);
+        if (e.detail >= 2 || (!mailPopped() && !x.isDraft)) return mailOpen(x);          // (a draft, like any email, opens on a double click; one click chooses it)
         if (mailUi.msg === x && !mailUi.msgOpen) return;
         mailUi.msg = x; mailUi.msgOpen = false; mailUi.msgBody = null; mailRenderMain();          // chosen: the buttons above act on it
-        mailPreDraft(x._acc || (mailState.sel || {}).acc, x);
+        if (!x.isDraft) mailPreDraft(x._acc || (mailState.sel || {}).acc, x);
       });
       r.addEventListener('contextmenu', e => { e.preventDefault(); if (mailMulti.size > 1 && mailMulti.has(x.id)) return showMenu(e.clientX, e.clientY, mailBulkItems()); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
