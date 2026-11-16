@@ -15027,7 +15027,8 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     setTimeout(() => { const qf = mode === 'draft' && el.querySelector('.mc-quote iframe'); if (qf && qf.contentDocument && qf.contentDocument.body) { try { qf.contentWindow.focus(); qf.contentDocument.body.focus(); return; } catch (e) { /* fall through */ } } (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, mode === 'draft' ? 400 : 50);
     // A reply opens with a draft already in it (written on this Mac while you read), unless you switched that off.
-    if ((mode === 'reply' || mode === 'replyAll') && m && mailLearnOf().auto !== false) { C.fields = fields; mailDraftWith(C, m, { auto: true }); }
+    if ((mode === 'reply' || mode === 'replyAll') && m && mailLearnOf().auto !== false && !(seed && seed.text)) {          // (words that came with it are not written over)
+      C.fields = fields; mailDraftWith(C, m, { auto: true }); }
   }
 
   // ===== Joining the apps up: Send To, links, and Related =====
