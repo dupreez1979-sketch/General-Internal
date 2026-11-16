@@ -14614,7 +14614,14 @@ body { width: max-content !important; min-width: 0 !important; }
   // Writing: a new message, a reply or a forward opens over the reading side. Outlook holds it as a draft from the
   // start, so closing keeps it in Drafts; Send sends it from the account, with your signature.
   const mailAddrs = p => (p || []).map(x => x.emailAddress).filter(Boolean).map(e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address).join(', ');
-  const mailParse = t => String(t || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean).map(x => {
+  // People in a line of text. A comma inside a name ("BLACK,Chris <chris@...>", as some organisations write them) does
+  // not split the person in two: commas inside quotes are kept, and a piece with no address joins the address after it.
+  const mailSplit = t => { const cut = []; let cur = '', q = false, a = false;
+    for (const ch of String(t || '')) { if (ch === '"') q = !q; else if (ch === '<') a = true; else if (ch === '>') a = false; if (!q && !a && /[,;\n]/.test(ch)) { cut.push(cur); cur = ''; } else cur += ch; }
+    cut.push(cur); const out = [];
+    for (const p of cut.map(x => x.trim()).filter(Boolean)) { const i = out.length - 1; if (i >= 0 && !out[i].includes('@') && !/^</.test(p) && /<\s*[^<>\s]+@[^<>\s]+\s*>$/.test(p)) out[i] = `${out[i]}, ${p}`; else out.push(p); }
+    return out; };
+  const mailParse = t => mailSplit(t).map(x => {
     const m = /^(.*?)<\s*([^<>\s]+@[^<>\s]+)\s*>$/.exec(x);
     const address = m ? m[2] : x, name = m ? m[1].trim().replace(/^"|"$/g, '') : '';
     return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(address) ? { emailAddress: name ? { address, name } : { address } } : { bad: x };
@@ -14671,7 +14678,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const box = document.createElement('span'), chips = []; box.className = 'mc-tok'; inp.replaceWith(box); box.appendChild(inp);
       const told = () => { try { inp.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) { /* gone */ } };
       const raw = () => natVal.get.call(inp), setRaw = v => natVal.set.call(inp, v);
-      const fmt = e => e.name && e.name !== e.address ? `${e.name} <${e.address}>` : e.address;
+      const fmt = e => e.name && e.name !== e.address ? `${/[,;]/.test(e.name) ? `"${e.name.replace(/"/g, '')}"` : e.name} <${e.address}>` : e.address;
       const paint = () => {
         for (const x of box.querySelectorAll('.mc-chip')) x.remove();
         for (const c of chips) {
@@ -14683,7 +14690,7 @@ body { width: max-content !important; min-width: 0 !important; }
           box.insertBefore(b, inp);
         }
       };
-      const take = text => { const left = []; for (const p of String(text || '').split(/[,;\n]+/).map(x => x.trim()).filter(Boolean)) { const r = mailParse(p)[0]; if (r && !r.bad) { if (!chips.some(c => c.address.toLowerCase() === r.emailAddress.address.toLowerCase())) chips.push(r.emailAddress); } else left.push(p); } return left.join(', '); };
+      const take = text => { const left = []; for (const p of mailSplit(text)) { const r = mailParse(p)[0]; if (r && !r.bad) { if (!chips.some(c => c.address.toLowerCase() === r.emailAddress.address.toLowerCase())) chips.push(r.emailAddress); } else left.push(p); } return left.join(', '); };
       let hold = 0;
       const commit = () => { if (!raw().trim() || Date.now() - hold < 500) return; const n0 = chips.length; setRaw(take(raw())); paint(); if (chips.length !== n0) told(); };
       Object.defineProperty(inp, 'value', { configurable: true, get: () => [...chips.map(fmt), raw().trim()].filter(Boolean).join(', '), set: v => { chips.length = 0; setRaw(take(v)); paint(); } });
@@ -15069,7 +15076,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const put = when => {
       const how = claraMail.how === 'teams' ? ' for a Teams call' : claraMail.how === 'person' ? ' to meet in person' : claraMail.how === 'phone' ? ' for a phone call' : '';
       const line = `I have CC’d ${first}, who can suggest some times ${when}${how}.`;
-      const cc = f('cc').value.split(/[,;]/).map(z => z.trim()).filter(Boolean);
+      const cc = mailSplit(f('cc').value);
       if (!cc.some(z => z.toLowerCase().includes(claraAddr())) && !f('to').value.toLowerCase().includes(claraAddr())) { cc.push(clara.email); f('cc').value = cc.join(', '); f('cc').dispatchEvent(new Event('input', { bubbles: true })); f('cc').dispatchEvent(new Event('change', { bubbles: true })); }
       showRow('cc');
       // The sentence goes in above your sign-off (the short last lines), or at the end if there is none.
