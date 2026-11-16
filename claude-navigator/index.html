@@ -14251,7 +14251,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const ed = el.querySelector('.mc-ed');
     // For the drafting panel: your own words so far (without the signature), and putting words in.
     C.userText = () => { const all = (ed.innerText || '').replace(/\u00a0/g, ' ').trimEnd(), sg = ed.querySelector('.mc-sig'), tail = sg ? (sg.innerText || '').trimEnd() : ''; return (tail && all.endsWith(tail) ? all.slice(0, all.length - tail.length) : all).trim(); };
-    C.ed = ed; C.el = el;
+    C.ed = ed; C.el = el; C.msg = m || null; C.fields = () => fields();
     C.insert = (text, atCursor, quiet) => {
       const html = String(text || '').trim().split(/\n{2,}/).map(par => `<div>${mailEsc(par).replace(/\n/g, '<br>')}</div>`).join('<div><br></div>');
       if (atCursor) { ed.focus(); document.execCommand('insertHTML', false, html); return; }
@@ -15819,6 +15819,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!text && !S.quietEnd) chime('no');
     if (!text && !S.quietEnd) toast('Did not hear anything. Check the microphone, then try again.');
     if (S.opts.onDone) { try { S.opts.onDone(text); } catch (e) { /* the box has gone */ } }
+    // Dictated into the body of an email: it is laid out as an email (greeting, paragraphs, sign-off) and the draft bar
+    // opens, so you can change it by saying or typing, or undo it. Only when what you said is most of the message.
+    try { const C = mailUi.compose; if (C && C.ed === S.box && text && dictWords(text).length >= 8 && dictWords(text).length >= dictWords(C.userText()).length * 0.6) mailDraftWith(C, C.msg, { dictated: true, auto: true }); } catch (e) { /* the message has gone */ }
   }
   // ----- The small sounds: listening, heard, ready, made, could not. Low, warm and short, made here from plain tones
   // (no sound files). Switched on or off in Chief of Staff Settings.
@@ -16124,9 +16127,10 @@ body { width: max-content !important; min-width: 0 !important; }
     if (opt.have) { run = { done: true, text: opt.have, cancel() {} }; paint(); return; }          // (the email helper has already written it: show the change bar)
     // A draft made while you were reading is used as it is; otherwise the email is read and one is written now.
     const pre = isReply && !typed.trim() && !fastOn() ? mailPre.get(C.acc + '|' + m.id) : null;       // (with the API on, the fuller model writes it when you press Reply)
-    if (pre && !pre.run.error && !pre.run.cancelled) { T = pre.T; mailPre.delete(C.acc + '|' + m.id); adopt(pre.run, () => write('', typed, 1500)); return; }
+    if (pre && !opt.dictated && !pre.run.error && !pre.run.cancelled) { T = pre.T; mailPre.delete(C.acc + '|' + m.id); adopt(pre.run, () => write('', typed, 1500)); return; }
     if (isReply) { run = { done: false, text: '', cancel() {} }; paint(); T = await mailTextOf(C.acc, m, { thread: fastOn() }); if (!alive()) return; if (!T) { run = null; bar.hidden = true; if (!opt.auto) toast('Could not read the email. Try again.'); return; } }
-    write('', typed);
+    // Dictated into the body: his own words, laid out as an email, not a new email about them.
+    write('', opt.dictated ? `He dictated this email aloud. Lay it out as a proper email: a greeting, short paragraphs with a blank line between them, and a sign-off with his first name. Keep his words and his meaning. Do not add points he did not make or leave out ones he did.\n\n${typed}` : typed);
   }
   // A draft is written by Claude's fuller model through your API key when that is switched on. Nothing is drafted
   // through the API just because you opened an email: only when you press Reply, or ask for a draft or a change.
