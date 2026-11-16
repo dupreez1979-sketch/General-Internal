@@ -239,6 +239,7 @@
   .edge-tab.show { display: block; }
   #main > .edge-tab { position: absolute; }
   .side-foot .fctl { margin-left: auto; }
+  #sMore { display: none !important; }          /* the three-dot menu at the sidebar's foot is gone: its items are on the toolbar, the View menu and their keys */
   .sl-head .fctl { margin-left: auto; }
   .cos-detail > .fhead { margin: -16px -16px 0; padding-left: var(--sp-4); position: sticky; top: -16px; z-index: 2; }
   body.detail-left .cos-body > .cos-detail { order: -2; border-left: 0; border-right: 1px solid var(--line); }
@@ -2175,7 +2176,7 @@
     <span class="dlg-spacer"></span>
     <button class="tb" id="sNotes" title="Your Apple Notes (for example your action lists), live from iCloud"><svg width="16" height="16" viewBox="0 0 16 16"><rect x="3" y="2" width="10" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5h5M5.5 8h5M5.5 10.5h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
     <button class="tb" id="sAccount" title="Your Claude account: settings, usage, help, plan and log out"><span data-icon="account"></span></button>
-    <button class="tb" id="sMore" title="More: undo, show or hide panels, expand or collapse all"><span data-icon="more"></span></button>
+    <button class="tb" id="sMore" hidden title="More: undo, show or hide panels, expand or collapse all"><span data-icon="more"></span></button>
   </div>
 </aside>
 
