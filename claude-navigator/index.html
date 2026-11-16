@@ -15621,7 +15621,7 @@ body { width: max-content !important; min-width: 0 !important; }
     return new Promise(resolve => {
       const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       let tries = 0, ticks = 0, last = '', stable = 0, seen = '', idle = 0;
-      toast(`Asking Claude to lay out the ${what}…`);
+      toast(what ? `Asking Claude to lay out the ${what}…` : 'Claude is writing it out. It opens here when it is ready.');
       const send = () => viewExec(SEND_PROMPT(`${prompt}\n\nDo not repeat this line in your answer: ${nonce}`)).then(r => { if (r === 'none' && ++tries < 6) setTimeout(send, 1200); }).catch(() => { if (++tries < 6) setTimeout(send, 1200); });
       send();
       const re = new RegExp(`\\[\\[\\s*(${kind})\\s*\\]\\]([\\s\\S]*?)\\[\\[\\s*END\\s*\\]\\]`, 'gi');
@@ -15648,6 +15648,8 @@ body { width: max-content !important; min-width: 0 !important; }
     while ((m = re.exec(text))) if (m[2].trim()) found.push({ kind: m[1].toUpperCase(), text: m[2].replace(/^\n+|\s+$/g, '') });
     return found;
   }
+  const chatSig = g => { let h = 0; for (const ch of g.map(x => x.kind + x.text).join('\u0001')) h = (h * 31 + ch.charCodeAt(0)) | 0; return String(h); };
+  const chatTaken = { has: g => { try { return (JSON.parse(ls.get('claudeNavigator.sendTaken') || '[]') || []).includes(chatSig(g)); } catch (e) { return false; } }, add: g => { try { const a = JSON.parse(ls.get('claudeNavigator.sendTaken') || '[]') || []; a.push(chatSig(g)); ls.set('claudeNavigator.sendTaken', JSON.stringify(a.slice(-60))); } catch (e) { /* remembered next time */ } } };
   const chatHeads = block => { const o = {}, lines = block.split('\n'); let i = 0; for (; i < lines.length; i++) { const mm = /^\s*([A-Za-z ]{2,14}):\s*(.*)$/.exec(lines[i]); if (!mm) break; o[mm[1].trim().toLowerCase()] = mm[2].trim(); } return { heads: o, rest: lines.slice(i).join('\n').trim() }; };
   // Open Mail beside the chat (or use it where it already is) and start a message with these words in it.
   async function chatToEmail(seed) {
@@ -15931,8 +15933,13 @@ body { width: max-content !important; min-width: 0 !important; }
         K.email ? 'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]' : '',
         K.meet ? 'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape : '',
         K.cal || K.rules ? `${[K.cal && 'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder)', K.rules && 'mail rules and mail folders'].filter(Boolean).join(', and ')}, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:${K.cal ? calLines : ''}${K.rules ? ruleLines : ''}\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.` : '',
-        K.doc ? 'A document:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]' : ''].filter(Boolean).join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', 'work from this chat', true);
-      if (!got) return toast('Could not read Claude\u2019s answer. When it has finished writing, use Send To and choose Take In Claude\u2019s Answer.');
+        K.doc ? 'A document:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]' : ''].filter(Boolean).join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', '', true);
+      if (!got) {                // Claude is taking a long time: keep an eye on this chat, and open it when it is there
+        toast('Claude is still working on it. It opens here when it is ready.');
+        let n = 0; const t = setInterval(async () => { if (++n > 240) return clearInterval(t); if ((chatHere() || {}).ref !== here.ref) return; const g = await chatRead(); if (g.length && !chatTaken.has(g)) { clearInterval(t); all('', '', K, g); } }, 5000);
+        return;
+      }
+      chatTaken.add(got);
       const of = k => got.filter(g => g.kind === k).map(g => g.text);
       const emails = of('EMAIL').map(t => { const { heads, rest } = chatHeads(t); return { to: heads.to || '', cc: heads.cc || '', subject: heads.subject || '', text: rest, from: here.ref }; });
       const meets = of('MEETING').length ? await calMeetRead(of('MEETING'), { title: here.name || 'Meeting', ref: here.ref }) : [];
@@ -15965,7 +15972,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }));
     // Before anything is asked of the chat: say what to take, which part, and anything to add. Both boxes can be dictated.
     const askForm = () => {
-      const d = mailDlg('send-from no-dict', '<h2>Send From This Chat</h2><p class="hint">Claude is asked, in the chat, to set these out for the app. Nothing is sent or changed until you have checked each one.</p><div class="sf-kinds"></div><div class="sf-box"><div class="sf-l"><b>Only this part</b><span>Leave empty for everything that is ready.</span></div><textarea rows="3" data-k="only" placeholder="For example: the shorter email to the board, or the table as a document"></textarea></div><div class="sf-box"><div class="sf-l"><b>Anything to add</b><span>Changes or instructions for Claude before it sets things out.</span></div><textarea rows="5" data-k="extra" placeholder="For example: make the email warmer, move the Tuesday session to 2 pm, leave out the dinner"></textarea></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Ask Claude</button></div>');
+      const d = mailDlg('send-from no-dict', '<h2>Send to My Mail and Calendar</h2><p class="hint">Claude writes out what this chat worked out, and it opens here for you to check. Nothing is sent or changed until you say so.</p><div class="sf-kinds"></div><div class="sf-box"><div class="sf-l"><b>Which part</b><span>Leave empty for everything.</span></div><textarea rows="3" data-k="only" placeholder="For example: the shorter email to the board, or the table as a document"></textarea></div><div class="sf-box"><div class="sf-l"><b>Anything to change first</b><span>Optional.</span></div><textarea rows="5" data-k="extra" placeholder="For example: make the email warmer, move the Tuesday session to 2 pm, leave out the dinner"></textarea></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Go Ahead</button></div>');
       let K = { email: true, meet: true, cal: true, rules: true, doc: false }; try { K = Object.assign(K, JSON.parse(ls.get('claudeNavigator.sendFrom') || '{}')); } catch (e) { /* the usual ones */ }
       for (const [k, t] of [['email', 'Emails'], ['meet', 'Meetings with other people'], ['cal', 'Entries in my own calendar'], ['rules', 'Mail rules and folders'], ['doc', 'A document']]) {
         const l = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!K[k]; cb.addEventListener('change', () => { K[k] = cb.checked; }); l.append(cb, ' ' + t); d.querySelector('.sf-kinds').appendChild(l); }
@@ -15980,9 +15987,11 @@ body { width: max-content !important; min-width: 0 !important; }
       setTimeout(() => d.querySelector('[data-k="only"]').focus(), 60);
     };
     const whole = [
-      { label: 'What This Chat Worked Out…', sub: 'Emails, meetings, calendar entries and rules. You say what to take and add anything first, then check each one.', svg: ST_ICON.cal, tint: '#328276', run: askForm },
-      { label: 'Take In Claude\u2019s Answer', sub: 'If Claude has already set it out in the chat, read it from there without asking again.', svg: ST_ICON.doc, tint: '#4A90D9', run: async () => { const g = await chatRead(); if (!g.length) return toast('Nothing set out for the app was found in this chat yet.'); all('', '', undefined, g); } },
+      { label: 'My Mail and Calendar…', sub: 'The emails, meetings and calendar changes this chat worked out, opened for you to check.', svg: ST_ICON.cal, tint: '#328276', run: askForm },
     ];
+    // Nothing selected: there is one thing to do, so it starts. Anything Claude has already set out that has not been
+    // opened yet is opened straight away; otherwise the short form comes up.
+    if (!picked) { const g = await chatRead(); if (g.length && !chatTaken.has(g)) return all('', '', undefined, g); return askForm(); }
     showMenu(Math.max(8, x - 200), y, picked ? [
       { head: 'The words you selected' },
       { label: 'A New Email', sub: 'Start an email with those words in it.', svg: ST_ICON.mail, tint: '#4A90D9', run: () => chatToEmail({ text: picked, subject: here.name || '', from: here.ref }) },
@@ -15990,7 +15999,7 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'A Word Document', sub: 'Put them in a document in a company folder.', svg: ST_ICON.doc, tint: '#2B5797', run: () => toDoc() },
       { label: 'A Snippet', sub: 'Keep them to drop into emails later.', svg: ST_ICON.snip, tint: '#B36E24', run: () => askText('A name for this snippet', picked.slice(0, 30), nm => { mailLearnOf().snippets.push({ name: nm, text: picked }); mailSave(); toast('Kept as a snippet'); }) },
       { head: 'The whole chat' }, ...whole,
-    ] : [{ head: 'From this chat' }, ...whole]);
+    ] : []);
   }
   $('bSendTo').addEventListener('click', e => { const r0 = e.currentTarget.getBoundingClientRect(); chatSendTo(r0.left, r0.bottom + 4); });
 
