@@ -928,6 +928,7 @@
   dialog.cal-evdlg.with-day.ev-win.min { top: auto !important; bottom: 0 !important; left: 18px !important; width: min(360px, 80vw) !important; height: 40px !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box; padding: 0 !important; border-radius: 10px 10px 0 0; cursor: pointer; }
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
   dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
+  dialog.plan-dlg { width: min(640px, calc(100vw - 32px)); } dialog.plan-dlg .bplan { margin: var(--sp-2) 0; }
   .bplan { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); margin: var(--sp-1) 0 var(--sp-2); overflow: hidden; }
   .bplan .bp-h { padding: var(--sp-2) var(--sp-3); font-weight: var(--fw-bold); font-size: var(--fs-body); background: color-mix(in srgb, var(--accent) 7%, var(--win)); border-bottom: 1px solid var(--line); }
   .bplan .bp-list { display: grid; max-height: 46vh; overflow-y: auto; }
@@ -15916,6 +15917,22 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!got) return toast('Could not read Claude’s answer. Select the details in the chat, then use Send To and choose the selected words.');
       calMeetOpen(await calMeetRead(got, { title: here.name || 'Meeting', ref: here.ref }), 'Meetings from this chat');
     };
+    // Changes worked out in the chat (calendar entries, a rule, a folder, a draft): Claude writes them out, and they
+    // show on the same approval card the Chief of Staff uses. Nothing is made until you press.
+    const changes = async () => {
+      const got = await chatAsk(['Set out the changes to my calendar or my mail that we have worked out in this chat, so my app can show them to me to approve. Include every one (for example every date in a schedule).',
+        'Do not make any changes yourself and do not use any calendar or email tools: only write them out here. Nobody is to be invited to anything: put names in the notes.',
+        'Format your answer exactly like this, with nothing outside it:\n[[CHANGES]]\na JSON list, one object for each change\n[[END]]\n[[DONE]]',
+        'Each object has "do" and its own fields:\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).\n- "draft_email": to, cc (lists of addresses), subject, body. A draft only.\n- "other": anything else in my mail or calendar: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).'].join('\n\n'), 'CHANGES', 'changes');
+      if (!got) return toast('Could not read Claude\u2019s answer. Ask it again in the chat, then use Send To.');
+      let list = null; try { const t = got[got.length - 1], a = t.indexOf('['), b = t.lastIndexOf(']'); list = JSON.parse(t.slice(a, b + 1)); } catch (e) { list = null; }
+      const ok = (Array.isArray(list) ? list : []).filter(c => c && ['add_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(c.do)).slice(0, 60);
+      if (!ok.length) return toast('Claude\u2019s answer had no changes this app can show. Ask it to set them out again.');
+      const d = mailDlg('plan-dlg', '<h2>Changes from This Chat</h2><div class="pl-host"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>');
+      d.querySelector('h2').textContent = here.name ? `Changes from \u201c${String(here.name).slice(0, 60)}\u201d` : 'Changes from This Chat';
+      d.querySelector('.pl-host').appendChild(planCard({ plan: { summary: `${ok.length} change${ok.length === 1 ? '' : 's'} proposed`, changes: ok }, planRefs: [] }));
+      d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+    };
     // Two plain choices for the whole chat. The choices for selected words only show when you have selected some.
     const toDoc = () => mailNeedFolders(() => mailPickFolder('Make the Document In', 'Make It Here', async f => {
       const r = await window.navigatorApp.fsNewDocx(f.path, here.name || picked.slice(0, 40), [{ text: here.name || 'From a chat', head: true }, ...picked.split(/\n{2,}/).map(t => ({ text: t }))]);
@@ -15925,6 +15942,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const whole = [
       { label: 'An Email', sub: 'The email this chat has been working on, laid out for you to check and send.', svg: ST_ICON.mail, tint: '#4A90D9', run: email },
       { label: 'A Meeting', sub: 'The meeting this chat describes, opened as an invite for you to check.', svg: ST_ICON.cal, tint: '#D4574E', run: meeting },
+      { label: 'Changes to My Calendar or Mail', sub: 'Several entries, a rule, a folder or a draft, on one card for you to approve. Nobody is invited.', svg: ST_ICON.cal, tint: '#328276', run: changes },
     ];
     showMenu(Math.max(8, x - 200), y, picked ? [
       { head: 'The words you selected' },
