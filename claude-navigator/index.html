@@ -18321,6 +18321,24 @@ body { width: max-content !important; min-width: 0 !important; }
   // open for you to check and send, meetings open as invitations, and the rest is on the approval card.
   const connUi = { status: null, busy: false, timer: 0, items: [], open: {} };
   // "Monkey Baa", "Consulting" or an address, as Claude heard it: the account it means, if one clearly matches.
+  // The email a reply answers, found in your own mail by its subject, who it was from and roughly when (Claude does
+  // not know this app's ids). Looked for in the account it was meant for first, then the others.
+  async function connFindMail(rt, acc) {
+    const bare = t => String(t || '').replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const want = bare(rt.subject), from = String(rt.from || '').toLowerCase().trim(), when = Date.parse(rt.sent || '') || 0; if (!want) return null;
+    const accs = planAccs().slice().sort((a, b) => (b.id === acc) - (a.id === acc)); let best = null;
+    for (const a of accs) {
+      let r = null; try { r = await mailApi(a.id, { path: `/me/messages?$search=${encodeURIComponent('"' + want.replace(/["\\]/g, ' ').slice(0, 120) + '"')}&$top=25&$select=id,subject,from,receivedDateTime,conversationId,isDraft` }); } catch (e) { r = null; }
+      for (const m of (r && r.ok && r.data && r.data.value) || []) {
+        if (m.isDraft || bare(m.subject) !== want) continue;
+        const f = ((m.from || {}).emailAddress) || {}, fl = `${f.name || ''} ${f.address || ''}`.toLowerCase(), t = Date.parse(m.receivedDateTime) || 0;
+        const score = 10 + (from && (fl.includes(from) || from.split(/[\s,<>]+/).filter(w => w.length > 2).some(w => fl.includes(w))) ? 6 : 0) + (when ? Math.max(0, 4 - Math.abs(t - when) / 864e5) : 0) + t / 1e15 + (a.id === acc ? 1 : 0);
+        if (!best || score > best.score) best = { score, m: Object.assign({}, m, { _acc: a.id }) };
+      }
+      if (best && best.score >= 16) break;
+    }
+    return best && best.m;
+  }
   const connAccFor = hint => { const h = String(hint || '').trim().toLowerCase(); if (!h) return ''; const accs = planAccs();
     const byMail = accs.find(a => String(a.email || '').toLowerCase() === h) || accs.find(a => h.includes('@') && String(a.email || '').toLowerCase().includes(h)); if (byMail) return byMail.id;
     const prof = profiles().find(p => String(p.name || '').toLowerCase() === h) || profiles().find(p => { const n = String(p.name || '').toLowerCase(); return n && (n.includes(h) || h.includes(n)); });
@@ -18351,7 +18369,15 @@ body { width: max-content !important; min-width: 0 !important; }
     const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn" data-x="later" title="It stays under From Claude until you have finished with it">Keep for Later</button><button class="btn-primary" data-x="close" title="Takes it off the waiting list">Finished</button></div>');
     d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
     const row = (title, sub, raw, run, words = ['Open\u2026', 'Open Again\u2026']) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary"></button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; const b = r.querySelector('button'); b.textContent = raw._opened ? words[1] : words[0]; b.addEventListener('click', () => { raw._opened = true; b.textContent = words[1]; run(b); }); d.querySelector('.mt-list').appendChild(r); };
-    for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', m._raw, () => chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})));
+    for (const m of emails) { const rt = m._raw.reply_to && typeof m._raw.reply_to === 'object' && m._raw.reply_to.subject ? m._raw.reply_to : null;
+      if (!rt) { row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', m._raw, () => chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {}))); continue; }
+      // a reply opens as a real reply: on the original email, in its conversation, with the history underneath
+      row(`Reply: ${rt.subject}`, `To ${rt.from || 'the sender'}${m._raw.reply_all ? ' and everyone on it' : ''}, with the earlier emails underneath`, m._raw, async b => {
+        b.disabled = true; const hit = await connFindMail(rt, acc); b.disabled = false;
+        if (!hit) { toast('The email this answers was not found in your mail, so it opened as a new email.'); return chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject || `RE: ${rt.subject}`, text: m.text }, acc ? { acc } : {})); }
+        if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
+        await mailCompose(m._raw.reply_all ? 'replyAll' : 'reply', hit, { text: m.text });
+      }); }
     meets.forEach((M, i) => { if (acc) M.acc = acc; row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', mraw[i] || {}, () => calMeetOpen([M])); });
     for (const a of acts) { const st = botStaffNamed(a.for), text = String(a.action).replace(/\s+/g, ' ').trim(), why = String(a.why || '').trim();
       row(`Action${st ? ' for the ' + st.name : ''}: ${text.slice(0, 120)}`, why || (st ? 'Goes on their list of actions' : 'Choose who it is for'), a, b => { if (st) botAddAction(st, text, why, { kind: 'ask', label: 'From a Claude chat' }); else botPickStaff(b, text, null, why, { kind: 'ask', label: 'From a Claude chat' }); }, ['Add', 'Added']); }
