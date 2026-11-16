@@ -1422,7 +1422,7 @@
   @keyframes waveloud { 0%, 100% { transform: scaleY(.45); } 50% { transform: scaleY(1); } }
   @keyframes wavebusy { 0%, 100% { transform: scaleY(.25); opacity: .45; } 50% { transform: scaleY(.6); opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { .wave i { animation: none !important; transform: scaleY(.6); } }
-  #dictPill { position: fixed; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 2147483000; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2h) var(--sp-2) var(--sp-4); border-radius: var(--r-pill); background: color-mix(in srgb, var(--win) 82%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); border: 1px solid var(--line); color: var(--text); font-size: var(--fs-body); box-shadow: var(--e-sheet); -webkit-app-region: no-drag; max-width: min(640px, 92vw); }
+  #dictPill { position: fixed; top: auto; right: auto; margin: 0; overflow: visible; left: 50%; bottom: 92px; transform: translateX(-50%); z-index: 2147483000; display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-2h) var(--sp-2) var(--sp-4); border-radius: var(--r-pill); background: color-mix(in srgb, var(--win) 82%, transparent); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4); border: 1px solid var(--line); color: var(--text); font-size: var(--fs-body); box-shadow: var(--e-sheet); -webkit-app-region: no-drag; max-width: min(640px, 92vw); }
   #dictPill .wave { height: 28px; gap: 3.5px; } #dictPill .wave i { width: 3.5px; }
   #dictPill .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
   .mc-draft .wave { height: 14px; gap: var(--sp-h); } .mc-draft .wave i { width: 2px; }
@@ -15879,6 +15879,8 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!ok) { localAi.runs.delete(S.id); if (S.live) S.live.remove(); return old(); }
     dict.on = S; if (S.mic) { S.mic.classList.add('rec'); const sp = S.mic.querySelector('span'); if (sp) { S.micWas = sp.textContent; sp.textContent = 'Done'; } }
     const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; waveSet(pill.querySelector('.wave'), 'busy'); pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
+    // In a sheet, the bar goes on the top layer so the sheet cannot clip it or sit over it.
+    try { pill.popover = 'manual'; if (!pill.matches(':popover-open')) pill.showPopover(); } catch (e) { /* stays where it is */ }
     S.timer = setInterval(() => {
       if (S.stopping || S.finished) return;
       if (!box.isConnected) { S.quietEnd = true; return dictStop(); }
