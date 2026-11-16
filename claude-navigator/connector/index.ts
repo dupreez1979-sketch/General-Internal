@@ -29,7 +29,7 @@ async function seal(pubB64: string, text: string) {
 }
 
 const CHANGE_HELP = `Each change is an object with "do" and its own fields:
-- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in his local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away"). Nobody is invited: put names in the notes.
+- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in his local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away"), time_zone. Give times as they are on the clock where the thing happens, and when that is not his home time zone give time_zone as an IANA name (for example "Australia/Brisbane" for Cairns): do not convert the times yourself. Nobody is invited: put names in the notes.
 - "remove_event": find (the title of the entry exactly as it shows in his calendar), date ("YYYY-MM-DD", the day it is on).
 - "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.
 - "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.
@@ -43,6 +43,7 @@ const TOOLS = [{
     type: "object",
     properties: {
       summary: { type: "string", description: "One short line saying what this is, shown as the heading." },
+      for_account: { type: "string", description: "Which of his organisations or email accounts this belongs to, in his own words or as an email address (for example \"Monkey Baa\" or \"Consulting\"), when the chat makes it clear. Leave out if unsure." },
       emails: { type: "array", description: "Emails for him to check and send himself. No signature (his mail app adds it).", items: { type: "object", properties: { to: { type: "string", description: "Addresses or names, separated by commas" }, cc: { type: "string" }, subject: { type: "string" }, body: { type: "string", description: "Plain text, blank lines between paragraphs" } }, required: ["subject", "body"] } },
       meetings: { type: "array", description: "Meetings with other people. Each opens as an invitation for him to check and save; nobody is told until he does.", items: { type: "object", properties: { title: { type: "string" }, date: { type: "string", description: "YYYY-MM-DD" }, start: { type: "string", description: "HH:MM, 24 hour, his local time" }, end: { type: "string", description: "HH:MM" }, where: { type: "string" }, teams: { type: "boolean", description: "true if online" }, invite: { type: "string", description: "Email addresses when known for certain, otherwise names exactly, separated by semicolons. Never guess an address." }, purpose: { type: "string" }, agenda: { type: "string", description: "Items separated by semicolons, minutes in brackets if said" }, before: { type: "string", description: "What to read or bring, separated by semicolons" }, notes: { type: "string" }, check: { type: "string", description: "Anything you assumed, shown only to him" } }, required: ["title"] } },
       changes: { type: "array", description: "Entries in his own calendar with nobody invited, and mail rules and folders. " + CHANGE_HELP, items: { type: "object", properties: { do: { type: "string", enum: ["add_event", "remove_event", "change_event", "add_rule", "add_folder"] } }, required: ["do"], additionalProperties: true } },
@@ -70,7 +71,7 @@ async function mcp(req: Request, secret: string) {
       if (p.name !== "show_for_approval") return { jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "unknown tool" } };
       const n = (Array.isArray(a.emails) ? a.emails.length : 0) + (Array.isArray(a.meetings) ? a.meetings.length : 0) + (Array.isArray(a.changes) ? a.changes.length : 0);
       if (!n) return ok({ content: [{ type: "text", text: "Nothing was given to show. Include emails, meetings or changes." }], isError: true });
-      const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), summary: String(a.summary || "").slice(0, 300), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [] }));
+      const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), summary: String(a.summary || "").slice(0, 300), for_account: String(a.for_account || "").slice(0, 120), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [] }));
       // a box never holds more than a handful, and nothing older than two days
       await db(`cos_relay?s_hash=eq.${sHash}&created_at=lt.${new Date(Date.now() - 2 * 864e5).toISOString()}`, { method: "DELETE" });
       const have = await (await db(`cos_relay?s_hash=eq.${sHash}&select=id`)).json().catch(() => []);
@@ -91,7 +92,7 @@ async function app(req: Request, what: string) {
   if (what === "register") {
     if (!okHash(body.s_hash) || !okHash(body.t_hash) || typeof body.pub !== "string" || body.pub.length > 200) return json({ error: "bad request" }, 400);
     const all = await (await db("cos_boxes?select=s_hash")).json().catch(() => []);
-    if (Array.isArray(all) && all.length >= 4) return json({ error: "This relay already has all the apps it allows." }, 403);
+    if (Array.isArray(all) && all.length >= 2) return json({ error: "This connector is already set up for another Mac." }, 403);         // sign-up is closed once it is in use
     const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub }) });
     return r.ok ? json({ ok: true }) : json({ error: "could not register" }, 400);
   }
@@ -101,6 +102,12 @@ async function app(req: Request, what: string) {
   const s = box[0].s_hash;
   if (what === "pull") { const rows = await (await db(`cos_relay?s_hash=eq.${s}&select=id,sealed,created_at&order=created_at.asc&limit=20`)).json().catch(() => []); return json({ ok: true, rows: Array.isArray(rows) ? rows : [] }); }
   if (what === "ack") { const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x: unknown) => typeof x === "string" && /^[0-9a-f-]{36}$/.test(x as string)).slice(0, 40); if (ids.length) await db(`cos_relay?s_hash=eq.${s}&id=in.(${ids.join(",")})`, { method: "DELETE" }); return json({ ok: true }); }
+  if (what === "rotate") {                                              // a new address and key for the same app; the old address stops at once
+    if (!okHash(body.s_hash) || !okHash(body.t_hash) || typeof body.pub !== "string" || body.pub.length > 200) return json({ error: "bad request" }, 400);
+    await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" });
+    const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub }) });
+    return r.ok ? json({ ok: true }) : json({ error: "could not change it" }, 400);
+  }
   if (what === "unregister") { await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); return json({ ok: true }); }
   return json({ error: "not found" }, 404);
 }

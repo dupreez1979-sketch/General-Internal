@@ -112,7 +112,7 @@ function opAdd(op) {
   const b = load(); if (!op || !['move', 'patch', 'delete', 'event'].includes(op.kind)) return { ok: false, error: 'Not a change that can wait' };
   const method = String(op.method || '').toUpperCase(), p = String(op.path || '');
   // (a meeting made offline: you pressed Save on it; it is made, and its invitations go, when you are back)
-  const okEvent = op.kind === 'event' && method === 'POST' && /^\/me\/calendars\/[^\/?#]+\/events$/.test(p);
+  const okEvent = op.kind === 'event' && method === 'POST' && /^\/me\/(calendars\/[^\/?#]+\/)?events$/.test(p);
   if (!okEvent && (op.kind === 'event' || !['POST', 'PATCH', 'DELETE'].includes(method) || !/^\/me\/messages\/[^\/?#]+(\/move)?$/.test(p))) return { ok: false, error: 'Not a change that can wait' };
   b.ops.push({ id: 'o' + crypto.randomBytes(5).toString('hex'), acc: str(op.acc, 400), kind: op.kind, msg: str(op.msg, 600), method, path: p, body: op.body && typeof op.body === 'object' ? op.body : undefined, at: Date.now() });
   save(); return { ok: true, box: view() };

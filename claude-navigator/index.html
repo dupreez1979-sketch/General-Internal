@@ -901,6 +901,7 @@
   .mailnav > .cal-newrow { margin: var(--sp-1) var(--sp-1) var(--sp-2); }
   .mailnav > .mail-new { display: flex; align-items: center; justify-content: center; gap: var(--sp-2); width: calc(100% - 8px); margin: var(--sp-1) var(--sp-1) var(--sp-2); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-bold); border-radius: var(--r-card); }
   #offChip { position: fixed; left: calc(var(--dock-w, 0px) + var(--side-now, 0px) + 14px); bottom: 12px; z-index: 58; font: inherit; font-size: var(--fs-caption); font-weight: var(--fw-medium); padding: var(--sp-1) var(--sp-2h); border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--win); color: var(--muted); box-shadow: var(--e-raise); max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #connChip { position: fixed; left: calc(var(--dock-w, 0px) + var(--side-now, 0px) + 14px); bottom: 12px; z-index: 58; font: inherit; font-size: var(--fs-caption); font-weight: var(--fw-bold); padding: var(--sp-1) var(--sp-2h); border-radius: var(--r-pill); border: 1px solid var(--accent); background: var(--accent); color: #fff; box-shadow: var(--e-raise); cursor: pointer; } #connChip[hidden] { display: none; }
   #offChip[hidden] { display: none; } #offChip.is-off { background: var(--caution); border-color: var(--caution); color: #fff; } #offChip.is-bad { color: var(--danger-ink); border-color: var(--danger); }
   dialog.off-outbox { width: min(620px, calc(100vw - 48px)); } dialog.off-outbox .hint { margin-left: 0; padding-left: 0; text-align: left; } .ob-list { display: grid; gap: 0; max-height: 52vh; overflow: auto; margin: var(--sp-2) 0; }
   .ob-row { display: grid; grid-template-columns: 118px minmax(0, 1fr) auto; gap: var(--sp-3); align-items: center; padding: var(--sp-2h) 0; border-top: 1px solid var(--line); }
@@ -18137,9 +18138,10 @@ body { width: max-content !important; min-width: 0 !important; }
         const st = connUi.status;
         if (!st) { row('Claude Connector', 'Checking\u2026'); window.navigatorApp.connStatus().then(r => { connUi.status = r || { on: false }; show(); }); return; }
         row('Connect Claude to This App', st.on ? 'On. In any Claude chat you can say \u201cput this in my calendar\u201d or \u201cdraft that email\u201d, and it appears here for you to approve. Nothing is sent or changed until you say so.' : 'Off. When on, Claude can hand emails, meetings and calendar changes straight to this app for you to approve, from any chat.',
-          [st.on ? 'Turn Off' : 'Turn On', async () => { if (st.on) { if (!confirm('Turn the connector off? Claude will no longer be able to hand things to this app. Remove it from Claude\u2019s connectors too.')) return; await window.navigatorApp.connOff(); connUi.status = { on: false }; } else { const r = await window.navigatorApp.connOn(); if (!r || !r.ok) toast((r && r.error) || 'The connector could not be set up.'); connUi.status = await window.navigatorApp.connStatus(); connPoll(true); } show(); }]);
+          [st.on ? 'Turn Off' : 'Turn On', async () => { if (st.on) { if (!confirm('Turn the connector off? Claude will no longer be able to hand things to this app. Remove it from Claude\u2019s connectors too.')) return; await window.navigatorApp.connOff(); connUi.status = { on: false }; } else { const r = await window.navigatorApp.connOn(); if (!r || !r.ok) toast((r && r.error) || 'The connector could not be set up.'); connUi.status = await window.navigatorApp.connStatus(); connPoll(); } show(); }]);
         if (st.on) {
           row('Add It in Claude, Once', 'Copy the address, then in Claude open Settings, Connectors, Add custom connector. Name it \u201cChief of Staff app\u201d, paste the address and choose no sign-in. Keep the address to yourself: anyone who has it could put suggestions on your approval card (they could not read or change anything).', ['Copy the Address', async () => { try { await navigator.clipboard.writeText(st.url); toast('Copied. Paste it into Claude\u2019s Add custom connector box.'); } catch (e) { toast('Could not copy it.'); } }], ['Open Claude\u2019s Connectors', leave(() => go({ kind: 'page', url: 'https://claude.ai/settings/connectors' }))]);
+          row('If the Address Gets Out', 'Make a new one. The old address stops working at once, and you add the new one in Claude in its place.', ['New Address\u2026', async () => { if (!confirm('Make a new address? The one in Claude stops working until you replace it there.')) return; const r = await window.navigatorApp.connRotate(); if (!r || !r.ok) return toast((r && r.error) || 'The address could not be changed.'); connUi.status = await window.navigatorApp.connStatus(); try { await navigator.clipboard.writeText(r.url); toast('The new address is copied. Replace the connector in Claude with it.'); } catch (e) { /* copied from the row above */ } show(); }]);
           row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
         }
       },
@@ -18254,7 +18256,9 @@ body { width: max-content !important; min-width: 0 !important; }
   const PLAN_SYS = '\n\nYou can change his calendar and his mail, but only by proposing: call propose_changes with every change, and he approves them on a card. Never say something has been added, moved or set up: say what you have proposed. Never invite anyone to a calendar entry and never send an email. If he gives you several things at once (a list of dates, a schedule), propose them all in one call.';
   const planAcc = () => { try { const a = calMeetAcc(activeProfile()); if (a) return a.id; } catch (e) { /* no calendar yet */ } return ((mailVisible().filter(a => !a.needsSignIn && !a.shared)[0]) || {}).id || ''; };
   const planList = v => (Array.isArray(v) ? v : String(v || '').split(/[,;\n]+/)).map(x => String(x).trim()).filter(Boolean);
-  const planWhen = (v, allDay) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(v || '')); if (!m) return null; return allDay || !m[4] ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]); };
+  // A wall-clock time in a named time zone ("2:55 pm, Cairns time") as the moment it really is.
+  const planTz = (y, mo, d, h, mi, tz) => { try { const guess = Date.UTC(y, mo, d, h, mi), p = {}; for (const x of new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric' }).formatToParts(new Date(guess))) p[x.type] = x.value; return new Date(guess - (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - guess)); } catch (e) { return null; } };
+  const planWhen = (v, allDay, tz) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(v || '')); if (!m) return null; if (allDay || !m[4]) return new Date(+m[1], +m[2] - 1, +m[3]); return (tz && planTz(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], String(tz))) || new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]); };
   const planDay = d => d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }), planClock = d => d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
   const planFolder = (acc, name) => { const want = String(name || '').trim().toLowerCase(); if (!want) return null; const all = mailAllFolders(acc); return (all.find(z => z.f.displayName.toLowerCase() === want) || all.find(z => z.f.displayName.toLowerCase().includes(want)) || {}).f || null; };
   // An entry named by a chat (which does not know this app's ids) is found by its title and its day, in any account.
@@ -18280,9 +18284,9 @@ body { width: max-content !important; min-width: 0 !important; }
   // What a change does, in plain words, and whether it is one to press on its own (it keeps acting, or cannot be undone here).
   function planSays(c, refs) {
     const ref = k => refs[+String(c.ref || '').replace(/\D/g, '') - 1] && refs[+String(c.ref || '').replace(/\D/g, '') - 1].kind === k ? refs[+String(c.ref || '').replace(/\D/g, '') - 1] : null;
-    const span = () => { const a = planWhen(c.start, c.all_day), b = planWhen(c.end, c.all_day); if (!a) return ''; return c.all_day ? `${planDay(a)}${b && b - a > 864e5 ? ' to ' + planDay(new Date(b - 1)) : ''}, all day` : `${planDay(a)}, ${planClock(a)}${b ? ' to ' + planClock(b) : ''}`; };
+    const span = () => { const a = planWhen(c.start, c.all_day, c.time_zone), b = planWhen(c.end, c.all_day, c.time_zone); if (!a) return ''; return c.all_day ? `${planDay(a)}${b && b - a > 864e5 ? ' to ' + planDay(new Date(b - 1)) : ''}, all day` : `${planDay(a)}, ${planClock(a)}${b ? ' to ' + planClock(b) : ''}`; };
     switch (c.do) {
-      case 'add_event': return { icon: 'cal', text: `Add “${c.title || 'Untitled'}”`, sub: [span(), c.where].filter(Boolean).join(' · '), bad: !planWhen(c.start, c.all_day) ? 'no start time was given' : '' };
+      case 'add_event': return { icon: 'cal', text: `Add “${c.title || 'Untitled'}”`, sub: [span(), c.time_zone && !c.all_day && /T\d\d:/.test(String(c.start)) ? `${String(c.start).slice(11, 16)} ${String(c.time_zone).split('/').pop().replace(/_/g, ' ')} time` : '', c.where].filter(Boolean).join(' · '), bad: !planWhen(c.start, c.all_day) ? 'no start time was given' : '' };
       case 'change_event': { const e = ref('event'); if (!e && planFindOf(c)) return planNamed(c, 'Change', '', [c.title && `title: ${c.title}`, /T\d\d:/.test(String(c.start || '')) && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes']); return { icon: 'cal', text: `Change “${e ? e.title : 'a calendar entry'}”`, sub: [c.title && `title: ${c.title}`, c.start && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes'].filter(Boolean).join(' · '), bad: e ? '' : 'the entry was not found' }; }
       case 'remove_event': { const e = ref('event'); if (!e && planFindOf(c)) return Object.assign(planNamed(c, 'Remove', ' from your calendar'), { risky: true }); return { icon: 'cal', text: `Remove “${e ? e.title : 'a calendar entry'}” from your calendar`, sub: e && e.at ? planDay(new Date(e.at)) : '', risky: true, bad: e ? '' : 'the entry was not found' }; }
       case 'add_rule': { const w = [planList(c.from).length && `from ${planList(c.from).join(' or ')}`, planList(c.subject_has).length && `subject has “${planList(c.subject_has).join('” or “')}”`, planList(c.message_has).length && `message has “${planList(c.message_has).join('” or “')}”`, planList(c.sent_to).length && `sent to ${planList(c.sent_to).join(', ')}`, c.has_attachment && 'has an attachment'].filter(Boolean);
@@ -18301,12 +18305,13 @@ body { width: max-content !important; min-width: 0 !important; }
     const ai = (acc, req) => window.navigatorApp.acctGraphAi(String(acc).split('>')[0], req), A = into || planAcc();
     const refOf = k => { const r = refs[+String(c.ref || '').replace(/\D/g, '') - 1]; return r && r.kind === k ? r : null; };
     const iso = d => ({ dateTime: d.toISOString().slice(0, 19), timeZone: 'UTC' });
-    const evTimes = () => { const a = planWhen(c.start, c.all_day); if (!a) return null; let b = planWhen(c.end, c.all_day); if (c.all_day) { const d0 = v => ({ dateTime: `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T00:00:00`, timeZone: 'UTC' }); if (!b || b <= a) b = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1); else b = new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); return { isAllDay: true, start: d0(a), end: d0(b) }; } if (!b || b <= a) b = new Date(+a + 30 * 60e3); return { isAllDay: false, start: iso(a), end: iso(b) }; };
+    const evTimes = () => { const a = planWhen(c.start, c.all_day, c.time_zone); if (!a) return null; let b = planWhen(c.end, c.all_day, c.time_zone); if (c.all_day) { const d0 = v => ({ dateTime: `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T00:00:00`, timeZone: 'UTC' }); if (!b || b <= a) b = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1); else b = new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); return { isAllDay: true, start: d0(a), end: d0(b) }; } if (!b || b <= a) b = new Date(+a + 30 * 60e3); return { isAllDay: false, start: iso(a), end: iso(b) }; };
     const need = (acc) => (acc ? null : { ok: false, error: 'no account is connected' });
     try {
       if (c.do === 'add_event') {
         const t = evTimes(); if (!t) return { ok: false, error: 'no start time' }; if (need(A)) return need(A);
         const body = Object.assign({ subject: String(c.title || 'Untitled').slice(0, 250), attendees: [] }, t, c.where ? { location: { displayName: String(c.where).slice(0, 250) } } : {}, c.notes ? { body: { contentType: 'text', content: String(c.notes).slice(0, 6000) } } : {}, c.show_as ? { showAs: { away: 'oof' }[c.show_as] || c.show_as } : {}, c.remind_minutes != null && !isNaN(+c.remind_minutes) ? { isReminderOn: true, reminderMinutesBeforeStart: Math.max(0, Math.round(+c.remind_minutes)) } : {});
+        if (offIs()) { const q = await offOp({ acc: String(A).split('>')[0], kind: 'event', msg: '', method: 'POST', path: '/me/events', body }); return q.ok ? { ok: true, note: 'Waiting in the Outbox. It goes into your calendar when you are back online.' } : { ok: false, error: 'it could not be kept for later' }; }
         const r = await ai(A, { method: 'POST', path: '/me/events', body });
         return r.ok ? { ok: true, undo: r.data && r.data.id ? { acc: A, method: 'DELETE', path: `/me/events/${r.data.id}` } : null } : r;
       }
@@ -18365,6 +18370,7 @@ body { width: max-content !important; min-width: 0 !important; }
     // this card changes were found in, else the one for the profile you are in.
     const accs = planAccs(), makes = rows.some(x => ['add_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(x.c.do));
     if (!P.acc) P.acc = planAcc();
+    if (!accs.some(a => a.id === P.acc) && accs[0]) P.acc = accs[0].id;
     let sel = null;
     if (makes && accs.length > 1) {
       const bar = document.createElement('label'); bar.className = 'bp-into'; bar.append('New things go into ');
@@ -18406,38 +18412,71 @@ body { width: max-content !important; min-width: 0 !important; }
   // ----- What Claude hands over through the connector -----
   // Collected every few seconds while the app is in front (once a minute otherwise), and shown for approval: emails
   // open for you to check and send, meetings open as invitations, and the rest is on the approval card.
-  const connUi = { status: null, busy: false, timer: 0 };
-  async function connShow(it) {
-    const emails = (Array.isArray(it.emails) ? it.emails : []).map(m => ({ to: String(m.to || ''), cc: String(m.cc || ''), subject: String(m.subject || ''), text: String(m.body || '') }));
-    const blocks = (Array.isArray(it.meetings) ? it.meetings : []).map(M => ['Title', 'Date', 'Start', 'End', 'Where', 'Teams', 'Invite', 'Purpose', 'Agenda', 'Before', 'Notes', 'Check'].map(k => { const v = M[k.toLowerCase()]; return `${k}: ${k === 'Teams' ? (v ? 'yes' : 'no') : String(v == null ? '' : v).replace(/\s*\n\s*/g, ' ')}`; }).join('\n'));
-    const meets = blocks.length ? await calMeetRead(blocks, { title: 'Meeting' }) : [];
-    const changes = (Array.isArray(it.changes) ? it.changes : []).filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder'].includes(c.do)).slice(0, 80);
-    if (!emails.length && !meets.length && !changes.length) return;
-    chime('ready');
-    const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>');
-    d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
-    const row = (title, sub, run) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open\u2026</button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; run(); }); d.querySelector('.mt-list').appendChild(r); };
-    for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', () => chatToEmail(m));
-    for (const M of meets) row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', () => calMeetOpen([M]));
-    if (!emails.length && !meets.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
-    if (changes.length) d.querySelector('.pl-host').appendChild(planCard({ plan: { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail`, changes }, planRefs: [] }));
-    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+  const connUi = { status: null, busy: false, timer: 0, items: [], open: {} };
+  // "Monkey Baa", "Consulting" or an address, as Claude heard it: the account it means, if one clearly matches.
+  const connAccFor = hint => { const h = String(hint || '').trim().toLowerCase(); if (!h) return ''; const accs = planAccs();
+    const byMail = accs.find(a => String(a.email || '').toLowerCase() === h) || accs.find(a => h.includes('@') && String(a.email || '').toLowerCase().includes(h)); if (byMail) return byMail.id;
+    const prof = profiles().find(p => String(p.name || '').toLowerCase() === h) || profiles().find(p => { const n = String(p.name || '').toLowerCase(); return n && (n.includes(h) || h.includes(n)); });
+    if (prof) { const a = accs.find(x => mailProf(x.id).includes(prof.id)); if (a) return a.id; }
+    const byDom = accs.find(a => String(a.email || '').toLowerCase().split('@')[1] && String(a.email).toLowerCase().split('@')[1].replace(/\.(com|org|net)(\.au)?$/, '').includes(h.replace(/\s+/g, ''))); return byDom ? byDom.id : ''; };
+  const connCount = it => (it.emails || []).length + (it.meetings || []).length + (it.changes || []).filter(c => !c._st).length;
+  function connPaint() {
+    let c = $('connChip'); const n = connUi.items.length;
+    if (!c) { c = document.createElement('button'); c.id = 'connChip'; c.type = 'button'; c.title = 'What Claude has handed over, waiting for you to check';
+      c.addEventListener('click', () => { const r = c.getBoundingClientRect(); if (connUi.items.length === 1) return connShow(connUi.items[0]); showMenu(r.left, r.top - 6, connUi.items.map(it => ({ label: String(it.summary || 'From Claude').slice(0, 60), sub: new Date(it.at || Date.now()).toLocaleString('en-AU', { weekday: 'short', hour: 'numeric', minute: '2-digit' }), run: () => connShow(it) })), { above: true }); });
+      document.body.appendChild(c); }
+    c.hidden = !n; c.textContent = n ? `From Claude \u00b7 ${n} waiting` : '';
+    c.style.bottom = $('offChip') && !$('offChip').hidden ? '46px' : '12px';
   }
-  async function connPoll(now) {
+  async function connShow(it) {
+    if (connUi.open[it.id]) return;
+    const emails = (Array.isArray(it.emails) ? it.emails : []).map(m => ({ to: String(m.to || ''), cc: String(m.cc || ''), subject: String(m.subject || ''), text: String(m.body || ''), _raw: m }));
+    const mraw = Array.isArray(it.meetings) ? it.meetings : [];
+    const blocks = mraw.map(M => ['Title', 'Date', 'Start', 'End', 'Where', 'Teams', 'Invite', 'Purpose', 'Agenda', 'Before', 'Notes', 'Check'].map(k => { const v = M[k.toLowerCase()]; return `${k}: ${k === 'Teams' ? (v ? 'yes' : 'no') : String(v == null ? '' : v).replace(/\s*\n\s*/g, ' ')}`; }).join('\n'));
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    const meets = blocks.length ? await calMeetRead(blocks, { title: 'Meeting' }) : [];
+    it.changes = (Array.isArray(it.changes) ? it.changes : []).filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder'].includes(c.do)).slice(0, 80);
+    const changes = it.changes;
+    if (!emails.length && !meets.length && !changes.length) { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); return connPaint(); }
+    const acc = connAccFor(it.for_account);
+    connUi.open[it.id] = true;
+    const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn" data-x="later" title="It stays under From Claude until you have finished with it">Keep for Later</button><button class="btn-primary" data-x="close" title="Takes it off the waiting list">Finished</button></div>');
+    d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
+    const row = (title, sub, raw, run) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary"></button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; const b = r.querySelector('button'); b.textContent = raw._opened ? 'Open Again\u2026' : 'Open\u2026'; b.addEventListener('click', () => { raw._opened = true; b.textContent = 'Open Again\u2026'; run(); }); d.querySelector('.mt-list').appendChild(r); };
+    for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', m._raw, () => chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})));
+    meets.forEach((M, i) => { if (acc) M.acc = acc; row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', mraw[i] || {}, () => calMeetOpen([M])); });
+    if (!emails.length && !meets.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
+    if (changes.length) { const plan = it._plan = it._plan || { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail` }; plan.changes = changes; if (acc && !plan.acc) { plan.acc = acc; plan.accSet = true; } d.querySelector('.pl-host').appendChild(planCard({ plan, planRefs: [] })); }
+    // what was done on the card is remembered with it, so opening it again never offers the same change twice
+    const tidy = () => JSON.parse(JSON.stringify(it, (k, v) => (k === '_hit' ? undefined : v)));
+    const shut = async keep => { delete connUi.open[it.id]; d.close(); d.remove();
+      for (const c of changes) if (c._st === 'doing') delete c._st;
+      if (keep) await window.navigatorApp.connKeep(tidy()); else { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); }
+      connPaint(); };
+    d.querySelector('[data-x="close"]').addEventListener('click', () => shut(false));
+    d.querySelector('[data-x="later"]').addEventListener('click', () => shut(true));
+    d.addEventListener('cancel', e => { e.preventDefault(); shut(true); });
+  }
+  async function connPoll() {
     clearTimeout(connUi.timer);
     if (!isApp || !window.navigatorApp.connPull) return;
     try {
-      if (!connUi.status) connUi.status = (await window.navigatorApp.connStatus()) || { on: false };
-      if (connUi.status.on && !connUi.busy && navigator.onLine !== false) {
+      if (!connUi.status) { connUi.status = (await window.navigatorApp.connStatus()) || { on: false }; if (connUi.status.on) { connUi.items = (await window.navigatorApp.connWaiting()) || []; connPaint(); } }
+      if (connUi.status.on && !connUi.busy && navigator.onLine !== false && !offIs()) {
         connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
         if (r && r.gone) connUi.status = { on: false };
-        if (r && r.ok) { if (mailUi.accounts === null && (r.items || []).length) await mailLoadAccounts(); for (const it of r.items || []) await connShow(it); }
+        if (r && r.ok && (r.fresh || []).length) {
+          const open = Object.keys(connUi.open); connUi.items = (r.items || []).map(x => (open.includes(x.id) && connUi.items.find(y => y.id === x.id)) || x); connPaint(); chime('ready');
+          const fresh = connUi.items.filter(x => r.fresh.includes(x.id));
+          // it opens by itself only when nothing else is in front of you; otherwise it waits under From Claude
+          if (!mailUi.compose && !document.querySelector('dialog[open]')) { for (const it of fresh) await connShow(it); }
+          else toast(`Claude has handed over ${fresh.length === 1 ? '\u201c' + String(fresh[0].summary || 'something').slice(0, 50) + '\u201d' : fresh.length + ' things'}. ${fresh.length === 1 ? 'It is' : 'They are'} waiting under From Claude.`, { label: 'Show', run: () => connShow(fresh[0]) });
+        }
       }
     } catch (e) { connUi.busy = false; }
     if (connUi.status && connUi.status.on) connUi.timer = setTimeout(connPoll, document.hasFocus() ? 6000 : 60000);
-    void now;
   }
-  window.addEventListener('focus', () => { if (connUi.status && connUi.status.on) connPoll(true); });
+  window.addEventListener('focus', () => { if (connUi.status && connUi.status.on) connPoll(); });
   setTimeout(connPoll, 5000);
   const fastNow = () => { let u = {}; try { u = JSON.parse(ls.get('claudeNavigator.apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
   const fastUse = (i, o, tier) => { const u = fastNow(), pr = API_PRICE[tier] || API_PRICE.fast; if (u.cost == null) u.cost = (u.in * 0.10 + u.out * 0.50) / 1e6; u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; u.cost += ((i || 0) * pr[0] + (o || 0) * pr[1]) / 1e6; ls.set('claudeNavigator.apiUse', JSON.stringify(u)); };

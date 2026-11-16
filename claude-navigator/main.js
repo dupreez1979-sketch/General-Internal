@@ -1998,6 +1998,24 @@ const connOpen = (c, sealed) => { const crypto = require('crypto'), o = JSON.par
   const key = crypto.createHash('sha256').update(Buffer.concat([dh.computeSecret(eph), eph])).digest();
   const d = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(o.i, 'base64')); d.setAuthTag(ct.subarray(ct.length - 16));
   return JSON.parse(Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]).toString('utf8')); };
+// What has arrived and is still waiting for you is kept on this Mac (encrypted, like the key), so closing its window or
+// quitting the app loses nothing.
+const connBoxFile = () => path.join(app.getPath('userData'), 'connector-waiting.bin');
+const connBox = () => { try { const a = JSON.parse(safeStorage.decryptString(fs.readFileSync(connBoxFile()))); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
+const connBoxPut = a => { try { fs.writeFileSync(connBoxFile(), safeStorage.encryptString(JSON.stringify(a.slice(-40))), { mode: 0o600 }); } catch (e) { /* kept in the window until next time */ } };
+ipcMain.handle('conn-waiting', e => (fromOwnWindow(e) ? connBox() : []));
+ipcMain.handle('conn-keep', (e, it) => { if (!fromOwnWindow(e) || !it || !it.id) return false; const a = connBox(), i = a.findIndex(x => x.id === it.id); if (i < 0) return false; a[i] = it; connBoxPut(a); return true; });
+ipcMain.handle('conn-remove', (e, id) => { if (!fromOwnWindow(e)) return false; connBoxPut(connBox().filter(x => x.id !== id)); return true; });
+// A new address: the old one stops working at once (if it was ever seen by someone else).
+ipcMain.handle('conn-rotate', async e => {
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: false, error: 'The connector is off.' };
+  try { const crypto = require('crypto'), dh = crypto.createECDH('prime256v1'); dh.generateKeys();
+    const n = { on: true, s: crypto.randomBytes(32).toString('base64url'), t: crypto.randomBytes(32).toString('base64url'), priv: dh.getPrivateKey().toString('base64'), pub: dh.getPublicKey().toString('base64') };
+    const r = await connPost('rotate', { s_hash: connHash(n.s), t_hash: connHash(n.t), pub: n.pub }, c.t);
+    if (!r.ok) return { ok: false, error: 'The address could not be changed just now. Try again when you are online.' };
+    connPut(n); return { ok: true, url: `${connBase()}/mcp/${n.s}` };
+  } catch (er) { return { ok: false, error: 'The address could not be changed just now.' }; }
+});
 ipcMain.handle('conn-status', e => { if (!fromOwnWindow(e)) return null; const c = connGet(); return { on: !!(c && c.on), url: c && c.on ? `${connBase()}/mcp/${c.s}` : '' }; });
 ipcMain.handle('conn-on', async e => {
   if (!fromOwnWindow(e)) return null;
@@ -2012,15 +2030,16 @@ ipcMain.handle('conn-on', async e => {
     return { ok: true, url: `${connBase()}/mcp/${c.s}` };
   } catch (er) { return { ok: false, error: 'The connector could not be reached. Try again when you are online.' }; }
 });
-ipcMain.handle('conn-off', async e => { if (!fromOwnWindow(e)) return null; const c = connGet(); try { if (c && c.t) await connPost('unregister', {}, c.t); } catch (er) { /* removed here all the same */ } try { fs.rmSync(connFile(), { force: true }); } catch (er) { /* gone */ } return { ok: true }; });
+ipcMain.handle('conn-off', async e => { if (!fromOwnWindow(e)) return null; const c = connGet(); try { if (c && c.t) await connPost('unregister', {}, c.t); } catch (er) { /* removed here all the same */ } try { fs.rmSync(connFile(), { force: true }); fs.rmSync(connBoxFile(), { force: true }); } catch (er) { /* gone */ } return { ok: true }; });
 ipcMain.handle('conn-pull', async e => {
-  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [] };
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [], fresh: [] };
   try {
     const r = await connPost('pull', {}, c.t); if (!r.ok) return { ok: false, gone: r.status === 401 };
     const items = [], ids = [];
     for (const row of r.data.rows || []) { ids.push(row.id); try { items.push(Object.assign(connOpen(c, row.sealed), { id: row.id })); } catch (er) { /* not for this Mac, or damaged: dropped */ } }
+    if (items.length) connBoxPut(connBox().filter(x => !items.some(y => y.id === x.id)).concat(items));        // kept here before the relay's copy goes
     if (ids.length) await connPost('ack', { ids }, c.t);
-    return { ok: true, items };
+    return { ok: true, fresh: items.map(x => x.id), items: connBox() };
   } catch (er) { return { ok: false }; }
 });
 const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');
