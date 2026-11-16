@@ -2082,6 +2082,20 @@
 
   /* Profile editor */
   #profileDlg form { gap: var(--sp-3h); }
+  #profileDlg .ptabs { justify-self: start; }
+  #profileDlg .ppane { display: grid; gap: var(--sp-3h); align-content: start; min-height: 190px; } #profileDlg .ppane[hidden] { display: none; }
+  #profileDlg #lookRow, #profileDlg #lookBody { display: grid; gap: var(--sp-3h); }
+  #profileDlg form > label { grid-template-columns: 96px 1fr; }
+  .pcol { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+  .cwell { display: inline-flex; align-items: center; gap: var(--sp-2); height: var(--control-h); padding: 0 var(--sp-2) 0 var(--sp-1h); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--win); color: var(--text); font: inherit; font-size: var(--fs-body); }
+  .cwell:hover { background: var(--hover); }
+  .cwell i { width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); flex: none; } .cwell i.none { background: linear-gradient(135deg, transparent 45%, var(--muted) 45%, var(--muted) 55%, transparent 55%); }
+  .cwell svg { color: var(--muted); flex: none; }
+  .cpop { position: fixed; margin: 0; inset: auto; color: var(--text); background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-3); display: grid; gap: var(--sp-2h); width: 216px; }
+  .cpop .grid { display: grid; grid-template-columns: repeat(6, 26px); gap: var(--sp-2); }
+  .cpop .sw { width: 26px; height: 26px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.15); } .cpop .sw.on { outline: 2px solid var(--text); outline-offset: 2px; }
+  .cpop .foot { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-caption); color: var(--muted); border-top: 1px solid var(--line); padding-top: var(--sp-2); }
+  .cpop .foot input[type=color] { width: 30px; height: 24px; border: 0; padding: 0; background: none; }
   .ds-pick { display: grid; gap: var(--sp-1); }
   .ds-pick select { max-width: 320px; }
   .look-pick { display: grid; gap: var(--sp-2); }
@@ -2089,7 +2103,7 @@
   .look-top .ds-note { flex: 1; }
   .look-line { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: var(--sp-2); font-size: var(--fs-body); }
   .look-line > span { color: var(--muted); }
-  .look-line select { max-width: 240px; }
+  .look-line select, #profileDlg .ppane .prow > select { max-width: 280px; }
   .look-line .swatches { gap: var(--sp-1h); }
   .look-line .sw { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); padding: 0; cursor: default; }
   .look-line .sw.on { box-shadow: 0 0 0 2px var(--win), 0 0 0 4px var(--text); }
@@ -2103,7 +2117,6 @@
   .swatch.on { outline: 2.5px solid var(--text); outline-offset: 2px; }
   .swatches input[type=color] { width: 30px; height: 28px; border: 0; padding: 0; background: none; }
   #profileDlg { max-height: 92vh; overflow: auto; width: min(640px, calc(100vw - 48px)); }
-  #profileDlg .dlg-actions { position: sticky; bottom: 0; background: var(--win); padding: var(--sp-3) 0 var(--sp-h); margin-bottom: -2px; }
   .psec { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); border-top: 1px solid var(--line); padding-top: var(--sp-3h); margin-top: var(--sp-1); display: grid; gap: var(--sp-1); }
   .psec span { font-size: var(--fs-caption); font-weight: var(--fw-regular); letter-spacing: 0; text-transform: none; }
   .psec[hidden] { display: none; }
@@ -2113,7 +2126,7 @@
   .pmail .pm label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pmail .pm .btn { padding: var(--sp-1) var(--sp-2h); font-size: var(--fs-caption); flex: none; }
   .pmail .ds-note { margin: 0; }
-  .prow { display: grid; grid-template-columns: 64px 1fr; align-items: center; gap: var(--sp-2h); font-size: var(--fs-body); }
+  .prow { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: var(--sp-2h); font-size: var(--fs-body); }
   .prow > span:first-child { text-align: right; }
   .preview { border-radius: var(--r-control); overflow: hidden; border: .5px solid var(--line); display: grid; grid-template-columns: 90px 1fr; height: 54px; font-size: var(--fs-label); }
   .preview .pv-side { padding: var(--sp-2); font-weight: var(--fw-bold); }
@@ -2296,29 +2309,36 @@
   <form method="dialog">
     <h2 id="profileDlgTitle">New Profile</h2>
     <label>Name<input id="profileName" placeholder="e.g. Monkey Baa" required></label>
-    <div class="psec">Appearance</div>
-    <div class="prow"><span>Colour</span><div class="swatches" id="profileSwatches"></div></div>
-    <div class="prow"><span>Tint</span><div class="seg" id="profileTint">
-      <button type="button" class="tb" data-tint="subtle" title="A light wash of colour">Subtle</button>
-      <button type="button" class="tb" data-tint="medium" title="A clear wash of colour">Medium</button>
-      <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
-    </div></div>
-    <div class="prow"><span>Preview</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
-    <div class="psec">Design system<span>For what you make with Claude in this profile, and the app’s own look</span></div>
-    <div class="prow"><span>Design system</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used by default when you make docs, slides, designs and dashboards in this profile. Optional.</div></div></div>
-    <div class="prow" id="lookRow" hidden><span>Look</span><div class="look-pick">
-      <div class="look-top"><button type="button" class="btn" id="lookRead">Read Colours and Fonts</button><span class="ds-note" id="lookNote"></span></div>
-      <div id="lookBody" hidden>
-        <div class="look-line"><span>Main colour</span><div class="swatches" id="lookMain"></div></div>
-        <div class="look-line"><span>Second colour</span><div class="swatches" id="lookSecond"></div></div>
-        <div class="look-line"><span>Headings</span><select id="lookHead"></select></div>
-        <div class="look-line"><span>Text</span><select id="lookText"></select></div>
-        <label class="look-use"><input type="checkbox" id="lookUse" checked> Use this look in Navigator and Chief of Staff</label>
+    <div class="seg ptabs" id="profileTabs">
+      <button type="button" class="tb on" data-pane="main">Profile</button>
+      <button type="button" class="tb" data-pane="look">Design System</button>
+      <button type="button" class="tb" data-pane="mail" id="profileMailHead">Mail and Calendar</button>
+    </div>
+    <div class="ppane" data-pane="main">
+      <div class="prow"><span>Colour</span><div class="pcol"><span id="profileSwatches"></span><div class="seg" id="profileTint">
+        <button type="button" class="tb" data-tint="subtle" title="A light wash of colour">Subtle</button>
+        <button type="button" class="tb" data-tint="medium" title="A clear wash of colour">Medium</button>
+        <button type="button" class="tb" data-tint="bold" title="A strong wash of colour">Bold</button>
+      </div></div></div>
+      <div class="prow"><span>Preview</span><div class="preview"><div class="pv-side" id="pvSide">Folders</div><div class="pv-main"><div class="pv-top" id="pvTop"></div><div class="pv-bar" id="pvBar"></div></div></div></div>
+      <label id="profileGroupsRow" style="grid-template-columns: 96px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
+    </div>
+    <div class="ppane" data-pane="look" hidden>
+      <div class="prow"><span>Design system</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used when you make docs, slides, designs and dashboards in this profile.</div></div></div>
+      <div id="lookRow" hidden>
+        <div id="lookBody" hidden>
+          <div class="prow"><span>Colours</span><div class="pcol"><span id="lookMain"></span><span id="lookSecond"></span></div></div>
+          <div class="prow"><span>Headings</span><select id="lookHead"></select></div>
+          <div class="prow"><span>Text</span><select id="lookText"></select></div>
+          <div class="prow"><span></span><label class="look-use"><input type="checkbox" id="lookUse" checked> Use these colours and fonts in the app</label></div>
+        </div>
+        <div class="prow"><span></span><div class="look-top"><button type="button" class="btn sm" id="lookRead">Read Colours and Fonts</button><span class="ds-note" id="lookNote"></span></div></div>
       </div>
-    </div></div>
-    <div class="psec" id="profileMailHead">Mail and calendar<span>The accounts that belong to this profile, and how you sign off from each. These apply straight away.</span></div>
-    <div class="prow" id="profileMailRow" hidden><span>Accounts</span><div class="pmail" id="profileMail"></div></div>
-    <label id="profileGroupsRow" style="grid-template-columns: 64px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
+    </div>
+    <div class="ppane" data-pane="mail" hidden>
+      <div class="ds-note">The accounts that belong to this profile. Changes here apply straight away.</div>
+      <div id="profileMailRow" hidden><div class="pmail" id="profileMail"></div></div>
+    </div>
     <div class="dlg-actions">
       <button type="button" class="btn left" id="profileDelete" title="Delete this profile and everything in it">Delete Profile…</button>
       <button class="btn" value="cancel" formnovalidate>Cancel</button>
@@ -19717,28 +19737,44 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     $('pvSide').textContent = $('profileName').value.trim() || 'Folders';
     $('pvBar').style.background = `color-mix(in srgb, ${pf.color} ${bar}, var(--win))`;
     $('pvTop').style.background = pf.color;
-    $('profileSwatches').querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.c.toLowerCase() === pf.color.toLowerCase()));
     $('profileTint').querySelectorAll('.tb').forEach(b => b.classList.toggle('on', b.dataset.tint === pf.tint));
-    $('profileCustom').value = /^#[0-9a-f]{6}$/i.test(pf.color) ? pf.color : '#3d7fd6';
+    if (!cpop) colourWell($('profileSwatches'), { colours: PROFILE_COLOURS.map(hex => ({ hex })), value: pf.color, custom: true, onPick: v => { pf.color = v; paintProfilePreview(); } });
   }
+  // One colour, behind one button: the button shows the choice and opens a small palette beside it.
+  let cpop = null;
+  const cpopShut = () => { if (cpop) { cpop.remove(); cpop = null; } };
+  function colourWell(host, o) {          // o: { label, colours: [{hex, label}], value, custom, none, onPick }
+    host.replaceChildren();
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'cwell'; b.title = 'Choose a colour';
+    const paint = () => { b.innerHTML = '<i></i><span></span>' + UI.chevDown; const i = b.querySelector('i'); if (o.value) i.style.background = o.value; else i.className = 'none'; b.querySelector('span').textContent = o.label || (o.value ? '' : 'None'); if (!b.querySelector('span').textContent) b.querySelector('span').remove(); };
+    paint(); host.appendChild(b);
+    b.addEventListener('click', e => {
+      e.stopPropagation(); const mine = cpop && cpop.for === b; cpopShut(); if (mine) return;
+      const p = cpop = document.createElement('div'); p.className = 'cpop'; p.for = b;
+      const g = document.createElement('div'); g.className = 'grid';
+      const pick = v => { o.value = v; paint(); cpopShut(); o.onPick(v); };
+      for (const c of o.colours) { const x = document.createElement('button'); x.type = 'button'; x.className = 'sw' + ((o.value || '').toLowerCase() === c.hex.toLowerCase() ? ' on' : ''); x.style.background = c.hex; x.title = (c.label ? c.label + ' ' : '') + c.hex; x.addEventListener('click', () => pick(c.hex)); g.appendChild(x); }
+      p.appendChild(g);
+      if (o.custom || o.none) {
+        const f = document.createElement('div'); f.className = 'foot';
+        if (o.custom) { const inp = document.createElement('input'); inp.type = 'color'; inp.id = 'profileCustom'; inp.value = /^#[0-9a-f]{6}$/i.test(o.value || '') ? o.value : '#3d7fd6'; inp.addEventListener('input', () => { o.value = inp.value; paint(); o.onPick(inp.value); }); f.append(inp, 'Any colour'); }
+        if (o.none) { const n = document.createElement('button'); n.type = 'button'; n.className = 'btn sm'; n.textContent = 'None'; n.addEventListener('click', () => pick('')); f.appendChild(n); }
+        p.appendChild(f);
+      }
+      p.addEventListener('click', e2 => e2.stopPropagation());
+      p.popover = 'manual'; pdlg.appendChild(p); p.showPopover();
+      const r = b.getBoundingClientRect(), h = p.offsetHeight;
+      p.style.left = Math.min(r.left, innerWidth - 232) + 'px';
+      p.style.top = (r.bottom + 6 + h > innerHeight ? r.top - h - 6 : r.bottom + 6) + 'px';
+    });
+    return b;
+  }
+  pdlg.addEventListener('click', cpopShut);
+  pdlg.addEventListener('cancel', e => { if (cpop) { e.preventDefault(); cpopShut(); } });
+  pdlg.addEventListener('close', cpopShut);
+  const profileTab = k => { cpopShut(); for (const b of $('profileTabs').querySelectorAll('.tb')) b.classList.toggle('on', b.dataset.pane === k); for (const p of pdlg.querySelectorAll('.ppane')) p.hidden = p.dataset.pane !== k; };
+  $('profileTabs').addEventListener('click', e => { const b = e.target.closest('[data-pane]'); if (b) profileTab(b.dataset.pane); });
   (() => {
-    const sw = $('profileSwatches');
-    for (const c of PROFILE_COLOURS) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'swatch';
-      b.dataset.c = c;
-      b.style.background = c;
-      b.title = c;
-      b.addEventListener('click', () => { pf.color = c; paintProfilePreview(); });
-      sw.appendChild(b);
-    }
-    const custom = document.createElement('input');
-    custom.type = 'color';
-    custom.id = 'profileCustom';
-    custom.title = 'Any colour';
-    custom.addEventListener('input', () => { pf.color = custom.value; paintProfilePreview(); });
-    sw.appendChild(custom);
     $('profileTint').addEventListener('click', e => { const b = e.target.closest('[data-tint]'); if (b) { pf.tint = b.dataset.tint; paintProfilePreview(); } });
     $('profileName').addEventListener('input', paintProfilePreview);
   })();
@@ -19838,29 +19874,12 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     $('lookRead').textContent = pf.lookBusy ? 'Reading…' : lk ? 'Read Again' : 'Read Colours and Fonts';
     $('lookNote').textContent = pf.lookBusy ? 'Opening the design system in Claude. This takes about 10 seconds.'
       : pf.lookError ? `Could not read it: ${pf.lookError}.`
-      : lk ? (lk.from && lk.from !== ds ? 'These were read from a different design system. Click Read Again.' : `${(lk.colours || []).length} colours${lk.headFont ? `, ${lk.headFont}` : ''}${lk.bodyFont && lk.bodyFont !== lk.headFont ? ` and ${lk.bodyFont}` : ''}. Click a colour to choose it.`)
-      : 'Navigator and Chief of Staff can use this design system’s colours and fonts.';
+      : lk ? (lk.from && lk.from !== ds ? 'These were read from a different design system. Click Read Again.' : `${(lk.colours || []).length} colours${lk.headFont ? `, ${lk.headFont}` : ''}${lk.bodyFont && lk.bodyFont !== lk.headFont ? ` and ${lk.bodyFont}` : ''}.`)
+      : 'The app can take its colours and fonts from this design system.';
     $('lookBody').hidden = !lk;
     if (!lk) return;
-    for (const [id, key] of [['lookMain', 'accent'], ['lookSecond', 'second']]) {
-      const box = $(id);
-      box.replaceChildren();
-      for (const c of lk.colours || []) {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'sw' + ((lk[key] || '').toUpperCase() === c.hex.toUpperCase() ? ' on' : '');
-        b.style.background = c.hex;
-        b.title = (c.label ? c.label + ' ' : '') + c.hex;
-        b.addEventListener('click', () => { lk[key] = c.hex; paintLook(); });
-        box.appendChild(b);
-      }
-      if (key === 'second') {
-        const n = document.createElement('button');
-        n.type = 'button'; n.className = 'tb none' + (lk.second ? '' : ' on'); n.textContent = 'None';
-        n.addEventListener('click', () => { lk.second = ''; paintLook(); });
-        box.appendChild(n);
-      }
-    }
+    colourWell($('lookMain'), { label: 'Main', colours: lk.colours || [], value: lk.accent || '', onPick: v => { lk.accent = v; } });
+    colourWell($('lookSecond'), { label: 'Second', colours: lk.colours || [], value: lk.second || '', none: true, onPick: v => { lk.second = v; } });
     const fonts = [...new Set([lk.headFont, lk.bodyFont, ...(lk.fonts || []).map(f => f.family)].filter(Boolean))];
     for (const [id, key] of [['lookHead', 'headFont'], ['lookText', 'bodyFont']]) {
       const sel = $(id);
@@ -19909,6 +19928,7 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     pf.lookBusy = false; pf.lookError = ''; pf.lookReq = null; pf.lookPending = null;
     paintLook();
     paintProfilePreview();
+    profileTab('main');
     pdlg.returnValue = '';
     pdlg.showModal();
     $('profileName').focus();
