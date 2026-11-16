@@ -1774,7 +1774,8 @@
   .set-row { display: flex; align-items: center; gap: var(--sp-3h); padding: var(--sp-2) 0; border-bottom: 1px solid var(--line); } .set-row .tx { flex: 1; min-width: 0; } .set-row .t { font-weight: var(--fw-bold); } .set-row .s { color: var(--muted); font-size: var(--fs-body); }
   .pre-out { white-space: pre-wrap; user-select: text; font-size: var(--fs-body); line-height: 1.5; max-height: 52vh; overflow: auto; padding: var(--sp-3) var(--sp-3h); border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); min-height: 90px; }
   .cell-sub { display: block; font-style: normal; font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .late { color: var(--danger); font-weight: var(--fw-bold); } .lk-muted { color: var(--muted); }
+  .late { color: var(--danger-ink); font-weight: var(--fw-bold); } .lk-muted { color: var(--muted); }
+  .std-list .crow .gw .lnk { font: inherit; font-size: var(--fs-caption); background: none; border: 1px solid var(--line); border-radius: var(--r-control); padding: var(--sp-h) var(--sp-2); color: var(--text); } .std-list .crow .gw .lnk.late { color: var(--danger-ink); border-color: color-mix(in srgb, var(--danger-ink) 45%, transparent); } .std-list .crow .gw .lnk.lk-muted { color: var(--muted); }
   .mem-line { display: flex; gap: var(--sp-2h); align-items: baseline; padding: var(--sp-1) 0; font-size: var(--fs-body); } .mem-line > span { flex: 1; } .mem-h { margin: var(--sp-1h) 0; }
   .empty-note { color: var(--muted); font-size: var(--fs-body); padding: var(--sp-3h) var(--sp-2h); }
   .std-list { display: flex; flex-direction: column; gap: var(--sp-2); min-height: 0; } .std-list .cos-list { max-height: 54vh; overflow: auto; } .std-list .cos-list .crow { border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); border-radius: 0; padding: var(--sp-2) var(--sp-2h); }
@@ -14207,7 +14208,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const pr = await mailApi(acc.id, { path: `/me/people?$search=${encodeURIComponent('"' + last.replace(/"/g, '') + '"')}&$top=6&$select=displayName,scoredEmailAddresses` });
         const ppl = pr.ok ? (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).filter(x => x.address) : [];
         sug.replaceChildren(); sug.hidden = !ppl.length;
-        inp.parentNode.after(sug);
+        (inp.closest('label') || inp.parentNode).after(sug);          // (below the whole row, not inside it)
         for (const p of ppl) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${p.name} <${p.address}>`; b.addEventListener('mousedown', ev => { ev.preventDefault(); const typed = inp.typing ? inp.typing() : '', whole = inp.value, kept = typed && whole.endsWith(typed.trim()) ? whole.slice(0, whole.length - typed.trim().length) : whole; inp.value = `${kept}${kept.trim() && !/[,;]\s*$/.test(kept) ? ', ' : ''}${p.name} <${p.address}>`; sug.hidden = true; inp.focus(); }); sug.appendChild(b); }
       }, 250);
     });
