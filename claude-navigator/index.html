@@ -1944,6 +1944,7 @@
     width: max-content; max-width: calc(100vw - 16px);   /* never squeezed by the window's edge */
   }
   #menu.show { display: block; }
+  #menu:not(.rich) { max-width: min(340px, calc(100vw - 16px)); }
   #menu.rich { width: 340px; padding: var(--sp-1h); max-height: calc(100vh - 12px); overflow-y: auto; }
   #menu.rich .mh { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: var(--sp-2) var(--sp-2) var(--sp-1); }
   #menu.rich .mh:first-child { padding-top: var(--sp-1); }
@@ -6248,6 +6249,7 @@
     const icons = items.some(it => it && it !== '-' && (it.icon || it.dot || it.iconHtml));
     const rich = items.some(it => it && it !== '-' && it.sub);
     menu.classList.toggle('rich', rich);
+    items = (items || []).filter(Boolean).filter((it, i, a2) => it !== '-' || (i > 0 && a2[i - 1] !== '-'));
     for (const it of items) {
       if (!it) continue;
       if (rich && it.head) { menu.appendChild(Object.assign(document.createElement('div'), { className: 'mh', textContent: it.head })); continue; }
@@ -6306,13 +6308,8 @@
         ...newItemsMenu(here, ' Here', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(here) }, true),
         savePage && { label: `Save “${cleanTitle(state.pageTitle) || 'Claude page'}” Here`, run: () => { state.lastFolderId = here; saveCurrent(here); } },
         '-',
-        scope === browseEl && { label: 'as Icons', key: K.mod + '1', run: () => setView('icons') },
-        scope === browseEl && { label: 'as List', key: K.mod + '2', run: () => setView('list') },
         scope === browseEl && curView() === 'list' && { label: 'Choose Columns\u2026', run: () => showColumnMenu(lastMenuX, lastMenuY) },
         { label: 'Sort by Name', run: () => sortFolder(here) },
-        '-',
-        { label: 'Expand All in Sidebar', run: () => setAllOpen(true) },
-        { label: 'Collapse All in Sidebar', run: () => setAllOpen(false) },
       ];
     }
     const searching = scope === browseEl && state.query;
@@ -6353,21 +6350,25 @@
     }
     return [
       { label: 'Open', key: K.open, run: () => openNode(n) },
-      { label: 'Open in New Window', run: () => openNewWindow(n.url) },
-      finder,
-      { label: 'Open in Web Browser', run: () => openExternal(n.url) },
+      { label: 'Open In', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+        { label: 'A New Window', run: () => openNewWindow(n.url) },
+        { label: 'Your Web Browser', run: () => openExternal(n.url) },
+        finder,
+      ].filter(Boolean)) },
       searching && { label: 'Show in Enclosing Folder', run: () => revealInFolder(n.id) },
       '-',
       { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
       { label: 'Move To…', run: () => moveTo(n.id) },
-      { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
-      { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
+      { label: 'More', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+        { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
+        { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
+        savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
+      ].filter(Boolean)) },
       '-',
       attachedTo(n.id) && { label: `Detach from \u201c${attachedTo(n.id).name}\u201d`, run: () => detach(n.id) },
       !attachedTo(n.id) && attachable(n) && siblingChats(n).length > 0 && { label: 'Attach to Chat\u2026', run: () =>
         showMenu(lastMenuX, lastMenuY, siblingChats(n).map(c => ({ label: c.name, icon: 'chat', run: () => attachTo(n.id, c.id) }))) },
       kindOf(n) === 'chat' && n.children && n.children.length > 0 && { label: `Detach ${n.children.length} Attached Item${n.children.length === 1 ? '' : 's'}`, run: () => n.children.slice().forEach(c => detach(c.id)) },
-      savePage && { label: 'Point to Current Claude Page', run: () => { snap(); n.url = state.pageUrl; commit(); toast('Link updated'); } },
       '-',
       { label: 'Delete\u2026', key: K.del, run: () => deleteNodes([n.id]) },
     ];
@@ -8110,6 +8111,10 @@
     showMenu(x, y, [
       { label: 'Add Staff Below', run: () => cosAdd('staff', n.id) },
       { label: 'Add Department Below', run: () => cosAdd('dept', n.id) },
+      { label: 'Arrange', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
+      !n.chief && { label: 'Move Left', key: '⌥←', disabled: cosKids(t, n.parent)[0] === n, run: () => cosShift(n.id, -1) },
+      !n.chief && { label: 'Move Right', key: '⌥→', disabled: cosKids(t, n.parent).slice(-1)[0] === n, run: () => cosShift(n.id, 1) },
+        '-',
       { label: `Add a Department Beside \u201c${n.name}\u201d`, key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
         { label: 'On the Left', run: () => cosAdd('dept', n.id, 'left') },
         { label: 'On the Right', run: () => cosAdd('dept', n.id, 'right') },
@@ -8121,6 +8126,7 @@
           { label: 'On the Right', run: () => cosChange(() => { n.aside = 'right'; }, `${n.name} now sits beside ${parent.name}, on the right`) },
         ]) },
       parent && n.aside && { label: `Move to the ${n.aside === 'left' ? 'Right' : 'Left'} of \u201c${parent.name}\u201d`, run: () => cosChange(() => { n.aside = n.aside === 'left' ? 'right' : 'left'; }, null) },
+      ].filter(Boolean)) },
       '-',
       n.kind === 'staff' && { label: 'Open Page', run: () => openStaff(n.id) },
       { label: 'Edit…', run: () => { cosUi.page = null; cosUi.sel = n.id; renderCos(); } },
@@ -8133,9 +8139,6 @@
       }, null) },
       n.kind === 'staff' && '-',
       ...(n.kind === 'staff' ? cosClaraItems(n) : []),
-      !n.chief && '-',
-      !n.chief && { label: 'Move Left', key: '⌥←', disabled: cosKids(t, n.parent)[0] === n, run: () => cosShift(n.id, -1) },
-      !n.chief && { label: 'Move Right', key: '⌥→', disabled: cosKids(t, n.parent).slice(-1)[0] === n, run: () => cosShift(n.id, 1) },
       !n.chief && '-',
       !n.chief && { label: 'Remove…', run: () => cosRemove(n.id) },
     ]);
@@ -12874,12 +12877,14 @@ body { width: max-content !important; min-width: 0 !important; }
       { label: 'Automatic Replies\u2026', checked: !!(mailUi.oof && mailUi.oof[a.id]), run: () => mailAutoReplies(a) },
       { label: 'Add a Shared Mailbox\u2026', run: () => mailAddShared(a) },
       '-',
+      a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount(null, a.more) },
+      { label: 'Check and Repair', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
       (() => { const b = mailUi.ix && mailUi.ix.boxes.find(x => x.key === a.id); return { label: !b ? 'Search: getting ready' : b.error ? `Search: ${b.error}` : b.complete ? `Search: ${b.count.toLocaleString()} emails ready` : `Search: reading mail in (${b.count.toLocaleString()} so far)`, disabled: true, run: () => {} }; })(),
       { label: 'Read All Mail In for Search Again', run: async () => { if (!confirm(`Build the search index for ${a.email} again from the start? Search keeps working while it does, using Microsoft\u2019s search for what is missing.`)) return; await window.navigatorApp.mailIndexReset(a.id); toast('Reading mail in again for search'); setTimeout(mailIndexTell, 3000); } },
       '-',
-      a.needsSignIn && { label: 'Sign In Again\u2026', run: () => mailAddAccount(null, a.more) },
       { label: 'Read Folders Again', run: () => { delete mailUi.folders[a.id]; mailStart(true); } },
       { label: 'Mail Health\u2026', run: () => mailHealth() },
+      ].filter(Boolean)) },
       '-',
       { label: 'Remove This Account from the App…', run: async () => {
         if (!confirm(`Remove ${a.email} from Claude Navigator? Your mail stays in Outlook; the app just signs out of this account.`)) return;
@@ -13828,7 +13833,7 @@ body { width: max-content !important; min-width: 0 !important; }
       '-',
       { label: 'Send To', key: '▸', run: () => mailSendTo(m, lastMenuX, lastMenuY) },
       !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && '-',
-      !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && { label: `Make a Rule for Mail from ${mailWho(m.from)}\u2026`, run: () => mailRules(mailAccById(m._acc || s.acc), { fromAddresses: [m.from] }) },
+      !(m._acc || s.acc).includes('>') && m.from && m.from.emailAddress && { label: 'Make a Rule for This Sender\u2026', run: () => mailRules(mailAccById(m._acc || s.acc), { fromAddresses: [m.from] }) },
     ].filter(Boolean));
   }
   function mailFolderMenu(a, f, x, y) {
@@ -16283,17 +16288,14 @@ body { width: max-content !important; min-width: 0 !important; }
         ...(vert ? [
           win ? { label: `Bring ${name}\u2019s Window Forward`, run: () => window.navigatorApp.appWindowOpen(k) } : null,
           !win && !isMain ? { label: beside ? `Close ${name}` : `Open ${name} Beside`, run: () => dockClick(dk) } : null,
-          !win ? { label: `Make ${name} the Main App`, disabled: isMain, run: () => dockMain(dk) } : null,
+          !win && !isMain ? { label: `Make ${name} the Main App`, run: () => dockMain(dk) } : null,
           !win && OWN_WINDOW.includes(k) ? { label: `Open ${name} in Its Own Window`, run: () => appOwnWindow(k) } : null,
           k === 'mail' ? { label: 'New Email', run: () => chatToEmail({}) } : null,
           k === 'cal' ? { label: 'New Event', run: () => calGEdit(null, false) } : null,
           '-',
         ].filter(Boolean) : []),
         { label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-',
-        { label: vert ? 'Move Up' : 'Move Left', disabled: i <= 0, run: () => appMove(k, true, o[i - 1]) },
-        { label: vert ? 'Move Down' : 'Move Right', disabled: i >= o.length - 1, run: () => appMove(k, false, o[i + 1]) },
-        '-',
-        { label: `Hide ${name}`, disabled: appKey() === k, run: () => { appSetHidden(k, true); toast(`${name} is hidden from the strip. Right-click any app to show it again.`); } },
+        appKey() !== k && { label: `Hide ${name}`, run: () => { appSetHidden(k, true); toast(`${name} is hidden from the strip. Right-click any app to show it again.`); } },
         ...(hid.length ? ['-', ...hid.map(h => ({ label: `Show ${APP_NAMES[h]}`, run: () => appSetHidden(h, false) }))] : []),
         '-',
         { label: 'Put Back the Usual Order', run: () => { ls.del('claudeNavigator.appOrder'); ls.del('claudeNavigator.appHidden'); appApplyOrder(); } },
@@ -19936,9 +19938,16 @@ ${second ? `.ocbox.dept { background: color-mix(in srgb, var(--look-second) 9%, 
     tipBox.classList.remove('show');
     tipFor = null;
   }
+  // A tip is one short line: the first sentence of what was written, and for a row that names something, its first two lines.
+  function tipShort(t) {
+    const lines = String(t || '').split('\n').map(x => x.trim()).filter(Boolean);
+    if (!lines.length) return '';
+    const cut = x => { let m = /[.!?](\s|$)/.exec(x); if (m && m.index >= 8) x = x.slice(0, m.index); if (x.length > 64) { m = /[:;,]\s/.exec(x); if (m && m.index >= 3) x = x.slice(0, m.index); } return x.length > 80 ? x.slice(0, 78).trimEnd() + '\u2026' : x; };
+    return lines.length > 1 ? [cut(lines[0]), cut(lines[1])].join('\n') : cut(lines[0]);
+  }
   function placeTip(el) {
     if (!document.contains(el) || !el.dataset.tip) return;
-    tipBox.textContent = el.dataset.tip;
+    tipBox.textContent = tipShort(el.dataset.tip);
     const r = el.getBoundingClientRect();
     tipBox.style.left = '0px';
     tipBox.style.top = '0px';
