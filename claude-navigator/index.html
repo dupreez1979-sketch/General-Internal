@@ -15697,7 +15697,11 @@ body { width: max-content !important; min-width: 0 !important; }
       return true;
     };
     const go = async () => {
-      if (dict.on && dict.on.box === say) { calHelp.goAfter = true; return dictStop(); }          // still listening: finish that first, then this runs by itself
+      if (dict.on && dict.on.box === say) {          // still listening (however the listening was started): stop it, then this runs by itself with what was said
+        const S0 = dict.on, was = S0.opts.onDone; calHelp.goAfter = false;
+        S0.opts.onDone = t => { try { if (was) was(t); } catch (e) { /* carry on */ } setTimeout(go, 60); };
+        return dictStop();
+      }
       const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the meeting first.'); }
       if (el.querySelector('.ch-go').disabled) return;
       el.querySelector('.ch-go').disabled = true;
@@ -16420,7 +16424,11 @@ body { width: max-content !important; min-width: 0 !important; }
       else if (words) mailDraftWith(C, null);          // (the Mac's model is not there: Claude writes it from your words)
     };
     const go = async () => {
-      if (dict.on && dict.on.box === say) { mailHelp.goAfter = true; return dictStop(); }          // still listening: finish that first, then this runs by itself
+      if (dict.on && dict.on.box === say) {          // still listening (however the listening was started): stop it, then this runs by itself with what was said
+        const S0 = dict.on, was = S0.opts.onDone; mailHelp.goAfter = false;
+        S0.opts.onDone = t => { try { if (was) was(t); } catch (e) { /* carry on */ } setTimeout(go, 60); };
+        return dictStop();
+      }
       const words = say.value.trim(); if (!words) { say.focus(); return toast('Say or type the email first.'); }
       if (goB.disabled) return; goB.disabled = true;
       try {
