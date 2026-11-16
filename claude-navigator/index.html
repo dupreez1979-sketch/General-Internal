@@ -957,11 +957,12 @@
   .mail-compose .mc-scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
   .mail-compose .mc-ed { flex: none; min-height: 150px; padding: var(--sp-3h) 18px; font-size: var(--fs-reading); line-height: 1.45; outline: none; color: #1d1d1f; background: #fff; }
   .mail-compose .mc-ed img { max-width: 100%; }
-  .mail-compose .mc-quote { flex: 1; display: flex; min-height: 0; border-top: 1px dashed var(--line); background: #fff; }
+  .mail-compose .mc-quote { flex: none; display: block; border-top: 1px dashed var(--line); background: #fff; }
   .mail-compose .mc-quote:empty { border: 0; }
   /* A draft you come back to: its words are right under the toolbar, with no empty block or line above them. */
   .mail-compose.is-draft .mc-ed { min-height: 0; padding-top: var(--sp-2); padding-bottom: 0; } .mail-compose.is-draft .mc-ed:empty { padding-top: 0; } .mail-compose.is-draft .mc-quote { border-top: 0; }
-  .mail-compose .mc-quote iframe { flex: 1; border: 0; min-height: 260px; padding: 0 18px; box-sizing: border-box; width: 100%; }
+  .mail-compose .mc-quote iframe { display: block; border: 0; min-height: 120px; padding: 0 18px; box-sizing: border-box; width: 100%; }
+  .mail-compose .mc-scroll { background: #fff; }
   dialog.mail-sigdlg { border: 0; border-radius: var(--r-sheet); padding: 18px var(--sp-5); width: 520px; max-width: 90vw; box-shadow: var(--e-sheet); }
   dialog.mail-sigdlg h2 { margin: 0 0 var(--sp-1h); font-size: var(--fs-title); }
   dialog.mail-sigdlg .hint { font-size: var(--fs-caption); color: var(--muted); margin: 0 0 var(--sp-2h); line-height: 1.45; }
@@ -14274,6 +14275,11 @@ body { width: max-content !important; min-width: 0 !important; }
         try {
           const doc = q.contentDocument; doc.body.contentEditable = 'true'; doc.body.spellcheck = true;
           doc.addEventListener('input', () => { C.edited = true; });
+          // The earlier messages are part of the same page as your reply: the frame is as tall as what is in it, and the whole message scrolls as one.
+          const fit = () => { try { doc.documentElement.style.overflow = 'hidden'; q.style.height = '0'; q.style.height = Math.max(120, doc.documentElement.scrollHeight + 8) + 'px'; } catch (e3) { /* gone */ } };
+          fit(); doc.addEventListener('input', fit); for (const im of doc.images) im.addEventListener('load', fit);
+          try { new ResizeObserver(fit).observe(el.querySelector('.mc-scroll')); } catch (e3) { /* older */ }
+          setTimeout(fit, 400); setTimeout(fit, 1500);
           doc.addEventListener('click', e2 => { if (e2.target.closest && e2.target.closest('a')) e2.preventDefault(); });
           C.under = () => { if (!C.edited) return under; const d2 = q.contentDocument; return [...d2.querySelectorAll('style:not([data-nav])')].map(x => x.outerHTML).join('') + d2.body.innerHTML; };
         } catch (e2) { /* stays as it came */ }
