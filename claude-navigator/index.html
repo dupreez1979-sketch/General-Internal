@@ -835,6 +835,7 @@
   .mail-rh .who .mail-av { width: 36px; height: 36px; font-size: var(--fs-body); }
   .clara-btn .n { font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-bold); background: var(--clara); color: #fff; border-radius: var(--r-card); padding: 0 var(--sp-1h); margin-left: var(--sp-1); }
   .clara-btn .n[hidden] { display: none; }
+  .inv-tag { font-style: normal; font-size: var(--fs-micro); font-weight: var(--fw-bold); background: #3D6A8A; color: #fff; border-radius: var(--r-xs); padding: 1px var(--sp-1h) 1px var(--sp-1); margin-right: var(--sp-1h); white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: 1px; } .inv-tag .gly { width: 10px; height: 10px; margin: 0; }
   .clara-tag { font-style: normal; font-size: var(--fs-micro); font-weight: var(--fw-bold); background: var(--clara); color: #fff; border-radius: var(--r-xs); padding: 1px var(--sp-1h); margin-right: var(--sp-1h); white-space: nowrap; }
   .mail-rh .clara-strip { order: 8; display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); padding: var(--sp-1h) var(--sp-2h); border: 0; border-radius: var(--r-control); background: color-mix(in srgb, var(--clara) 10%, var(--win)); font: inherit; font-size: var(--fs-body); color: var(--text); text-align: left; cursor: default; }
   .mail-rh .clara-strip[hidden] { display: none; } .mail-rh .clara-strip:hover { background: color-mix(in srgb, var(--clara) 17%, var(--win)); }
@@ -12826,8 +12827,11 @@ body { width: max-content !important; min-width: 0 !important; }
     const r = await mailApi(A, { method: 'POST', path: `/me/events/${ev.id}/${how}`, body: { sendResponse: true } });
     if (!r.ok) return toast(`Could not send your answer: ${r.error || 'try again'}`);
     ev.responseStatus = { response: how === 'accept' ? 'accepted' : how === 'decline' ? 'declined' : 'tentativelyAccepted' };
-    toast(how === 'accept' ? 'Accepted. It is in your calendar.' : how === 'decline' ? 'Declined' : 'Marked as tentative');
     try { calG.key = ''; if (calOn()) calRefresh(false); } catch (e) { /* calendar not started */ }
+    // Once you have answered, the invitation has done its job: it closes and goes to Deleted Items.
+    const m = mailUi.msg;
+    if (m && mailUi.msgBody === d) { toast(`${how === 'accept' ? 'Accepted. It is in your calendar.' : how === 'decline' ? 'Declined.' : 'Marked as tentative.'} The invitation is in Deleted Items.`); return mailAct(m, 'answered'); }
+    toast(how === 'accept' ? 'Accepted. It is in your calendar.' : how === 'decline' ? 'Declined' : 'Marked as tentative');
     mailRenderMain();
   }
   async function mailAddAccount(forProfile, more) {
@@ -13586,6 +13590,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (wide) r.querySelector('.sjw').prepend(cn); else r.querySelector('.fl').before(cn);          // (in columns it sits with the subject, so every column stays where it belongs)
       }
       if (mailMulti.has(x.id)) r.classList.add('multi');
+      if (/eventMessage/i.test(x['@odata.type'] || '') || x.meetingMessageType) { const sjw = wide ? r.querySelector('.sjw') : null, fl = r.querySelector('.fl'), tag = `<i class="inv-tag">${ico('cal')}${/cancel/i.test(x.meetingMessageType || '') ? 'Cancelled' : 'Invite'}</i>`; if (sjw) sjw.insertAdjacentHTML('afterbegin', tag); else if (fl) fl.insertAdjacentHTML('afterbegin', tag); }
       if (isClaraAddr(addrOf(x.from)) && !CLARA_DIGEST.test(x.subject || '') && (x.toRecipients || []).some(z => (mailUi.accounts || []).some(a => String(a.email || '').toLowerCase() === addrOf(z)))) { const sjw = wide ? r.querySelector('.sjw') : null, fl = r.querySelector('.fl'); if (sjw) sjw.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); else if (fl) fl.insertAdjacentHTML('afterbegin', '<i class="clara-tag">Clara needs you</i>'); }          // (in columns it sits with the subject, not over it)
       r.addEventListener('click', e => {
         // Ctrl-click (Cmd on a Mac) adds or removes one; Shift-click takes everything from the last one you clicked to this one.
@@ -13774,6 +13779,8 @@ body { width: max-content !important; min-width: 0 !important; }
       mailRenderMain();
     };
     let r;
+    // (An invitation you have answered goes the same way, quietly: Outlook has often moved it already, which is not an error.)
+    if (what === 'answered') { drop(); try { await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); } catch (e) { /* already gone */ } return; }
     if (what === 'delete') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'deleteditems' } }); if (r.ok) toast('Moved to Deleted Items'); }
     else if (what === 'archive') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: 'archive' } }); if (r.ok) toast('Archived'); }
     else if (what === 'move') { drop(); r = await mailApi(A, { method: 'POST', path: `/me/messages/${m.id}/move`, body: { destinationId: arg.id } }); if (r.ok) toast(`Moved to ${arg.displayName}`); }
