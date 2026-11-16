@@ -1982,6 +1982,47 @@ ipcMain.handle('clara-signin-info', async e => {
 // page. One model, fixed here: there is no setting that reaches a dearer one. The key is encrypted with the Mac's
 // Keychain in the app's own data folder; the window can save or remove it but can never read it back.
 const API_MODEL = 'claude-haiku-5-5';
+// ----- The Claude connector -----
+// Claude, in a chat on claude.ai, hands what it proposes (emails, meetings, calendar and mail changes) to a small relay,
+// sealed with this Mac's public key. Only this Mac holds the private key, in the Keychain's care, so only this app can
+// open what arrives. The app collects it, shows it for approval, and the relay's copy is deleted. The relay never has
+// access to mail or a calendar, and nothing here sends or changes anything: the window shows an approval card.
+const connFile = () => path.join(app.getPath('userData'), 'connector.bin');
+const connBase = () => (!app.isPackaged && process.env.NAV_TEST_RELAY) || 'https://bnoaksfdkzezmvbkxoge.supabase.co/functions/v1/cos-connector';
+const connGet = () => { try { return JSON.parse(safeStorage.decryptString(fs.readFileSync(connFile()))) || null; } catch (e) { return null; } };
+const connPut = c => { fs.writeFileSync(connFile(), safeStorage.encryptString(JSON.stringify(c)), { mode: 0o600 }); };
+const connHash = t => require('crypto').createHash('sha256').update(String(t)).digest('hex');
+const connPost = async (what, body, token) => { const r = await net.fetch(`${connBase()}/app/${what}`, { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'x-cos-token': token } : {}), body: JSON.stringify(body || {}) }); let j = null; try { j = await r.json(); } catch (e) { j = null; } return { ok: r.ok && j && j.ok, status: r.status, data: j }; };
+const connOpen = (c, sealed) => { const crypto = require('crypto'), o = JSON.parse(sealed), eph = Buffer.from(o.e, 'base64'), ct = Buffer.from(o.c, 'base64');
+  const dh = crypto.createECDH('prime256v1'); dh.setPrivateKey(Buffer.from(c.priv, 'base64'));
+  const key = crypto.createHash('sha256').update(Buffer.concat([dh.computeSecret(eph), eph])).digest();
+  const d = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(o.i, 'base64')); d.setAuthTag(ct.subarray(ct.length - 16));
+  return JSON.parse(Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]).toString('utf8')); };
+ipcMain.handle('conn-status', e => { if (!fromOwnWindow(e)) return null; const c = connGet(); return { on: !!(c && c.on), url: c && c.on ? `${connBase()}/mcp/${c.s}` : '' }; });
+ipcMain.handle('conn-on', async e => {
+  if (!fromOwnWindow(e)) return null;
+  if (!safeStorage.isEncryptionAvailable()) return { ok: false, error: 'This Mac cannot keep the key safely.' };
+  try {
+    let c = connGet();
+    if (!c || !c.on) { const crypto = require('crypto'), dh = crypto.createECDH('prime256v1'); dh.generateKeys();
+      c = { on: false, s: crypto.randomBytes(32).toString('base64url'), t: crypto.randomBytes(32).toString('base64url'), priv: dh.getPrivateKey().toString('base64'), pub: dh.getPublicKey().toString('base64') };
+      const r = await connPost('register', { s_hash: connHash(c.s), t_hash: connHash(c.t), pub: c.pub });
+      if (!r.ok) return { ok: false, error: (r.data && r.data.error) || 'The connector could not be set up. Try again when you are online.' };
+      c.on = true; connPut(c); }
+    return { ok: true, url: `${connBase()}/mcp/${c.s}` };
+  } catch (er) { return { ok: false, error: 'The connector could not be reached. Try again when you are online.' }; }
+});
+ipcMain.handle('conn-off', async e => { if (!fromOwnWindow(e)) return null; const c = connGet(); try { if (c && c.t) await connPost('unregister', {}, c.t); } catch (er) { /* removed here all the same */ } try { fs.rmSync(connFile(), { force: true }); } catch (er) { /* gone */ } return { ok: true }; });
+ipcMain.handle('conn-pull', async e => {
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [] };
+  try {
+    const r = await connPost('pull', {}, c.t); if (!r.ok) return { ok: false, gone: r.status === 401 };
+    const items = [], ids = [];
+    for (const row of r.data.rows || []) { ids.push(row.id); try { items.push(Object.assign(connOpen(c, row.sealed), { id: row.id })); } catch (er) { /* not for this Mac, or damaged: dropped */ } }
+    if (ids.length) await connPost('ack', { ids }, c.t);
+    return { ok: true, items };
+  } catch (er) { return { ok: false }; }
+});
 const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');
 const apiKeyGet = () => { try { return safeStorage.decryptString(fs.readFileSync(apiKeyFile())); } catch (e) { return ''; } };
 const apiBase = () => (!app.isPackaged && process.env.NAV_TEST_API) || 'https://api.anthropic.com';

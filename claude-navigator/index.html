@@ -744,7 +744,7 @@
   #sidePanel .cal-head { flex-wrap: wrap; height: auto; min-height: 48px; padding: var(--sp-1h) var(--sp-2h); row-gap: var(--sp-1); }
   #sidePanel .mail-search { width: 110px; flex: 1 1 110px; }
   #sidePanel .mail-read.pop { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; box-shadow: none; }
-  #sidePanel .mail-compose { left: 0; top: 0; right: 0; bottom: 0; border-radius: 0; box-shadow: none; z-index: 8; }
+  #sidePanel .mail-compose { left: 0; top: 0; right: 0; bottom: 0; border-radius: 0; box-shadow: none; z-index: 11; }
   #sidePanel .cal-dh { flex-direction: column; align-items: center; gap: 0; padding: var(--sp-1) var(--sp-h); font-size: var(--fs-label); }
   #sidePanel .cal-dh b { font-size: var(--fs-headline); }
   #sidePanel .cal-dh { border-left: 0; }
@@ -18089,6 +18089,7 @@ body { width: max-content !important; min-width: 0 !important; }
     ['mail', 'Mail', () => mailHealth()],
     ['meetings', 'Meetings', () => granolaDlg()],
     ['dictation', 'Dictation', null],
+    ['connector', 'Claude Connector', null],
     ['folders', 'Folders and Backup', null],
     ['account', 'Claude Account', null],
     ['app', 'This App', null],
@@ -18130,6 +18131,17 @@ body { width: max-content !important; min-width: 0 !important; }
         row('Tidy What I Say', tidy ? 'On. Punctuation and capitals are put right, and \u201cum\u201d is taken out. Your words are not changed.' : 'Off. Your words go in exactly as heard.', [tidy ? 'Turn Off' : 'Turn On', () => { ls.set('claudeNavigator.dictTidy', tidy ? 'off' : 'on'); show(); }]);
         row('Listening Sounds', off ? 'Off.' : 'On. A soft sound when it starts and stops listening.', [off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); }]);
         row('Words It Mishears', 'A word it gets wrong is put right every time, here and on the phone.', ['Edit\u2026', leave(() => hearDlg())]);
+      },
+      connector: row => {
+        if (!isApp || !window.navigatorApp.connStatus) return row('Claude Connector', 'This works in the desktop app.');
+        const st = connUi.status;
+        if (!st) { row('Claude Connector', 'Checking\u2026'); window.navigatorApp.connStatus().then(r => { connUi.status = r || { on: false }; show(); }); return; }
+        row('Connect Claude to This App', st.on ? 'On. In any Claude chat you can say \u201cput this in my calendar\u201d or \u201cdraft that email\u201d, and it appears here for you to approve. Nothing is sent or changed until you say so.' : 'Off. When on, Claude can hand emails, meetings and calendar changes straight to this app for you to approve, from any chat.',
+          [st.on ? 'Turn Off' : 'Turn On', async () => { if (st.on) { if (!confirm('Turn the connector off? Claude will no longer be able to hand things to this app. Remove it from Claude\u2019s connectors too.')) return; await window.navigatorApp.connOff(); connUi.status = { on: false }; } else { const r = await window.navigatorApp.connOn(); if (!r || !r.ok) toast((r && r.error) || 'The connector could not be set up.'); connUi.status = await window.navigatorApp.connStatus(); connPoll(true); } show(); }]);
+        if (st.on) {
+          row('Add It in Claude, Once', 'Copy the address, then in Claude open Settings, Connectors, Add custom connector. Name it \u201cChief of Staff app\u201d, paste the address and choose no sign-in. Keep the address to yourself: anyone who has it could put suggestions on your approval card (they could not read or change anything).', ['Copy the Address', async () => { try { await navigator.clipboard.writeText(st.url); toast('Copied. Paste it into Claude\u2019s Add custom connector box.'); } catch (e) { toast('Could not copy it.'); } }], ['Open Claude\u2019s Connectors', leave(() => go({ kind: 'page', url: 'https://claude.ai/settings/connectors' }))]);
+          row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
+        }
       },
       folders: row => {
         if (isApp) {
@@ -18391,6 +18403,42 @@ body { width: max-content !important; min-width: 0 !important; }
     paint();
     return w;
   }
+  // ----- What Claude hands over through the connector -----
+  // Collected every few seconds while the app is in front (once a minute otherwise), and shown for approval: emails
+  // open for you to check and send, meetings open as invitations, and the rest is on the approval card.
+  const connUi = { status: null, busy: false, timer: 0 };
+  async function connShow(it) {
+    const emails = (Array.isArray(it.emails) ? it.emails : []).map(m => ({ to: String(m.to || ''), cc: String(m.cc || ''), subject: String(m.subject || ''), text: String(m.body || '') }));
+    const blocks = (Array.isArray(it.meetings) ? it.meetings : []).map(M => ['Title', 'Date', 'Start', 'End', 'Where', 'Teams', 'Invite', 'Purpose', 'Agenda', 'Before', 'Notes', 'Check'].map(k => { const v = M[k.toLowerCase()]; return `${k}: ${k === 'Teams' ? (v ? 'yes' : 'no') : String(v == null ? '' : v).replace(/\s*\n\s*/g, ' ')}`; }).join('\n'));
+    const meets = blocks.length ? await calMeetRead(blocks, { title: 'Meeting' }) : [];
+    const changes = (Array.isArray(it.changes) ? it.changes : []).filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder'].includes(c.do)).slice(0, 80);
+    if (!emails.length && !meets.length && !changes.length) return;
+    chime('ready');
+    const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><button class="btn-primary" data-x="close">Done</button></div>');
+    d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
+    const row = (title, sub, run) => { const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><button class="btn-primary">Open\u2026</button>'; r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub; r.querySelector('button').addEventListener('click', e => { e.currentTarget.textContent = 'Opened'; run(); }); d.querySelector('.mt-list').appendChild(r); };
+    for (const m of emails) row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', () => chatToEmail(m));
+    for (const M of meets) row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', () => calMeetOpen([M]));
+    if (!emails.length && !meets.length) { d.querySelector('.hint').remove(); d.querySelector('.mt-list').remove(); }
+    if (changes.length) d.querySelector('.pl-host').appendChild(planCard({ plan: { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail`, changes }, planRefs: [] }));
+    d.querySelector('[data-x="close"]').addEventListener('click', () => { d.close(); d.remove(); });
+  }
+  async function connPoll(now) {
+    clearTimeout(connUi.timer);
+    if (!isApp || !window.navigatorApp.connPull) return;
+    try {
+      if (!connUi.status) connUi.status = (await window.navigatorApp.connStatus()) || { on: false };
+      if (connUi.status.on && !connUi.busy && navigator.onLine !== false) {
+        connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
+        if (r && r.gone) connUi.status = { on: false };
+        if (r && r.ok) { if (mailUi.accounts === null && (r.items || []).length) await mailLoadAccounts(); for (const it of r.items || []) await connShow(it); }
+      }
+    } catch (e) { connUi.busy = false; }
+    if (connUi.status && connUi.status.on) connUi.timer = setTimeout(connPoll, document.hasFocus() ? 6000 : 60000);
+    void now;
+  }
+  window.addEventListener('focus', () => { if (connUi.status && connUi.status.on) connPoll(true); });
+  setTimeout(connPoll, 5000);
   const fastNow = () => { let u = {}; try { u = JSON.parse(ls.get('claudeNavigator.apiUse') || '{}') || {}; } catch (e) { u = {}; } const now = new Date(), m = now.toISOString().slice(0, 7), d = now.toISOString().slice(0, 10); if (u.m !== m) u = { m, n: 0, in: 0, out: 0 }; if (u.d !== d) { u.d = d; u.dn = 0; } return u; };
   const fastUse = (i, o, tier) => { const u = fastNow(), pr = API_PRICE[tier] || API_PRICE.fast; if (u.cost == null) u.cost = (u.in * 0.10 + u.out * 0.50) / 1e6; u.n++; u.dn = (u.dn || 0) + 1; u.in += i || 0; u.out += o || 0; u.cost += ((i || 0) * pr[0] + (o || 0) * pr[1]) / 1e6; ls.set('claudeNavigator.apiUse', JSON.stringify(u)); };
   const fastCost = u => (u.cost != null ? u.cost : (u.in * 0.10 + u.out * 0.50) / 1e6);       // US dollars, at each model's own price
