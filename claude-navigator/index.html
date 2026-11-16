@@ -959,6 +959,8 @@
   .mail-compose .mc-ed img { max-width: 100%; }
   .mail-compose .mc-quote { flex: 1; display: flex; min-height: 0; border-top: 1px dashed var(--line); background: #fff; }
   .mail-compose .mc-quote:empty { border: 0; }
+  /* A draft you come back to: its words are right under the toolbar, with no empty block or line above them. */
+  .mail-compose.is-draft .mc-ed { min-height: 0; padding-top: var(--sp-2); padding-bottom: 0; } .mail-compose.is-draft .mc-ed:empty { padding-top: 0; } .mail-compose.is-draft .mc-quote { border-top: 0; }
   .mail-compose .mc-quote iframe { flex: 1; border: 0; min-height: 260px; padding: 0 18px; box-sizing: border-box; width: 100%; }
   dialog.mail-sigdlg { border: 0; border-radius: var(--r-sheet); padding: 18px var(--sp-5); width: 520px; max-width: 90vw; box-shadow: var(--e-sheet); }
   dialog.mail-sigdlg h2 { margin: 0 0 var(--sp-1h); font-size: var(--fs-title); }
@@ -13364,7 +13366,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const el = document.createElement('span'); el.className = 'mail-av'; el.textContent = ini; el.style.background = MAIL_AV[h % MAIL_AV.length];
     return el;
   }
-  const MAIL_TOOL = { hand: 'M5.5 7.5a2.3 2.3 0 100-4.6 2.3 2.3 0 000 4.6zM1.8 13c.3-2.3 1.7-3.6 3.7-3.6 1 0 1.9.3 2.5 1M9.5 9.5h5M12.2 7.2l2.3 2.3-2.3 2.3',
+  const MAIL_TOOL = { fwdpdf: 'M4 2.2h5l3 3v8.6H4zM9 2.2v3h3M6.2 10.2h3.6M8.3 8.6l1.6 1.6-1.6 1.6', hand: 'M5.5 7.5a2.3 2.3 0 100-4.6 2.3 2.3 0 000 4.6zM1.8 13c.3-2.3 1.7-3.6 3.7-3.6 1 0 1.9.3 2.5 1M9.5 9.5h5M12.2 7.2l2.3 2.3-2.3 2.3',
     del: 'M2.5 4.5h11M6.5 4.5V3a.8.8 0 01.8-.8h1.4a.8.8 0 01.8.8v1.5M4 4.5l.7 8.3a1 1 0 001 .9h4.6a1 1 0 001-.9l.7-8.3', reply: 'M6.5 4L2.5 8l4 4M3 8h6a4.5 4.5 0 014.5 4.5', replyAll: 'M5.5 4L1.5 8l4 4M9 4L5 8l4 4M5.5 8H10a3.5 3.5 0 013.5 3.5',
     forward: 'M9.5 4l4 4-4 4M13 8H7a4.5 4.5 0 00-4.5 4.5', sync: 'M13 8a5 5 0 01-8.7 3.4M3 8a5 5 0 018.7-3.4M11.5 2v2.8H8.7M4.5 14v-2.8h2.8', move: 'M1.8 4.2a1 1 0 011-1h3.1l1.4 1.5h5.9a1 1 0 011 1v6.6a1 1 0 01-1 1H2.8a1 1 0 01-1-1z',
     unread: 'M2 4.5h9.5M2 4.5v7.5h12V7M2 4.5l6 4.5 3-2.2M13.2 2.6a1.6 1.6 0 110 3.2 1.6 1.6 0 010-3.2', flag: 'M4 14V2.5M4 3h8l-1.6 2.8L12 8.6H4', archive: 'M2.5 3.5h11v3h-11zM3.5 6.5v6h9v-6M6.5 9h3', filter: 'M2.5 4h11M4.5 8h7M6.5 12h3',
@@ -13453,6 +13455,7 @@ body { width: max-content !important; min-width: 0 !important; }
       tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
       tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }).classList.add('ico');
       tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }).classList.add('ico');
+      { const pb = tool('fwdpdf', 'Forward as a PDF', 'Forward as a PDF: the email is attached to a new message as a PDF', () => mailForwardPdf(m), { off: none }); pb.classList.add('ico'); pb.dataset.k = 'fwdpdf'; }
       const c = claraOpenCount();
       const mb = document.createElement('button'); mb.className = 'tb ico mail-more'; mb.innerHTML = UI.more; mb.title = 'More: Reply All, Forward, Mark as Unread, Send To, Clara, Unread Only, Conversations, Check for New Mail';
       mb.addEventListener('click', e => {
@@ -13480,6 +13483,7 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
+    { const pb = tool('fwdpdf', 'Forward as a PDF', 'Forward as a PDF: the email is attached to a new message as a PDF', () => mailForwardPdf(m), { off: none }); pb.classList.add('ico'); pb.dataset.k = 'fwdpdf'; }
     { const cb = document.createElement('button'); cb.className = 'tb clara-btn'; const c = claraOpenCount(); cb.innerHTML = `${mailToolIcon('hand')}<span class="t">Clara</span><i class="n"${c ? '' : ' hidden'}>${c || ''}</i>`; cb.title = 'What Clara is arranging: each meeting and where it is up to'; cb.addEventListener('click', () => claraPanel()); into.appendChild(cb); }
     tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none }).classList.add('mail-sendto');
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
@@ -13726,7 +13730,7 @@ body { width: max-content !important; min-width: 0 !important; }
         fr0.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
         fr0.setAttribute('referrerpolicy', 'no-referrer');
         const html = d.body && d.body.contentType === 'html' ? d.body.content : `<pre style="white-space:pre-wrap;font:inherit">${(d.body && d.body.content || '').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</pre>`;
-        fr0.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; form-action 'none'"><base target="_blank"><style>body{font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f;margin:14px 18px;word-wrap:break-word}img{max-width:100%;height:auto}</style>${html}`;
+        fr0.srcdoc = `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="script-src 'none'; object-src 'none'; form-action 'none'"><base target="_blank"><style>body{font:14px -apple-system,BlinkMacSystemFont,sans-serif;color:#1d1d1f;margin:14px 18px;word-wrap:break-word}img{max-width:100%;height:auto}</style>${String(html).replace(/\starget\s*=\s*(["']?)_(top|parent|self)\1/gi, ' target="_blank"')}`;
         read.appendChild(fr0);
       }
     }
@@ -14256,7 +14260,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     const sig = mailSigFrom(acc.id);
     C.conv = d.conversationId || ''; C.fromRef = (seed && seed.from) || null;
-    if (mode === 'draft') { ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
+    if (mode === 'draft') { el.classList.add('is-draft'); ed.innerHTML = ''; C.quoted = ''; C.draftBody = (d.body && d.body.content) || ''; }
     else ed.innerHTML = `<div><br></div>${sig ? `<div><br></div><div class="mc-sig">${sig}</div>` : ''}`;
     // What you are replying to or forwarding (or the draft so far) shows below and is sent with the message. You can
     // edit it there too. It sits in a frame that cannot run scripts; if you change nothing, it is sent exactly as it came.
@@ -14443,7 +14447,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (mailUi.compose === C) return toast('Could not move it: it is still open here.');
       itemWindow('mail', { kind: 'draft', m: dm }, b);
     });
-    setTimeout(() => { (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, 50);
+    setTimeout(() => { const qf = mode === 'draft' && el.querySelector('.mc-quote iframe'); if (qf && qf.contentDocument && qf.contentDocument.body) { try { qf.contentWindow.focus(); qf.contentDocument.body.focus(); return; } catch (e) { /* fall through */ } } (mode === 'new' || mode === 'forward' ? f('to') : ed).focus(); }, mode === 'draft' ? 400 : 50);
     // A reply opens with a draft already in it (written on this Mac while you read), unless you switched that off.
     if ((mode === 'reply' || mode === 'replyAll') && m && mailLearnOf().auto !== false) { C.fields = fields; mailDraftWith(C, m, { auto: true }); }
   }
@@ -19571,6 +19575,10 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
     };
     window.navigatorApp.onShortcut(k => {
+      if (typeof k === 'string' && k.startsWith('mailto ')) {
+        try { const u = new URL(k.slice(7)), q = u.searchParams; mailCompose('new', null, { to: decodeURIComponent(u.pathname), cc: q.get('cc') || '', subject: q.get('subject') || '', text: q.get('body') || '' }); } catch (e) { toast('That email address could not be read.'); }
+        return;
+      }
       if (k === 'app-settings') { if (!document.querySelector('dialog.settings-win')) botSettingsDlg(); return; }
       const m = /^profile-(\d)$/.exec(k);
       if (m) return setProfile(+m[1] === 0 ? null : (profiles()[+m[1] - 1] || {}).id || state.profileId);

@@ -60,6 +60,10 @@ const send = (channel, payload) => {
 // Only ordinary web links ever go to the web browser (never file:, smb: or links that start other apps).
 const httpUrl = u => typeof u === 'string' && /^https?:\/\//i.test(u);
 const openInBrowser = u => { if (httpUrl(u)) shell.openExternal(u); };
+// A link clicked in an email or a meeting's notes: a web link opens in the browser, an email address starts a new message in the app.
+const openLink = (wc, u) => { if (/^mailto:/i.test(String(u))) { try { wc.send('shortcut', 'mailto ' + String(u).slice(0, 4000)); } catch (e) { /* window gone */ } return; } openInBrowser(u); };
+// Some links ask to open in place (target _self or _top), which would load the page inside the sealed frame and show nothing. They go out the same way.
+const linksOut = wc => wc.on('will-frame-navigate', e => { if (e.isMainFrame || !/^(https?|mailto):/i.test(String(e.url))) return; e.preventDefault(); openLink(wc, e.url); });
 const isClaudeHost = (url) => {
   try { const h = new URL(url).hostname; return h === 'claude.ai' || h.endsWith('.claude.ai') || h.endsWith('.anthropic.com'); } catch (e) { return false; }
 };
@@ -118,9 +122,10 @@ function createWindow() {
 
   // Links clicked in the folder page itself (not the Claude pane) go to the browser.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    openInBrowser(url);
+    openLink(mainWindow.webContents, url);
     return { action: 'deny' };
   });
+  linksOut(mainWindow.webContents);
   // The folder page never turns into another page (for example if a link or file is dropped on it).
   const stay = (e, url) => { if (url !== mainWindow.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
   mainWindow.webContents.on('will-navigate', stay);
@@ -159,7 +164,7 @@ function openAppWindow(key) {
   appWindows.set(key, win);
   watchRealClicks(win);
   win.loadFile(path.join(__dirname, 'index.html'), { query: { solo: key } });
-  win.webContents.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { openLink(win.webContents, url); return { action: 'deny' }; }); linksOut(win.webContents);
   const stay = (e, url) => { if (url !== win.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
   win.webContents.on('will-navigate', stay); win.webContents.on('will-redirect', stay);
   let t = null;
@@ -191,7 +196,7 @@ function openItemWindow(solo, itemJson, b) {
   appWindows.set(key, win);
   watchRealClicks(win);
   win.loadFile(path.join(__dirname, 'index.html'), { query: { solo, item: itemJson } });
-  win.webContents.setWindowOpenHandler(({ url }) => { openInBrowser(url); return { action: 'deny' }; });
+  win.webContents.setWindowOpenHandler(({ url }) => { openLink(win.webContents, url); return { action: 'deny' }; }); linksOut(win.webContents);
   const stay = (e, url) => { if (url !== win.webContents.getURL()) { e.preventDefault(); openInBrowser(url); } };
   win.webContents.on('will-navigate', stay); win.webContents.on('will-redirect', stay);
   win.on('closed', () => { if (appWindows.get(key) === win) appWindows.delete(key); });
