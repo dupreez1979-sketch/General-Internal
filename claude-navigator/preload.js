@@ -67,6 +67,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   acctSendArm: (id, msgId) => ipcRenderer.invoke('acct-send-arm', id, msgId),
   acctSend: (id, msgId, box) => ipcRenderer.invoke('acct-send', id, msgId, box),
   acctUpload: (url, bytes, start, total) => ipcRenderer.invoke('acct-upload', url, bytes, start, total),
+  mailPdf: (html) => ipcRenderer.invoke('mail-pdf', html),
   acctAttachment: (id, msgId, attId, name, box) => ipcRenderer.invoke('acct-attachment', id, msgId, attId, name, box),
   openWindow: (url) => ipcRenderer.invoke('open-window', url),
   showInFolder: (file) => ipcRenderer.invoke('show-in-folder', file),

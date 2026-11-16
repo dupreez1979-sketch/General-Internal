@@ -1761,6 +1761,23 @@ ipcMain.handle('phone-publish', async (e, docs) => {
 // A question that needs a yes or no, asked the way the Mac asks it: a sheet on the app's own window, with the action's
 // name on the button. Answered straight away (the page waits for it), so it can stand in wherever the page used to
 // ask with the plain system box. Run from source for testing, it answers null and the page asks the old way.
+// An email laid out as a document becomes a PDF, here on this Mac. The page is drawn out of sight with scripts off, and
+// nothing is fetched from the internet while it is drawn: only what is already in the page (its text and its own pictures).
+ipcMain.handle('mail-pdf', async (e, html) => {
+  if (!fromOwnWindow(e) || typeof html !== 'string' || !html || html.length > 12e6) return { error: 'that email could not be laid out' };
+  const file = path.join(app.getPath('temp'), `nav-mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.html`);
+  const win = new BrowserWindow({ show: false, width: 820, height: 1100, webPreferences: { javascript: false, sandbox: true, contextIsolation: true, nodeIntegration: false, partition: `mailpdf-${Date.now()}` } });
+  try {
+    await fs.promises.writeFile(file, html, 'utf8');
+    const own = require('url').pathToFileURL(file).href;
+    win.webContents.session.webRequest.onBeforeRequest((d, cb) => cb({ cancel: !(d.url === own || /^data:/i.test(d.url)) }));
+    win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+    await win.loadFile(file);
+    const buf = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4', margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 } });
+    return { ok: true, b64: buf.toString('base64'), size: buf.length };
+  } catch (er) { return { error: String((er && er.message) || er).slice(0, 200) }; }
+  finally { try { win.destroy(); } catch (e2) { /* gone */ } fs.promises.unlink(file).catch(() => {}); }
+});
 ipcMain.on('confirm-box', (e, o) => {
   try {
     if (!fromOwnWindow(e) || !o || typeof o !== 'object') { e.returnValue = null; return; }
