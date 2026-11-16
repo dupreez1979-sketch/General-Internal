@@ -450,7 +450,7 @@
   #menu.prof button { height: 30px; padding: 0 var(--sp-2h); border-radius: var(--r-control); }
   #menu.prof .mi { width: 22px; margin-right: var(--sp-1h); } #menu.prof .mi .pdot { width: 14px; height: 14px; border-radius: var(--r-xs); }
   #menu.prof button.cur { background: var(--accent); color: var(--accent-text, #fff); }
-  #menu.prof button.cur .mi .pdot { background: var(--accent-text, #fff) !important; opacity: .9; }
+  #menu.prof button.cur .mi .pdot { box-shadow: 0 0 0 1.5px var(--accent-text, #fff); }          /* (the current profile keeps its own colour, ringed so it reads on the filled row) */
   #menu.prof button.cur * { color: inherit; }
   /* A notice is a soft, rounded card under the toolbar. */
   .banner { margin: var(--sp-2h) var(--sp-3h) 0; border: 0; border-radius: var(--r-card); padding: var(--sp-2) var(--sp-2h) var(--sp-2) var(--sp-3h); background: color-mix(in srgb, var(--caution) 15%, var(--win)); font-size: var(--fs-body); }
