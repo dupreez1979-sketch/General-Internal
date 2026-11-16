@@ -15643,7 +15643,9 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!found.length) return;
         const sig = found.map(f => f.text || f).join('\u0001');
         stable = sig === last ? stable + 1 : 0; last = sig;
-        if (/\[\[\s*DONE\s*\]\]/i.test(text) || stable >= 3) { clearInterval(timer); resolve(found); }
+        // (a long answer is only taken once Claude has written its last line and the page has stopped changing, so
+        // nothing half-written, and nothing from its thinking, is ever taken for the answer)
+        if (tagged ? /\[\[\s*DONE\s*\]\]/i.test(text.slice(text.search(/\[\[\s*END\s*\]\](?![\s\S]*\[\[\s*END\s*\]\])/i))) && idle >= 5 : /\[\[\s*DONE\s*\]\]/i.test(text) || stable >= 3) { clearInterval(timer); resolve(found); }
       }, 1500);
     });
   }
@@ -15955,7 +15957,7 @@ body { width: max-content !important; min-width: 0 !important; }
       for (const t of of('CHANGES')) { try { const a = t.indexOf('['), b = t.lastIndexOf(']'), l = JSON.parse(t.slice(a, b + 1).replace(/[“”]/g, '"')); if (Array.isArray(l)) changes = changes.concat(l); } catch (e) { /* not readable */ } }
       changes = changes.filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(c.do)).slice(0, 60);
       const n = emails.length + meets.length + docs.length + (changes.length ? 1 : 0);
-      if (!n) return toast('Claude’s answer had nothing this app can take in. Ask it to set it out again.');
+      if (!n) { if (have) return; let k = 0; const t = setInterval(async () => { if (++k > 240) return clearInterval(t); if ((chatHere() || {}).ref !== here.ref) return; const g = await chatRead(); if (g.length && !chatTaken.has(g)) { clearInterval(t); all('', '', K, g); } }, 5000); return; }
       // one thing only: it opens straight away
       if (n === 1 && emails.length) return chatToEmail(emails[0]);
       if (n === meets.length) return calMeetOpen(meets, 'Meetings from this chat');
