@@ -1403,7 +1403,6 @@
   dialog.cal-evdlg .row.top { height: auto; }
   dialog.cal-evdlg p.hint { clear: both; margin: var(--sp-2) 0 0 80px; position: static; }
   dialog.cal-evdlg:not([open]) { display: none; }
-  dialog.cal-evdlg .dlg-actions { position: sticky; bottom: -18px; background: inherit; padding: var(--sp-2h) 0 0; }
   dialog.cal-evdlg .row { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: var(--sp-2h); margin: 0 0 var(--sp-2); font-size: var(--fs-body); color: var(--muted); }
   dialog.cal-evdlg .row.top { align-items: start; }
   dialog.cal-evdlg .row[hidden] { display: none; }
@@ -1447,7 +1446,30 @@
   .dict-float:hover { background: var(--accent); color: #fff; }
   .dict-float svg { width: 13px; height: 13px; }
   .dict-b:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
-  dialog.cal-evdlg.with-day { width: min(840px, 96vw); padding-right: 300px; position: fixed; }
+  dialog.cal-evdlg.with-day { width: min(1180px, 96vw); height: min(860px, 92vh); max-height: 92vh; padding: 0 320px 0 0; position: fixed; display: flex; flex-direction: column; overflow: hidden; }
+  dialog.cal-evdlg.with-day .daypane { width: 320px; }
+  /* The meeting window: a bar across the top, the form, then a large notes area with the invitation's extras beside it. */
+  dialog.cal-evdlg .ev-top { flex: none; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2h) var(--sp-4); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 7%, var(--win)); -webkit-app-region: no-drag; }
+  dialog.cal-evdlg .ev-top h2 { margin: 0; font-size: var(--fs-body); font-weight: var(--fw-bold); color: var(--muted); }
+  dialog.cal-evdlg .ev-top .ev-sep { width: 1px; height: 18px; background: var(--line); margin: 0 var(--sp-1); }
+  dialog.cal-evdlg .ev-form { flex: none; padding: var(--sp-3) var(--sp-5) var(--sp-1); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--sp-5); max-height: 52vh; overflow-y: auto; }
+  dialog.cal-evdlg .ev-form > * { grid-column: 1 / -1; }
+  dialog.cal-evdlg .ev-form > .row:has([name="sd"]), dialog.cal-evdlg .ev-form > .row:has([name="ed"]), dialog.cal-evdlg .ev-form > .row:has([name="allday"]), dialog.cal-evdlg .ev-form > .tzrow, dialog.cal-evdlg .ev-form > .row[data-rep], dialog.cal-evdlg .ev-form > .row:has([name="show"]), dialog.cal-evdlg .ev-form > .row:has([name="loc"]), dialog.cal-evdlg .ev-form > .row:has([name="teams"]) { grid-column: auto; }
+  dialog.cal-evdlg .ev-form > .row:has([name="title"]) input { font-size: var(--fs-title); font-weight: var(--fw-bold); border: 0; border-bottom: 2px solid var(--accent); border-radius: 0; padding: var(--sp-1h) 0; background: none; box-shadow: none; }
+  dialog.cal-evdlg .ev-body { flex: 1; min-height: 160px; display: grid; grid-template-columns: minmax(0, 1fr) 300px; border-top: 1px solid var(--line); }
+  dialog.cal-evdlg .ev-notes { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: var(--sp-3) var(--sp-5); }
+  dialog.cal-evdlg .ev-notes .row { flex: 1; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); margin: 0; }
+  dialog.cal-evdlg .ev-notes .row textarea { height: 100%; min-height: 0; resize: none; margin: 0; }
+  dialog.cal-evdlg .ev-notes p.hint { margin: var(--sp-2) 0 0; }
+  dialog.cal-evdlg .ev-side { border-left: 1px solid var(--line); padding: var(--sp-3) var(--sp-4); overflow-y: auto; background: color-mix(in srgb, var(--text) 2.5%, var(--win)); min-height: 0; }
+  dialog.cal-evdlg .ev-side-h { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--sp-2h); }
+  dialog.cal-evdlg .ev-side .row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); margin-bottom: var(--sp-2h); }
+  dialog.cal-evdlg .ev-side .row > span:first-child { text-align: left; }
+  dialog.cal-evdlg .ev-side .fr { flex-wrap: wrap; }
+  dialog.cal-evdlg .ev-side .fr .fr-out, dialog.cal-evdlg .ev-side .fr .kit-on { flex: 1 1 100%; }
+  dialog.cal-evdlg .ev-notes .row > span:first-child { text-align: left; }
+  dialog.cal-evdlg .ev-form > .row:has([name="title"]) input { height: auto; }
+  dialog.cal-evdlg .cal-sug { margin-left: 80px; }
   dialog.cal-evdlg .daypane { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; border-left: 1px solid var(--line); display: flex; flex-direction: column; background: color-mix(in srgb, var(--text) 2.5%, var(--win)); }
   dialog.cal-evdlg .dp-h { flex: none; display: flex; align-items: center; gap: var(--sp-1h); padding: var(--sp-2h) var(--sp-2h) var(--sp-2); border-bottom: 1px solid var(--line); }
   dialog.cal-evdlg .dp-h b { flex: 1; text-align: center; font-size: var(--fs-body); }
@@ -12143,27 +12165,34 @@ body { width: max-content !important; min-width: 0 !important; }
       : pat.type === 'weekly' && pat.interval === 1 && (pat.daysOfWeek || []).length === 1 ? 'weekly' : pat.type === 'weekly' && pat.interval === 2 && (pat.daysOfWeek || []).length === 1 ? 'fortnightly'
       : pat.type === 'absoluteMonthly' && pat.interval === 1 ? 'monthly' : pat.type === 'absoluteYearly' && pat.interval === 1 ? 'yearly' : 'keep';
     const canRepeat = !inst || series || ev.type === 'singleInstance' || ev.type === 'seriesMaster';
-    d.innerHTML = `<h2></h2>
-      <label class="row"><span>Title</span><input name="title"></label>
+    d.innerHTML = `<div class="ev-top"><button class="btn-primary" data-x="ok">Save</button><button class="btn" data-x="cancel">Discard</button><span class="ev-sep"></span><h2></h2><span class="dlg-spacer"></span></div>
+      <div class="ev-form">
       <label class="row" data-new><span>Calendar</span><select name="cal"></select></label>
-      <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
-      <label class="row"><span>Starts</span><span class="dt"><b class="dow" data-for="sd"></b><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
-      <label class="row"><span>Ends</span><span class="dt"><b class="dow" data-for="ed"></b><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
-      <label class="row tzrow"><span>Time zone</span><span class="dt"><select name="tz" title="The times above are times in this time zone"></select><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
-      <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
-      <label class="row"><span>Where</span><input name="loc"></label>
+      <label class="row"><span>Title</span><input name="title" placeholder="Add a title"></label>
       <label class="row"><span>Invite</span><input name="att" placeholder="Email addresses, separated by commas" spellcheck="false"></label>
       <div class="row free" hidden><span></span><span class="fr"><span class="fr-out"></span><button type="button" class="btn" data-x="find">Find a Free Time</button></span></div>
       <div class="row schedrow"><span></span><span class="fr"><button type="button" class="btn" data-x="sched">Scheduling Assistant…</button><span class="fr-out">See who is free, and drag the meeting to a time that suits.</span></span></div>
+      <label class="row"><span>Starts</span><span class="dt"><b class="dow" data-for="sd"></b><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
+      <label class="row"><span>Ends</span><span class="dt"><b class="dow" data-for="ed"></b><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
+      <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
+      <label class="row tzrow"><span>Time zone</span><span class="dt"><select name="tz" title="The times above are times in this time zone"></select><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
+      <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
+      <label class="row"><span>Where</span><input name="loc"></label>
       <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
       <label class="row"><span>Show as</span><select name="show"><option value="busy">Busy</option><option value="free">Free</option><option value="tentative">Tentative</option><option value="oof">Away</option></select></label>
+      </div>
+      <div class="ev-body">
+        <div class="ev-notes">
+      <label class="row top"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
+      <p class="hint"></p>
+        </div>
+        <aside class="ev-side"><div class="ev-side-h">For the invitation</div>
       <div class="row kitrow"><span>Invitation</span><span class="fr"><label class="kit-on"><input type="checkbox" name="designed"> <span class="kit-name"></span></label><span class="fr-out kit-none"></span><button type="button" class="btn" data-x="kit"></button><input type="file" class="kit-file" accept=".json,application/json" hidden></span></div>
       <label class="row inv"><span>Purpose</span><input name="purpose" placeholder="One line on why you are meeting"></label>
       <label class="row top inv"><span>Agenda</span><textarea name="agenda" rows="3" placeholder="One item on each line. Add the minutes at the end, like: 2027 budget 35 min"></textarea></label>
       <label class="row top inv"><span>Before</span><textarea name="before" rows="2" placeholder="What to read or bring, one on each line"></textarea></label>
-      <label class="row top"><span>Notes</span><textarea name="notes" rows="4"></textarea></label>
-      <p class="hint"></p>
-      <div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Save</button></div>`;
+        </aside>
+      </div>`;
     const f = n => d.querySelector(`[name="${n}"]`);
     // The time zone the times are in: the profile's default, unless the meeting already has one or you choose another.
     const tzPid = state.profileId || '_', tzNow = Date.now();
@@ -12253,7 +12282,7 @@ body { width: max-content !important; min-width: 0 !important; }
       inp.addEventListener('blur', () => setTimeout(() => { sug.hidden = true; }, 150));
     }
     if (seed && !inst && seed.teams) f('teams').checked = true;
-    if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('h2').after(ck); }
+    if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('.ev-form').prepend(ck); }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = zYmd(seed.end); f('et').value = zHm(seed.end); } }
     if (seed && !inst && seed.allday) { f('allday').checked = true; f('allday').dispatchEvent(new Event('change', { bubbles: true })); }
     const online0 = !!(ev && ev.isOnlineMeeting);
