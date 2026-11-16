@@ -1928,6 +1928,7 @@
   .row .count { color: var(--muted); font-size: var(--fs-label); margin-left: var(--sp-1h); font-variant-numeric: tabular-nums; }
   .list.lib-list .lrow.filed .label { color: var(--muted); }
   .list.lib-list .item.selected .label { color: inherit; }
+  .drag-badge.mail { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: var(--r-control); }
   .drag-badge { position: fixed; top: -100px; left: -100px; background: var(--accent); color: #fff; border-radius: var(--r-card); padding: var(--sp-1) var(--sp-2h); font: 600 12px -apple-system, system-ui, sans-serif; }
 
   .empty { color: var(--muted); text-align: center; margin: 18vh auto 0; max-width: 360px; font-size: var(--fs-body); }
@@ -13616,7 +13617,7 @@ body { width: max-content !important; min-width: 0 !important; }
       r.className = 'mail-m' + (x.isRead && !(more && !mailUi.openThreads[tk] && more.some(y => !y.isRead)) ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '') + (sub ? ' sub' : '');
       // Drag it (or all the selected ones) onto a folder on the left to move it there.
       r.draggable = !x.isDraft;
-      r.addEventListener('dragstart', e => { const many = mailMulti.has(x.id) && mailMulti.size > 1 ? [...mailMulti.values()] : [x]; mailUi.drag = { list: many, acc: x._acc || (mailState.sel || {}).acc, from: (mailState.sel || {}).folder }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', many.length > 1 ? `${many.length} emails` : (x.subject || 'Email')); } catch (er) { /* no data */ } document.body.classList.add('mail-dragging'); });
+      r.addEventListener('dragstart', e => { const many = mailMulti.has(x.id) && mailMulti.size > 1 ? [...mailMulti.values()] : [x]; mailUi.drag = { list: many, acc: x._acc || (mailState.sel || {}).acc, from: (mailState.sel || {}).folder }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', many.length > 1 ? `${many.length} emails` : (x.subject || 'Email')); const badge = document.createElement('div'); badge.className = 'drag-badge mail'; badge.textContent = many.length > 1 ? `${many.length} emails` : (x.subject || 'Email'); document.body.appendChild(badge); e.dataTransfer.setDragImage(badge, -12, -8); setTimeout(() => badge.remove(), 0); } catch (er) { /* no data */ } document.body.classList.add('mail-dragging'); });
       r.addEventListener('dragend', () => { mailUi.drag = null; document.body.classList.remove('mail-dragging'); for (const z of document.querySelectorAll('.mail-f.drop')) z.classList.remove('drop'); });
       r.innerHTML = wide ? '<i class="dot"></i><span class="avs"></span><b></b><span class="fl"></span><div class="sjw"><span class="sj"></span><span class="pv"></span></div><span class="dt"></span>'
         : '<i class="dot"></i><span class="avs"></span><div class="l1"><b></b><span class="fl"></span><span class="dt"></span></div><div class="sj"></div><div class="pv"></div>';
