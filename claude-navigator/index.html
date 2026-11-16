@@ -929,6 +929,7 @@
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
   dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
   dialog.plan-dlg { width: min(640px, calc(100vw - 32px)); } dialog.plan-dlg .bplan { margin: var(--sp-2) 0; }
+  .bplan .bp-into { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1h) var(--sp-3); font-size: var(--fs-sm); color: var(--muted); border-bottom: 1px solid var(--line); } .bplan .bp-into select { font: inherit; max-width: 60%; }
   .bplan { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); margin: var(--sp-1) 0 var(--sp-2); overflow: hidden; }
   .bplan .bp-h { padding: var(--sp-2) var(--sp-3); font-weight: var(--fw-bold); font-size: var(--fs-body); background: color-mix(in srgb, var(--accent) 7%, var(--win)); border-bottom: 1px solid var(--line); }
   .bplan .bp-list { display: grid; max-height: 46vh; overflow-y: auto; }
@@ -15911,7 +15912,7 @@ body { width: max-content !important; min-width: 0 !important; }
         'Do not send, create or change anything yourself and do not use any email or calendar tools: only write it out here. Never use em dashes. Use only the kinds of block that apply, one block for each email, meeting or document, with nothing outside the blocks, and finish with [[DONE]] on its own line.',
         'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]',
         'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape,
-        'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder), mail rules and mail folders, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).\n- "other": anything else in my mail or calendar: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).',
+        'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder), mail rules and mail folders, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "remove_event": find (the title of the entry exactly as it shows in my calendar), date ("YYYY-MM-DD", the day it is on).\n- "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.',
         'A document, only if I asked for one:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]'].join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', only ? 'part you named' : 'work from this chat', true);
       if (!got) return toast('Could not read Claude’s answer. Wait for it to finish, then use Send To again.');
       const of = k => got.filter(g => g.kind === k).map(g => g.text);
@@ -15920,7 +15921,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const docs = of('DOCUMENT').map(t => { const { heads, rest } = chatHeads(t); return { title: heads.title || here.name || 'From a chat', text: rest }; });
       let changes = [];
       for (const t of of('CHANGES')) { try { const a = t.indexOf('['), b = t.lastIndexOf(']'), l = JSON.parse(t.slice(a, b + 1).replace(/[“”]/g, '"')); if (Array.isArray(l)) changes = changes.concat(l); } catch (e) { /* not readable */ } }
-      changes = changes.filter(c => c && ['add_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(c.do)).slice(0, 60);
+      changes = changes.filter(c => c && ['add_event', 'change_event', 'remove_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(c.do)).slice(0, 60);
       const n = emails.length + meets.length + docs.length + (changes.length ? 1 : 0);
       if (!n) return toast('Claude’s answer had nothing this app can take in. Ask it to set it out again.');
       // one thing only: it opens straight away
@@ -18185,14 +18186,34 @@ body { width: max-content !important; min-width: 0 !important; }
   const planWhen = (v, allDay) => { const m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(String(v || '')); if (!m) return null; return allDay || !m[4] ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]); };
   const planDay = d => d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' }), planClock = d => d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' });
   const planFolder = (acc, name) => { const want = String(name || '').trim().toLowerCase(); if (!want) return null; const all = mailAllFolders(acc); return (all.find(z => z.f.displayName.toLowerCase() === want) || all.find(z => z.f.displayName.toLowerCase().includes(want)) || {}).f || null; };
+  // An entry named by a chat (which does not know this app's ids) is found by its title and its day, in any account.
+  const planAccs = () => (mailUi.accounts || []).filter(a => !a.needsSignIn && !a.shared);
+  const planFindOf = c => String(c.find || (c.do === 'remove_event' ? c.title : '') || '').trim();
+  async function planFind(c) {
+    if (c._hit !== undefined) return c._hit;
+    const day = planWhen(c.date || c.on || c.start, true), want = planFindOf(c).toLowerCase(); c._hit = null;
+    if (!day || !want) return null;
+    const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`, hits = [];
+    for (const a of planAccs()) {
+      let r = null; try { r = await window.navigatorApp.acctGraphAi(a.id, { path: `/me/calendarView?startDateTime=${day.toISOString()}&endDateTime=${new Date(+day + 864e5).toISOString()}&$select=id,subject,start,end,isAllDay&$top=80` }); } catch (e) { r = null; }
+      for (const ev of (r && r.ok && r.data && r.data.value) || []) {
+        if (ev.isAllDay && String((ev.start || {}).dateTime || '').slice(0, 10) !== ymd) continue;
+        const t = String(ev.subject || '').trim().toLowerCase(), score = t === want ? 3 : t && (t.includes(want) || want.includes(t)) ? 1 : 0;
+        if (score) hits.push({ kind: 'event', acc: a.id, id: ev.id, title: ev.subject || '', score, who: a.email || a.name || '' });
+      }
+    }
+    hits.sort((x, y) => y.score - x.score);
+    return (c._hit = hits[0] || null);
+  }
+  const planNamed = (c, verb, tail, extra) => { const d = planWhen(c.date || c.on || c.start, true); return Object.assign({ icon: 'cal', text: `${verb} \u201c${c._hit ? c._hit.title : planFindOf(c)}\u201d${tail}`, sub: [d && planDay(d)].concat(extra || [], [c._hit && c._hit.who]).filter(Boolean).join(' \u00b7 '), bad: c._hit === null ? 'no entry with that name was found on that day' : '' }); };
   // What a change does, in plain words, and whether it is one to press on its own (it keeps acting, or cannot be undone here).
   function planSays(c, refs) {
     const ref = k => refs[+String(c.ref || '').replace(/\D/g, '') - 1] && refs[+String(c.ref || '').replace(/\D/g, '') - 1].kind === k ? refs[+String(c.ref || '').replace(/\D/g, '') - 1] : null;
     const span = () => { const a = planWhen(c.start, c.all_day), b = planWhen(c.end, c.all_day); if (!a) return ''; return c.all_day ? `${planDay(a)}${b && b - a > 864e5 ? ' to ' + planDay(new Date(b - 1)) : ''}, all day` : `${planDay(a)}, ${planClock(a)}${b ? ' to ' + planClock(b) : ''}`; };
     switch (c.do) {
       case 'add_event': return { icon: 'cal', text: `Add “${c.title || 'Untitled'}”`, sub: [span(), c.where].filter(Boolean).join(' · '), bad: !planWhen(c.start, c.all_day) ? 'no start time was given' : '' };
-      case 'change_event': { const e = ref('event'); return { icon: 'cal', text: `Change “${e ? e.title : 'a calendar entry'}”`, sub: [c.title && `title: ${c.title}`, c.start && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes'].filter(Boolean).join(' · '), bad: e ? '' : 'the entry was not found' }; }
-      case 'remove_event': { const e = ref('event'); return { icon: 'cal', text: `Remove “${e ? e.title : 'a calendar entry'}” from your calendar`, sub: e && e.at ? planDay(new Date(e.at)) : '', risky: true, bad: e ? '' : 'the entry was not found' }; }
+      case 'change_event': { const e = ref('event'); if (!e && planFindOf(c)) return planNamed(c, 'Change', '', [c.title && `title: ${c.title}`, /T\d\d:/.test(String(c.start || '')) && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes']); return { icon: 'cal', text: `Change “${e ? e.title : 'a calendar entry'}”`, sub: [c.title && `title: ${c.title}`, c.start && `to ${span()}`, c.where && `where: ${c.where}`, c.notes && 'notes'].filter(Boolean).join(' · '), bad: e ? '' : 'the entry was not found' }; }
+      case 'remove_event': { const e = ref('event'); if (!e && planFindOf(c)) return Object.assign(planNamed(c, 'Remove', ' from your calendar'), { risky: true }); return { icon: 'cal', text: `Remove “${e ? e.title : 'a calendar entry'}” from your calendar`, sub: e && e.at ? planDay(new Date(e.at)) : '', risky: true, bad: e ? '' : 'the entry was not found' }; }
       case 'add_rule': { const w = [planList(c.from).length && `from ${planList(c.from).join(' or ')}`, planList(c.subject_has).length && `subject has “${planList(c.subject_has).join('” or “')}”`, planList(c.message_has).length && `message has “${planList(c.message_has).join('” or “')}”`, planList(c.sent_to).length && `sent to ${planList(c.sent_to).join(', ')}`, c.has_attachment && 'has an attachment'].filter(Boolean);
         const t = [c.move_to && `move to ${c.move_to}`, c.mark_read && 'mark as read', c.delete && 'move to Deleted Items'].filter(Boolean);
         return { icon: 'flag', text: `New rule: ${c.name || 'Unnamed'}`, sub: `When mail ${w.join(' and ') || 'arrives (every message)'}: ${t.join(', ') || 'nothing'}`, risky: true, bad: !t.length ? 'the rule does nothing' : '' }; }
@@ -18205,8 +18226,8 @@ body { width: max-content !important; min-width: 0 !important; }
     }
   }
   // Carry one approved change out. Returns { ok, error, undo } where undo is the request that takes it back, if there is one.
-  async function planDo(c, refs) {
-    const ai = (acc, req) => window.navigatorApp.acctGraphAi(String(acc).split('>')[0], req), A = planAcc();
+  async function planDo(c, refs, into) {
+    const ai = (acc, req) => window.navigatorApp.acctGraphAi(String(acc).split('>')[0], req), A = into || planAcc();
     const refOf = k => { const r = refs[+String(c.ref || '').replace(/\D/g, '') - 1]; return r && r.kind === k ? r : null; };
     const iso = d => ({ dateTime: d.toISOString().slice(0, 19), timeZone: 'UTC' });
     const evTimes = () => { const a = planWhen(c.start, c.all_day); if (!a) return null; let b = planWhen(c.end, c.all_day); if (c.all_day) { const d0 = v => ({ dateTime: `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}T00:00:00`, timeZone: 'UTC' }); if (!b || b <= a) b = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 1); else b = new Date(b.getFullYear(), b.getMonth(), b.getDate() + 1); return { isAllDay: true, start: d0(a), end: d0(b) }; } if (!b || b <= a) b = new Date(+a + 30 * 60e3); return { isAllDay: false, start: iso(a), end: iso(b) }; };
@@ -18219,9 +18240,9 @@ body { width: max-content !important; min-width: 0 !important; }
         return r.ok ? { ok: true, undo: r.data && r.data.id ? { acc: A, method: 'DELETE', path: `/me/events/${r.data.id}` } : null } : r;
       }
       if (c.do === 'change_event' || c.do === 'remove_event') {
-        const e = refOf('event'); if (!e || !e.id) return { ok: false, error: 'the entry was not found' };
+        const e = refOf('event') || await planFind(c); if (!e || !e.id) return { ok: false, error: 'the entry was not found' };
         if (c.do === 'remove_event') return ai(e.acc, { method: 'DELETE', path: `/me/events/${e.id}` });
-        const body = Object.assign({}, c.title ? { subject: String(c.title).slice(0, 250) } : {}, c.start ? (evTimes() || {}) : {}, c.where ? { location: { displayName: String(c.where).slice(0, 250) } } : {}, c.notes ? { body: { contentType: 'text', content: String(c.notes).slice(0, 6000) } } : {});
+        const body = Object.assign({}, c.title ? { subject: String(c.title).slice(0, 250) } : {}, c.start && (refOf('event') || c.all_day || /T\d\d:/.test(String(c.start))) ? (evTimes() || {}) : {}, c.where ? { location: { displayName: String(c.where).slice(0, 250) } } : {}, c.notes ? { body: { contentType: 'text', content: String(c.notes).slice(0, 6000) } } : {});
         return ai(e.acc, { method: 'PATCH', path: `/me/events/${e.id}`, body });
       }
       if (c.do === 'add_rule') {
@@ -18269,8 +18290,20 @@ body { width: max-content !important; min-width: 0 !important; }
     const P = e.plan, refs = e.planRefs || [], w = document.createElement('div'); w.className = 'bplan';
     const rows = P.changes.map(c => ({ c, s: planSays(c, refs) }));
     w.appendChild(Object.assign(document.createElement('div'), { className: 'bp-h', textContent: P.summary || `${rows.length} change${rows.length === 1 ? '' : 's'} proposed` }));
+    // New things go into one account, named on the card, and you can change it. It starts as the account the entries
+    // this card changes were found in, else the one for the profile you are in.
+    const accs = planAccs(), makes = rows.some(x => ['add_event', 'add_rule', 'add_folder', 'draft_email', 'other'].includes(x.c.do));
+    if (!P.acc) P.acc = planAcc();
+    let sel = null;
+    if (makes && accs.length > 1) {
+      const bar = document.createElement('label'); bar.className = 'bp-into'; bar.append('New things go into ');
+      sel = document.createElement('select'); for (const a of accs) sel.appendChild(Object.assign(document.createElement('option'), { value: a.id, textContent: a.email || a.name || a.id }));
+      sel.value = P.acc; sel.addEventListener('change', () => { P.acc = sel.value; P.accSet = true; }); bar.appendChild(sel); w.appendChild(bar);
+    }
     const list = document.createElement('div'); list.className = 'bp-list'; w.appendChild(list);
-    const run = async row => { row.c._st = 'doing'; paint(); const r = await planDo(row.c, refs); row.c._st = r && r.ok ? 'done' : 'failed'; row.c._err = r && r.ok ? '' : (r && r.error) || 'it did not work'; if (r && r.undo) (P.undo = P.undo || []).push(r.undo); if (r && r.note) row.c._note = r.note; paint(); return r && r.ok; };
+    const finds = rows.filter(x => ['change_event', 'remove_event'].includes(x.c.do) && planFindOf(x.c) && x.c._hit === undefined);
+    if (finds.length) (async () => { for (const x of finds) { await planFind(x.c); x.s = planSays(x.c, refs); } const h = finds.map(x => x.c._hit).find(Boolean); if (h && !P.accSet) { P.acc = h.acc; if (sel) sel.value = h.acc; } paint(); })();
+    const run = async row => { row.c._st = 'doing'; paint(); const r = await planDo(row.c, refs, P.acc); row.c._st = r && r.ok ? 'done' : 'failed'; row.c._err = r && r.ok ? '' : (r && r.error) || 'it did not work'; if (r && r.undo) (P.undo = P.undo || []).push(r.undo); if (r && r.note) row.c._note = r.note; paint(); if (r && r.ok && row.s.risky) { try { calG.key = ''; if (calOn()) calRefresh(false); } catch (er) { /* not showing */ } } return r && r.ok; };
     const foot = document.createElement('div'); foot.className = 'bp-foot'; w.appendChild(foot);
     function paint() {
       list.replaceChildren();
