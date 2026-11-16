@@ -928,6 +928,10 @@
   dialog.cal-evdlg.with-day.ev-win.min { top: auto !important; bottom: 0 !important; left: 18px !important; width: min(360px, 80vw) !important; height: 40px !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box; padding: 0 !important; border-radius: 10px 10px 0 0; cursor: pointer; }
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
   dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
+  dialog.send-from { width: min(640px, calc(100vw - 32px)); }
+  .send-from .sf-kinds { display: flex; flex-wrap: wrap; gap: var(--sp-1h) var(--sp-4); margin: var(--sp-2) 0 var(--sp-3); font-size: var(--fs-body); } .send-from .sf-kinds label { display: inline-flex; align-items: center; gap: var(--sp-1); }
+  .send-from .sf-box { margin-top: var(--sp-3); } .send-from .sf-l { display: flex; align-items: baseline; gap: var(--sp-2); margin-bottom: var(--sp-1); } .send-from .sf-l span { flex: 1; color: var(--muted); font-size: var(--fs-sm); }
+  .send-from textarea { width: 100%; box-sizing: border-box; font: inherit; padding: var(--sp-2); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field); color: var(--text); resize: vertical; }
   dialog.plan-dlg { width: min(640px, calc(100vw - 32px)); } dialog.plan-dlg .bplan { margin: var(--sp-2) 0; }
   .bplan .bp-into { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1h) var(--sp-3); font-size: var(--fs-sm); color: var(--muted); border-bottom: 1px solid var(--line); } .bplan .bp-into select { font: inherit; max-width: 60%; }
   .bplan { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--win); margin: var(--sp-1) 0 var(--sp-2); overflow: hidden; }
@@ -15906,14 +15910,18 @@ body { width: max-content !important; min-width: 0 !important; }
     // One ask for everything the chat worked out. Claude writes it out in blocks the app can read: emails open for you
     // to check and send, meetings open as invitations for you to check and save, and entries in your own calendar,
     // rules and folders show on the approval card. `only` is a few words naming one part, instead of selecting it.
-    const all = async only => {
+    const all = async (only, extra, K = { email: true, meet: true, cal: true, rules: true, doc: false }) => {
       const meetShape = CAL_MEET_FORMAT.slice(CAL_MEET_FORMAT.indexOf('[[MEETING]]'), CAL_MEET_FORMAT.indexOf('[[END]]') + 7);
-      const got = await chatAsk([`Set out what we have worked out in this chat so my app can take it in for me to check.${only ? ` Only this part: ${only}.` : ' Include everything that is ready: emails, meetings, calendar entries, mail rules. For an email with more than one version, use the latest one I was happy with.'}`,
+      const calLines = '\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "remove_event": find (the title of the entry exactly as it shows in my calendar), date ("YYYY-MM-DD", the day it is on).\n- "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.';
+      const ruleLines = '\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).';
+      const wants = [K.email && 'emails', K.meet && 'meetings with other people', K.cal && 'entries in my own calendar', K.rules && 'mail rules and folders', K.doc && 'a document'].filter(Boolean);
+      const got = await chatAsk([`Set out what we have worked out in this chat so my app can take it in for me to check.${only ? ` Only this part: ${only}.` : ' Include everything that is ready.'} Set out only these kinds: ${wants.join(', ')}. For an email with more than one version, use the latest one I was happy with.`,
+        extra ? `More from me, to follow as you set it out: ${extra}` : '',
         'Do not send, create or change anything yourself and do not use any email or calendar tools: only write it out here. Never use em dashes. Use only the kinds of block that apply, one block for each email, meeting or document, with nothing outside the blocks, and finish with [[DONE]] on its own line.',
-        'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]',
-        'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape,
-        'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder), mail rules and mail folders, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:\n- "add_event": title, start and end as "YYYY-MM-DDTHH:MM" in my local time (or all_day true with start and end as "YYYY-MM-DD"), where, notes, remind_minutes, show_as ("free", "busy", "tentative" or "away").\n- "remove_event": find (the title of the entry exactly as it shows in my calendar), date ("YYYY-MM-DD", the day it is on).\n- "change_event": find and date as above, then whichever of title, start, end, where, notes are to change.\n- "add_rule": name, and any of from, subject_has, message_has, sent_to (each a list), has_attachment; then move_to (a mail folder name), mark_read, delete.\n- "add_folder": name, inside (a folder name, optional).\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.',
-        'A document, only if I asked for one:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]'].join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', only ? 'part you named' : 'work from this chat', true);
+        K.email ? 'An email for me to send (no signature, my mail app adds it):\n[[EMAIL]]\nTo: the email addresses or names, separated by commas (leave empty if we have not said)\nCc: (leave empty if none)\nSubject: the subject\n\nthe body of the email\n[[END]]' : '',
+        K.meet ? 'A meeting with other people, which opens as an invitation for me to check and save. For Invite, give an email address only when it has been said or you know it for certain; otherwise give the person’s name exactly. Never guess an address.\n' + meetShape : '',
+        K.cal || K.rules ? `${[K.cal && 'Entries in my own calendar with nobody invited (for example a schedule of dates, a hold, a reminder)', K.rules && 'mail rules and mail folders'].filter(Boolean).join(', and ')}, all in one block as a JSON list inside a code block:\n[[CHANGES]]\n[ one object for each change ]\n[[END]]\nEach object has "do" and its own fields:${K.cal ? calLines : ''}${K.rules ? ruleLines : ''}\n- "other": anything else in my mail or calendar that is not about one existing entry: method, path (a Microsoft Graph path starting /me/), body, and says (what it does, in plain words).\nNever give an id of a calendar entry or an email: my app has its own ids and yours do not work in it. Name the entry and its day.` : '',
+        K.doc ? 'A document:\n[[DOCUMENT]]\nTitle: the title\n\nthe text\n[[END]]' : ''].filter(Boolean).join('\n\n'), 'EMAIL|MEETING|CHANGES|DOCUMENT', 'work from this chat', true);
       if (!got) return toast('Could not read Claude’s answer. Wait for it to finish, then use Send To again.');
       const of = k => got.filter(g => g.kind === k).map(g => g.text);
       const emails = of('EMAIL').map(t => { const { heads, rest } = chatHeads(t); return { to: heads.to || '', cc: heads.cc || '', subject: heads.subject || '', text: rest, from: here.ref }; });
@@ -15945,9 +15953,24 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!r || !r.ok) return toast(`Could not make the document: ${(r && r.error) || 'try again'}`);
       await pullFromDisk(); toast(`“${r.name}” is in ${f.name} and opening in Word`);
     }));
+    // Before anything is asked of the chat: say what to take, which part, and anything to add. Both boxes can be dictated.
+    const askForm = () => {
+      const d = mailDlg('send-from no-dict', '<h2>Send From This Chat</h2><p class="hint">Claude is asked, in the chat, to set these out for the app. Nothing is sent or changed until you have checked each one.</p><div class="sf-kinds"></div><div class="sf-box"><div class="sf-l"><b>Only this part</b><span>Leave empty for everything that is ready.</span></div><textarea rows="3" data-k="only" placeholder="For example: the shorter email to the board, or the table as a document"></textarea></div><div class="sf-box"><div class="sf-l"><b>Anything to add</b><span>Changes or instructions for Claude before it sets things out.</span></div><textarea rows="5" data-k="extra" placeholder="For example: make the email warmer, move the Tuesday session to 2 pm, leave out the dinner"></textarea></div><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="ok">Ask Claude</button></div>');
+      let K = { email: true, meet: true, cal: true, rules: true, doc: false }; try { K = Object.assign(K, JSON.parse(ls.get('claudeNavigator.sendFrom') || '{}')); } catch (e) { /* the usual ones */ }
+      for (const [k, t] of [['email', 'Emails'], ['meet', 'Meetings with other people'], ['cal', 'Entries in my own calendar'], ['rules', 'Mail rules and folders'], ['doc', 'A document']]) {
+        const l = document.createElement('label'), cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !!K[k]; cb.addEventListener('change', () => { K[k] = cb.checked; }); l.append(cb, ' ' + t); d.querySelector('.sf-kinds').appendChild(l); }
+      for (const ta of d.querySelectorAll('textarea')) ta.previousElementSibling.appendChild(dictateBtn(ta));
+      const shut = () => { try { dictStop(); } catch (e) { /* not listening */ } d.close(); d.remove(); };
+      d.querySelector('[data-x="cancel"]').addEventListener('click', shut);
+      d.querySelector('[data-x="ok"]').addEventListener('click', () => {
+        if (!Object.values(K).some(Boolean)) return toast('Tick at least one thing to take from the chat.');
+        const v = k => d.querySelector(`[data-k="${k}"]`).value.trim().slice(0, 1500);
+        const only = v('only'), extra = v('extra'); ls.set('claudeNavigator.sendFrom', JSON.stringify(K)); shut(); all(only, extra, K);
+      });
+      setTimeout(() => d.querySelector('[data-k="only"]').focus(), 60);
+    };
     const whole = [
-      { label: 'What This Chat Worked Out', sub: 'Emails, meetings, calendar entries and rules, laid out for you to check. Nothing is sent and nobody is invited.', svg: ST_ICON.cal, tint: '#328276', run: () => all('') },
-      { label: 'Just One Part\u2026', sub: 'Say which in a few words, like \u201cthe shorter email\u201d or \u201cthe table as a document\u201d. No selecting.', svg: ST_ICON.doc, tint: '#4A90D9', run: () => askText('Which part of this chat?', '', w => { if (String(w || '').trim()) all(String(w).trim().slice(0, 300)); }, 'Send It') },
+      { label: 'What This Chat Worked Out…', sub: 'Emails, meetings, calendar entries and rules. You say what to take and add anything first, then check each one.', svg: ST_ICON.cal, tint: '#328276', run: askForm },
     ];
     showMenu(Math.max(8, x - 200), y, picked ? [
       { head: 'The words you selected' },
