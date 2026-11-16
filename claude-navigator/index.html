@@ -913,6 +913,8 @@
   .mail-compose .mc-draft .dchip.undo:hover { color: var(--text); background: var(--hover); }
   .mail-compose .mc-draft .dmore { flex: none; }
   .mail-compose .mc-draft .why { flex: 1 1 100%; }
+  .rl-kept { margin: var(--sp-2) 0 0; font-size: var(--fs-caption); color: var(--muted); line-height: 1.4; }
+  .mail-f.drop-before { box-shadow: inset 0 2px 0 var(--accent); } .mail-f.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
   .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
@@ -13463,7 +13465,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (!rules.length) body.appendChild(Object.assign(document.createElement('div'), { className: 'mail-note', textContent: 'No rules yet. A rule can file, forward or delete mail for you as it arrives.' }));
         for (const ru of rules) {
           const row = document.createElement('div'); row.className = 'rl' + (ru.isEnabled ? '' : ' off') + (ru.hasError ? ' bad' : '');
-          row.innerHTML = '<label class="sw" title="Turn this rule on or off"><input type="checkbox"><i></i></label><div class="tx"><b></b><span></span></div><button class="tb" data-r="up" title="Move this rule up: rules run in this order">\u2191</button><button class="tb" data-r="down" title="Move this rule down">\u2193</button><button class="tb" data-r="del" title="Delete this rule">' + (FICON.hide || '\u00d7') + '</button>';
+          row.innerHTML = '<label class="sw" title="Turn this rule on or off"><input type="checkbox"><i></i></label><div class="tx"><b></b><span></span></div><button class="btn sm" data-r="edit" title="Change what this rule looks for and what it does">Edit</button><button class="tb" data-r="up" title="Move this rule up: rules run in this order">\u2191</button><button class="tb" data-r="down" title="Move this rule down">\u2193</button><button class="tb" data-r="del" title="Delete this rule">' + (FICON.hide || '\u00d7') + '</button>';
           row.querySelector('b').textContent = ru.displayName || '(No name)';
           row.querySelector('.tx span').textContent = (ru.hasError ? 'Outlook reports a problem with this rule. ' : '') + mailRuleSays(ru, a.id);
           const cb = row.querySelector('input'); cb.checked = !!ru.isEnabled;
@@ -13472,7 +13474,8 @@ body { width: max-content !important; min-width: 0 !important; }
           { const at = rules.indexOf(ru), swap = async other => { if (!other) return; const s1 = ru.sequence || at + 1, s2 = other.sequence || rules.indexOf(other) + 1; const r1 = await mailApi(a.id, { method: 'PATCH', path: `${base}/${ru.id}`, body: { sequence: s2 } }); const r2 = r1.ok ? await mailApi(a.id, { method: 'PATCH', path: `${base}/${other.id}`, body: { sequence: s1 === s2 ? s2 + 1 : s1 } }) : r1; if (!r2.ok) toast(`Could not move the rule: ${r2.error || 'try again'}`); list(); };
             const up = row.querySelector('[data-r="up"]'), dn = row.querySelector('[data-r="down"]'); up.disabled = at === 0 || !!ru.isReadOnly; dn.disabled = at === rules.length - 1 || !!ru.isReadOnly;
             up.addEventListener('click', e => { e.stopPropagation(); swap(rules[at - 1]); }); dn.addEventListener('click', e => { e.stopPropagation(); swap(rules[at + 1]); }); }
-          row.querySelector('.tx').addEventListener('click', () => { if (ru.isReadOnly) return toast('This rule was set by your organisation and cannot be changed.'); if (!mailRuleSimple(ru)) return toast('This rule uses settings made in Outlook. Here you can turn it on or off, or delete it.'); form(ru); });
+          const edit = e => { if (e) e.stopPropagation(); if (ru.isReadOnly) return toast('This rule was set by your organisation and cannot be changed.'); form(ru); };
+          row.querySelector('.tx').addEventListener('click', edit); row.querySelector('[data-r="edit"]').addEventListener('click', edit); row.querySelector('[data-r="edit"]').disabled = !!ru.isReadOnly;
           body.appendChild(row);
         }
         const act = document.createElement('div'); act.className = 'dlg-actions';
@@ -13481,6 +13484,12 @@ body { width: max-content !important; min-width: 0 !important; }
       };
       const form = (ru, pre) => {
         const c = (ru && ru.conditions) || pre || {}, ac = (ru && ru.actions) || {};
+        // A rule made in Outlook can hold settings this form does not show. They are kept exactly as they are, and named.
+        const real = v => v != null && v !== false && !(Array.isArray(v) && !v.length), plain = k => k.replace(/([A-Z])/g, ' $1').toLowerCase();
+        const moreC = ru ? Object.fromEntries(Object.entries(ru.conditions || {}).filter(([k, v]) => !MAIL_RULE_KNOWN.c.includes(k) && real(v))) : {};
+        const moreA = ru ? Object.fromEntries(Object.entries(ru.actions || {}).filter(([k, v]) => !MAIL_RULE_KNOWN.a.includes(k) && real(v))) : {};
+        const exc = ru ? Object.keys(ru.exceptions || {}).filter(k => real(ru.exceptions[k])) : [];
+        const kept = [...Object.keys(moreC).map(plain), ...Object.keys(moreA).map(plain), ...exc.map(k => 'except ' + plain(k))];
         const adr = l => (l || []).map(x => x.emailAddress && x.emailAddress.address).filter(Boolean).join(', ');
         const folders = mailAllFolders(a.id);
         body.innerHTML = `<div class="row"><span>Name</span><input name="name" maxlength="120"></div>
@@ -13499,8 +13508,10 @@ body { width: max-content !important; min-width: 0 !important; }
           <label class="pick"><input type="checkbox" name="read"><span>Mark as read</span></label>
           <label class="pick"><input type="checkbox" name="del"><span>Delete it</span></label>
           <label class="pick"><input type="checkbox" name="stop"><span>Do not apply the rules after this one</span></label>
+          <p class="rl-kept" hidden></p>
           <div class="dlg-actions"><button class="btn" data-x="back">Back</button><button class="btn-primary" data-x="save">Save Rule</button></div>`;
         const f = n => body.querySelector(`[name="${n}"]`);
+        if (kept.length) { const kp = body.querySelector('.rl-kept'); kp.hidden = false; kp.textContent = `This rule also has settings made in Outlook, which stay as they are: ${kept.join(', ')}.`; }
         for (const z of folders) { const o = document.createElement('option'); o.value = z.f.id; o.textContent = '  '.repeat(z.depth) + z.f.displayName; if (z.f.wk !== 'inbox') f('move').appendChild(o); }
         f('name').value = (ru && ru.displayName) || '';
         f('from').value = [adr(c.fromAddresses), (c.senderContains || []).join(', ')].filter(Boolean).join(', ');
@@ -13529,10 +13540,11 @@ body { width: max-content !important; min-width: 0 !important; }
           if (fw.length) act.forwardTo = fw;
           if (f('read').checked) act.markAsRead = true;
           if (f('del').checked) act.delete = true;
-          if (!Object.keys(act).length) return toast('Choose what the rule should do.');
+          if (!Object.keys(act).length && !Object.keys(moreA).length) return toast('Choose what the rule should do.');
           if (!Object.keys(cond).length && !confirm('This rule has no conditions, so it will apply to every message that arrives. Save it anyway?')) return;
           if (act.delete && !confirm('Messages this rule matches will go straight to Deleted Items. Save it?')) return;
           act.stopProcessingRules = f('stop').checked;
+          Object.assign(cond, moreC); Object.assign(act, moreA);          // (what the form does not show goes back unchanged)
           if (!confirm(`This rule will do this to mail as it arrives:\n\n${mailRuleSays({ conditions: cond, actions: act }, a.id)}\n\nSave it?`)) return;
           const name = f('name').value.trim() || (whole[0] || part[0] ? `From ${whole[0] || part[0]}` : cond.subjectContains ? `Subject: ${cond.subjectContains[0]}` : 'New rule');
           btn.disabled = true;
@@ -13653,7 +13665,38 @@ body { width: max-content !important; min-width: 0 !important; }
         b.innerHTML = `<span class="tw${f.childFolderCount && open ? ' open' : ''}">${f.childFolderCount ? MAIL_TW : ''}</span>${mailIcon(depth ? '' : f.wk)}<span class="nm"></span><span class="n"></span>`;
         b.querySelector('.nm').textContent = f.displayName;
         b.addEventListener('dragover', e => { const d = mailUi.drag; if (!d || d.acc !== a.id || d.from === f.id || f.wk === 'drafts' || f.wk === 'outbox') return; e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) { /* no data */ } b.classList.add('drop'); });
-        b.addEventListener('dragleave', () => b.classList.remove('drop'));
+        b.addEventListener('dragleave', () => b.classList.remove('drop', 'drop-before', 'drop-after'));
+        // A folder can be dragged: onto the top or bottom edge of another to sit before or after it, or onto its middle
+        // to go inside it. Order is this app's own; going inside, or out to another level, is a real move in Outlook.
+        b.draggable = true;
+        b.addEventListener('dragstart', e => { if (mailUi.drag) return; mailUi.fdrag = { acc: a.id, f, parent: parent || '' }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', f.displayName); } catch (er) { /* no data */ } e.stopPropagation(); });
+        b.addEventListener('dragend', () => { mailUi.fdrag = null; for (const z of sd.querySelectorAll('.drop, .drop-before, .drop-after')) z.classList.remove('drop', 'drop-before', 'drop-after'); });
+        const fzone = e => { const g = mailUi.fdrag; if (!g || g.acc !== a.id || g.f.id === f.id) return ''; const r0 = b.getBoundingClientRect(), y = (e.clientY - r0.top) / Math.max(1, r0.height); const sameLevel = g.parent === (parent || '');
+          const canMove = !g.f.wk, intoOk = canMove && !['drafts', 'outbox', 'junkemail', 'deleteditems', 'sentitems'].includes(f.wk) && g.parent !== f.id;
+          if (y < 0.3) return sameLevel || canMove ? 'before' : ''; if (y > 0.7) return sameLevel || canMove ? 'after' : ''; return intoOk ? 'into' : (sameLevel || canMove ? (y < 0.5 ? 'before' : 'after') : ''); };
+        b.addEventListener('dragover', e => { if (!mailUi.fdrag) return; const z = fzone(e); b.classList.toggle('drop', z === 'into'); b.classList.toggle('drop-before', z === 'before'); b.classList.toggle('drop-after', z === 'after'); if (!z) return; e.preventDefault(); e.stopPropagation(); try { e.dataTransfer.dropEffect = 'move'; } catch (er) { /* no data */ } });
+        b.addEventListener('drop', async e => {
+          const g = mailUi.fdrag; if (!g) return; const z = fzone(e); b.classList.remove('drop', 'drop-before', 'drop-after'); mailUi.fdrag = null; if (!z) return; e.preventDefault(); e.stopPropagation();
+          let id = g.f.id;
+          const redo = () => { mailUi.kids = {}; delete mailUi.folders[a.id]; mailStart(true); };
+          if (z === 'into') {
+            const r = await mailApi(a.id, { method: 'POST', path: `/me/mailFolders/${g.f.id}/move`, body: { destinationId: f.id } });
+            if (!r.ok) return toast(`Could not move the folder: ${r.error || 'try again'}`);
+            mailState.open[f.id] = true; mailSave(); toast(`\u201c${g.f.displayName}\u201d is now inside \u201c${f.displayName}\u201d`); return redo();
+          }
+          const toParent = parent || '';
+          if (g.parent !== toParent) {          // to another level: moved in Outlook first
+            const r = await mailApi(a.id, { method: 'POST', path: `/me/mailFolders/${g.f.id}/move`, body: { destinationId: toParent || 'msgfolderroot' } });
+            if (!r.ok) return toast(`Could not move the folder: ${r.error || 'try again'}`);
+            if (r.data && r.data.id) id = r.data.id;
+          }
+          const src = toParent ? mailUi.kids[toParent] : (mailUi.folders[a.id] || {}).list;
+          const cur = mailOrdered(a.id, toParent, src || []).map(x => x.id).filter(x => x !== g.f.id && x !== id);
+          const at = cur.indexOf(f.id); cur.splice(at < 0 ? cur.length : (z === 'before' ? at : at + 1), 0, id);
+          mailState.forder = mailState.forder || {}; mailState.forder[`${a.id}|${toParent}`] = cur; mailSave();
+          if (g.parent !== toParent) { toast(toParent ? `\u201c${g.f.displayName}\u201d moved` : `\u201c${g.f.displayName}\u201d is now at the top level`); return redo(); }
+          mailSideRender();
+        });
         b.addEventListener('drop', async e => {
           const d = mailUi.drag; b.classList.remove('drop'); if (!d) return; e.preventDefault(); mailUi.drag = null;
           if (d.acc !== a.id) return toast('An email can only be moved to a folder in its own account.');
@@ -14250,6 +14293,8 @@ body { width: max-content !important; min-width: 0 !important; }
     else if (what === 'flag') { const on = !(m.flag && m.flag.flagStatus === 'flagged'); m.flag = { flagStatus: on ? 'flagged' : 'notFlagged' }; mailRenderMain(); r = await mailApi(A, { method: 'PATCH', path: `/me/messages/${m.id}`, body: { flag: m.flag } }); }
     settle(r);
     if (quiet) return r;
+    // The list has run low and the folder holds more: it is read again, so you are never shown an empty folder that is not empty.
+    if (leaves && r && r.ok && (mailUi.msgs || []).length < 12 && !mailUi.search) { clearTimeout(mailUi.topUpT); mailUi.topUpT = setTimeout(() => { if (!mailUi.loading && !mailUi.search) mailLoadMessages(true, true); }, 700); }
     if (r && !r.ok) { toast(`That did not work: ${r.error || 'try again'}`); mailLoadMessages(true); }
     mailRefreshFolders();
     return r;
@@ -14278,6 +14323,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const worker = async () => { while (at < list.length) { const m = list[at++]; try { const r = await mailAct(m, what, arg, leaves); if (r !== false && !(r && r.ok === false)) did++; } catch (e) { /* carry on with the rest */ } } };
     await Promise.all(leaves ? [worker(), worker(), worker()] : [worker()]);
     if (did < list.length) { toast(`${list.length - did} of ${list.length} could not be done and ${list.length - did === 1 ? 'is' : 'are'} back in the list: try ${list.length - did === 1 ? 'it' : 'them'} again.`); mailLoadMessages(true); }
+    else if (leaves && (mailUi.msgs || []).length < 25 && !mailUi.search) mailLoadMessages(true, true);          // (more of the folder is brought in to take their place)
     mailRefreshFolders();
   }
   const mailBulkItems = () => [
@@ -14343,6 +14389,7 @@ body { width: max-content !important; min-width: 0 !important; }
         after(await mailApi(a.id, { method: 'DELETE', path: `/me/mailFolders/${f.id}` }));
       } },
       '-',
+      parentId && !sys ? { label: 'Move Out to the Top Level', run: async () => { const r = await mailApi(a.id, { method: 'POST', path: `/me/mailFolders/${f.id}/move`, body: { destinationId: 'msgfolderroot' } }); if (r.ok) toast(`\u201c${f.displayName}\u201d is now at the top level`); after(r); } } : null,
       { label: 'Move Up', disabled: at <= 0, run: () => mailFolderMove(a, f, parentId, -1) },
       { label: 'Move Down', disabled: at < 0 || at >= sibs.length - 1, run: () => mailFolderMove(a, f, parentId, 1) },
       { label: 'Move to Top', disabled: at <= 0, run: () => mailFolderMove(a, f, parentId, 'top') },
