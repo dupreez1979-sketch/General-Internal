@@ -16052,7 +16052,9 @@ body { width: max-content !important; min-width: 0 !important; }
     const sync = () => {
       const n = staff.find(x => x.id === f('who').value), list = n ? openOf(n) : [];
       d.querySelector('[data-x="ok"]').disabled = !n;
+      const was = f('act').value;                                                // (the action you chose stays chosen: this runs on every change in the window)
       f('act').replaceChildren(...list.map(x => Object.assign(document.createElement('option'), { value: x.id, textContent: x.name })));
+      if (was && list.some(x => x.id === was)) f('act').value = was;
       const old = d.querySelector('[name="how"][value="old"]'); old.disabled = !list.length; if (!list.length) d.querySelector('[name="how"][value="new"]').checked = true;
       old.parentNode.querySelector('span').textContent = list.length ? 'Add it to an action that is open' : n ? `Add it to an action that is open (${n.name} has none)` : `${p.name} has no staff yet: add some in Chief of Staff`;
       d.querySelector('.row.old').hidden = d.querySelector('[name="how"]:checked').value !== 'old';
