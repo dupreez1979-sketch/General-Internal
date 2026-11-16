@@ -915,6 +915,19 @@
   .mail-compose .mc-draft .why { flex: 1 1 100%; }
   .rl-kept { margin: var(--sp-2) 0 0; font-size: var(--fs-caption); color: var(--muted); line-height: 1.4; }
   .mail-f.drop-before { box-shadow: inset 0 2px 0 var(--accent); } .mail-f.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
+  /* A window (an email, a message being written, a calendar entry) opens about 980 by 800, centred, or smaller if the app is. */
+  .mail-read.pop, .mail-compose, .cal-view:not(.cal-help) { left: max(16px, calc(50% - 490px)); right: max(16px, calc(50% - 490px)); top: max(18px, calc(50% - 400px)); bottom: max(18px, calc(50% - 400px)); }
+  .cal-view.cal-help.min { width: min(340px, 80%) !important; height: 38px !important; }
+  /* Sheets come in three widths. */
+  dialog.cal-movedlg, dialog.bot-learn-dlg { width: min(480px, calc(100vw - 32px)); }
+  dialog.mail-monday, dialog.mail-prefs, dialog.mail-rules, dialog.mail-health, dialog.outs-dlg, dialog.clara-dlg, dialog.mail-sigdlg.granola-dlg, dialog.mail-hand { width: min(640px, calc(100vw - 32px)); }
+  dialog.mail-sigdlg.gran-dlg, dialog.mail-sigdlg.sigman, dialog.gran-list, dialog.settings-win { width: min(880px, 94vw); }
+  /* The meeting window is a window: it can be moved, made full size or tucked away, and does not lock the app. */
+  dialog.cal-evdlg.with-day.ev-win { z-index: 45; margin: 0; top: max(14px, calc(50vh - 430px)); left: max(12px, calc(50vw - 590px)); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.18); }
+  dialog.cal-evdlg.with-day.ev-win.full { top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; box-sizing: border-box; border-radius: 0; }
+  dialog.cal-evdlg.with-day.ev-win.min { top: auto !important; bottom: 0 !important; left: 18px !important; width: min(360px, 80vw) !important; height: 40px !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box; padding: 0 !important; border-radius: 10px 10px 0 0; cursor: pointer; }
+  dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
+  dialog.cal-evdlg .ev-top .lights { margin-right: var(--sp-1); }
   .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
@@ -11612,7 +11625,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const e = inst.ev, pop = document.createElement('div');
     pop.className = 'cal-pop';
     pop.style.setProperty('--ev', calColour(inst));
-    pop.innerHTML = '<div class="bar"></div><div class="hd"><span class="lights"><button class="x lt r" title="Close">\u00d7</button><button type="button" class="lt y off" disabled tabindex="-1"></button><button type="button" class="lt g off" disabled tabindex="-1"></button></span><b></b></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
+    pop.innerHTML = '<div class="bar"></div><div class="hd"><span class="lights"><button class="x lt r" title="Close">\u00d7</button></span><b></b></div><div class="when"></div><div class="rows"></div><div class="prof"></div><div class="desc"></div>';
     pop.querySelector('b').textContent = e.title || '(No title)';
     pop.querySelector('.x').addEventListener('click', calClosePop);
     const day = new Date(inst.start).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -12484,6 +12497,13 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     const rememberCal = () => { const v = f('cal').value, prof = state.profileId || ''; calState.lastCal = v; if (prof && mailProf(v.split('\n')[0]).includes(prof)) (calState.lastCalBy = calState.lastCalBy || {})[prof] = v; calSave(); };
     const shut = () => { d.close(); d.remove(); };
+    // It is a window, not a sheet: traffic lights, a bar to drag it by, and a button to lift it into a window of its own.
+    d.classList.add('ev-win');
+    { const top = d.querySelector('.ev-top');
+      top.prepend(macLights({ close: () => shut(), min: () => { d.classList.remove('full'); d.classList.toggle('min'); }, zoom: () => { d.classList.remove('min'); d.classList.toggle('full'); }, titles: { close: 'Close without saving' } }));
+      top.addEventListener('click', e => { if (d.classList.contains('min') && !e.target.closest('.lights')) { e.stopPropagation(); d.classList.remove('min'); } }, true);
+      d.addEventListener('keydown', e => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('#menu.show') && !d.querySelector('.sched')) { e.stopPropagation(); shut(); } });
+      setTimeout(() => { try { popMovable(d, top, 'calEdit', inst ? null : b => { const sp = span(); itemWindow('cal', { kind: 'new', start: sp ? sp[0] : Date.now(), seed: { title: f('title').value, att: f('att').value, notes: f('notes').value, loc: f('loc').value, end: sp ? sp[1] : 0, teams: f('teams').checked, purpose: f('purpose').value, agenda: f('agenda').value, before: f('before').value } }, b).then(r0 => { if (r0 && r0.ok) shut(); }); }); } catch (e) { /* it still works where it is */ } }, 0); }
     d.addEventListener('click', async e => {
       const x = e.target.dataset && e.target.dataset.x;
       if (x === 'find') return frFind(e.target);
@@ -12570,13 +12590,13 @@ body { width: max-content !important; min-width: 0 !important; }
       else { const [a, c] = f('cal').value.split('\n'); rememberCal(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
       if (!r.ok) {
         saveBtn.disabled = false; saveBtn.textContent = 'Save';
-        if (ghost || before) { unGhost(); calRender(); if (!d.isConnected) { document.body.appendChild(d); d.showModal(); } }      // back comes the form, with everything you typed
+        if (ghost || before) { unGhost(); calRender(); if (!d.isConnected) { document.body.appendChild(d); d.show(); } }      // back comes the form, with everything you typed
         return toast(`It was not saved: ${r.error || 'try again'}`);
       }
       chime('made'); toast(r.queued ? `In the Outbox. The meeting is made${people.length ? ' and the invitations sent' : ''} when you are back online.` : inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
     });
-    document.body.appendChild(d); d.showModal(); f('title').focus();
+    document.body.appendChild(d); d.show(); try { sheetTidy(d); } catch (e) { /* as it is */ } f('title').focus();
   }
 
   // ----- Mail (your Microsoft accounts, signed in once and kept in the Keychain) -----
@@ -12890,12 +12910,15 @@ body { width: max-content !important; min-width: 0 !important; }
   // turn the reading pane on, one click shows the message beside the list instead, as Outlook does.)
   // A pop-up (an email, a message being written, a meeting) can be dragged by its bar. Dropped outside the app's
   // window, or with "Open in Its Own Window", it becomes a real window that can sit on another screen.
-  const popPos = {};
+  const popPos = (() => { try { return JSON.parse(ls.get('claudeNavigator.popPos') || '{}') || {}; } catch (e) { return {}; } })();
+  const popPosSave = () => { try { ls.set('claudeNavigator.popPos', JSON.stringify(popPos)); } catch (e) { /* not kept */ } };
   function popMovable(el, bar, key, out) {
     const fixed = getComputedStyle(el).position === 'fixed';
     const hostRect = () => fixed || !el.offsetParent ? { left: 0, top: 0, width: innerWidth, height: innerHeight } : el.offsetParent.getBoundingClientRect();
     const apply = q => { const h = hostRect(); Object.assign(el.style, { left: Math.max(80 - q.w, Math.min(h.width - 80, q.x)) + 'px', top: Math.max(0, Math.min(h.height - 40, q.y)) + 'px', right: 'auto', bottom: 'auto', width: q.w + 'px', height: q.h + 'px' }); };
     if (popPos[key] && !SOLO_ITEM) apply(popPos[key]);
+    // A window you resize by its corner keeps that size too.
+    try { let rt = 0; new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { if (!el.isConnected || SOLO_ITEM || el.classList.contains('min') || el.classList.contains('full') || document.body.classList.contains('pop-moving')) return; const r = el.getBoundingClientRect(), h = hostRect(), was = popPos[key]; if (r.width < 200 || r.height < 120) return; if (!was && !el.style.width) return; const q = { x: Math.round(r.left - h.left), y: Math.round(r.top - h.top), w: Math.round(r.width), h: Math.round(r.height) }; if (!was || Math.abs(was.w - q.w) > 2 || Math.abs(was.h - q.h) > 2) { popPos[key] = q; popPosSave(); } }, 400); }).observe(el); } catch (e) { /* older */ }
     bar.style.cursor = 'grab';
     bar.addEventListener('mousedown', e => {
       if (e.button !== 0 || e.target.closest('button, input, select, textarea, a, .lights') || el.classList.contains('min') || el.classList.contains('full') || SOLO_ITEM) return;
@@ -12913,7 +12936,7 @@ body { width: max-content !important; min-width: 0 !important; }
         bar._moved = true; setTimeout(() => { bar._moved = false; }, 300);
         const outside = edge === true || ev.clientX <= 1 || ev.clientY <= 1 || ev.clientX >= innerWidth - 2 || ev.clientY >= innerHeight - 2;
         if (outside && out) { if (popPos[key]) apply(popPos[key]); else Object.assign(el.style, { left: '', top: '', right: '', bottom: '', width: '', height: '' }); return out({ x: Math.round(ev.screenX - dx), y: Math.round(ev.screenY - dy), width: Math.round(r.width), height: Math.round(r.height) }); }
-        popPos[key] = q;
+        popPos[key] = q; popPosSave();
       };
       addEventListener('mousemove', mv); addEventListener('mouseup', up);
     });
@@ -12941,6 +12964,7 @@ body { width: max-content !important; min-width: 0 !important; }
           else if (it.kind === 'draft') { await mailCompose('draft', it.m); if (mailUi.composeEl) mailUi.composeEl.classList.add('full'); document.title = 'Writing an email'; }
         } else if (SOLO === 'cal') {
           if (!opened && tries === 1) { calUi.date = new Date(it.at || Date.now()); try { await calGReload(); } catch (e) { /* loading */ } }
+          if (it.kind === 'new') { const sd0 = it.seed || {}; await calGEdit(null, false, new Date(it.start || Date.now()), Object.assign({}, sd0, { end: sd0.end ? new Date(sd0.end) : 0 })); const dd = document.querySelector('dialog.cal-evdlg.ev-win'); if (dd) dd.classList.add('full'); document.title = sd0.title || 'New Meeting'; opened = true; return; }
           const inst = (calG.inst || []).find(i => i.key === it.key);
           if (!inst) return setTimeout(go, 500);
           await calView(inst); if (calUi.view) calUi.view.el.classList.add('full'); document.title = inst.ev.title || 'Meeting';
@@ -15745,7 +15769,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     const bar = () => {
       const b = el.querySelector('.cv-bar'); b.replaceChildren();
-      b.appendChild(macLights({ close: calHelpClose, zoom: () => el.classList.toggle('full') }));
+      b.appendChild(macLights({ close: calHelpClose, min: () => { el.classList.remove('full'); el.classList.toggle('min'); }, zoom: () => { el.classList.remove('min'); el.classList.toggle('full'); } }));
       const who = document.createElement('button'); who.className = 'tb ch-who'; who.innerHTML = '<b></b><span class="t"></span>'; who.querySelector('b').textContent = 'Meeting Helper'; who.querySelector('.t').textContent = `${staff.name} \u00b7 ${prof.name} \u25be`;
       who.title = 'Who helps. Click to choose someone else on this team.';
       who.addEventListener('click', () => { const r0 = who.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, all.map(n => ({ label: n.name, checked: n.id === staff.id, run: () => { staff = calHelp.staff = n; (calState.helpStaff = calState.helpStaff || {})[prof.id] = n.id; calSave(); bar(); load(); } }))); });
@@ -16554,7 +16578,7 @@ body { width: max-content !important; min-width: 0 !important; }
     Object.assign(mailHelp, { el, shade });
     document.body.append(shade, el);
     popMovable(el, el.querySelector('.cv-bar'), 'mailHelp', null);
-    const bar = el.querySelector('.cv-bar'); bar.appendChild(macLights({ close: mailHelpClose, zoom: () => el.classList.toggle('full') }));
+    const bar = el.querySelector('.cv-bar'); bar.appendChild(macLights({ close: mailHelpClose, min: () => { el.classList.remove('full'); el.classList.toggle('min'); }, zoom: () => { el.classList.remove('min'); el.classList.toggle('full'); } }));
     { const who = document.createElement('span'); who.className = 'tb ch-who'; who.innerHTML = '<b>Email Helper</b><span class="t"></span>'; who.querySelector('.t').textContent = acc.email || acc.name || ''; bar.appendChild(who); }
     const say = el.querySelector('.ch-say'), out = el.querySelector('.ch-out'), goB = el.querySelector('.ch-go');
     const status = t => { out.replaceChildren(Object.assign(document.createElement('div'), { className: 'ch-st', textContent: t })); };
