@@ -490,7 +490,7 @@
   .bot-chatbar { flex: none; display: flex; align-items: center; gap: var(--sp-2h); padding: var(--sp-1h) var(--sp-2h); border-bottom: 1px solid var(--line); font-size: var(--fs-caption); color: var(--muted); } .bot-chatbar button { font: inherit; font-size: var(--fs-caption); border: 0; background: none; color: var(--accent-ink); font-weight: var(--fw-bold); cursor: pointer; padding: var(--sp-h) var(--sp-1); }
   .bot-ctx { flex: none; display: flex; align-items: center; gap: var(--sp-1h); margin: var(--sp-2h) var(--sp-3) 0; padding: var(--sp-1h) var(--sp-2h); border-radius: var(--r-card); background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent-ink); font-size: var(--fs-caption); } .bot-ctx[hidden] { display: none; } .bot-ctx b { font-weight: var(--fw-bold); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bot-ask { flex: none; display: flex; align-items: center; gap: var(--sp-2h); padding: var(--sp-3) var(--sp-3) var(--sp-2); }
-  .bot-talk { flex: none; width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-text, #fff); display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent); } .bot-talk svg { width: 20px; height: 20px; } .bot-talk:hover { filter: brightness(1.08); }
+  .bot-talk { flex: none; width: 38px; height: 38px; border-radius: var(--r-card); border: 0; background: var(--win); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); } .bot-talk svg { width: 18px; height: 18px; } .bot-talk:hover { background: color-mix(in srgb, var(--accent) 10%, var(--win)); }
   .bot-in { flex: 1; min-width: 0; font: inherit; font-size: var(--fs-body); padding: var(--sp-2) var(--sp-3h); border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--win); color: var(--text); outline: none; } .bot-in:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent); }
   #cosBot.listening .bot-ask { display: none; }
   .bot-body { flex: 1; min-height: 0; overflow: auto; border-top: 1px solid var(--line); }
@@ -907,6 +907,12 @@
   .ob-row .st { font-size: var(--fs-caption); color: var(--muted); } .ob-row .st.queued { color: var(--caution-ink); font-weight: var(--fw-bold); } .ob-row .st.failed { color: var(--danger-ink); font-weight: var(--fw-bold); }
   .ob-row .tx { display: grid; gap: 2px; min-width: 0; } .ob-row .tx b, .ob-row .tx i { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ob-row .tx i { font-style: normal; color: var(--muted); font-size: var(--fs-caption); } .ob-row .tx em { font-style: normal; color: var(--danger-ink); font-size: var(--fs-caption); }
   .ob-row .bt { display: flex; gap: var(--sp-1h); }
+  .mail-compose .mc-draft .chg { flex: 1 1 220px; min-width: 160px; order: 0; }
+  .mail-compose .mc-draft .dchip { flex: none; white-space: nowrap; }
+  .mail-compose .mc-draft .dchip.undo { border-color: transparent; color: var(--muted); }
+  .mail-compose .mc-draft .dchip.undo:hover { color: var(--text); background: var(--hover); }
+  .mail-compose .mc-draft .dmore { flex: none; }
+  .mail-compose .mc-draft .why { flex: 1 1 100%; }
   .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
@@ -1123,7 +1129,7 @@
   .mc-draft .made { margin-left: auto; font-size: var(--fs-label); color: var(--muted); }
   .mc-draft .dchip:disabled { opacity: .5; cursor: default; }
   .mc-draft .why { flex-basis: 100%; color: var(--muted); font-size: var(--fs-caption); line-height: 1.45; white-space: pre-wrap; }
-  .mail-compose .mc-ai .t { font-weight: var(--fw-bold); color: var(--accent-ink); }
+  .cal-help.nochat .ch-fresh { display: none; }
   dialog.mail-hand, dialog.mail-askstaff, dialog.mail-prefs { height: fit-content; background: var(--win); color: var(--text); }
   dialog.mail-prefs { width: 560px; }
   dialog.mail-prefs .sn { display: grid; grid-template-columns: 130px minmax(0, 1fr) auto; gap: var(--sp-1h); align-items: start; margin-bottom: var(--sp-1h); }
@@ -1320,7 +1326,8 @@
   .cal-newrow > .mail-new { flex: 1; width: auto; margin: 0; display: flex; align-items: center; justify-content: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); font-size: var(--fs-body); font-weight: var(--fw-bold); border-radius: var(--r-card); }
   .cal-newrow > .cal-mic { flex: none; width: 38px; padding: 0; border-radius: var(--r-card); display: grid; place-items: center; }
   .cal-hshade { position: fixed; z-index: 69; }
-  .cal-view.cal-help.mail-helper { top: 14%; bottom: auto; left: calc(50% - min(310px, 46vw)); right: auto; width: min(620px, 92vw); height: 380px; }
+  .cal-view.cal-help.mail-helper, .cal-view.cal-help.nochat { top: 14%; bottom: auto; left: calc(50% - min(310px, 46vw)); right: auto; width: min(620px, 92vw); height: 380px; }
+  .cal-view.cal-help.nochat:not(.mail-helper) { height: 440px; } .cal-help.nochat .ch-left { width: auto; max-width: none; flex: 1; border-right: 0; }
   .cal-view.cal-help { position: fixed; z-index: 70; top: 36px; bottom: 36px; left: 7%; right: 7%; }
   .cal-help .ch-left { flex: 1; min-width: 300px; display: flex; flex-direction: column; gap: var(--sp-2h); padding: 18px var(--sp-5); overflow: auto; }
   .cal-help .ch-left h1 { margin: 0; font-size: var(--fs-title); font-weight: var(--fw-bold); }
@@ -1402,6 +1409,7 @@
   dialog.cal-evdlg .row.top textarea { min-height: 84px; resize: vertical; display: block; }
   dialog.cal-evdlg .row.top { height: auto; }
   dialog.cal-evdlg p.hint { clear: both; margin: var(--sp-2) 0 0 80px; position: static; }
+  dialog.mail-sigdlg.cal-evdlg > p.hint { margin: 0 0 var(--sp-2h); padding: 0; text-align: left; text-indent: 0; }          /* (the sheets built on the meeting form: their one line of explanation starts under the title) */
   dialog.cal-evdlg:not([open]) { display: none; }
   dialog.cal-evdlg .row { display: grid; grid-template-columns: 70px minmax(0, 1fr); align-items: center; gap: var(--sp-2h); margin: 0 0 var(--sp-2); font-size: var(--fs-body); color: var(--muted); }
   dialog.cal-evdlg .row.top { align-items: start; }
@@ -1420,10 +1428,10 @@
   dialog.cal-evdlg .hint:empty { display: none; }
   dialog.cal-evdlg .tzrow select { max-width: 230px; } dialog.cal-evdlg .tzrow[hidden] { display: none; } dialog.cal-evdlg .tz-def { font-size: var(--fs-caption); padding: var(--sp-1) var(--sp-2h); }
   dialog.cal-evdlg .dict-sec { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2h); }
-  .dict-b { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-caption); font-weight: var(--fw-medium); padding: var(--sp-1) var(--sp-2); border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-ink); }
+  .dict-b { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-caption); font-weight: var(--fw-medium); padding: var(--sp-1) var(--sp-2h); border-radius: var(--r-control); background: var(--win); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); } .dict-b svg { color: var(--accent-ink); } .dict-b.rec svg { color: #fff; }
   .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent-ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
   .dict-float[hidden] { display: none; }
-  .dict-float.rec, .dict-b.rec, .ch-mic.rec { background: var(--danger) !important; color: #fff !important; }
+  .dict-float.rec, .dict-b.rec, .ch-mic.rec, .dchip.say.rec, .bot-talk.rec { background: var(--danger) !important; color: #fff !important; border-color: var(--danger) !important; }
 
   /* The moving bars: one element for "listening" (live), "you are speaking" (loud), "working" (busy) and "speaking back" (talk). */
   .wave { display: inline-flex; align-items: center; gap: var(--sp-1); height: 22px; flex: none; }
@@ -11318,7 +11326,7 @@ body { width: max-content !important; min-width: 0 !important; }
       seg, cmore, csr);
     if (currentApp === 'cal') head.append(botToolBtn());
     if (currentApp !== 'cal') {
-      const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Event'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
+      const nm = document.createElement('button'); nm.className = 'btn-primary mail-new cal-new'; nm.textContent = 'New Meeting'; nm.title = 'Make a meeting in one of your accounts\u2019 calendars';
       nm.addEventListener('click', () => calGEdit(null));
       const mic = document.createElement('button'); mic.className = 'tb cal-mic'; mic.innerHTML = CAL_MIC; mic.title = 'Meeting helper: say the meeting, and your Executive Assistant lays out the invite for you to check';
       mic.addEventListener('click', () => calHelper(mic));
@@ -11865,7 +11873,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     if (currentApp === 'cal') {
       const nw = document.createElement('button'); nw.className = 'btn-primary mail-new cal-new';
-      nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>New Event</span>';
+      nw.innerHTML = '<svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span>New Meeting</span>';
       nw.title = `Make a meeting (${K.mod}N)`;
       nw.addEventListener('click', () => calGEdit(null));
       const row = document.createElement('div'); row.className = 'cal-newrow';
@@ -13851,10 +13859,11 @@ body { width: max-content !important; min-width: 0 !important; }
     { const pb = tool('fwdpdf', 'Forward as a PDF', 'Forward as a PDF: the email is attached to a new message as a PDF', () => mailForwardPdf(m), { off: none }); pb.classList.add('ico'); pb.dataset.k = 'fwdpdf'; }
     { const cb = document.createElement('button'); cb.className = 'tb clara-btn'; const c = claraOpenCount(); cb.innerHTML = `${mailToolIcon('hand')}<span class="t">Clara</span><i class="n"${c ? '' : ' hidden'}>${c || ''}</i>`; cb.title = 'What Clara is arranging: each meeting and where it is up to'; cb.addEventListener('click', () => claraPanel()); into.appendChild(cb); }
     tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none }).classList.add('mail-sendto');
+    const quiet = b => { if (b) b.classList.add('ico'); return b; };          // (named buttons are for what you use most; the rest are icons with a tip)
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
-    tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none });
-    tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', 'Mark it read or unread', () => mailAct(m, 'read', !m.isRead), { off: none });
-    tool('flag', flagged ? 'Clear Flag' : 'Flag', 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged });
+    quiet(tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }));
+    quiet(tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', m && !m.isRead ? 'Mark as read' : 'Mark as unread', () => mailAct(m, 'read', !m.isRead), { off: none }));
+    quiet(tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }));
     };
     msgTools();
     head.appendChild(acts);
@@ -14615,7 +14624,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (isLocalId(d.id)) offPaint();          // (the message being written is not counted in the Outbox)
     const el = document.createElement('div'); el.className = 'mail-compose';
     const fb = (cmd, html, title, arg) => `<button type="button" class="tb" data-cmd="${cmd}"${arg ? ` data-arg="${arg}"` : ''} title="${title}">${html}</button>`;
-    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="save" title="Save it in Drafts and keep writing"><span class="t">Save</span></button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-clara" data-x="clara" title="Copy Clara in to arrange the meeting, with your usual sentence. Nothing is sent: only you can press Send."><span class="t">Bring in Clara</span></button><button class="tb mc-ai" data-x="ai" title="Write a draft for you to edit. It is written on your Mac at once; Claude can improve it if you ask. Nothing is sent: only you can press Send."><span class="t">Draft</span></button></div>
+    el.innerHTML = `<div class="mc-bar"><span class="lights"><button type="button" class="lt r" data-x="close" title="Close and keep it in Drafts">\u00d7</button><button type="button" class="lt y" data-x="min" title="Minimise: tuck it at the bottom while you look at something else">\u2212</button><button type="button" class="lt g" data-x="zoom" title="Full size">+</button></span><span class="min-t"></span><button class="btn-primary" data-x="send">Send</button><button class="tb" data-x="save" title="Save it in Drafts and keep writing"><span class="t">Save</span></button><button class="tb" data-x="discard" title="Delete this draft"><span class="t">Discard</span></button><button class="tb" data-x="attach" title="Attach files (up to 3 MB each)"><span class="t">Attach File</span></button><button class="tb" data-x="sig" title="Put your signature in, or change it"><span class="t">Signature</span></button><button class="tb" data-x="snip" title="Put in words you keep, or keep the words you have selected"><span class="t">Snippets</span></button><button class="tb mc-clara" data-x="clara" title="Copy Clara in to arrange the meeting, with your usual sentence. Nothing is sent: only you can press Send."><span class="t">Bring in Clara</span></button><button class="tb mc-ai" data-x="ai" title="Write it for you from your notes, or from the email you are answering. Nothing is sent: only you can press Send."><span class="t">Write It</span></button></div>
       <label class="from"><span>From:</span><span class="mc-from"></span></label>
       <label><span>To:</span><input name="to" autocomplete="off" spellcheck="false"><span class="mc-ccb"><button type="button" class="tb" data-x="cc">Cc</button><button type="button" class="tb" data-x="bcc">Bcc</button></span></label><div class="mc-sug" hidden></div>
       <label data-row="cc" hidden><span>Cc:</span><input name="cc" autocomplete="off" spellcheck="false"></label>
@@ -15678,7 +15687,7 @@ body { width: max-content !important; min-width: 0 !important; }
     el.innerHTML = `<div class="mail-acts mail-popbar cv-bar"></div><div class="cv-main"><div class="ch-left"><h1>What meeting do you need?</h1><textarea class="ch-say" placeholder="Say it or type it. For example: Lunch with Eva next Thursday at 12:30 for an hour at the office, and invite Rosie too."></textarea><div class="ch-btns"><button type="button" class="btn ch-mic" title="Say the meeting. Press again when you have finished.">${CAL_MIC}<span>Dictate</span></button><span class="sp"></span><button type="button" class="btn-primary ch-go">Make the Invite</button></div><p class="ch-note">Nothing is sent. Say the meeting, then press Make the Invite to check it.</p><div class="ch-out"></div></div><div class="ch-right"></div></div>`;
     Object.assign(calHelp, { el, shade, prof, staff });
     document.body.append(shade, el);          // (over the whole app, so drawing the calendar again never disturbs the chat)
-    popMovable(el, el.querySelector('.cv-bar'), 'calHelp', null);
+    popMovable(el, el.querySelector('.cv-bar'), 'calHelp2', null);
     const say = el.querySelector('.ch-say'), out = el.querySelector('.ch-out'), right = el.querySelector('.ch-right');
     const load = () => {
       right.replaceChildren();
@@ -15695,11 +15704,13 @@ body { width: max-content !important; min-width: 0 !important; }
       who.addEventListener('click', () => { const r0 = who.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, all.map(n => ({ label: n.name, checked: n.id === staff.id, run: () => { staff = calHelp.staff = n; (calState.helpStaff = calState.helpStaff || {})[prof.id] = n.id; calSave(); bar(); load(); } }))); });
       b.appendChild(who);
       b.appendChild(Object.assign(document.createElement('span'), { className: 'sp', style: 'flex:1' }));
-      const ch = document.createElement('button'); ch.className = 'tb'; ch.innerHTML = '<span class="t">Chat</span>'; ch.title = 'Show or hide the chat with Claude itself'; ch.addEventListener('click', () => { calState.helpNoChat = !calState.helpNoChat; calSave(); el.classList.toggle('nochat', !!calState.helpNoChat); });
-      const nw = document.createElement('button'); nw.className = 'tb'; nw.innerHTML = '<span class="t">Start a Fresh Chat</span>'; nw.title = 'Leave the ongoing chat and start a new one in this person\u2019s project'; nw.addEventListener('click', () => { if (calState.helpChat) delete calState.helpChat[staff.id]; calSave(); load(); });
+      const ch = document.createElement('button'); ch.className = 'tb'; ch.innerHTML = '<span class="t">Chat</span>'; ch.title = 'Show or hide the chat with Claude itself'; ch.addEventListener('click', () => { if (el.classList.contains('nochat')) calHelp.big(); else el.classList.add('nochat'); });
+      const nw = document.createElement('button'); nw.className = 'tb ch-fresh'; nw.innerHTML = '<span class="t">Start a Fresh Chat</span>'; nw.title = 'Leave the ongoing chat and start a new one in this person\u2019s project'; nw.addEventListener('click', () => { if (calState.helpChat) delete calState.helpChat[staff.id]; calSave(); load(); });
       b.append(nw, ch);
     };
-    el.classList.toggle('nochat', !!calState.helpNoChat);
+    // It opens as the small helper: the box, the microphone and one button. Claude's own chat joins it, and the window
+    // grows, only when your Mac cannot lay the meeting out or you press Chat.
+    el.classList.add('nochat'); calHelp.big = () => { el.classList.remove('nochat'); for (const k of ['left', 'top', 'right', 'bottom', 'width', 'height']) el.style[k] = ''; };
     bar(); load();
     setTimeout(() => say.focus(), 100);
     el.querySelector('.ch-mic').addEventListener('click', async () => { say.focus(); try { say.setSelectionRange(say.value.length, say.value.length); } catch (e) { /* no cursor */ } const ok = await dictate(say, { tidy: false, mic: el.querySelector('.ch-mic'), onDone: t => { const then = calHelp.goAfter; calHelp.goAfter = false; if (then && t && say.value.trim() && calHelp.el === el) go(); } }); if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
@@ -15766,7 +15777,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (found0.length) { el.querySelector('.ch-go').disabled = false; return show(found0); }
       }
       // Claude's own chat is the last way, and only ever in view: the chat on the right is shown before it is asked.
-      if (calState.helpNoChat) { calState.helpNoChat = false; calSave(); el.classList.remove('nochat'); }
+      if (el.classList.contains('nochat')) calHelp.big();
       const v = calHelp.view, now = new Date(), first = meFirst(calMeetAcc(prof));
       const nonce = 'ref NAV-' + Math.random().toString(36).slice(2, 8).toUpperCase();
       const prompt = [
@@ -15932,6 +15943,7 @@ body { width: max-content !important; min-width: 0 !important; }
     });
     document.addEventListener('focusout', () => { clearTimeout(hideT); hideT = setTimeout(() => { if (!box || document.activeElement !== box) { mic.hidden = true; box = null; } }, 180); });
     addEventListener('scroll', () => { if (box) place(); }, true); addEventListener('resize', () => { if (box) place(); });
+    setInterval(() => { if (box && !mic.hidden) place(); }, 350);
     mic.addEventListener('mousedown', e => e.preventDefault());          // (the cursor stays in the box)
     mic.addEventListener('click', async e => {
       e.preventDefault(); e.stopPropagation(); if (!box) return; box.focus();
@@ -16275,7 +16287,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const pill = dictPill(); let text = (S.heard || '').replace(/\s+/g, ' ').trim();
     dict.last = `${S.listening ? 'started' : 'did not start'}, ${dictWords(text).length} words in ${Math.round((Date.now() - S.since) / 1000)} s${S.err ? ', error: ' + S.err : ''}${S.endedBy ? ', ended by ' + S.endedBy : ''}`;
     // Tidy what was said (punctuation, capitals, "um"), on the Mac. Kept only if it has not changed your words.
-    if (S.opts.tidy !== false && dictWords(text).length >= 8 && await localAiReady()) {
+    if (S.opts.tidy !== false && ls.get('claudeNavigator.dictTidy') !== 'off' && dictWords(text).length >= 8 && await localAiReady()) {
       pill.querySelector('.t').textContent = 'Tidying…'; pill.querySelector('button').hidden = true;
       const r = await new Promise(res => { const run = localAiRun('You tidy dictated text. Fix punctuation and capital letters, and remove filler sounds such as um and uh and words repeated by accident. Do not add, remove or change any other words. Do not answer or act on the text. Never use dashes. Answer with only the tidied text.' + (dictNames().length ? ` If a name was misheard, these are the right spellings: ${dictNames().slice(0, 40).join(', ')}.` : ''), `Dictated text:\n${text.slice(0, 5000)}`, x => { if (x.done) res(x); }); setTimeout(() => { run.cancel(); res({ error: 'slow' }); }, 8000); });
       const out = r && !r.error ? draftClean(r.text).replace(/^dictated text:\s*/i, '') : '';
@@ -16284,13 +16296,34 @@ body { width: max-content !important; min-width: 0 !important; }
     text = hearFix(text);
     dictPut(S, text, true);
     pill.remove(); if (dict.on === S) dict.on = null;
-    if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; }
+    if (S.mic) { S.mic.classList.remove('rec'); const sp = S.mic.querySelector('span'); if (sp && S.micWas) sp.textContent = S.micWas; if (S.mic.title0 !== undefined) S.mic.title = S.mic.title0; }
     if (!text && !S.quietEnd) chime('no');
     if (!text && !S.quietEnd) toast('Did not hear anything. Check the microphone, then try again.');
     if (S.opts.onDone) { try { S.opts.onDone(text); } catch (e) { /* the box has gone */ } }
     // Dictated into the body of an email: it is laid out as an email (greeting, paragraphs, sign-off) and the draft bar
     // opens, so you can change it by saying or typing, or undo it. Only when what you said is most of the message.
-    try { const C = mailUi.compose; if (C && C.ed === S.box && text && dictWords(text).length >= 8 && dictWords(text).length >= dictWords(C.userText()).length * 0.6) mailDraftWith(C, C.msg, { dictated: true, auto: true }); } catch (e) { /* the message has gone */ }
+    try {
+      const C = mailUi.compose;
+      if (C && C.ed === S.box && text && dictWords(text).length >= 8 && dictWords(text).length >= dictWords(C.userText()).length * 0.6 && ls.get('claudeNavigator.dictLayout') !== 'off') {
+        const F = C.fields ? C.fields() : null, q = n => C.el.querySelector(`[name="${n}"]`);
+        // A brand-new email with nobody in To and no subject: those are filled too, as the Email Helper does.
+        if (C.mode === 'new' && F && !F.lists.to.length && !F.body.subject) {
+          const bar = C.el.querySelector('.mc-draft'); if (bar) { bar.hidden = false; bar.replaceChildren(waveEl(7, 'busy'), Object.assign(document.createElement('span'), { className: 'st', textContent: 'Laying it out on your Mac\u2026' })); }
+          const L = await mailLayOutSaid(C.acc, text);
+          if (mailUi.compose !== C) return;
+          if (L && (C.userText() || '').trim() === text.trim()) {
+            const did = [];
+            if (L.to) { q('to').value = L.to; did.push('To'); }
+            if (L.cc) { q('cc').value = L.cc; const row = C.el.querySelector('[data-row="cc"]'), cb = C.el.querySelector('[data-x="cc"]'); if (row) row.hidden = false; if (cb) cb.hidden = true; did.push('Cc'); }
+            if (L.subject) { q('subject').value = L.subject; did.push('Subject'); }
+            C.insert(L.text); C.offered = L.text; mailDraftLocal(C, null, { have: L.text, said: text });
+            toast(`${did.length ? `Filled in ${did.join(', ').replace(/, ([^,]*)$/, ' and $1')} from what you said. ` : ''}${L.missing.length ? `No address found for ${L.missing.join(', ')}.` : 'Check them before you send.'}`);
+            return;
+          }
+        }
+        mailDraftWith(C, C.msg, { dictated: true, auto: true });
+      }
+    } catch (e) { /* the message has gone */ }
   }
   // ----- The small sounds: listening, heard, ready, made, could not. Low, warm and short, made here from plain tones
   // (no sound files). Switched on or off in Chief of Staff Settings.
@@ -16349,7 +16382,7 @@ body { width: max-content !important; min-width: 0 !important; }
     localAi.runs.set(S.id, { id: S.id, on: r => S.on(r) });
     let ok = false; try { ok = await window.navigatorApp.localListenStart(S.id, 'en-AU', dictNames()); } catch (e) { /* older app */ }
     if (!ok) { localAi.runs.delete(S.id); if (S.live) S.live.remove(); return old(); }
-    dict.on = S; if (S.mic) { S.mic.classList.add('rec'); const sp = S.mic.querySelector('span'); if (sp) { S.micWas = sp.textContent; sp.textContent = 'Done'; } }
+    dict.on = S; if (S.mic) { S.mic.classList.add('rec'); const sp = S.mic.querySelector('span'); if (sp) { S.micWas = sp.textContent; sp.textContent = 'Listening'; } S.mic.title0 = S.mic.title; S.mic.title = 'Listening. Press Done on the bar below when you have finished (or press here).'; }
     const pill = dictPill(); pill.querySelector('.t').textContent = 'Starting…'; waveSet(pill.querySelector('.wave'), 'busy'); pill.querySelector('button').hidden = false; (box.closest('dialog') || document.body).appendChild(pill);
     // In a sheet, the bar goes on the top layer so the sheet cannot clip it or sit over it.
     try { pill.popover = 'manual'; if (!pill.matches(':popover-open')) pill.showPopover(); } catch (e) { /* stays where it is */ }
@@ -16448,6 +16481,21 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     return { found: [...new Set(found)], missing };
   }
+  // What was said, laid out as an email by this Mac: who it is to, a subject and the words. Used when you dictate
+  // straight into a new email, so it ends the same way as the Email Helper. Null when the Mac could not do it.
+  async function mailLayOutSaid(accId, words) {
+    try {
+      if (!(await localAiReady())) return null;
+      const P = localDraftParts({ acc: accId, small: true }, null, words, []);
+      const ins = `${P.ins}\n\nThe words were dictated, so read past small slips. Answer in exactly this form and nothing else:\nTo: the people it is to, their names exactly as said, separated by semicolons (leave empty if not said)\nCc: the people to copy in, or leave empty\nSubject: a short, plain subject line\nBody:\nthe email itself`;
+      const r = await new Promise(res => { const run = localAiRun(ins, `What he said:\n${words.slice(0, 3000)}`, x => { if (x.done) res(x); }); setTimeout(() => { if (!run.done) { run.cancel(); res({ error: 'slow' }); } }, 12000); });
+      const txt = r && !r.error ? String(r.text || '') : '', bi = txt.search(/^\s*Body\s*:/mi); if (bi < 0) return null;
+      const head = txt.slice(0, bi), val = k => { const m = new RegExp('^\\s*' + k + '\\s*:\\s*(.*)$', 'mi').exec(head); const v = m ? m[1].trim() : ''; return /^\(?(leave )?empty\)?\.?$|^(none|n\/a|-)$/i.test(v) ? '' : v; };
+      const body = draftClean(txt.slice(bi).replace(/^\s*Body\s*:\s*/i, '')); if (!body) return null;
+      const to = await mailFindPeople(accId, val('To')), cc = await mailFindPeople(accId, val('Cc'));
+      return { to: to.found.join(', '), cc: cc.found.join(', '), subject: val('Subject').replace(/^["\u201c]|["\u201d]$/g, ''), text: body, missing: to.missing.concat(cc.missing) };
+    } catch (e) { return null; }
+  }
   function mailHelper() {
     if (!isApp) return toast('This works in the desktop app.');
     if (mailHelp.el) mailHelpClose();
@@ -16517,12 +16565,41 @@ body { width: max-content !important; min-width: 0 !important; }
     say.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); go(); } });
     setTimeout(() => { if (mailHelp.el === el && !dict.on) el.querySelector('.ch-mic').click(); }, 300);          // listening as it opens
   }
+  // The drafting bar, the same wherever something has been written for you: a box to type or say a change, the
+  // changes you use most as buttons, Undo, and everything else under More.
+  function draftBarPaint(bar, o) {          // o: { noun, busy, change, undo, more: inp => menu items, lastAsk, repaint }
+    const Lr = mailLearnOf();
+    const inp = document.createElement('input'); inp.className = 'chg'; inp.placeholder = 'Change it: type or say what to change, then Enter';
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const v = inp.value.trim(); if (v) o.change(v); } });
+    bar.appendChild(inp);
+    { const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'dchip say'; mb.innerHTML = `${CAL_MIC}<span>Say It</span>`; mb.title = 'Say the change. It is made when you press Done.'; mb.disabled = !!o.busy;
+      mb.addEventListener('click', async e => { e.preventDefault(); e.stopPropagation(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (er) { /* no cursor */ }
+        const ok = await dictate(inp, { tidy: false, mic: mb, onDone: () => { const v = inp.value.trim(); if (v && inp.isConnected) o.change(v); } });
+        if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
+      bar.appendChild(mb); }
+    for (const t of DRAFT_CHIPS.concat(Lr.tweaks || [])) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'dchip'; b.textContent = t; b.disabled = !!o.busy; b.title = DRAFT_CHIPS.includes(t) ? `Make this change to the ${o.noun}` : 'Make this change. Right-click to remove this button.';
+      b.addEventListener('click', () => o.change(t));
+      if (!DRAFT_CHIPS.includes(t)) b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [{ label: `Remove \u201c${t}\u201d`, run: () => { Lr.tweaks = (Lr.tweaks || []).filter(z => z !== t); mailSave(); o.repaint(); } }]); });
+      bar.appendChild(b);
+    }
+    { const u = document.createElement('button'); u.type = 'button'; u.className = 'dchip undo'; u.textContent = 'Undo'; u.title = 'Go back to what you had before it was written'; u.addEventListener('click', o.undo); bar.appendChild(u); }
+    { const mo = document.createElement('button'); mo.type = 'button'; mo.className = 'tb ico dmore'; mo.innerHTML = UI.more; mo.title = 'More';
+      mo.addEventListener('click', e => { e.preventDefault(); const r0 = mo.getBoundingClientRect(), la = o.lastAsk;
+        showMenu(r0.left, r0.bottom + 4, [
+          la && !DRAFT_CHIPS.includes(la) && !(Lr.tweaks || []).includes(la) && la.length <= 40 ? { label: `Keep \u201c${la}\u201d as a Button`, run: () => { Lr.tweaks = (Lr.tweaks || []).concat(la).slice(-8); mailSave(); o.repaint(); } } : null,
+          ...o.more(inp),
+          { label: 'How I Write\u2026', run: () => mailDraftPrefs() },
+        ].filter(Boolean)); });
+      bar.appendChild(mo); }
+    return inp;
+  }
   async function mailDraftLocal(C, m, opt = {}) {
     const bar = C.el.querySelector('.mc-draft'), acc = mailAccById(C.acc) || {};
     const gen = C.draftGen = (C.draftGen || 0) + 1;                       // a newer request takes over from this one
     if (C.draftRun) C.draftRun.cancel();
     const typed = opt.have ? String(opt.said || '') : (C.userText ? C.userText() : ''), before = C.ed.innerHTML, isReply = !!(m && C.mode !== 'new' && C.mode !== 'draft');
-    if (!isReply && !typed.trim() && !(C.fields && C.fields().body.subject)) { if (!opt.auto) toast('Type a few words on what you want to say, then press Draft.'); return; }
+    if (!isReply && !typed.trim() && !(C.fields && C.fields().body.subject)) { if (!opt.auto) toast('Type a few words on what you want to say, then press Write It.'); return; }
     let base = opt.have ? C.userText() : typed, held = '', lastAsk = '', err = '', run = null, T = null;
     const alive = () => mailUi.compose === C && C.draftGen === gen;
     const untouched = () => (C.userText() || '').trim() === (base || '').trim();
@@ -16572,30 +16649,14 @@ body { width: max-content !important; min-width: 0 !important; }
         return;
       }
       if (held) { bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: 'A draft is ready. You typed while it was being written, so it has not replaced your words.' })); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Put the Draft In'; b.addEventListener('click', () => { put(held, true); paint(); }); bar.appendChild(b); }
-      const Lr = mailLearnOf();
-      for (const t of DRAFT_CHIPS.concat(Lr.tweaks || [])) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'dchip'; b.textContent = t; b.disabled = !!busy; b.title = DRAFT_CHIPS.includes(t) ? 'Make this change to the reply as it stands' : 'Make this change. Right-click to remove this button.';
-        b.addEventListener('click', () => change(t));
-        if (!DRAFT_CHIPS.includes(t)) b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [{ label: `Remove “${t}”`, run: () => { Lr.tweaks = (Lr.tweaks || []).filter(z => z !== t); mailSave(); paint(); } }]); });
-        bar.appendChild(b);
-      }
-      const inp = document.createElement('input'); inp.className = 'chg'; inp.placeholder = 'Change it… type or say the change, then Enter';
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const v = inp.value.trim(); if (v) change(v); } });
-      bar.appendChild(inp);
-      { const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'dchip say'; mb.innerHTML = `${CAL_MIC}<span>Say It</span>`; mb.title = 'Say the change instead of typing it. Press Done when you have finished and the change is made.'; mb.disabled = !!busy;
-        mb.addEventListener('click', async e => { e.preventDefault(); e.stopPropagation(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (er) { /* no cursor */ }
-          const ok = await dictate(inp, { tidy: false, mic: mb, onDone: () => { const v = inp.value.trim(); if (v && inp.isConnected) change(v); } });
-          if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
-        bar.appendChild(mb); }
-      const ic = document.createElement('button'); ic.type = 'button'; ic.className = 'btn-primary imp'; ic.textContent = 'Improve with Claude'; ic.title = 'Hand this draft to Claude for a better version. To steer it, type what you want in the box first (for example: decline, but offer a call in December). Takes longer. Nothing is sent.'; ic.addEventListener('click', () => toClaude(true, inp.value)); bar.appendChild(ic);
-      const row = document.createElement('span'); row.className = 'lnks';
-      if (lastAsk && !DRAFT_CHIPS.includes(lastAsk) && !(Lr.tweaks || []).includes(lastAsk) && lastAsk.length <= 40) row.appendChild(link(`Keep “${lastAsk}” as a button`, 'Add this change to the buttons, for next time', () => { Lr.tweaks = (Lr.tweaks || []).concat(lastAsk).slice(-8); mailSave(); paint(); }));
-      row.appendChild(link('Another version', 'A different take on the reply', another));
-      row.appendChild(link('Undo', 'Go back to what you had before the draft', () => { if (run) run.cancel(); C.draftGen++; C.ed.innerHTML = before; C.offered = ''; bar.hidden = true; toast('Back to what you had.'); }));
-      row.appendChild(link('How I write…', 'Your standing notes for every draft, and what has been learned from the emails you send', () => mailDraftPrefs()));
-      row.appendChild(link(Lr.auto === false ? 'Draft as soon as I press Reply: off' : 'Draft as soon as I press Reply: on', 'When this is on, a draft is written while you read an email and is waiting when you press Reply. Click to switch.', () => { Lr.auto = Lr.auto === false; mailSave(); paint(); toast(Lr.auto === false ? 'Replies will start empty. Press Draft when you want one.' : 'A draft will be waiting when you press Reply.'); }));
-      row.appendChild(Object.assign(document.createElement('span'), { className: 'made', textContent: 'Written on your Mac' }));
-      bar.appendChild(row);
+      draftBarPaint(bar, { noun: isReply ? 'reply' : 'email', busy, change, lastAsk, repaint: paint,
+        undo: () => { if (run) run.cancel(); C.draftGen++; C.ed.innerHTML = before; C.offered = ''; bar.hidden = true; toast('Back to what you had.'); },
+        more: inp => [
+          { label: 'Another Version', disabled: !!busy, run: another },
+          { label: 'Improve with Claude\u2026', run: () => toClaude(true, inp.value) },
+          '-',
+          { label: fastOn() ? 'Written by Claude, through your key' : 'Written on your Mac', disabled: true },
+        ] });
     }
     if (opt.have) { run = { done: true, text: opt.have, cancel() {} }; paint(); return; }          // (the email helper has already written it: show the change bar)
     // A draft made while you were reading is used as it is; otherwise the email is read and one is written now.
@@ -16666,29 +16727,13 @@ body { width: max-content !important; min-width: 0 !important; }
         return;
       }
       if (held) { bar.appendChild(Object.assign(document.createElement('span'), { className: 'st', textContent: 'The draft is ready. You typed while it was being written, so it has not replaced your words.' })); const b = document.createElement('button'); b.type = 'button'; b.className = 'btn'; b.textContent = 'Put the Draft In'; b.addEventListener('click', () => { put(held); paint(true); }); bar.appendChild(b); }
-      const Lr = mailLearnOf();
-      for (const t of DRAFT_CHIPS.concat(Lr.tweaks || [])) {
-        const b = document.createElement('button'); b.type = 'button'; b.className = 'dchip'; b.textContent = t; b.title = DRAFT_CHIPS.includes(t) ? 'Ask for this change to the reply as it stands' : 'Ask for this change. Right-click to remove this button.';
-        b.addEventListener('click', () => change(t));
-        if (!DRAFT_CHIPS.includes(t)) b.addEventListener('contextmenu', e => { e.preventDefault(); showMenu(e.clientX, e.clientY, [{ label: `Remove “${t}”`, run: () => { Lr.tweaks = (Lr.tweaks || []).filter(z => z !== t); mailSave(); paint(true); } }]); });
-        bar.appendChild(b);
-      }
-      const inp = document.createElement('input'); inp.className = 'chg'; inp.placeholder = 'Change it… type or say it, for example: suggest Thursday instead';
-      inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const v = inp.value.trim(); if (v) change(v); } });
-      bar.appendChild(inp);
-      { const mb = document.createElement('button'); mb.type = 'button'; mb.className = 'dchip say'; mb.innerHTML = `${CAL_MIC}<span>Say It</span>`; mb.title = 'Say the change instead of typing it. Press Done when you have finished and the change is made.';
-        mb.addEventListener('click', async e => { e.preventDefault(); e.stopPropagation(); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (er) { /* no cursor */ }
-          const ok = await dictate(inp, { tidy: false, mic: mb, onDone: () => { const v = inp.value.trim(); if (v && inp.isConnected) change(v); } });
-          if (!ok) toast('Click in the box and press your Mac\u2019s dictation key (or Fn twice).'); });
-        bar.appendChild(mb); }
-      const row = document.createElement('span'); row.className = 'lnks';
-      if (lastAsk && !DRAFT_CHIPS.includes(lastAsk) && !(Lr.tweaks || []).includes(lastAsk) && lastAsk.length <= 40) row.appendChild(link(`Keep “${lastAsk}” as a button`, 'Add this change to the buttons, for next time', () => { Lr.tweaks = (Lr.tweaks || []).concat(lastAsk).slice(-8); mailSave(); paint(true); }));
-      row.appendChild(link('Another version', 'Ask for a different take on the reply', another));
-      if (why) row.appendChild(link(showWhy ? 'Hide why' : 'Why this reply?', 'What Claude was thinking, and anything to check', () => { showWhy = !showWhy; paint(true); }));
-      row.appendChild(link('Undo', 'Go back to what you had before the draft', () => { C.ed.innerHTML = before; base = C.userText(); C.offered = ''; bar.hidden = true; toast('Back to what you had.'); }));
-      row.appendChild(link('How I write…', 'Your standing notes for every draft, and what has been learned from the emails you send', () => mailDraftPrefs()));
-      row.appendChild(link('Show the chat', 'See the chat with Claude behind this draft', showChat));
-      bar.appendChild(row);
+      draftBarPaint(bar, { noun: T ? 'reply' : 'email', busy: false, change, lastAsk, repaint: () => paint(true),
+        undo: () => { C.ed.innerHTML = before; base = C.userText(); C.offered = ''; bar.hidden = true; toast('Back to what you had.'); },
+        more: () => [
+          { label: 'Another Version', run: another },
+          why ? { label: showWhy ? 'Hide Why' : `Why This ${T ? 'Reply' : 'Email'}?`, run: () => { showWhy = !showWhy; paint(true); } } : null,
+          { label: 'Show the Chat', run: showChat },
+        ] });
       if (why && showWhy) bar.appendChild(Object.assign(document.createElement('div'), { className: 'why', textContent: why }));
     }
     const onParts = V => {
@@ -16863,7 +16908,7 @@ body { width: max-content !important; min-width: 0 !important; }
           !win && !isMain ? { label: `Make ${name} the Main App`, run: () => dockMain(dk) } : null,
           !win && OWN_WINDOW.includes(k) ? { label: `Open ${name} in Its Own Window`, run: () => appOwnWindow(k) } : null,
           k === 'mail' ? { label: 'New Email', run: () => chatToEmail({}) } : null,
-          k === 'cal' ? { label: 'New Event', run: () => calGEdit(null, false) } : null,
+          k === 'cal' ? { label: 'New Meeting', run: () => calGEdit(null, false) } : null,
           '-',
         ].filter(Boolean) : []),
         { label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-',
@@ -17200,7 +17245,7 @@ body { width: max-content !important; min-width: 0 !important; }
   document.body.classList.toggle('has-dock', !!isApp && !SOLO);
   if (SOLO) { document.body.classList.add('solo'); document.title = APP_NAMES[SOLO]; }
   if (SOLO_ITEM) soloItemStart();
-  if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip2')) setTimeout(() => { ls.set('claudeNavigator.dockTip2', '1'); toast('Your apps are in the strip on the left. Click one to make it the main app; double-click to open it beside.'); }, 4000);
+  if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip2')) { const tip = () => { if (dict.on) return setTimeout(tip, 5000); ls.set('claudeNavigator.dockTip2', '1'); toast('Your apps are in the strip on the left. Click one to make it the main app; double-click to open it beside.'); }; setTimeout(tip, 4000); }
   appApplyOrder();
 
   let claraView = null;
@@ -17875,9 +17920,10 @@ body { width: max-content !important; min-width: 0 !important; }
     ['general', 'General', null],
     ['about', 'About Me', () => botLearnedDlg()],
     ['fast', 'Fast Answers', () => fastDlg()],
+    ['writing', 'Writing', null],
     ['mail', 'Mail', () => mailHealth()],
     ['meetings', 'Meetings', () => granolaDlg()],
-    ['dictation', 'Dictation', () => hearDlg()],
+    ['dictation', 'Dictation', null],
     ['folders', 'Folders and Backup', null],
     ['account', 'Claude Account', null],
     ['app', 'This App', null],
@@ -17908,6 +17954,18 @@ body { width: max-content !important; min-width: 0 !important; }
         row('Suggestions', bot.quiet ? 'Quiet: they wait in the Chief of Staff column.' : 'They pop up as they arrive.', [bot.quiet ? 'Let Them Pop Up' : 'Keep Them Quiet', () => { bot.quiet = !bot.quiet; saveBot(); cosBotRender(); show(); }]);
         if (isApp) row('Claude\u2019s Own Sidebar', hideClaudeSidebar() ? 'Hidden.' : 'Showing.', [hideClaudeSidebar() ? 'Show It' : 'Hide It', () => { setHideClaudeSidebar(!hideClaudeSidebar()); show(); }]);
         row('Panels', 'Put the sidebar, Claude and split view back as they were.', ['Reset', () => { try { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); } catch (e) { /* not ready */ } toast('Panels are back as they were'); }]);
+      },
+      writing: row => {
+        const L = mailLearnOf(), auto = L.auto !== false, lay = ls.get('claudeNavigator.dictLayout') !== 'off';
+        row('Write a Reply When I Press Reply', auto ? 'On. A reply is written while you read, and is waiting when you press Reply.' : 'Off. Replies start empty; press Write It when you want one.', [auto ? 'Turn Off' : 'Turn On', () => { L.auto = !auto; mailSave(); show(); }]);
+        row('Lay Out an Email I Dictate', lay ? 'On. Words you dictate into an email are set out with a greeting and a sign-off.' : 'Off. Your words go in as you said them.', [lay ? 'Turn Off' : 'Turn On', () => { ls.set('claudeNavigator.dictLayout', lay ? 'off' : 'on'); show(); }]);
+        row('How I Write', 'Your standing notes for everything written for you, and what has been learned from what you send.', ['Open\u2026', leave(() => mailDraftPrefs())]);
+      },
+      dictation: row => {
+        const tidy = ls.get('claudeNavigator.dictTidy') !== 'off', off = ls.get('claudeNavigator.sounds') === 'off';
+        row('Tidy What I Say', tidy ? 'On. Punctuation and capitals are put right, and \u201cum\u201d is taken out. Your words are not changed.' : 'Off. Your words go in exactly as heard.', [tidy ? 'Turn Off' : 'Turn On', () => { ls.set('claudeNavigator.dictTidy', tidy ? 'off' : 'on'); show(); }]);
+        row('Listening Sounds', off ? 'Off.' : 'On. A soft sound when it starts and stops listening.', [off ? 'Turn On' : 'Turn Off', () => { ls.set('claudeNavigator.sounds', off ? 'on' : 'off'); show(); }]);
+        row('Words It Mishears', 'A word it gets wrong is put right every time, here and on the phone.', ['Edit\u2026', leave(() => hearDlg())]);
       },
       folders: row => {
         if (isApp) {
