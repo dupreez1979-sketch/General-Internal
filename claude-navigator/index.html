@@ -406,16 +406,20 @@
   html body.side-right #topLeft { left: calc(var(--dock-w, 0px) + 8px) !important; }
   html.mac-app body.side-off #topLeft, html.mac-app body.side-right #topLeft { left: max(78px, calc(var(--dock-w, 0px) + 8px)) !important; }
   #bar, .cos-head, #main > #mailPanel > .cal-head, #main > #calPanel > .cal-head, #main > #notesPanel > .fhead, #main > #meetPanel > .meet-head { padding-left: 46px !important; }
-  .mac-app body.side-off #bar, .mac-app body.side-right #bar, .mac-app body.side-off .cos-head, .mac-app body.side-right .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-right #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-right #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-right #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head, .mac-app body.side-right #main > #meetPanel > .meet-head { padding-left: max(46px, calc(118px - var(--dock-w, 0px))) !important; }
+  .mac-app body.side-off #bar, .mac-app body.side-right #bar, .mac-app body.side-off .cos-head, .mac-app body.side-right .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-right #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-right #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-right #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head, .mac-app body.side-right #main > #meetPanel > .meet-head { padding-left: calc(max(46px, calc(118px - var(--dock-w, 0px))) + var(--tl-more, 0px)) !important; }
   body.cos-mode #bar { padding-left: var(--sp-2h) !important; }
   body.cos-mode #bar #bBot, body.cos-mode #bar > .search { display: none !important; }          /* (the page's own bar above already has both) */
   /* ---- Step 6: the things you notice ---- */
   /* With the sidebar hidden, a small swatch beside the sidebar button still names the profile and opens its menu. */
-  #tlProf { display: none; width: 22px; height: 22px; border-radius: var(--r-control); border: 0; padding: 0; place-items: center; color: #fff; font-size: var(--fs-label); font-weight: var(--fw-bold); }
-  #tlProf.all { background: conic-gradient(#FF4C80, #ECEB00, #6FC483, #1B5A68, #FF4C80); }
-  body.side-off #tlProf { display: grid; }
-  body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead, body.side-off #main > #meetPanel > .meet-head { padding-left: 76px !important; }
-  .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: max(76px, calc(148px - var(--dock-w, 0px))) !important; }
+  /* With the sidebar hidden, the profile you are in shows by name beside the sidebar button: one click switches. */
+  #tlProf { display: none; align-items: center; gap: var(--sp-1h); height: 26px; max-width: 190px; border-radius: var(--r-control); border: 0; padding: 0 var(--sp-1h) 0 2px; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-label); font-weight: var(--fw-bold); cursor: pointer; }
+  #tlProf:hover { background: var(--hover); }
+  #tlProf .sq { flex: none; width: 22px; height: 22px; border-radius: var(--r-control); display: grid; place-items: center; color: #fff; }
+  #tlProf.all .sq { background: conic-gradient(#FF4C80, #ECEB00, #6FC483, #1B5A68, #FF4C80); }
+  #tlProf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #tlProf .cv { flex: none; opacity: .6; display: grid; }
+  body.side-off #tlProf { display: inline-flex; }
+  body.side-off #bar, body.side-off .cos-head, body.side-off #main > #mailPanel > .cal-head, body.side-off #main > #calPanel > .cal-head, body.side-off #main > #notesPanel > .fhead, body.side-off #main > #meetPanel > .meet-head { padding-left: calc(76px + var(--tl-more, 0px)) !important; }
+  .mac-app body.side-off #bar, .mac-app body.side-off .cos-head, .mac-app body.side-off #main > #mailPanel > .cal-head, .mac-app body.side-off #main > #calPanel > .cal-head, .mac-app body.side-off #main > #notesPanel > .fhead, .mac-app body.side-off #main > #meetPanel > .meet-head { padding-left: calc(max(76px, calc(148px - var(--dock-w, 0px))) + var(--tl-more, 0px)) !important; }
   body.cos-mode.side-off #bar { padding-left: var(--sp-2h) !important; }
   /* ---- Step 8: one icon set. Every small glyph is drawn the same way: 16 by 16, one line weight, the text's own colour. ---- */
   .gly { width: 14px; height: 14px; flex: none; vertical-align: -2.5px; display: inline-block; fill: none; stroke: currentColor; }
@@ -20610,7 +20614,9 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     dot.style.color = p && luminance(p.color || '#000000') > 0.6 ? '#000' : '#fff';
     if (isMac) btn.title = 'Switch profile (\u2303\u23251, 2, 3... and \u2303\u23250 for All Profiles)';
     profileSubPaint();
-    { const sw = $('tlProf'); if (sw) { sw.className = p ? '' : 'all'; sw.style.background = p ? p.color : ''; sw.textContent = dot.textContent; sw.style.color = dot.style.color; sw.title = `${p ? p.name : 'All Profiles'}: switch profile`; } }
+    { const sw = $('tlProf'); if (sw) { sw.className = p ? '' : 'all'; sw.innerHTML = `<span class="sq"></span><span class="nm"></span><span class="cv">${UI.chevDown}</span>`; const sq = sw.querySelector('.sq'); sq.style.background = p ? p.color : ''; sq.textContent = dot.textContent; sq.style.color = dot.style.color; sw.querySelector('.nm').textContent = p ? p.name : 'All Profiles'; sw.title = `${p ? p.name : 'All Profiles'}: click to switch profile`;
+      // (the headers make room for the name: they were set out for the small square only)
+      requestAnimationFrame(() => { try { const wd = sw.getBoundingClientRect().width; document.documentElement.style.setProperty('--tl-more', `${Math.max(0, Math.round((wd || 22 + 8 + Math.min(150, sw.querySelector('.nm').textContent.length * 7.5) + 16) - 22))}px`); } catch (e) { /* as it was */ } }); } }
     document.title = SOLO ? (APP_NAMES[SOLO] + ' \u2013 Claude Navigator') : (p ? p.name + ' \u2013 ' : '') + 'Claude Navigator';
     applyCosLook();
   }
