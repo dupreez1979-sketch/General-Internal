@@ -12078,19 +12078,26 @@ body { width: max-content !important; min-width: 0 !important; }
   // The default profile of an account's meetings: the one profile the account belongs to (if just one).
   const calAccColour = accId => { try { const ps = mailProf(accId).map(p => calProfiles().find(x => x.id === p)).filter(Boolean); return ps.length === 1 && ps[0].color ? ps[0].color : CAL_COLOUR; } catch (e) { return CAL_COLOUR; } };
   const calGProfile = inst => { try { const ps = mailProf(inst.g.acc).filter(p => calProfiles().some(x => x.id === p)); return ps.length === 1 ? ps[0] : ''; } catch (e) { return ''; } };
+  // Answering an invitation and deleting a meeting show at once; Microsoft is told behind. If it does not go through,
+  // the calendar is put back as it was and you are told.
   async function calGRespond(inst, how) {
+    const was = inst.g.response, now = { accept: 'accepted', tentativelyAccept: 'tentativelyAccepted', decline: 'declined' }[how];
+    inst.g.response = now; calClosePop(); if (calUi.view && calUi.view.paint) calUi.view.paint(); calRender();
+    toast({ accept: 'Accepted', tentativelyAccept: 'Marked as maybe', decline: 'Declined' }[how]);
     const r = await mailApi(inst.g.acc, { method: 'POST', path: `/me/events/${inst.g.id}/${how}`, body: { sendResponse: true } });
-    toast(r.ok ? { accept: 'Accepted', tentativelyAccept: 'Marked as maybe', decline: 'Declined' }[how] : `That did not work: ${r.error || 'try again'}`);
-    if (r.ok) inst.g.response = { accept: 'accepted', tentativelyAccept: 'tentativelyAccepted', decline: 'declined' }[how];
-    calClosePop(); if (calUi.view && calUi.view.paint) calUi.view.paint(); calGReload();
+    if (!r.ok) { inst.g.response = was; chime('no'); toast(`Your answer to “${String(inst.ev.title || 'the meeting').slice(0, 50)}” did not go through: ${String(r.error || 'try again').replace(/[.\s]+$/, '')}.`); if (calUi.view && calUi.view.paint) calUi.view.paint(); calRender(); }
+    calGReload();
   }
   async function calGDelete(inst, series) {
     const what = inst.ev.title || 'this meeting';
     const others = inst.g.organiser && inst.ev.attendees.length;
     if (!confirm(`Delete “${what}”${series ? ' and every meeting in the series' : ''}?${others ? ' The people invited are told it is cancelled.' : ''}`)) return;
+    const gone = calG.inst.filter(i => i === inst || i.key === inst.key || (series && inst.g.master && i.g && i.g.acc === inst.g.acc && (i.g.master === inst.g.master || i.g.id === inst.g.master)));
+    calG.inst = calG.inst.filter(i => !gone.includes(i));
+    calClosePop(); calViewClose(); calRender(); toast('Deleted');
     const r = await mailApi(inst.g.acc, { method: 'DELETE', path: `/me/events/${series && inst.g.master ? inst.g.master : inst.g.id}` });
-    toast(r.ok ? 'Deleted' : `Could not delete it: ${r.error || 'try again'}`);
-    calClosePop(); if (r.ok) calViewClose(); calGReload();
+    if (!r.ok) { for (const i of gone) if (!calG.inst.includes(i)) calG.inst.push(i); chime('no'); calRender(); toast(`“${String(what).slice(0, 50)}” was not deleted: ${String(r.error || 'try again').replace(/[.\s]+$/, '')}. It is back on the calendar.`); }
+    calGReload();
   }
   // ----- Designed invitations. A profile's "invite kit" (its logo, shapes, fonts and colours, from its design system)
   // is a file kept on this Mac only. The top of the invitation is drawn as one picture, so the brand's own fonts and
