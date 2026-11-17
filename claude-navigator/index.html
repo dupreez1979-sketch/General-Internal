@@ -5377,6 +5377,8 @@
       // Moving around inside Claude updates the current history entry rather than adding one.
       syncNames(url, title);
       checkAutoFile(url, title);
+      // (the last few pages Claude's pane went to, for Diagnostics: it shows where a page keeps bouncing between)
+      try { const tr = state.navTrail = state.navTrail || []; if (!tr.length || tr[tr.length - 1].url !== url) { tr.push({ at: new Date().toISOString().slice(11, 19), url: String(url).slice(0, 300) }); if (tr.length > 20) tr.shift(); } } catch (e) { /* not kept */ }
       runPendingClick(url);
       maybeFocusComposer(url);
       if (state.loc.kind === 'page') {
@@ -20321,7 +20323,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     const pairs = Object.values(lib.related || {}).reduce((t, l) => t + l.length, 0);
     const report = { chats: (lib.chats || []).length, artifacts: (lib.artifacts || []).length, linkedPairs: pairs,
       chatsCheckedSoFar: Object.keys(lib.scanned || {}).length, artifactPagesCheckedSoFar: Object.keys(lib.pageChecked || {}).length,
-      sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null };
+      sampleArtifactUrls: (lib.artifacts || []).slice(0, 3).map(x => x.url), lastRefresh: lib.diag || null, recentPages: state.navTrail || [] };
     navigator.clipboard.writeText(JSON.stringify(report, null, 2)).then(() => toast('Diagnostics copied'));
   }
   function goneRemove() {
