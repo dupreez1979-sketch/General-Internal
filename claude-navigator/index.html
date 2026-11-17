@@ -19047,10 +19047,16 @@ body { width: max-content !important; min-width: 0 !important; }
       const l = raw.trim(); if (!l) continue;
       const head = /^(#{1,6}\s*|\*\*)?([^#*:]{2,60}?)(\*\*)?:?$/.exec(l), isHead = /^#{1,6}\s/.test(l) || /^\*\*[^*]+\*\*:?$/.test(l) || (head && !/^[-*•\d]/.test(l) && l.length < 50 && !/[.!?]$/.test(l) && /^(next steps?|action items?|actions?|follow[- ]?ups?|to[- ]?dos?)$/i.test(head[2].trim()));
       if (isHead) { inside = /next steps?|action items?|^#*\s*\**actions?\b|follow[- ]?ups?|to[- ]?dos?/i.test(l); continue; }
+      // Any other heading ends the actions too, however it is written: a short line ending in a colon ("Glossary:",
+      // "Projects:"), or a tag. Otherwise the lists that follow (terms and what they mean, projects, people) were
+      // taken for actions.
+      if (!/^[-*\u2022\d]/.test(l) && ((l.length < 50 && /:$/.test(l)) || /^<\/?[a-z_][\w-]*>$/i.test(l))) { inside = false; continue; }
       if (!inside) continue;
       const b = /^(?:[-*\u2022]|\d+[.)])\s+(.+)$/.exec(l);
       if (!b) { if (out.length && !out.subs[out.length - 1]) out.subs[out.length - 1] = l.replace(/\*\*/g, '').slice(0, 240); continue; }          // (a line of detail under the point before it)
-      const t = b[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim(); if (t.length > 3 && out.length < 12) { out.push(t.slice(0, 200)); out.subs.push(''); }
+      const t = b[1].replace(/\*\*/g, '').replace(/\s+/g, ' ').trim();
+      if (/^[^:(]{1,60}\([^)]{1,80}\):\s/.test(t)) continue;          // ("NCTI (National Initiative): ..." is a term and what it means, or a project and its state: not something to do)
+      if (t.length > 3 && out.length < 12) { out.push(t.slice(0, 200)); out.subs.push(''); }
     }
     return out;
   }
