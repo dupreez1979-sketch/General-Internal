@@ -11670,6 +11670,7 @@ body { width: max-content !important; min-width: 0 !important; }
       row('Calendar', `${inst.g.calName} (${inst.g.email})`);
       const acts = document.createElement('div'); acts.className = 'cal-acts';
       const ab = (label, run, cls) => { const b = document.createElement('button'); b.className = cls || 'btn'; b.textContent = label; b.addEventListener('click', run); acts.appendChild(b); };
+      if (inst.g.canEdit) ab('Delete\u2026', ev2 => inst.recurring && inst.g.master ? showMenu(ev2.clientX, ev2.clientY, [{ label: 'This Meeting Only', run: () => calGDelete(inst, false) }, { label: 'The Whole Series', run: () => calGDelete(inst, true) }]) : calGDelete(inst, false));
       ab('Open', () => calView(inst));
       if (!inst.g.organiser) {
         const rs = inst.g.response;
@@ -11678,7 +11679,6 @@ body { width: max-content !important; min-width: 0 !important; }
         ab(rs === 'declined' ? '\u2713 Declined' : 'Decline', () => calGRespond(inst, 'decline'));
       }
       if (inst.g.canEdit && inst.g.organiser) ab('Edit\u2026', ev2 => inst.recurring && inst.g.master ? showMenu(ev2.clientX, ev2.clientY, [{ label: 'This Meeting Only', run: () => calGEdit(inst, false) }, { label: 'The Whole Series', run: () => calGEdit(inst, true) }]) : calGEdit(inst, inst.recurring));
-      if (inst.g.canEdit) ab('Delete\u2026', ev2 => inst.recurring && inst.g.master ? showMenu(ev2.clientX, ev2.clientY, [{ label: 'This Meeting Only', run: () => calGDelete(inst, false) }, { label: 'The Whole Series', run: () => calGDelete(inst, true) }]) : calGDelete(inst, false));
       rows.appendChild(acts);
       // The full notes (the list only carries their first lines).
       mailApi(inst.g.acc, { path: `/me/events/${inst.g.id}?$select=body`, prefer: 'outlook.body-content-type="text"' }).then(r => {
@@ -11765,8 +11765,8 @@ body { width: max-content !important; min-width: 0 !important; }
       const ml = calMeetLink(inst);
       if (g) {
         const both = inst.recurring && g.master;
-        if (g.canEdit && g.organiser) tb('edit', 'Edit', 'Change this meeting', ev2 => both ? under(ev2, [{ label: 'This Meeting Only', run: () => { calViewClose(); calGEdit(inst, false); } }, { label: 'The Whole Series', run: () => { calViewClose(); calGEdit(inst, true); } }]) : (calViewClose(), calGEdit(inst, inst.recurring)));
         if (g.canEdit) tb('cancel', g.organiser ? 'Cancel' : 'Delete', g.organiser ? 'Cancel the meeting: the people invited are told' : 'Take it out of your calendar', ev2 => both ? under(ev2, [{ label: 'This Meeting Only', run: () => calGDelete(inst, false) }, { label: 'The Whole Series', run: () => calGDelete(inst, true) }]) : calGDelete(inst, false));
+        if (g.canEdit && g.organiser) tb('edit', 'Edit', 'Change this meeting', ev2 => both ? under(ev2, [{ label: 'This Meeting Only', run: () => { calViewClose(); calGEdit(inst, false); } }, { label: 'The Whole Series', run: () => { calViewClose(); calGEdit(inst, true); } }]) : (calViewClose(), calGEdit(inst, inst.recurring)));
         if (!g.organiser) {
           const rs = g.response;
           tb('yes', rs === 'accepted' ? 'Accepted' : 'Accept', 'Accept: the organiser is told', () => calGRespond(inst, 'accept'), { on: rs === 'accepted' });
@@ -13923,9 +13923,10 @@ body { width: max-content !important; min-width: 0 !important; }
     if (into === acts) {
       // The window's own toolbar: the three you use most carry their names, Move and Flag are icons, and the rest are under More
       // (they are also on the right-click menu and their keys).
-      tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
-      tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+      // (Delete is always the first button, then Archive, then Reply: the same order wherever an email or a meeting is open)
       tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
+      tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+      tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
       tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }).classList.add('ico');
       tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }).classList.add('ico');
       { const pb = tool('fwdpdf', 'Forward as a PDF', 'Forward as a PDF: the email is attached to a new message as a PDF', () => mailForwardPdf(m), { off: none }); pb.classList.add('ico'); pb.dataset.k = 'fwdpdf'; }
