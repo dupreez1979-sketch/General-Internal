@@ -13208,12 +13208,17 @@ body { width: max-content !important; min-width: 0 !important; }
     const want = mailUi.next && !fresh ? mailUi.next : Object.fromEntries(mailSelAccs().map(id => [id, first]));
     const r = await mailReadLists(want);
     if (mailUi.seq !== seq) return;                        // moved on meanwhile
+    // (a check in the background does not redraw the list while the pointer is moving over it: it waits for a pause)
+    if (keep && mailUi.msgs) { for (let i = 0; i < 20 && mailUi.ptr && Date.now() - mailUi.ptr.at < 700; i++) await new Promise(z => setTimeout(z, 300)); if (mailUi.seq !== seq) return; }
     mailUi.loading = false;
     if (r.err) mailUi.err = r.err;
     else {
       const got = r.got;
       if (keep && mailUi.msg) { const same = got.find(x => x.id === mailUi.msg.id && (!mailUi.msg._acc || x._acc === mailUi.msg._acc)); if (same) mailUi.msg = Object.assign(same, { isRead: mailUi.msg.isRead }); }
+      // (a check in the background brings the newest page; the older pages you had scrolled down to stay in the list)
+      const old = keep && fresh && mailUi.msgs && mailUi.msgs.length > got.length ? mailUi.msgs : null, oldNext = mailUi.next;
       mailUi.msgs = (fresh || !mailUi.msgs ? [] : mailUi.msgs).concat(got); mailUi.next = r.next;
+      if (old && got.length) { const have = new Set(got.map(x => `${x._acc || ''}|${x.id}`)), lastT = String(got[got.length - 1].receivedDateTime || ''), tail = old.filter(x => !have.has(`${x._acc || ''}|${x.id}`) && String(x.receivedDateTime || '') < lastT); if (tail.length) { mailUi.msgs = mailUi.msgs.concat(tail); mailUi.next = oldNext || r.next; } }
       if (s.acc === '*') mailUi.msgs.sort((x, y) => String(y.receivedDateTime).localeCompare(String(x.receivedDateTime)));
     }
     mailRenderMain();
@@ -13890,11 +13895,20 @@ body { width: max-content !important; min-width: 0 !important; }
   })();
   const DRAG_VARS = { list: '--mail-list-w', from: '--mail-from-w', date: '--mail-date-w', nav: '--sp-nav-w' };
   for (const [k, v] of Object.entries(DRAG_VARS)) if (mailState.w && mailState.w[k]) document.documentElement.style.setProperty(v, mailState.w[k] + 'px');
+  document.addEventListener('mousemove', e => { try { mailUi.ptr = e.target && e.target.closest && e.target.closest('#mailPanel .mail-list') ? { x: e.clientX, y: e.clientY, at: Date.now() } : null; } catch (er) { /* not over mail */ } }, { passive: true });          // (set while the pointer is over the list of emails, cleared when it leaves)
   function mailRender() { if (!mailOn()) return; $('mailPanel').hidden = false; mailSideRender(); mailRenderMain(); }
   function mailRenderMain() {
     const P = $('mailPanel');
     if (!mailOn()) return;
     const keepScroll = (P.querySelector('.mail-list') || {}).scrollTop || 0;
+    // The row under the pointer (or the first one showing, once you have scrolled) stays exactly where it is when the
+    // list is drawn again, so new mail arriving or a background check never moves a line out from under a click.
+    let anchor = null;
+    try { const L0 = P.querySelector('.mail-list'), pt = mailUi.ptr;
+      if (L0 && (keepScroll > 0 || pt)) { const lr = L0.getBoundingClientRect(), rs = [...L0.querySelectorAll('.mail-m')];
+        const under = pt && pt.y >= lr.top && pt.y <= lr.bottom ? rs.find(r => { const q = r.getBoundingClientRect(); return pt.y >= q.top && pt.y < q.bottom; }) : null;
+        const pick = under || rs.find(r => r.getBoundingClientRect().top >= lr.top - 1);
+        if (pick) anchor = { mid: pick.dataset.mid, off: pick.getBoundingClientRect().top - lr.top }; } } catch (e) { anchor = null; }
     P.replaceChildren();
     const vis = mailVisible();
     if (mailUi.accounts !== null && !vis.length) {
@@ -14140,6 +14154,7 @@ body { width: max-content !important; min-width: 0 !important; }
       const name = sent ? (x.toRecipients || []).map(mailWho).filter(Boolean).join(', ') || '(No recipients)' : mailWho(x.from) || '(No sender)';
       const r = document.createElement('div');
       r.className = 'mail-m' + (x.isRead && !(more && !mailUi.openThreads[tk] && more.some(y => !y.isRead)) ? '' : ' unread') + (m && m.id === x.id && (!m._acc || m._acc === x._acc) ? ' on' : '') + (sub ? ' sub' : '');
+      r.dataset.mid = `${x._acc || ''}|${x.id}`;
       // Drag it (or all the selected ones) onto a folder on the left to move it there.
       r.draggable = !x.isDraft;
       r.addEventListener('dragstart', e => { const many = mailMulti.has(x.id) && mailMulti.size > 1 ? [...mailMulti.values()] : [x]; mailUi.drag = { list: many, acc: x._acc || (mailState.sel || {}).acc, from: (mailState.sel || {}).folder }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', many.length > 1 ? `${many.length} emails` : (x.subject || 'Email')); const badge = document.createElement('div'); badge.className = 'drag-badge mail'; badge.textContent = many.length > 1 ? `${many.length} emails` : (x.subject || 'Email'); document.body.appendChild(badge); e.dataTransfer.setDragImage(badge, -12, -8); setTimeout(() => badge.remove(), 0); } catch (er) { /* no data */ } document.body.classList.add('mail-dragging'); });
@@ -14265,6 +14280,7 @@ body { width: max-content !important; min-width: 0 !important; }
     P.appendChild(body);
     if (mailUi.composeEl) P.appendChild(mailUi.composeEl);        // the message being written stays as it is
     list.scrollTop = keepScroll;
+    if (anchor && anchor.mid) { try { const now = [...list.querySelectorAll('.mail-m')].find(r => r.dataset.mid === anchor.mid); if (now) { const d = (now.getBoundingClientRect().top - list.getBoundingClientRect().top) - anchor.off; if (Math.abs(d) > 1) list.scrollTop = keepScroll + d; } } catch (e) { /* as it was */ } }
   }
   // ----- Mail: attachments, actions, folders, search, and writing -----
   const mailEsc = t => String(t || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
