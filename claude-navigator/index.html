@@ -11994,14 +11994,15 @@ body { width: max-content !important; min-width: 0 !important; }
   // Mail keys on the open message: Delete, \u2318\u21E7R reply all, \u2318J forward, \u2318E archive, \u2318\u21E7U unread.
   document.addEventListener('keydown', e => {
     try {
-      if (currentApp !== 'mail' || !mailUi.msg || mailUi.compose || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable)) return;
-      const m = mailUi.msg, mod = e.metaKey || e.ctrlKey, key = e.key.toLowerCase();
+      if (!mailOn() || (!mailUi.msg && mailMulti.size < 2) || mailUi.compose || document.querySelector('dialog[open]') || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '') || (document.activeElement && document.activeElement.isContentEditable)) return;
+      const m = mailUi.msg, mod = e.metaKey || e.ctrlKey, key = e.key.toLowerCase(), multi = mailMulti.size > 1;
       let run = null;
-      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) run = () => (mailMulti.size > 1 ? mailBulk('delete') : mailAct(m, 'delete'));
+      if (!mod && (e.key === 'Delete' || e.key === 'Backspace')) run = () => (multi ? mailBulk('delete') : mailAct(m, 'delete'));
+      else if (mod && !e.shiftKey && key === 'e') run = () => (multi ? mailBulk('archive') : mailAct(m, 'archive'));
+      else if (mod && e.shiftKey && key === 'u') run = () => (multi ? mailBulk('read', false) : mailAct(m, 'read', false));
+      else if (!m) return;          // (the rest are for one open email)
       else if (mod && e.shiftKey && key === 'r') run = () => mailCompose('replyAll', m);
       else if (mod && !e.shiftKey && key === 'j') run = () => mailCompose('forward', m);
-      else if (mod && !e.shiftKey && key === 'e') run = () => mailAct(m, 'archive');
-      else if (mod && e.shiftKey && key === 'u') run = () => mailAct(m, 'read', false);
       if (run) { e.preventDefault(); run(); }
     } catch (er) { /* mail not ready */ }
   });
@@ -13917,6 +13918,8 @@ body { width: max-content !important; min-width: 0 !important; }
     const acts = document.createElement('div'); acts.className = 'mail-acts';
     let into = acts;
     const none = !m;
+    // With several emails selected, Delete, Archive, Move and Mark act on all of them (from the buttons and the keys alike).
+    const many = () => mailMulti.size > 1, noneB = !m && mailMulti.size < 2;
     const flagged = m && m.flag && m.flag.flagStatus === 'flagged';
     // What you can do with the open message. (With the reading pane off, the same buttons also sit on the pop-up itself.)
     const msgTools = () => {
@@ -13924,10 +13927,10 @@ body { width: max-content !important; min-width: 0 !important; }
       // The window's own toolbar: the three you use most carry their names, Move and Flag are icons, and the rest are under More
       // (they are also on the right-click menu and their keys).
       // (Delete is always the first button, then Archive, then Reply: the same order wherever an email or a meeting is open)
-      tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
-      tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+      tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => (many() ? mailBulk('delete') : mailAct(m, 'delete')), { off: noneB });
+      tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => (many() ? mailBulk('archive') : mailAct(m, 'archive')), { off: noneB });
       tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
-      tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }).classList.add('ico');
+      tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => (many() ? mailBulk('move', z.f) : mailAct(m, 'move', z.f)) }))); }, { off: noneB }).classList.add('ico');
       tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }).classList.add('ico');
       { const pb = tool('fwdpdf', 'Forward as a PDF', 'Forward as a PDF: the email is attached to a new message as a PDF', () => mailForwardPdf(m), { off: none }); pb.classList.add('ico'); pb.dataset.k = 'fwdpdf'; }
       const c = claraOpenCount();
@@ -13956,8 +13959,8 @@ body { width: max-content !important; min-width: 0 !important; }
       into.appendChild(mb);
       return;
     }
-    tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => mailAct(m, 'delete'), { off: none });
-    tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => mailAct(m, 'archive'), { off: none });
+    tool('del', 'Delete', 'Move to Deleted Items (Delete)', () => (many() ? mailBulk('delete') : mailAct(m, 'delete')), { off: noneB });
+    tool('archive', 'Archive', `Move to Archive (${K.mod}E)`, () => (many() ? mailBulk('archive') : mailAct(m, 'archive')), { off: noneB });
     tool('reply', 'Reply', `Reply to the sender (${K.mod}R)`, () => mailCompose('reply', m), { off: none });
     tool('replyAll', 'Reply All', `Reply to everyone (${K.mod}${K.shift}R)`, () => mailCompose('replyAll', m), { off: none });
     tool('forward', 'Forward', `Forward this message (${K.mod}J)`, () => mailCompose('forward', m), { off: none });
@@ -13966,8 +13969,8 @@ body { width: max-content !important; min-width: 0 !important; }
     tool('hand', 'Send To', 'Send this email on: to a staff member, a folder, the calendar, monday.com or a document', e => { const r0 = e.currentTarget.getBoundingClientRect(); mailSendTo(m, r0.left, r0.bottom + 4); }, { off: none }).classList.add('mail-sendto');
     const quiet = b => { if (b) b.classList.add('ico'); return b; };          // (named buttons are for what you use most; the rest are icons with a tip)
     if (into === acts) tool('sync', 'Sync', 'Check for new mail', () => { if (acc) mailLoadFolders(acc).then(mailSideRender); else if (everyone) Promise.all(mailVisible().map(a => mailLoadFolders(a))).then(mailSideRender); mailLoadMessages(true, true); toast('Checking for new mail…'); });
-    quiet(tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => mailAct(m, 'move', z.f) }))); }, { off: none }));
-    quiet(tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', m && !m.isRead ? 'Mark as read' : 'Mark as unread', () => mailAct(m, 'read', !m.isRead), { off: none }));
+    quiet(tool('move', 'Move', 'Move to another folder', e => { const r0 = e.currentTarget.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, mailAllFolders((m && m._acc) || s.acc).filter(z => z.f.id !== s.folder).map(z => ({ label: ' '.repeat(z.depth) + z.f.displayName, run: () => (many() ? mailBulk('move', z.f) : mailAct(m, 'move', z.f)) }))); }, { off: noneB }));
+    quiet(tool('unread', m && !m.isRead ? 'Mark as Read' : 'Mark as Unread', m && !m.isRead ? 'Mark as read' : 'Mark as unread', () => (many() ? mailBulk('read', ![...mailMulti.values()].some(z => !z.isRead)) : mailAct(m, 'read', !m.isRead)), { off: noneB }));
     quiet(tool('flag', flagged ? 'Clear Flag' : 'Flag', flagged ? 'Clear the flag' : 'Flag for follow-up', () => mailAct(m, 'flag'), { off: none, on: flagged }));
     };
     msgTools();
