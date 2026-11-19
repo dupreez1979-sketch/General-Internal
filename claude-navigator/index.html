@@ -1507,6 +1507,12 @@
   dialog.cal-evdlg .ev-side-h { font-size: var(--fs-label); font-weight: var(--fw-bold); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: var(--sp-2h); }
   dialog.cal-evdlg .ev-side .row { grid-template-columns: minmax(0, 1fr); gap: var(--sp-1); margin-bottom: var(--sp-2h); }
   dialog.cal-evdlg .ev-side .row > span:first-child { text-align: left; }
+  /* (a row here is as tall as what is in it: the design row runs to two lines, and sat on top of Purpose) */
+  dialog.cal-evdlg .ev-side .row { height: auto; min-height: 0; align-items: start; grid-auto-rows: auto; }
+  /* (the time zone row lets its button drop to a second line, and nothing in the form runs under the day beside it) */
+  dialog.cal-evdlg .ev-form { overflow-x: hidden; } dialog.cal-evdlg .ev-form > .tzrow { height: auto; } dialog.cal-evdlg .ev-form > .tzrow .dt { flex-wrap: wrap; row-gap: var(--sp-1); min-width: 0; } dialog.cal-evdlg .ev-form > .tzrow select { min-width: 0; }
+  /* (the sidebar button does not show through a meeting window that sits over it) */
+  body:has(dialog.ev-win[open]:not(.min)) #topLeft { z-index: 40; }
   dialog.cal-evdlg .ev-side .fr { flex-wrap: wrap; }
   dialog.cal-evdlg .ev-side .fr .fr-out, dialog.cal-evdlg .ev-side .fr .kit-on { flex: 1 1 100%; }
   dialog.cal-evdlg .ev-notes .row > span:first-child { text-align: left; }
@@ -12566,7 +12572,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (pattern) body.recurrence = { pattern, range: f('until').value ? { type: 'endDate', startDate: zYmd(s), endDate: f('until').value } : { type: 'noEnd', startDate: zYmd(s) } };
         else if (inst && rec) body.recurrence = null;
       }
-      e.target.disabled = true; e.target.textContent = 'Saving…';
+      e.target.disabled = true; e.target.textContent = people.some(z => !z.bad) ? 'Sending…' : 'Saving…';
       const saveBtn = e.target;
       // The form closes and the meeting is on the calendar straight away, marked as saving, while Microsoft is told in the background.
       let ghost = null, before = null;
@@ -12622,14 +12628,17 @@ body { width: max-content !important; min-width: 0 !important; }
       else if (inst) r = await mailApi(accId, { method: 'PATCH', path: `/me/events/${ev.id}`, body });
       else { const [a, c] = f('cal').value.split('\n'); rememberCal(); r = await mailApi(a, { method: 'POST', path: `/me/calendars/${c}/events`, body }); if (r.ok && seed && seed.onSaved) { try { seed.onSaved(r.data || {}, a); } catch (e2) { /* the meeting is made all the same */ } } }
       if (!r.ok) {
-        saveBtn.disabled = false; saveBtn.textContent = 'Save';
+        saveBtn.disabled = false; okPaint();
         if (ghost || before) { unGhost(); calRender(); if (!d.isConnected) { document.body.appendChild(d); d.show(); } }      // back comes the form, with everything you typed
         return toast(`It was not saved: ${r.error || 'try again'}`);
       }
       chime('made'); toast(r.queued ? `In the Outbox. The meeting is made${people.length ? ' and the invitations sent' : ''} when you are back online.` : inst ? 'Meeting changed' : people.length ? 'Meeting made and invitations sent' : 'Meeting made');
       shut(); calClosePop(); calGReload();
     });
-    document.body.appendChild(d); d.show(); try { sheetTidy(d); } catch (e) { /* as it is */ } f('title').focus();
+    // With people invited, the button says Send, because saving sends them the invitation; with nobody, it is Save.
+    const okPaint = () => { const b = d.querySelector('[data-x="ok"]'); if (!b || b.disabled) return; const send = mailParse(f('att').value).some(z => !z.bad); b.textContent = send ? 'Send' : 'Save'; b.title = send ? 'Save the meeting and send the invitation to the people invited' : 'Save the meeting to your calendar. Nobody is invited.'; };
+    d.addEventListener('change', okPaint); d.addEventListener('input', okPaint); f('att').addEventListener('blur', () => setTimeout(okPaint, 250));
+    document.body.appendChild(d); d.show(); try { sheetTidy(d); } catch (e) { /* as it is */ } okPaint(); f('title').focus();
   }
 
   // ----- Mail (your Microsoft accounts, signed in once and kept in the Keychain) -----
