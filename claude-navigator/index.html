@@ -8502,6 +8502,14 @@
     if (currentApp !== 'cos') { cosReturnSource(); document.body.classList.remove('cos-adding'); return; }
     const p = activeProfile();
     const main = $('cosMain');
+    // The page is drawn again whenever something changes (an action ticked done, a new answer). Wherever you had
+    // scrolled to stays where it was, as long as you are still on the same page of the Chief of Staff.
+    try {
+      const where = `${cosUi.tab || ''}|${cosUi.page || ''}|${state.profileId || ''}`, kept = [];
+      if (main.dataset.where === where) for (const el of main.querySelectorAll('*')) { if (el.scrollTop > 0 || el.scrollLeft > 0) { const cls = el.className && typeof el.className === 'string' ? el.className : ''; if (cls) kept.push({ cls, i: [...main.getElementsByClassName(cls)].indexOf(el), top: el.scrollTop, left: el.scrollLeft }); } }
+      main.dataset.where = where;
+      if (kept.length) { const put = () => { for (const k of kept) { const el = main.getElementsByClassName(k.cls)[k.i < 0 ? 0 : k.i]; if (el) { el.scrollTop = k.top; el.scrollLeft = k.left; } } }; queueMicrotask(put); requestAnimationFrame(put); }
+    } catch (e) { /* drawn from the top */ }
     cosReturnSource();                       // take Navigator's list back before rebuilding
     main.replaceChildren();
     const head = document.createElement('div');
@@ -8791,7 +8799,10 @@
     save(); saveCos();
     return f;
   }
-  const workItems = f => { const out = []; const w = l => (l || []).forEach(x => { if (x.type === 'folder') w(x.children); else out.push(x); }); if (f) w(f.children); return out; };
+  // What a staff member has to do (or their skills): the chats and links in their folder. Files kept there (an
+  // invoice or agreement that came with an email handed to them) are documents, not actions, so they are left out:
+  // they stay in the folder itself, where they open as usual.
+  const workItems = f => { const out = []; const w = l => (l || []).forEach(x => { if (x.type === 'folder') w(x.children); else if (x.type !== 'file') out.push(x); }); if (f) w(f.children); return out; };
   // Each person's Work folder (and Skills folder) has an Archive at its top. An "Archived" folder from an
   // earlier version becomes it.
   function archiveFolder(root) {
@@ -9886,6 +9897,9 @@
     const sortBy = cosUi.actSort || 'added';
     const key = x => sortBy === 'name' ? (x.name || '').toLowerCase() : sortBy === 'edited' ? -toTime(editedOf(x, upd)) || -(x.added || 0) : -(x.added || 0);
     items.sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0));
+    // (the list is drawn again when an action is ticked done: it stays where you had scrolled to, for the same person)
+    const keepAt = panel.dataset.who === String(n && n.id) ? ((panel.querySelector('.act-list') || {}).scrollTop || 0) : 0; panel.dataset.who = String(n && n.id);
+    if (keepAt) { const put = () => { const l = panel.querySelector('.act-list'); if (l) l.scrollTop = keepAt; }; queueMicrotask(put); requestAnimationFrame(put); }
     panel.replaceChildren();
     const head = document.createElement('div'); head.className = 'fhead';
     head.innerHTML = `<span class="fname">Open actions</span><span class="ftitle"></span>`;
