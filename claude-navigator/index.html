@@ -20840,12 +20840,14 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     const b = e.currentTarget; if (b.dataset.busy) return; b.dataset.busy = '1'; b.disabled = true; b.textContent = 'Reading…';
     const had = $('profileDS').value, before = designSystemOptions(pf.editing || null).length, t0 = Date.now();
     const idle = async () => { for (let i = 0; i < 240 && lib.busy; i++) await new Promise(r => setTimeout(r, 500)); };
-    try { await idle(); await refreshLibrary(true); await idle(); } catch (er) { /* the list stays as it was */ }
+    let slow = false;          // (never left saying Reading for ever: after a minute it hands back, and the read carries on behind)
+    try { await Promise.race([(async () => { await idle(); await refreshLibrary(true); await idle(); })(), new Promise(r => setTimeout(() => { slow = true; r(); }, 60000))]); } catch (er) { /* the list stays as it was */ }
     if (Date.now() - t0 < 700) await new Promise(r => setTimeout(r, 700 - (Date.now() - t0)));
     fillDesignSystems(pf.editing || null);
     if (had && [...$('profileDS').options].some(o => o.value === had)) $('profileDS').value = had;
     const now = $('profileDS').options.length - 1;
     delete b.dataset.busy; b.disabled = false; b.textContent = 'Refresh';
+    if (slow) return toast('Claude is taking a while to answer. The list will have anything new the next time you open this.');
     toast(!isApp ? 'This works in the desktop app.' : lib.signedIn === false ? 'Sign in to Claude first, then press Refresh again.' : lib.error ? `Claude’s lists could not be read: ${String(lib.error).slice(0, 80)}` : `${now} design system${now === 1 ? '' : 's'} found${now > before ? ` (${now - before} new)` : ''}.`);
   });
   function designSystemChoice() {
