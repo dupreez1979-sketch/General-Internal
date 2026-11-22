@@ -14263,7 +14263,7 @@ body { width: max-content !important; min-width: 0 !important; }
       hd.querySelector('.to').textContent = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
       if (d && d.files && d.files.length) {
         const fl = document.createElement('div'); fl.className = 'mail-files';
-        for (const a of d.files) { const c = mailFileTile('button', a.name, mailSize(a.size)); c.title = `${a.name}\nClick to open. Right-click for more.`; c.addEventListener('click', () => mailOpenAttachment(a)); c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); mailFileMenu(a, d.files, e.clientX, e.clientY); }); fl.appendChild(c); }
+        for (const a of d.files) { const c = mailFileTile('button', a.name, mailSize(a.size)); c.title = `${a.name}\nClick to open. Right-click for more.`; c.addEventListener('click', e => { if (e.detail > 1) return; mailOpenAttachment(a); }); c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); mailFileMenu(a, d.files, e.clientX, e.clientY); }); fl.appendChild(c); }
         hd.appendChild(fl);
       }
       if (d && d.invite) {
@@ -14378,8 +14378,15 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   async function mailOpenAttachment(a) {
     const s = mailState.sel, m = mailUi.msg;
+    // One open at a time for each file: a double-click is two clicks, and each one used to save its own copy.
+    const key = `${m.id}|${a.id}`;
+    if (mailUi.opening && mailUi.opening[key] && Date.now() - mailUi.opening[key] < 60e3) return;
+    (mailUi.opening = mailUi.opening || {})[key] = Date.now();
+    setTimeout(() => { if (mailUi.opening) delete mailUi.opening[key]; }, 60e3);
+    const done = () => setTimeout(() => { if (mailUi.opening) delete mailUi.opening[key]; }, 1200);
     toast(`Opening “${a.name}”…`);
     const r = offIs() ? await window.navigatorApp.offAttOpen((m._acc || s.acc).split('>')[0], m.id, a.id, a.name) : await window.navigatorApp.acctAttachment((m._acc || s.acc).split('>')[0], m.id, a.id, a.name, (m._acc || s.acc).split('>')[1] || '');
+    done();
     if (!r || !r.ok) return toast(`Could not open “${a.name}”: ${(r && r.error) || 'try again'}`);
     toast(`Saved “${r.name}” in Downloads`, { label: isMac ? 'Show in Finder' : 'Show in folder', run: () => window.navigatorApp.showInFolder(r.path) });
   }
