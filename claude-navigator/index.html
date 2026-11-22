@@ -651,6 +651,10 @@
   .mac-app body.has-dock #dock { background: color-mix(in srgb, var(--side) 50%, transparent); top: 52px; padding-top: var(--sp-2); border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); border-top-right-radius: 8px; }
   .mac-app body.has-dock #dock::before { content: ''; position: absolute; left: 0; top: -53px; width: calc(var(--dock-w) + 1px); height: 52px; background: inherit; -webkit-app-region: drag; }
   html.profiled.mac-app body.has-dock #dock::before { background: color-mix(in srgb, var(--tint) var(--tint-side), color-mix(in srgb, var(--side) 50%, transparent)); }          /* (the rail itself is neutral: only the corner above it takes the sidebar's tint) */
+  /* With the sidebar hidden, the corner above the rail joins the header beside it (no edge under the window's three dots). */
+  .mac-app body.has-dock.side-off:not(.side-peek) #dock { border-top-right-radius: 0; }
+  .mac-app body.has-dock.side-off:not(.side-peek) #dock::before { background: var(--win); width: var(--dock-w); height: 51px; border-bottom: 1px solid var(--line); }
+  html.profiled.mac-app body.has-dock.side-off:not(.side-peek) #dock::before { background: color-mix(in srgb, var(--tint) var(--tint-bar), var(--win)); }
   html body.has-dock.side-off #side { left: var(--dock-w); transform: translateX(calc(-101% - var(--dock-w))); }
   html body.has-dock.side-off.side-peek #side { transform: none; }
   .mac-app body.has-dock #topLeft { left: calc(var(--dock-w) + 44px); }
@@ -1779,6 +1783,8 @@
   .cos-head .sp { flex: 1; -webkit-app-region: drag; }
   .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
+  .cos-canvas { cursor: grab; } .cos-canvas.panning, .cos-canvas.panning * { cursor: grabbing !important; user-select: none; }
+  .cos-canvas [data-cid], .cos-canvas button, .cos-canvas a, .cos-canvas input { cursor: default; }
   .cos-chart { display: inline-block; min-width: 100%; padding: 36px var(--sp-10) 60px; transform-origin: top left; }
   .cos-chart > ul { width: max-content; min-width: 100%; }        /* a wide chart scrolls, it never spills off the left */
   .oc ul { display: flex; justify-content: center; padding: 22px 0 0; margin: 0; position: relative; }
@@ -8684,6 +8690,17 @@
   }
   // Clicks, right-clicks and drags on boxes, list rows and sidebar rows.
   const cosTarget = e => e.target.closest('[data-cid]');
+  // The chart moves under the hand: press on the empty background and drag to slide the whole team about.
+  $('cosMain').addEventListener('mousedown', e => {
+    const cv = e.target.closest('.cos-canvas');
+    if (!cv || e.button !== 0 || cosTarget(e) || e.target.closest('button, a, input, select, textarea')) return;
+    const x0 = e.clientX, y0 = e.clientY, l0 = cv.scrollLeft, t0 = cv.scrollTop; let moved = false;
+    const mv = ev => { const dx = ev.clientX - x0, dy = ev.clientY - y0; if (!moved && Math.abs(dx) + Math.abs(dy) < 4) return; moved = true; cv.classList.add('panning'); cv.scrollLeft = l0 - dx; cv.scrollTop = t0 - dy; };
+    const up = () => { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); cv.classList.remove('panning');
+      if (moved) { const stop = ev => { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => document.removeEventListener('click', stop, true), 0); } };
+    document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+    e.preventDefault();
+  });
   $('cosMain').addEventListener('contextmenu', e => {
     if (e.defaultPrevented || cosUi.page || cosTarget(e) || !e.target.closest('.cos-canvas, .cos-list')) return;
     e.preventDefault();
