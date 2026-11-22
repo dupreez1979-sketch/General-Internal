@@ -14638,14 +14638,17 @@ body { width: max-content !important; min-width: 0 !important; }
     sigDesignStop();
     const pf = pid ? nodeOf(pid) : null, ds = pf && pf.designSystem, look = (pf && pf.look) || {}, logo = (pf && pf.logoUrl) || '';
     const tmp = document.createElement('div'); tmp.innerHTML = base || ''; const details = (tmp.innerText || tmp.textContent || '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 900);
+    // The design system is where the look comes from, all of it. The app gives Claude no colours or typefaces of its
+    // own when there is one (its own reading of the brand is rougher than the design system itself, and the two used to
+    // pull against each other). The email rules are written as limits to work within, not as a look.
     const brief = [
       `Design an email signature for ${a.name || 'me'}${pf ? ' at ' + pf.name : ''}, as a live HTML artifact I can see.`,
-      ds ? `Use my design system “${ds.name}” for the look (${ds.url}).` : '',
-      [look.accent ? `Brand colour ${look.accent}` : '', (look.headFont || look.bodyFont) ? `brand typeface ${look.headFont || look.bodyFont}` : ''].filter(Boolean).join(', '),
-      logo ? `The logo is at this address; use it exactly as an <img> with a fixed width and a height that keeps its shape: ${logo}` : 'There is no logo address yet, so leave a clearly marked place for one.',
-      details ? `The details to carry over from my current signature:\n${details}` : `Use the name ${a.name || ''} and the address ${a.email}, and mark anything else for me to fill in.`,
-      'It has to survive Outlook and Gmail, so: one self-contained piece of HTML; layout with tables; every style written inline on the element (no <style> block, no classes); web-safe fonts with a fallback (Arial, Helvetica, sans-serif), because custom fonts do not reach the reader; pictures only by https address; no scripts, no SVG, no background images; at most 600 pixels wide; and it must read well in dark mode.',
-      'Show me two or three different directions first. When I choose one, give me that one alone as a single HTML artifact, ready to copy.',
+      ds ? `Start from my design system “${ds.name}” (${ds.url}). Open it and read it before you design anything. Every part of the look comes from it: its colours, its typefaces, its shapes and spacing, the way it uses the logo, and its tone. Do not bring in a colour, typeface or style that is not in it, and do not fall back on a generic corporate signature. If you cannot open the design system, stop and tell me; do not guess the brand.` : '',
+      !ds ? [look.accent ? `Brand colour ${look.accent}` : '', (look.headFont || look.bodyFont) ? `brand typeface ${look.headFont || look.bodyFont}` : ''].filter(Boolean).join(', ') : '',
+      logo ? `The logo is at this address; use it exactly as an <img> with a fixed width and a height that keeps its shape, placed the way the design system places a logo: ${logo}` : 'There is no logo address yet, so leave a clearly marked place for one.',
+      details ? `These are the facts to put in it, taken from my current signature. Use the words only: ignore how the current signature looks.\n${details}` : `Use the name ${a.name || ''} and the address ${a.email}, and mark anything else for me to fill in.`,
+      `An email signature has to survive Outlook and Gmail. Treat these as limits to carry the ${ds ? 'design system' : 'design'} through, not as a style of their own: one self-contained piece of HTML; layout with tables; every style written inline on the element (no <style> block, no classes); pictures only by https address; no scripts, no SVG, no background images; at most 600 pixels wide; and it must read well in dark mode. Custom typefaces do not reach every reader, so name the ${ds ? 'design system’s' : 'brand'} typeface first and follow it with the closest web-safe one.${ds ? ' Where a limit stops you doing what the design system does (a shape, a texture, a typeface), choose the nearest thing that keeps its character, and tell me what you had to change.' : ''}`,
+      `Show me two or three directions first${ds ? ', each one clearly a child of the design system' : ''}. When I choose one, give me that one alone as a single HTML artifact, ready to copy.`,
     ].filter(Boolean).join('\n\n');
     let was = ''; try { was = String(await window.navigatorApp.clipText() || ''); } catch (e) { /* older app */ }
     const bar = document.createElement('div'); bar.className = 'sig-bar';
