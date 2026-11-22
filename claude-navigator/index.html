@@ -9333,7 +9333,9 @@
     const p = activeProfile(), co = companyFolderPath(p);
     if (!co) return [];
     const mine = staffFolderPath(n, p);
-    return [`Company files: the ${p.name} folders are on my Mac at ${co}${mine ? ` (your own folder is ${mine})` : ''}. When a task needs files, ask to use that folder at the start, then read, save and move files there.`];
+    // (The top folder is named as the one to ask for, in so many words: asked for a folder inside it, Claude can reach
+    // only that one, and files saved for a staff member elsewhere under the top folder cannot be read.)
+    return [`Company files: everything for ${p.name} is on my Mac under one top folder: ${co}${mine ? `. Your own folder is inside it, at ${mine}` : ''}. At the start of any chat that needs files, ask to use the top folder itself (${co}), never a folder inside it, even when I name one: with the top folder you can reach every company folder and every staff folder. Then read, save and move files there. If a file I mention is on my Mac and you cannot open it, ask to use the top folder; do not ask me to attach it.`];
   }
   // The instructions for a staff member's Claude Project: their role, and where the company files are.
   // Claude Skills are switched on for the whole account, not per project: Claude learns which ones a staff member
@@ -9346,7 +9348,7 @@
   }
   const connOnFlag = () => ls.get('claudeNavigator.connOn') === '1';
   const staffSkillsOnly = n => staffSkillNames(n).slice().sort().join('|');
-  const staffSkillSig = n => staffSkillsOnly(n) + (connOnFlag() ? '|+app connector' : '');          // (what their project instructions were written from)
+  const staffSkillSig = n => staffSkillsOnly(n) + (connOnFlag() ? '|+app connector' : '') + '|+top folder';          // (what their project instructions were written from)
   function cosProjectInstructions(n) {
     const p = activeProfile();
     const skills = n.chief ? [] : staffSkillNames(n);
@@ -9727,10 +9729,11 @@
       setup = document.createElement('div');
       setup.className = 'cos-setup';
       setup.innerHTML = `<span class="ic">${small('skill', KIND_COLOUR.skill || 'currentColor')}</span><div class="tx"><b></b><span></span></div><div class="bt"></div>`;
-      const appOnly = staffSkillsOnly(n) === String(n.instructionsSkills || '').replace(/\|\+app connector$/, '');          // (only the connector changed)
-      setup.querySelector('b').textContent = appOnly ? `Tell ${n.name} to use the app connector` : `Tell Claude about ${n.name}’s skills`;
+      const was = String(n.instructionsSkills || ''), appOnly = staffSkillsOnly(n) === was.replace(/\|\+top folder$/, '').replace(/\|\+app connector$/, '');          // (their skills are the same: the app's own lines changed)
+      const folderOnly = appOnly && !/\|\+top folder$/.test(was) && /\|\+app connector/.test(was) === connOnFlag();
+      setup.querySelector('b').textContent = folderOnly ? `Update ${n.name}’s instructions` : appOnly ? `Tell ${n.name} to use the app connector` : `Tell Claude about ${n.name}’s skills`;
       const names = staffSkillNames(n);
-      setup.querySelector('.tx span').textContent = appOnly ? (connOnFlag() ? `Update their project instructions so that calendar entries, emails and meetings come to this app for you to approve, and never go straight through Outlook.` : `The app connector is off. Update their project instructions so Claude stops trying to use it.`) : names.length
+      setup.querySelector('.tx span').textContent = folderOnly ? `So Claude asks for your top folder on this Mac and can read files saved for any staff member, including attachments handed over from Mail.` : appOnly ? (connOnFlag() ? `Update their project instructions so that calendar entries, emails and meetings come to this app for you to approve, and never go straight through Outlook.` : `The app connector is off. Update their project instructions so Claude stops trying to use it.`) : names.length
         ? `Claude only knows which skills ${n.name} uses from their project instructions. Update them to include ${names.length === 1 ? `“${names[0]}”` : `their ${names.length} skills`}.`
         : `${n.name} no longer has skills here. Update their project instructions so Claude stops using the old ones.`;
       const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Update Instructions';
@@ -16159,19 +16162,21 @@ body { width: max-content !important; min-width: 0 !important; }
       if (!T) { e.target.disabled = false; e.target.textContent = 'Hand Over'; return toast('Could not read the email. Try again.'); }
       // Attachments: into their folder on this Mac when your folders are real folders, otherwise into Downloads.
       const folder = staffFolder(n, p), saved = [];
-      let where = '';
+      let where = '', wherePath = '';
       if (want.length) {
         const [own, box] = A.split('>');
         const toFolder = !!(fsState.enabled && folder && folder.path);
         const paths = [];
         const sub = mailFolderName(m);
         for (const a of want) { const r = await window.navigatorApp.acctAttachmentSave(own, m.id, a.id, a.name, box || '', toFolder ? 'temp' : 'downloads/' + sub); if (r && r.ok) { paths.push(r.path); saved.push(r.name); } }
-        if (toFolder && paths.length) { try { await window.navigatorApp.fsImport(paths, `${folder.path}/${sub}`); await pullFromDisk(); where = `the folder “${sub}” in ${n.name}’s folder`; } catch (err) { where = 'a temporary folder'; } }
+        if (toFolder && paths.length) { try { await window.navigatorApp.fsImport(paths, `${folder.path}/${sub}`); await pullFromDisk(); where = `the folder “${sub}” in ${n.name}’s folder`; wherePath = `${fsState.root.replace(/\/+$/, '')}/${folder.path}/${sub}`; } catch (err) { where = 'a temporary folder'; } }
         else if (paths.length) where = `the folder “${sub}” in Downloads`;
       }
       (mailState.lastStaffBy = mailState.lastStaffBy || {})[p.id] = n.id; mailState.lastHandProfile = p.id; mailSave();
       const prompt = [`${meFirst()} has handed you this email${act ? ' to add to what you are already working on here' : ' to deal with'}.`, note ? `What he wants: ${note}` : 'He has not said what he wants yet: read it, say in a few lines what it is and what you suggest doing, and wait for his go-ahead.',
-        saved.length ? `Its attachments are saved in ${where}: ${saved.join(', ')}. ${/Downloads$/.test(where) ? `${meFirst()} can add them to this chat if you need to read them.` : 'Ask him to add one to this chat if you need to read it.'}` : '',
+        saved.length ? (wherePath
+          ? `Its attachments are saved on his Mac for you to read: ${saved.join(', ')}. They are in ${wherePath}. Read them from there. If you cannot open that folder, it is because this chat is using a different folder of his Mac: ask to use the top folder ${companyFolderPath(p)} instead, which holds every company folder and every staff folder, then read them. Do not ask him to attach the files.`
+          : `Its attachments are saved in ${where}: ${saved.join(', ')}. ${/Downloads$/.test(where) ? `${meFirst()} can add them to this chat if you need to read them.` : 'Ask him to add one to this chat if you need to read it.'}`) : '',
         'You cannot send email. If a reply is needed, write it out for him to send from Mail.', MAIL_GUARD, `--- EMAIL ---\n${T.head}\n\n${T.text}\n--- END OF EMAIL ---`].filter(Boolean).join('\n\n');
       d.close();
       // Open their page in Chief of Staff with Claude beside it, in the right chat, and put the email in.
