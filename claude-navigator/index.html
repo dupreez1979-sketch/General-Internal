@@ -840,6 +840,8 @@
   .mail-rh .who { display: flex; gap: var(--sp-2h); align-items: center; font-size: var(--fs-body); }
   .mail-rh .who > div { flex: 1; min-width: 0; }
   .mail-rh .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-rh h2, .mail-rh .who b, .mail-rh .to, .mail-rh .dt { -webkit-user-select: text; user-select: text; cursor: text; }
+  .mail-rh .who-p:hover { text-decoration: underline; text-decoration-color: var(--line); }
   .mail-rh .who .mail-av { width: 36px; height: 36px; font-size: var(--fs-body); }
   .clara-btn .n { font-style: normal; font-size: var(--fs-label); font-weight: var(--fw-bold); background: var(--clara); color: #fff; border-radius: var(--r-card); padding: 0 var(--sp-1h); margin-left: var(--sp-1); }
   .clara-btn .n[hidden] { display: none; }
@@ -14258,9 +14260,13 @@ body { width: max-content !important; min-width: 0 !important; }
       { const g = document.createElement('div'); g.className = 'gist'; g.dataset.k = mailGistKey(m); g.innerHTML = '<b>In short</b><span></span>'; g.title = 'Written on your Mac as you opened this email'; g.hidden = true; hd.appendChild(g); setTimeout(() => mailGistShow(g.dataset.k), 0); }
       const fe = m.from && m.from.emailAddress;
       hd.querySelector('.avs').appendChild(mailAvatar(fe && fe.name, fe && fe.address));
-      hd.querySelector('b').textContent = fe ? `${fe.name || ''} <${fe.address || ''}>` : '';
+      // Every person at the top of an email can be selected and copied; a right-click offers their address.
+      const everyone = [m.from].concat((d && !d.error && d.toRecipients) || [], (d && !d.error && d.ccRecipients) || []).map(x => x && x.emailAddress).filter(x => x && x.address);
+      const person = (ea, text) => { const sp = document.createElement('span'); sp.className = 'who-p'; sp.textContent = text; sp.title = ea.address || ''; sp.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); mailWhoMenu(ea, everyone, e.clientX, e.clientY); }); return sp; };
+      { const b = hd.querySelector('b'); b.replaceChildren(); if (fe) b.appendChild(person(fe, `${fe.name || ''} <${fe.address || ''}>`)); }
       hd.querySelector('.dt').textContent = new Date(m.receivedDateTime).toLocaleString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
-      hd.querySelector('.to').textContent = d && !d.error ? [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).map(([l, v]) => `${l}: ${v.map(mailWho).join(', ')}`).join('  ·  ') : '';
+      { const to = hd.querySelector('.to'); to.replaceChildren();
+        if (d && !d.error) [['To', d.toRecipients], ['Cc', d.ccRecipients]].filter(x => x[1] && x[1].length).forEach(([l, v], i) => { to.append(`${i ? '  \u00b7  ' : ''}${l}: `); v.forEach((p, j) => { if (j) to.append(', '); to.appendChild(p.emailAddress ? person(p.emailAddress, mailWho(p)) : document.createTextNode(mailWho(p))); }); }); }
       if (d && d.files && d.files.length) {
         const fl = document.createElement('div'); fl.className = 'mail-files';
         for (const a of d.files) { const c = mailFileTile('button', a.name, mailSize(a.size)); c.title = `${a.name}\nClick to open. Right-click for more.`; c.addEventListener('click', e => { if (e.detail > 1) return; mailOpenAttachment(a); }); c.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); mailFileMenu(a, d.files, e.clientX, e.clientY); }); fl.appendChild(c); }
@@ -14374,6 +14380,17 @@ body { width: max-content !important; min-width: 0 !important; }
     ];
     if (all.length > 1) items.push({ label: `Save All ${all.length} in a Folder…`, run: () => mailSaveFiles(all) }, { label: `Save All ${all.length} to Downloads`, run: () => mailSaveFiles(all, 'downloads') });
     items.push({ label: 'Forward the Email With Its Files', run: () => mailCompose('forward', mailUi.msg) }, { label: 'Send To…', run: () => mailSendTo(mailUi.msg, x, y) }, { label: 'Copy the File Name', run: () => { try { navigator.clipboard.writeText(a.name); } catch (e) { /* no clipboard */ } } });
+    showMenu(x, y, items);
+  }
+  function mailWhoMenu(ea, all, x, y) {
+    const put = (t, said) => { try { navigator.clipboard.writeText(t); toast(said); } catch (e) { toast('Could not copy it'); } };
+    const sel = String(window.getSelection() || '').trim();
+    const items = [];
+    if (sel) items.push({ label: 'Copy the Selected Words', run: () => put(sel, 'Copied') });
+    items.push({ label: `Copy ${ea.address}`, run: () => put(ea.address, `Copied ${ea.address}`) });
+    if (ea.name && ea.name !== ea.address) items.push({ label: 'Copy the Name', run: () => put(ea.name, `Copied ${ea.name}`) }, { label: 'Copy the Name and Address', run: () => put(`${ea.name} <${ea.address}>`, 'Copied the name and address') });
+    const uniq = [...new Map(all.map(z => [z.address.toLowerCase(), z])).values()];
+    if (uniq.length > 1) items.push({ label: `Copy All ${uniq.length} Addresses`, run: () => put(uniq.map(z => z.address).join('; '), `Copied ${uniq.length} addresses`) });
     showMenu(x, y, items);
   }
   async function mailOpenAttachment(a) {
