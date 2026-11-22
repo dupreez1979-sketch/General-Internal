@@ -12241,6 +12241,25 @@ body { width: max-content !important; min-width: 0 !important; }
     return m ? { what: m[1].trim(), time: `${m[2]} ${/^h/i.test(m[3]) ? (+m[2] === 1 ? 'hour' : 'hours') : 'min'}` } : { what: l, time: '' };
   });
   // The words under the picture, laid out with tables and plain styles (what every mail program can show).
+  // In a Teams meeting's invitation, puts a fresh design where ours was and leaves everything Teams added untouched.
+  // Ours is found by its picture; it ends where the next join link (the one Teams wrote) begins. Null if it cannot be told apart.
+  function inviteSwap(html, fresh, join) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const img = doc.querySelector('img[src^="cid:navhero"]'); if (!img) return null;
+      const isJoin = a => /teams\.(microsoft|live)\.com|meetup-join/i.test(a.getAttribute('href') || '') || (!!join && a.getAttribute('href') === join);
+      const last = [...doc.body.querySelectorAll('a[href]')].filter(isJoin).pop();          // the link Teams wrote comes last
+      if (!last || !(img.compareDocumentPosition(last) & 4)) return null;
+      let root = img;
+      while (root.parentNode && root.parentNode !== doc.body && root.parentNode.nodeType === 1 && !root.parentNode.contains(last)) root = root.parentNode;
+      if (root === img || root.contains(last)) return null;                 // ours could not be separated from the Teams part
+      const mark = 'NAVSWAP' + Date.now().toString(36);
+      root.replaceWith(doc.createTextNode(mark));
+      const rest = doc.body.innerHTML; if (!rest.includes(mark)) return null;
+      const inner = (new DOMParser().parseFromString(fresh, 'text/html')).body.innerHTML;
+      return rest.replace(mark, () => inner);
+    } catch (e) { return null; }
+  }
   function inviteHtml(kit, M) {
     const C = kit.mail, e = mailEsc, up = t => C.upper ? e(String(t).toUpperCase()) : e(t);
     const hf = `font-family:${C.headFont};`, bf = `font-family:${C.bodyFont};`;
@@ -12284,7 +12303,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (inst) {
       accId = inst.g.acc; calId = inst.g.cal;
       const id = series && inst.g.master ? inst.g.master : inst.g.id;
-      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,showAs,type,originalStartTimeZone';
+      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,onlineMeeting,onlineMeetingUrl,showAs,type,originalStartTimeZone';
       let r = await mailApi(accId, { path: `/me/events/${id}?${sel}&$expand=extensions($filter=id eq '${INVITE_EXT}')`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) r = await mailApi(accId, { path: `/me/events/${id}?${sel}`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
@@ -12362,7 +12381,7 @@ body { width: max-content !important; min-width: 0 !important; }
     const kitPaint = async () => {
       kitPid = inviteProfileOf(inst ? accId : (f('cal').value || '').split('\n')[0]);
       kit = await inviteKit(kitPid);
-      const can = !(inst && online0) && (!inst || !!ext0 || true);
+      const can = !(inst && online0 && !ext0);        // (a Teams meeting designed here can be redesigned: its joining details are kept)
       const pr = calProfiles().find(x => x.id === kitPid);
       d.querySelector('.kit-on').hidden = !kit; d.querySelector('.kit-none').hidden = !!kit;
       d.querySelector('.kit-name').textContent = kit ? `Designed, ${kit.name || 'in this profile\u2019s look'}` : '';
@@ -12420,7 +12439,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = zYmd(seed.end); f('et').value = zHm(seed.end); } }
     if (seed && !inst && seed.allday) { f('allday').checked = true; f('allday').dispatchEvent(new Event('change', { bubbles: true })); }
     const online0 = !!(ev && ev.isOnlineMeeting);
-    if (online0) { f('notes').disabled = true; f('teams').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; }
+    if (online0) { f('teams').disabled = true;
+      if (ext0) d.querySelector('.hint').textContent = 'This is a Teams meeting: its joining details stay under the invitation when you save.';
+      else { f('notes').disabled = true; d.querySelector('.hint').textContent = 'This is a Teams meeting: its notes hold the joining details, so change those in Outlook.'; } }
     setTimeout(kitPaint, 0);
     if (inst) d.querySelector('[data-new]').hidden = true;
     else {
@@ -12661,14 +12682,14 @@ body { width: max-content !important; min-width: 0 !important; }
       let r;
       // A designed invitation: the meeting is made first without the people, the picture is put on it, and only then
       // are the people added, so they get one invitation and it is the finished one.
-      const designed = !!kit && f('designed').checked && !(inst && online0);
+      const designed = !!kit && f('designed').checked && !(inst && online0 && !ext0);
       if (designed) {
         try {
           const A = inst ? accId : f('cal').value.split('\n')[0], cal = inst ? '' : f('cal').value.split('\n')[1];
           const words = { notes: f('notes').value, purpose: f('purpose').value.trim(), agenda: f('agenda').value, before: f('before').value };
           const hero = await inviteHero(kit, body.subject, body.subject + '|' + zYmd(s));
           const cid = 'navhero' + Date.now().toString(36);
-          const online = !!body.isOnlineMeeting, PH = 'https://join.invalid/claude-navigator';
+          const online = !!body.isOnlineMeeting || !!(inst && online0), PH = 'https://join.invalid/claude-navigator';
           const dayT = s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz });
           const mins = Math.round((en - s) / 60e3), len = ad ? '' : mins % 60 === 0 ? `${mins / 60} ${mins === 60 ? 'hour' : 'hours'}` : mins > 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
           const acc0 = mailAccById(A) || {};
@@ -12677,6 +12698,12 @@ body { width: max-content !important; min-width: 0 !important; }
             who: [`${acc0.name || acc0.email || 'Organiser'} (organiser)`].concat(people.map(p2 => p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address)) }, words));
           const first = Object.assign({}, body, { attendees: [], body: { contentType: 'html', content: htmlOf(PH) } });
           const extBody = Object.assign({ '@odata.type': 'microsoft.graph.openTypeExtension', extensionName: INVITE_EXT }, words);
+          if (inst && online0) {      // a Teams meeting: only our own part of the invitation is replaced, and what Teams wrote under it stays exactly as it is
+            const joinNow = (ev.onlineMeeting && ev.onlineMeeting.joinUrl) || ev.onlineMeetingUrl || '';
+            const cur = await mailApi(A, { path: `/me/events/${ev.id}?$select=body`, prefer: 'outlook.body-content-type="html"' });
+            const merged = cur.ok && cur.data.body ? inviteSwap(cur.data.body.content || '', htmlOf(joinNow || PH), joinNow) : null;
+            if (merged) first.body = { contentType: 'html', content: merged }; else { delete first.body; toast('The words are saved, but the look of this invitation could not be redrawn without losing its Teams details.'); }
+          }
           if (inst) { delete first.attendees; r = await mailApi(A, { method: 'PATCH', path: `/me/events/${ev.id}`, body: first }); }
           else { first.extensions = [extBody]; rememberCal(); r = await mailApi(A, { method: 'POST', path: `/me/calendars/${cal}/events`, body: first }); }
           if (r.ok) {
