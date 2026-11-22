@@ -74,6 +74,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   mailHealth: () => ipcRenderer.invoke('mail-health'),
   mailLogShow: () => ipcRenderer.invoke('mail-log-show'),
   acctSendArm: (id, msgId) => ipcRenderer.invoke('acct-send-arm', id, msgId),
+  acctEventForward: (id, evId, people, comment) => ipcRenderer.invoke('acct-event-forward', id, evId, people, comment),
   // Working offline: what has been read is kept on this Mac; what is written waits in the Outbox.
   offGet: k => ipcRenderer.invoke('off-get', k),
   offPut: (k, d) => ipcRenderer.invoke('off-put', k, d),

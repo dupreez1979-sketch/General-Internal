@@ -1647,14 +1647,14 @@ function watchRealClicks(win) {
 const isOwnContents = wc => (!!mainWindow && !mainWindow.isDestroyed() && wc === mainWindow.webContents) || [...appWindows.values()].some(w => !w.isDestroyed() && w.webContents === wc);
 const fromOwnWindow = e => isOwnContents(e.sender) && e.senderFrame === e.sender.mainFrame;
 // Was the Send button really pressed, just now, by a person? (Used by Send, and by the Outbox when you are offline.)
-async function sawSendClick(e, id) {
+async function sawSendClick(e, id, sel = '.mail-compose [data-x="send"]') {
   if (!fromOwnWindow(e)) return false;
   // A real mouse click, seen here (not reported by the page), in the last two seconds, that landed on the Send button.
   const c = lastClicks.get(e.sender.id) || null; lastClicks.delete(e.sender.id);
   let onSend = false;
   try {
     const z = e.sender.getZoomFactor() || 1;
-    const q = await e.sender.executeJavaScript(`(() => { const b = document.querySelector('.mail-compose [data-x="send"]'); if (!b) return null; const r = b.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; })()`, false);
+    const q = await e.sender.executeJavaScript(`(() => { const b = document.querySelector(${JSON.stringify(sel)}); if (!b) return null; const r = b.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; })()`, false);
     const r = q && { l: q.l * z, t: q.t * z, r: q.r * z, b: q.b * z };
     onSend = !!(c && r && Date.now() - c.at < 2000 && c.x >= r.l - 2 && c.x <= r.r + 2 && c.y >= r.t - 2 && c.y <= r.b + 2);
   } catch (err) { onSend = false; }
@@ -1672,6 +1672,12 @@ ipcMain.handle('acct-send-arm', async (e, id, msgId) => {
   if (!(await sawSendClick(e, id))) return { ok: false, error: 'An email is only sent when you press Send yourself' };
   sendArmed = { id: String(id), msgId: String(msgId), until: Date.now() + 120e3 };
   return { ok: true };
+});
+// A meeting's invitation forwarded to more people: only on a real press of Send in the forwarding window.
+ipcMain.handle('acct-event-forward', async (e, id, evId, people, comment) => {
+  if (!fromOwnWindow(e)) return { ok: false, error: 'Not allowed' };
+  if (!(await sawSendClick(e, id, 'dialog.cal-fwd [data-x="send"]'))) return { ok: false, error: 'An invitation is only sent when you press Send yourself' };
+  return accounts.forwardEvent(String(id), String(evId), people, comment);
 });
 // ---------- Working offline: what has been read, the Outbox, and changes waiting (see offline.js) ----------
 const own = fn => (e, ...a) => (fromOwnWindow(e) ? fn(...a) : { ok: false, error: 'Not allowed' });

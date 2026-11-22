@@ -238,6 +238,13 @@ function send(id, msgId, box) {
   const who = box && /^[^\s\/?#@]+@[^\s\/?#@]+$/.test(String(box)) ? '/users/' + encodeURIComponent(box) : '/me';
   return inLane(id, () => graphNow(id, { method: 'POST', path: `${who}/messages/${encodeURIComponent(String(msgId))}/send`, timeout: 60 }, false, true), false);
 }
+// A meeting's invitation goes on to more people (they get the real invitation, and can accept it). Like Send, this
+// has its own door and is only reached from a real press of the button in the forwarding window.
+function forwardEvent(id, evId, people, comment) {
+  const to = (Array.isArray(people) ? people : []).map(p => ({ emailAddress: { address: String((p && p.address) || '').trim(), name: String((p && p.name) || '').slice(0, 200) } })).filter(p => /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/.test(p.emailAddress.address)).slice(0, 50);
+  if (!to.length) return Promise.resolve({ ok: false, status: 0, error: 'Add at least one email address' });
+  return inLane(id, () => graphNow(id, { method: 'POST', path: `/me/events/${encodeURIComponent(String(evId))}/forward`, body: { ToRecipients: to, Comment: String(comment || '').slice(0, 4000) }, timeout: 60 }, false, true), false);
+}
 // A request with a time limit (seconds). A request that runs out of time is given up on, not left hanging.
 async function timed(url, init, seconds) {
   const ctl = new AbortController();
@@ -343,4 +350,4 @@ async function uploadPiece(url, bytes, start, total) {
   }
 }
 
-module.exports = { list, add, remove, graph, graphAi, graphBg, slowUntil, queueOf, send, saveAttachment, saveMime, uploadPiece };
+module.exports = { list, add, remove, graph, graphAi, graphBg, slowUntil, queueOf, send, forwardEvent, saveAttachment, saveMime, uploadPiece };

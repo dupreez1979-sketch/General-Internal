@@ -844,6 +844,8 @@
   .mail-rh .who { display: flex; gap: var(--sp-2h); align-items: center; font-size: var(--fs-body); }
   .mail-rh .who > div { flex: 1; min-width: 0; }
   .mail-rh .who b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  dialog.cal-fwd { width: min(520px, 92vw); } dialog.cal-fwd .mv b, dialog.cal-fwd .mv .a { display: block; } dialog.cal-fwd .mv .a { color: var(--muted); font-size: var(--fs-caption); } dialog.cal-fwd .fw-l { display: grid; gap: var(--sp-1); margin-top: var(--sp-3); font-size: var(--fs-caption); color: var(--muted); }
+  dialog.cal-fwd .fw-l input, dialog.cal-fwd .fw-l textarea { font: inherit; font-size: var(--fs-body); color: var(--text); padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--field); box-sizing: border-box; width: 100%; resize: vertical; }
   .mail-rh h2, .mail-rh .who b, .mail-rh .to, .mail-rh .dt { -webkit-user-select: text; user-select: text; cursor: text; }
   .mail-rh .who-p:hover { text-decoration: underline; text-decoration-color: var(--line); }
   .mail-rh .who .mail-av { width: 36px; height: 36px; font-size: var(--fs-body); }
@@ -11800,6 +11802,42 @@ body { width: max-content !important; min-width: 0 !important; }
     const r = rec.range || {};
     return how + (r.type === 'endDate' && r.endDate ? `, until ${new Date(r.endDate + 'T00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}` : r.type === 'numbered' ? `, ${r.numberOfOccurrences} times` : '');
   };
+  // Forward a meeting: the people you add get the real invitation (they can accept it, and it lands in their
+  // calendar). Nothing goes until you press Send here yourself.
+  function calForward(inst) {
+    const g = inst.g, e = inst.ev; if (!g) return;
+    const id = inst.recurring && g.master && !g.id ? g.master : g.id;
+    const d = mailDlg('cal-fwd', '<h2>Forward this invitation</h2><p class="mv"><b></b><span class="a"></span></p><label class="fw-l">To<input name="to" placeholder="Start typing a name or an email address" autocomplete="off"></label><div class="cal-sug" hidden></div><label class="fw-l">Note<textarea name="note" rows="3" placeholder="A line to go with it (optional)"></textarea></label><p class="hint">They each get the invitation and can accept it. The organiser is told it was forwarded.</p><div class="dlg-actions"><button class="btn" data-x="cancel">Cancel</button><button class="btn-primary" data-x="send">Send</button></div>');
+    d.querySelector('.mv b').textContent = e.title || '(No title)';
+    d.querySelector('.mv .a').textContent = new Date(inst.start).toLocaleString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+    const to = d.querySelector('[name="to"]'), sug = d.querySelector('.cal-sug');
+    try { mailTokenField(to); } catch (er) { /* a plain box still works */ }
+    let t = null, seq = 0;
+    to.addEventListener('input', () => {
+      clearTimeout(t); const last = (to.typing ? to.typing() : to.value).split(/[,;]/).pop().trim();
+      if (last.length < 2) { sug.hidden = true; return; }
+      t = setTimeout(async () => { const my = ++seq;
+        const pr = await mailApi(g.acc, { path: `/me/people?$search=${encodeURIComponent('"' + last.replace(/"/g, '') + '"')}&$top=6&$select=displayName,scoredEmailAddresses` });
+        if (my !== seq) return;
+        const ppl = pr.ok ? (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).filter(x => x.address) : [];
+        sug.replaceChildren(); sug.hidden = !ppl.length;
+        for (const p of ppl) { const b = document.createElement('button'); b.type = 'button'; b.textContent = `${p.name} <${p.address}>`; b.addEventListener('mousedown', ev => { ev.preventDefault(); const typed = to.typing ? to.typing() : '', whole = to.value, kept = typed && whole.endsWith(typed.trim()) ? whole.slice(0, whole.length - typed.trim().length) : whole; to.value = `${kept}${kept.trim() && !/[,;]\s*$/.test(kept) ? ', ' : ''}${p.name} <${p.address}>`; sug.hidden = true; to.focus(); to.dispatchEvent(new Event('change')); }); sug.appendChild(b); }
+      }, 250);
+    });
+    try { dictateBtn(d.querySelector('[name="note"]')); } catch (er) { /* typing still works */ }
+    d.querySelector('[data-x="cancel"]').addEventListener('click', () => d.close());
+    d.querySelector('[data-x="send"]').addEventListener('click', async ev => {
+      const people = mailParse(to.value);
+      if (!people.length) return toast('Add who it should go to.');
+      if (people.find(p => p.bad)) return toast(`“${people.find(p => p.bad).bad}” is not an email address.`);
+      if (offIs()) return toast('You are working offline. Forward the invitation when you are back online.');
+      const b = ev.currentTarget; b.disabled = true; b.textContent = 'Sending…';
+      const r = await window.navigatorApp.acctEventForward(g.acc.split('>')[0], id, people.map(p => p.emailAddress), d.querySelector('[name="note"]').value.trim());
+      if (!r || !r.ok) { b.disabled = false; b.textContent = 'Send'; return toast(`It was not forwarded: ${(r && r.error) || 'try again'}`); }
+      d.close(); chime('made'); toast(people.length === 1 ? `Invitation forwarded to ${people[0].emailAddress.name || people[0].emailAddress.address}` : `Invitation forwarded to ${people.length} people`);
+    });
+    setTimeout(() => to.focus(), 50);
+  }
   function calViewClose() { if (calUi.view) { calUi.view.el.remove(); calUi.view.shade.remove(); calUi.view = null; } }
   async function calView(inst) {
     if (inst && inst.saving) return toast('This meeting is still saving. It opens in a moment.');
@@ -11859,7 +11897,10 @@ body { width: max-content !important; min-width: 0 !important; }
         tb('lock', priv ? 'Private' : 'Mark as Private', priv ? 'Private: others who see your calendar see only that you are busy. Click to make it ordinary again.' : 'Others who can see your calendar then see only that you are busy', () => patch({ sensitivity: priv ? 'normal' : 'private' }, priv ? 'No longer private' : 'Marked as private'), { on: priv, off: !g.canEdit || !V.D });
         tb('reply', 'Reply', 'Write to the organiser. Nothing is sent until you press Send.', () => toMail('reply'));
         tb('replyAll', 'Reply All', 'Write to everyone invited. Nothing is sent until you press Send.', () => toMail('replyAll'));
-        tb('forward', 'Forward', 'Start an email with the details of this meeting. Nothing is sent until you press Send.', () => toMail('forward'));
+        tb('forward', 'Forward', 'Send this invitation on to more people, or email its details', ev2 => under(ev2, [
+          { label: 'Forward the Invitation…', run: () => calForward(inst) },
+          { label: 'Email the Details…', run: () => toMail('forward') },
+        ]));
       }
       tb('more', '', 'More', ev2 => { const cur = calProfileOf(inst); under(ev2, [
         g && g.web && { label: 'Open in Outlook', run: () => openExternal(g.web) },
