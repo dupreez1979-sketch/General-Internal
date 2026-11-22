@@ -234,8 +234,30 @@ function contextMenuFor(contents, p) {
     sep();
   }
 
+  // Images inside the app's own window (a picture in an email, a signature, a note): copy it, or save it as a file.
+  // The picture is read from where the page got it (pictures inside an email travel within the email itself).
+  let own = isMain; try { own = isMain || isOwnContents(contents); } catch (e) { own = isMain; }          // (Mail in a window of its own counts too)
+  if (p.mediaType === 'image' && p.srcURL && own) {
+    const read = async () => {
+      const dm = /^data:([^;,]+)?((?:;[^,]*)?),(.*)$/s.exec(p.srcURL);
+      if (dm) return { type: dm[1] || 'image/png', buf: /;base64/i.test(dm[2]) ? Buffer.from(dm[3], 'base64') : Buffer.from(decodeURIComponent(dm[3]), 'utf8') };
+      if (/^https?:/i.test(p.srcURL)) { const r = await net.fetch(p.srcURL); if (!r.ok) throw new Error('not found'); return { type: (r.headers.get('content-type') || '').split(';')[0] || 'image/png', buf: Buffer.from(await r.arrayBuffer()) }; }
+      throw new Error('This picture cannot be read');
+    };
+    const nameFor = type => { let n = ''; try { if (/^https?:/i.test(p.srcURL)) n = decodeURIComponent(path.basename(new URL(p.srcURL).pathname)); } catch (e) { n = ''; }
+      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'image/svg+xml': 'svg', 'image/bmp': 'bmp', 'image/tiff': 'tiff', 'image/heic': 'heic' }[type] || 'png';
+      n = String(n || (p.altText || p.titleText || 'Picture from an email')).replace(/[\/\\:*?"<>|\0]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Picture';
+      return /\.[a-z0-9]{2,5}$/i.test(n) ? n : `${n}.${ext}`; };
+    const free = file => { let f = file, i = 2; const e = path.extname(file), b = file.slice(0, file.length - e.length); while (fs.existsSync(f)) f = `${b} ${i++}${e}`; return f; };
+    const tell = (text, action) => send('context-action', Object.assign({ action: 'say', text }, action || {}));
+    items.push({ label: 'Copy Image', click: async () => { try { const { nativeImage } = require('electron'); const g = await read(); const img = nativeImage.createFromBuffer(g.buf); if (img.isEmpty()) throw new Error('empty'); clipboard.writeImage(img); tell('Picture copied.'); } catch (e) { try { contents.copyImageAt(p.x, p.y); tell('Picture copied.'); } catch (er) { tell('That picture could not be copied.'); } } } });
+    items.push({ label: 'Save Image to Downloads', click: async () => { try { const g = await read(); const f = free(path.join(app.getPath('downloads'), nameFor(g.type))); fs.writeFileSync(f, g.buf); shell.showItemInFolder(f); tell(`Saved in Downloads as \u201c${path.basename(f)}\u201d.`); } catch (e) { tell('That picture could not be saved.'); } } });
+    items.push({ label: 'Save Image As\u2026', click: async () => { try { const g = await read(); const r = await dialog.showSaveDialog(BrowserWindow.fromWebContents(contents) || undefined, { defaultPath: path.join(app.getPath('downloads'), nameFor(g.type)) }); if (r.canceled || !r.filePath) return; fs.writeFileSync(r.filePath, g.buf); tell(`Saved as \u201c${path.basename(r.filePath)}\u201d.`); } catch (e) { tell('That picture could not be saved.'); } } });
+    items.push({ label: 'Open Image', click: async () => { try { const g = await read(); const dir = path.join(app.getPath('temp'), 'claude-navigator-pictures'); fs.mkdirSync(dir, { recursive: true }); const f = free(path.join(dir, nameFor(g.type))); fs.writeFileSync(f, g.buf); shell.openPath(f); } catch (e) { tell('That picture could not be opened.'); } } });
+    sep();
+  }
   // Images
-  if (p.mediaType === 'image' && p.srcURL && !isMain) {
+  if (p.mediaType === 'image' && p.srcURL && !own) {
     items.push({ label: 'Copy Image', click: () => contents.copyImageAt(p.x, p.y) });
     items.push({ label: 'Save Image to Downloads', click: () => contents.downloadURL(p.srcURL) });
     sep();

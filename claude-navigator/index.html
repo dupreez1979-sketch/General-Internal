@@ -20624,6 +20624,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
 
     // "Save Link to a Folder" from the right-click menu inside Claude.
     window.navigatorApp.onContextAction(a => {
+      if (a.action === 'say') return toast(String(a.text || ''));          // (what a right-click choice did, such as saving a picture)
       if (a.action !== 'save-link') return;
       const text = a.text && a.text.length < 120 ? a.text : '';
       openDialog({
