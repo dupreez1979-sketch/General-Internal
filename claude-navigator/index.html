@@ -5234,6 +5234,8 @@
     }
     if (!isApp || !folderId) return;
     state.autoFile = { folderId, kind, lastPath: null, since: Date.now(), from: proj ? pathOf(proj.url) : null };
+    // Already on that very page (so nothing reloads and no "arrived" signal comes): it counts as being there.
+    try { const target = proj ? proj.url : k.url, cur = view.getURL(); if ((kind === 'chat' || kind === 'artifactChat') && cur && normUrl(cur) === normUrl(target)) state.autoFile.lastPath = pathOf(cur); } catch (e) { /* not ready */ }
     lastRevealed = null;
     renderToolbar();
     syncSideSel();
@@ -5271,8 +5273,17 @@
 
     if (!a) {
       if (fromPopup) return offerSave(url, title, kind);
+      // A staff member's own Claude Project page, however you got to it (Ask, Run Skill, their project button,
+      // Claude's own menus): a chat started there is their work, so it is kept in their Work without being asked.
+      if (kind === 'project') {
+        const sf = staffFolderOfProject(path);
+        if (sf) { state.autoFile = { folderId: sf.id, kind: 'chat', lastPath: path, since: Date.now(), auto: true, from: path }; renderToolbar(); syncSideSel(); return; }
+      }
       if (/^\/new(\/|$)/.test(path) && state.lastFolderId && nodeOf(state.lastFolderId)) {
-        state.autoFile = { folderId: state.lastFolderId, kind: 'chat', lastPath: path, since: Date.now(), auto: true };
+        // (from inside someone's Skills or Archive, a new chat is still their work, not a skill or a finished job)
+        let into = state.lastFolderId;
+        try { const c = teamCtxOf(into); if (c && c.staff && c.staff.id !== into && (inSkills(into) || inArchive(into))) into = c.staff.id; } catch (e) { /* not a staff folder */ }
+        state.autoFile = { folderId: into, kind: 'chat', lastPath: path, since: Date.now(), auto: true };
         renderToolbar();
         syncSideSel();
         return;
@@ -8796,6 +8807,18 @@
     const c = folderId && teamCtxOf(folderId);
     const n = c && staffNodeOf(c.staff);
     return n && n.claudeProject && /^https?:\/\/[^/]+\/project\//.test(n.claudeProject.url || '') ? n.claudeProject : null;
+  }
+  // The Work folder of the staff member whose Claude Project lives at this path, if it is anyone's.
+  function staffFolderOfProject(path) {
+    const act = activeProfile();
+    const teams = Object.entries((cos && cos.teams) || {}).sort((a, b) => (act && b[0] === act.id ? 1 : 0) - (act && a[0] === act.id ? 1 : 0));
+    for (const [pid, t] of teams) for (const n of t.nodes || []) {
+      if (n.kind !== 'staff' || !n.claudeProject || pathOf(n.claudeProject.url || '').replace(/\/$/, '') !== path.replace(/\/$/, '')) continue;
+      const p = profiles().find(x => x.id === pid);
+      const f = (n.folderId && nodeOf(n.folderId)) || (p ? staffFolder(n, p) : null);
+      if (f && f.type === 'folder') return f;
+    }
+    return null;
   }
   function teamFolderFor(p) {
     let f = (p.children || []).find(x => x.type === 'folder' && x.team);
