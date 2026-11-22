@@ -12281,6 +12281,9 @@ body { width: max-content !important; min-width: 0 !important; }
     if (where.length) rows.push(`<tr>${label('Where')}${cell(where.join(''))}</tr>`);
     if (M.who && M.who.length) rows.push(`<tr>${label('Who')}${cell(M.who.map(e).join('<br>'))}</tr>`);
     const ag = inviteAgenda(M.agenda), bef = String(M.before || '').split('\n').map(x => x.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
+    // With nothing under the details (no agenda, nothing to bring, no notes), the last row's line would sit right on
+    // the footer's own line and read as a double rule: that row gives its line up.
+    if (!ag.length && !bef.length && !String(M.notes || '').trim()) rows[rows.length - 1] = rows[rows.length - 1].split(`border-bottom:${C.rule}`).join('border-bottom:0');
     const contact = [`Can't make it, or running late? Reply to this invitation${kit.phone ? ` or call ${e(kit.contactName || 'me')} on ${e(kit.phone)}` : ''}.`];
     return `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;border-collapse:collapse">` +
       `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:${M.cid}" width="600" alt="${e((kit.org || '') + ': ' + M.title)}" style="display:block;width:100%;max-width:600px;height:auto;border:0"></td></tr>` +
@@ -12289,7 +12292,7 @@ body { width: max-content !important; min-width: 0 !important; }
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${rows.join('')}</table>` +
       (ag.length ? h2('Agenda') + `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse">${ag.map((a, i) => `<tr><td width="28" valign="top" style="${hf}font-size:15px;font-weight:700;color:${C.accent || C.ink};padding:5px 0">${i + 1}</td><td valign="top" style="${bf}font-size:15px;line-height:1.4;color:${C.ink};padding:5px 0">${e(a.what)}</td><td width="76" align="right" valign="top" style="${bf}font-size:13px;color:${C.muted || C.ink};padding:6px 0;white-space:nowrap">${e(a.time)}</td></tr>`).join('')}</table>` : '') +
       (bef.length ? h2('Before we meet') + `<ul style="${bf}font-size:15px;line-height:1.45;color:${C.ink};margin:0;padding-left:20px">${bef.map(x => `<li style="margin:3px 0">${e(x)}</li>`).join('')}</ul>` : '') +
-      (M.notes ? `<div style="${bf}font-size:15px;line-height:1.5;color:${C.ink};padding-top:18px">${e(M.notes).replace(/\n/g, '<br>')}</div>` : '') +
+      (String(M.notes || '').trim() ? `<div style="${bf}font-size:15px;line-height:1.5;color:${C.ink};padding-top:18px">${e(M.notes).replace(/\n/g, '<br>')}</div>` : '') +
       `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin-top:22px"><tr><td style="font-family:${C.fineFont || C.bodyFont};font-size:13px;line-height:1.4;color:${C.muted || C.ink};padding-top:13px;border-top:${C.rule}">${contact[0]}</td>${C.strap ? `<td align="right" valign="top" style="${hf}font-size:14px;color:${C.ink};padding-top:13px;border-top:${C.rule};white-space:nowrap;${C.upper ? 'text-transform:uppercase' : ''}">${e(C.strap)}</td>` : ''}</tr></table>` +
       `</td></tr></table>`;
   }
