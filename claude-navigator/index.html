@@ -414,6 +414,7 @@
   /* With the sidebar hidden, the profile you are in shows by name beside the sidebar button: one click switches. */
   #tlProf { display: none; align-items: center; gap: var(--sp-1h); height: 26px; max-width: 190px; border-radius: var(--r-control); border: 0; padding: 0 var(--sp-1h) 0 2px; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-label); font-weight: var(--fw-bold); cursor: pointer; }
   #tlProf:hover { background: var(--hover); }
+  .ds-row { display: flex; gap: var(--sp-2); align-items: center; } .ds-row select { flex: 1; min-width: 0; }
   #tlProf .sq { flex: none; width: 22px; height: 22px; border-radius: var(--r-control); display: grid; place-items: center; color: #fff; }
   #tlProf.all .sq { background: conic-gradient(#FF4C80, #ECEB00, #6FC483, #1B5A68, #FF4C80); }
   #tlProf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } #tlProf .cv { flex: none; opacity: .6; display: grid; }
@@ -2413,7 +2414,7 @@
       <label id="profileGroupsRow" style="grid-template-columns: 96px auto 1fr; justify-items: start;"><span></span><input type="checkbox" id="profileGroups" checked><span style="text-align:left">Add an Other group with Code and Schedules folders</span></label>
     </div>
     <div class="ppane" data-pane="look" hidden>
-      <div class="prow"><span>Design system</span><div class="ds-pick"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><div class="ds-note">Used when you make docs, slides, designs and dashboards in this profile.</div></div></div>
+      <div class="prow"><span>Design system</span><div class="ds-pick"><span class="ds-row"><select id="profileDS" title="The Claude design system this profile uses by default for docs, slides, designs and dashboards"></select><button type="button" class="btn" id="profileDSRefresh" title="Read your design systems from Claude again">Refresh</button></span><div class="ds-note">Used when you make docs, slides, designs and dashboards in this profile.</div></div></div>
       <div id="lookRow" hidden>
         <div id="lookBody" hidden>
           <div class="prow"><span>Colours</span><div class="pcol"><span id="lookMain"></span><span id="lookSecond"></span></div></div>
@@ -20807,14 +20808,20 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   // A setting on the profile (not a folder): the Claude design system to use by default when making docs,
   // slides, designs and dashboards in that profile. Chosen from your Claude design systems, or any design
   // system you have filed.
+  // The list is your design systems as Claude has them now, each one once. The same design system can be reached at
+  // more than one address and can show before Claude has given its name, which used to fill the list with repeats and
+  // with entries called "Design System" or "Claude Artifact"; and design systems filed long ago stayed after they were
+  // gone from Claude. So: one entry for each name, no nameless ones, and the filed ones only when Claude's own list
+  // has not been read yet. The one this profile uses always stays in the list.
   function designSystemOptions(p) {
-    const seen = new Set(), out = [];
-    const add = (name, url) => { const k = normUrl(url); if (!url || seen.has(k)) return; seen.add(k); out.push({ name: hasWords(name) ? name : 'Untitled design system', url }); };
-    if (p) walk([p], n => { if (n.type === 'link' && kindOf(n) === 'designsystem') add(n.name, n.url); });
-    for (const x of libList('designsystems')) add(x.name, x.url);
-    walk(state.tree, n => { if (n.type === 'link' && kindOf(n) === 'designsystem') add(n.name, n.url); });
-    if (p && p.designSystem) add(p.designSystem.name, p.designSystem.url);
-    return out;
+    const urls = new Set(), names = new Set(), out = [];
+    const nameless = n => !hasWords(n) || /^(claude artifact|artifact|design system|untitled( design system)?)$/i.test(String(n).trim());
+    const add = (name, url, keep) => { const k = normUrl(url), nk = String(name || '').trim().toLowerCase(); if (!url || urls.has(k)) return; if (!keep && (nameless(name) || names.has(nk))) return; urls.add(k); names.add(nk); out.push({ name: hasWords(name) ? name : 'Untitled design system', url }); };
+    if (p && p.designSystem) add(p.designSystem.name, p.designSystem.url, true);
+    const live = libList('designsystems');
+    for (const x of live) add(x.name, x.url);
+    if (!live.length) { if (p) walk([p], n => { if (n.type === 'link' && kindOf(n) === 'designsystem') add(n.name, n.url); }); walk(state.tree, n => { if (n.type === 'link' && kindOf(n) === 'designsystem') add(n.name, n.url); }); }
+    return out.sort((x, y) => x.name.localeCompare(y.name));
   }
   function fillDesignSystems(p) {
     const sel = $('profileDS');
@@ -20827,6 +20834,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     if (!opts.length) { none.textContent = 'None (no design systems found yet: refresh Claude\u2019s Design Systems list)'; }
     sel.value = p && p.designSystem ? p.designSystem.url : '';
   }
+  $('profileDSRefresh').addEventListener('click', async e => { const b = e.currentTarget; b.disabled = true; b.textContent = 'Reading\u2026'; const had = $('profileDS').value; try { await refreshLibrary(true); } catch (er) { /* the list stays as it was */ } const p = pf.editing ? (typeof pf.editing === 'string' ? nodeOf(pf.editing) : pf.editing) : null; fillDesignSystems(p); if (had && [...$('profileDS').options].some(o => o.value === had)) $('profileDS').value = had; b.disabled = false; b.textContent = 'Refresh'; });
   function designSystemChoice() {
     const sel = $('profileDS');
     if (!sel.value) return null;
