@@ -438,7 +438,7 @@ function buildMenu() {
   const act = a => () => send('shortcut', a);
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: app.name, submenu: [
-      { role: 'about' }, { type: 'separator' },
+      { role: 'about' }, { id: 'upd-check', label: 'Check for Updates…', click: () => send('shortcut', 'check-updates') }, { id: 'upd-restart', label: 'Restart to Update', visible: false, click: () => send('shortcut', 'update-restart') }, { type: 'separator' },
       { label: 'Settings\u2026', accelerator: 'Cmd+,', click: act('app-settings') }, { type: 'separator' },
       { role: 'services' }, { type: 'separator' },
       { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' },
@@ -512,11 +512,13 @@ function buildMenu() {
     {
       role: 'help',
       submenu: [
+        { id: 'upd-check-h', label: 'Check for Updates…', click: () => send('shortcut', 'check-updates') }, { id: 'upd-restart-h', label: 'Restart to Update', visible: false, click: () => send('shortcut', 'update-restart') }, { type: 'separator' },
         { label: 'Run Checks…', click: () => send('shortcut', 'run-checks') },
         { label: 'Copy Startup Log', click: () => { clipboard.writeText(startLogText()); send('shortcut', 'startlog-copied'); } },
       ],
     },
   ]));
+  updateMenus();
 }
 
 // ---------- Claude Library: read your chats, projects and artifacts ----------
@@ -1372,7 +1374,11 @@ ipcMain.handle('live-info', () => ({ live: LIVE }));
 // themselves (they are updated by running the script again).
 const pkg = require('./package.json');
 let updater = null;
-const update = { state: 'idle', version: null, error: null };
+const update = { state: 'idle', version: null, error: null, pct: 0 };
+// Once a new version is downloaded, the menus offer Restart to Update in place of Check for Updates.
+function updateMenus() {
+  try { const m = Menu.getApplicationMenu(), ready = update.state === 'ready'; for (const s of ['', '-h']) { const c = m.getMenuItemById('upd-check' + s), r = m.getMenuItemById('upd-restart' + s); if (c) c.visible = !ready; if (r) r.visible = ready; } } catch (e) { /* no menu yet */ }
+}
 function setUpUpdates() {
   if (!app.isPackaged || pkg.localBuild || LIVE) { update.state = 'unavailable'; return; }
   try { updater = require('electron-updater').autoUpdater; } catch (e) { update.state = 'unavailable'; return; }
@@ -1380,8 +1386,9 @@ function setUpUpdates() {
   updater.autoInstallOnAppQuit = true;
   updater.on('checking-for-update', () => { update.state = 'checking'; });
   updater.on('update-not-available', () => { update.state = 'current'; });
-  updater.on('update-available', info => { update.state = 'downloading'; update.version = info && info.version; });
-  updater.on('update-downloaded', info => { update.state = 'ready'; update.version = info && info.version; send('update-ready', { version: update.version }); });
+  updater.on('update-available', info => { update.state = 'downloading'; update.pct = 0; update.version = info && info.version; });
+  updater.on('download-progress', p => { update.pct = Math.max(0, Math.min(100, Math.round((p && p.percent) || 0))); });
+  updater.on('update-downloaded', info => { update.state = 'ready'; update.version = info && info.version; updateMenus(); send('update-ready', { version: update.version }); });
   updater.on('error', err => { update.state = 'error'; update.error = String((err && err.message) || err).split('\n')[0]; });
   const check = () => updater.checkForUpdates().catch(() => {});
   setTimeout(check, 15000);
@@ -1390,6 +1397,8 @@ function setUpUpdates() {
 ipcMain.handle('update-status', () => Object.assign({ current: app.getVersion() }, update));
 ipcMain.handle('update-check', async () => {
   if (!updater) return Object.assign({ current: app.getVersion() }, update);
+  if (update.state === 'ready' || update.state === 'downloading') return Object.assign({ current: app.getVersion() }, update);      // already has it, or is fetching it
+  update.error = null;
   try { await updater.checkForUpdates(); } catch (e) { update.state = 'error'; update.error = String(e.message || e); }
   return Object.assign({ current: app.getVersion() }, update);
 });

@@ -20674,12 +20674,19 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       toast(`Version ${updateReady} is ready. It installs when you restart.`, { label: 'Restart Now', run: () => window.navigatorApp.updateInstall() });
     });
   }
+  let updWatch = null;
   async function checkForUpdates() {
     toast('Checking for updates\u2026');
     const s = await window.navigatorApp.updateCheck();
+    // While the new version comes down, the note counts up; when it is in, you are offered the restart.
+    if (s.state === 'downloading' && !updWatch) updWatch = setInterval(async () => {
+      const u = await window.navigatorApp.updateStatus().catch(() => null);
+      if (!u || u.state !== 'downloading') { clearInterval(updWatch); updWatch = null; if (u && u.state === 'error') toast(`The update could not be downloaded: ${u.error}`); return; }
+      toast(`Downloading version ${u.version || ''}: ${u.pct || 0}%`);
+    }, 2000);
     if (s.state === 'unavailable') return toast(`This copy (version ${s.current}) was built on this Mac, so it updates by running Install or Update again.`);
     if (s.state === 'ready') return toast(`Version ${s.version} is ready.`, { label: 'Restart Now', run: () => window.navigatorApp.updateInstall() });
-    if (s.state === 'downloading' || s.state === 'checking') return toast(`Version ${s.version || 'new'} is downloading. You will be told when it is ready.`);
+    if (s.state === 'downloading' || s.state === 'checking') return toast(`Version ${s.version || 'new'} is downloading${s.pct ? ` (${s.pct}%)` : ''}. You will be told when it is ready.`);
     if (s.state === 'error') return toast(`Could not check for updates: ${s.error}`);
     toast(`You have the latest version (${s.current}).`);
   }
@@ -20739,6 +20746,8 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       'toggle-split': () => setSplit(!splitOn),
       'cos-talk': () => botTalk(),
       'run-checks': () => runChecks(),
+      'check-updates': () => checkForUpdates(),
+      'update-restart': () => window.navigatorApp.updateInstall(),
       'startlog-copied': () => toast('Startup log copied. It holds step names and times only. Paste it to Claude.'),
       'toggle-detail': () => (currentApp !== 'cos' ? null : fr('detail').hidden ? showFrame('detail') : frameAction('detail', 'hide')),
       'reset-frames': () => { const it = framesMenuItems().slice(-1)[0]; if (it && it.run) it.run(); },
