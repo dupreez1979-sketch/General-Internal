@@ -1785,6 +1785,7 @@
   .cos-head .sp { flex: 1; -webkit-app-region: drag; }
   .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
+  .pop-leaving { opacity: .55; outline: 2px dashed var(--accent); outline-offset: -2px; }
   .cos-canvas { cursor: grab; } .cos-canvas.panning, .cos-canvas.panning * { cursor: grabbing !important; user-select: none; }
   .cos-canvas [data-cid], .cos-canvas button, .cos-canvas a, .cos-canvas input { cursor: default; }
   .cos-chart { display: inline-block; min-width: 100%; padding: 36px var(--sp-10) 60px; transform-origin: top left; }
@@ -13112,19 +13113,22 @@ body { width: max-content !important; min-width: 0 !important; }
     bar.style.cursor = 'grab';
     bar.addEventListener('mousedown', e => {
       if (e.button !== 0 || e.target.closest('button, input, select, textarea, a, .lights') || el.classList.contains('min') || el.classList.contains('full') || SOLO_ITEM) return;
-      const r = el.getBoundingClientRect(), h = hostRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; let moved = false, q = null;
+      const r = el.getBoundingClientRect(), h = hostRect(), dx = e.clientX - r.left, dy = e.clientY - r.top; let moved = false, q = null, leaving = false;
+      const gone = ev => ev.clientX < -30 || ev.clientY < -30 || ev.clientX > innerWidth + 30 || ev.clientY > innerHeight + 30;
       const mv = ev => {
         if (!moved && Math.abs(ev.clientX - e.clientX) + Math.abs(ev.clientY - e.clientY) < 5) return;
         if (!moved) { moved = true; document.body.classList.add('resizing', 'pop-moving'); }
         q = { x: ev.clientX - dx - h.left, y: ev.clientY - dy - h.top, w: Math.round(r.width), h: Math.round(r.height) }; apply(q);
-        // At the edge of the app's window: it lifts out into a window of its own, there and then, which can go to any screen.
-        if (out && (ev.clientX <= 1 || ev.clientY <= 1 || ev.clientX >= innerWidth - 2 || ev.clientY >= innerHeight - 2)) up(ev, true);
+        // Carried well past the edge of the app's window: it is marked as leaving, and becomes a window of its own
+        // where you let go. Nothing jumps while you are still holding it, and brushing an edge does nothing.
+        const away = !!out && gone(ev);
+        if (away !== leaving) { leaving = away; el.classList.toggle('pop-leaving', away); if (away) toast('Let go to open it in a window of its own.'); }
       };
       const up = (ev, edge) => {
-        removeEventListener('mousemove', mv); removeEventListener('mouseup', up); document.body.classList.remove('resizing', 'pop-moving');
+        removeEventListener('mousemove', mv); removeEventListener('mouseup', up); document.body.classList.remove('resizing', 'pop-moving'); el.classList.remove('pop-leaving');
         if (!moved) return;
         bar._moved = true; setTimeout(() => { bar._moved = false; }, 300);
-        const outside = edge === true || ev.clientX <= 1 || ev.clientY <= 1 || ev.clientX >= innerWidth - 2 || ev.clientY >= innerHeight - 2;
+        const outside = edge === true || gone(ev);
         if (outside && out) { if (popPos[key]) apply(popPos[key]); else Object.assign(el.style, { left: '', top: '', right: '', bottom: '', width: '', height: '' }); return out({ x: Math.round(ev.screenX - dx), y: Math.round(ev.screenY - dy), width: Math.round(r.width), height: Math.round(r.height) }); }
         popPos[key] = q; popPosSave();
       };
@@ -17207,6 +17211,11 @@ body { width: max-content !important; min-width: 0 !important; }
           k === 'cal' ? { label: 'New Meeting', run: () => calGEdit(null, false) } : null,
           '-',
         ].filter(Boolean) : []),
+        ...(vert ? [
+          { label: 'A Double-Click Opens Its Own Window', checked: dockDbl() === 'window', run: () => { ls.set('claudeNavigator.dockDbl', 'window'); toast('A double-click on an app now opens it in a window of its own.'); } },
+          { label: 'A Double-Click Opens It Beside', checked: dockDbl() === 'beside', run: () => { ls.set('claudeNavigator.dockDbl', 'beside'); toast('A double-click on an app now opens it beside the main app.'); } },
+          '-',
+        ] : []),
         { label: 'Change Icon and Colour\u2026', run: () => appLookDlg(k) }, '-',
         appKey() !== k && { label: `Hide ${name}`, run: () => { appSetHidden(k, true); toast(`${name} is hidden from the strip. Right-click any app to show it again.`); } },
         ...(hid.length ? ['-', ...hid.map(h => ({ label: `Show ${APP_NAMES[h]}`, run: () => appSetHidden(h, false) }))] : []),
@@ -17236,6 +17245,8 @@ body { width: max-content !important; min-width: 0 !important; }
   // Apps open in windows of their own (Mail, Calendar, Notes). The strip marks them; clicking one brings its window forward.
   let appWins = [];
   const OWN_WINDOW = ['mail', 'cal', 'cos', 'navigator', 'claude', 'monday'];
+  // What a double-click on an app in the strip does: 'window' (its own window, the usual) or 'beside' (split the screen).
+  const dockDbl = () => (ls.get('claudeNavigator.dockDbl') === 'beside' ? 'beside' : 'window');
   async function appOwnWindow(k) {
     if (!isApp || SOLO || !OWN_WINDOW.includes(k)) return;
     await window.navigatorApp.appWindowOpen(k);
@@ -17278,7 +17289,13 @@ body { width: max-content !important; min-width: 0 !important; }
         if (k === 'actions') return dockClick(k, e);
         if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
-        if (e.detail >= 2) { if (dockIsMain(k)) return toast(`${label} is the main app. Double-click another app to open that beside it.`); return dockClick(k, e); }
+        if (e.detail >= 2) {
+          // A double-click gives the app a window of its own, to put on any screen (or opens it beside, if you chose that).
+          const wk = k === 'folders' ? 'navigator' : k;
+          if (dockDbl() === 'window' && OWN_WINDOW.includes(wk)) return appOwnWindow(wk);
+          if (dockIsMain(k)) return toast(`${label} is the main app. Double-click another app to open that beside it.`);
+          return dockClick(k, e);
+        }
         dockTimer = setTimeout(() => { if (!dockIsMain(k)) dockMain(k); }, 240);
       });
       if (k !== 'actions') appDragWire(b, k === 'folders' ? 'navigator' : k, 'y');
@@ -17541,7 +17558,7 @@ body { width: max-content !important; min-width: 0 !important; }
   document.body.classList.toggle('has-dock', !!isApp && !SOLO);
   if (SOLO) { document.body.classList.add('solo'); document.title = APP_NAMES[SOLO]; }
   if (SOLO_ITEM) soloItemStart();
-  if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip2')) { const tip = () => { if (dict.on) return setTimeout(tip, 5000); ls.set('claudeNavigator.dockTip2', '1'); toast('Your apps are in the strip on the left. Click one to make it the main app; double-click to open it beside.'); }; setTimeout(tip, 4000); }
+  if (isApp && !SOLO && !ls.get('claudeNavigator.dockTip3')) { const tip = () => { if (dict.on) return setTimeout(tip, 5000); ls.set('claudeNavigator.dockTip3', '1'); toast('Your apps are in the strip on the left. Click one to make it the main app; double-click to open it in a window of its own. Right-click for more, such as opening it beside.'); }; setTimeout(tip, 4000); }
   appApplyOrder();
 
   let claraView = null;
