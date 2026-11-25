@@ -4459,14 +4459,28 @@
   document.addEventListener('keydown', gridKeys);
   // Mail's list takes the keyboard the same way: the up and down arrows move through the emails (showing each one in
   // the reading pane, as a click does), and Return opens the one you are on.
+  // The keys stay with the list after the list redraws (which it does when an email opens, taking the focus with it):
+  // whichever part of the app you last pressed in owns the arrows, and from the list they carry on from the open email.
+  let mailKeysIn = null, mailKeysAt = '', mailKeysNav = false;
+  document.addEventListener('mousedown', e => { const l = e.target.closest && e.target.closest('.mail-list'); mailKeysIn = l ? (l.closest('#sidePanel') ? '#sidePanel' : '#mailPanel') : null; const m = l && e.target.closest('.mail-m'); if (m) mailKeysAt = m.dataset.mid || ''; }, true);
   document.addEventListener('keydown', e => {
-    const r = e.target && e.target.classList && e.target.classList.contains('mail-m') ? e.target : null; if (!r || e.metaKey || e.ctrlKey || e.altKey) return;
-    const back = id => setTimeout(() => { try { const n = document.querySelector(`.mail-list .mail-m[data-mid="${CSS.escape(id)}"]`); if (n) n.focus(); } catch (er) { /* the list moved on */ } }, 80);
+    if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+    if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    let r = e.target && e.target.classList && e.target.classList.contains('mail-m') ? e.target : null;
+    if (!r) {
+      const t = e.target, loose = !t || t === document.body || t === document.documentElement || (t.closest && t.closest('.mail-list') && !t.closest('input, textarea, select, button, [contenteditable="true"]'));
+      if (!loose || !mailKeysIn || document.querySelector('dialog[open], .mail-compose, .menu')) return;
+      const host = document.querySelector(mailKeysIn); if (!host) return;
+      const rows = [...host.querySelectorAll('.mail-list .mail-m')].filter(x => x.offsetParent); if (!rows.length) return;
+      r = rows.find(x => mailKeysAt && x.dataset.mid === mailKeysAt) || rows.find(x => x.classList.contains('on')) || null;
+      if (!r) { if (e.key === 'Enter') return; e.preventDefault(); const f0 = rows[0]; mailKeysAt = f0.dataset.mid || ''; f0.focus(); f0.scrollIntoView({ block: 'nearest' }); mailKeysNav = true; try { f0.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })); } finally { mailKeysNav = false; } return; }
+    }
+    const back = id => setTimeout(() => { try { const n = (r.closest('#sidePanel') ? document.querySelector('#sidePanel') : document).querySelector(`.mail-list .mail-m[data-mid="${CSS.escape(id)}"]`); if (n) n.focus({ preventScroll: true }); } catch (er) { /* the list moved on */ } }, 80);
     if (e.key === 'Enter') { e.preventDefault(); const id = r.dataset.mid; r.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 2 })); back(id); return; }
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    const all = [...document.querySelectorAll('.mail-list .mail-m')].filter(x => x.offsetParent), n = all[all.indexOf(r) + (e.key === 'ArrowDown' ? 1 : -1)];
-    if (!n) return; e.preventDefault(); const id = n.dataset.mid; n.focus(); n.scrollIntoView({ block: 'nearest' });
-    if (!mailPopped()) { n.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })); back(id); }
+    const all = [...(r.closest('.mail-list') || document).querySelectorAll('.mail-m')].filter(x => x.offsetParent), n = all[all.indexOf(r) + (e.key === 'ArrowDown' ? 1 : -1)];
+    if (!n) return; e.preventDefault(); const id = n.dataset.mid; mailKeysAt = id || ''; n.focus(); n.scrollIntoView({ block: 'nearest' });
+    // The email you land on is chosen, as a click chooses it (with the reading pane showing, that also shows it).
+    mailKeysNav = true; try { n.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 })); } finally { mailKeysNav = false; } back(id);
   });
   // One list, built the way every list in the app is: headings you can sort by and resize, rows you select with a
   // click and open with a double-click (or Return), and a search box where the list can be long.
@@ -14352,7 +14366,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (e.detail >= 2 || (!mailPopped() && !x.isDraft)) return mailOpen(x);          // (a draft, like any email, opens on a double click; one click chooses it)
         if (mailUi.msg === x && !mailUi.msgOpen) return;
         mailUi.msg = x; mailUi.msgOpen = false; mailUi.msgBody = null; mailRenderMain();          // chosen: the buttons above act on it
-        if (!x.isDraft) mailPreDraft(x._acc || (mailState.sel || {}).acc, x);
+        if (!x.isDraft && !mailKeysNav) mailPreDraft(x._acc || (mailState.sel || {}).acc, x);          // (not for each email the arrow keys pass over)
       });
       r.addEventListener('contextmenu', e => { e.preventDefault(); if (mailMulti.size > 1 && mailMulti.has(x.id)) return showMenu(e.clientX, e.clientY, mailBulkItems()); mailMsgMenu(x, e.clientX, e.clientY); });
       list.appendChild(r);
