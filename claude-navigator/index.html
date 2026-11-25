@@ -1524,6 +1524,9 @@
   dialog.cal-evdlg .ev-form { overflow-x: hidden; } dialog.cal-evdlg .ev-form > .tzrow { height: auto; } dialog.cal-evdlg .ev-form > .tzrow .dt { flex-wrap: wrap; row-gap: var(--sp-1); min-width: 0; } dialog.cal-evdlg .ev-form > .tzrow select { min-width: 0; }
   /* (the sidebar button does not show through a meeting window that sits over it) */
   body:has(dialog.ev-win[open]:not(.min)) #topLeft { z-index: 40; }
+  /* The same for every window that floats over an app (an email you are writing or reading, a meeting, a helper):
+     the sidebar's button stays where it is, and the window passes over it. */
+  body:has(.mail-compose:not(.min):not([hidden]), .mail-read.pop:not(.min):not([hidden]), .cal-view:not([hidden])) #topLeft { z-index: 8; }
   dialog.cal-evdlg .ev-side .fr { flex-wrap: wrap; }
   dialog.cal-evdlg .ev-side .fr .fr-out, dialog.cal-evdlg .ev-side .fr .kit-on { flex: 1 1 100%; }
   dialog.cal-evdlg .ev-notes .row > span:first-child { text-align: left; }
