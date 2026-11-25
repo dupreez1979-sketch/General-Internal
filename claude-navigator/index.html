@@ -1471,7 +1471,7 @@
   dialog.cal-evdlg .fr .btn { flex: none; font-size: var(--fs-caption); padding: var(--sp-1) var(--sp-2h); }
   dialog.cal-evdlg .row.chk span:last-child { color: var(--text); font-size: var(--fs-body); }
   dialog.cal-evdlg .hint:empty { display: none; }
-  dialog.cal-evdlg .tzrow select { max-width: 230px; } dialog.cal-evdlg .tzrow[hidden] { display: none; } dialog.cal-evdlg .tz-def { font-size: var(--fs-caption); padding: var(--sp-1) var(--sp-2h); }
+  dialog.cal-evdlg .tzrow select { max-width: 230px; } dialog.cal-evdlg .tz2w > span { min-width: 52px; } dialog.cal-evdlg .tz2w select { width: 200px; } dialog.cal-evdlg .tz2w { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-caption); color: var(--muted); white-space: nowrap; } dialog.cal-evdlg .tzrow[hidden] { display: none; } dialog.cal-evdlg .tz-def { font-size: var(--fs-caption); padding: var(--sp-1) var(--sp-2h); }
   dialog.cal-evdlg .dict-sec { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2h); }
   .dict-b { display: inline-flex; align-items: center; gap: var(--sp-1); font-size: var(--fs-caption); font-weight: var(--fw-medium); padding: var(--sp-1) var(--sp-2h); border-radius: var(--r-control); background: var(--win); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); } .dict-b svg { color: var(--accent-ink); } .dict-b.rec svg { color: #fff; }
   .dict-float { z-index: 80; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center; cursor: pointer; background: color-mix(in srgb, var(--accent) 14%, var(--win)); color: var(--accent-ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent); -webkit-app-region: no-drag; }
@@ -12348,7 +12348,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (inst) {
       accId = inst.g.acc; calId = inst.g.cal;
       const id = series && inst.g.master ? inst.g.master : inst.g.id;
-      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,onlineMeeting,onlineMeetingUrl,showAs,type,originalStartTimeZone';
+      const sel = '$select=id,subject,start,end,isAllDay,location,attendees,body,recurrence,isOnlineMeeting,onlineMeeting,onlineMeetingUrl,showAs,type,originalStartTimeZone,originalEndTimeZone';
       let r = await mailApi(accId, { path: `/me/events/${id}?${sel}&$expand=extensions($filter=id eq '${INVITE_EXT}')`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) r = await mailApi(accId, { path: `/me/events/${id}?${sel}`, prefer: 'outlook.body-content-type="text"' });
       if (!r.ok) return toast(`Could not open it: ${r.error || 'try again'}`);
@@ -12373,7 +12373,7 @@ body { width: max-content !important; min-width: 0 !important; }
       <label class="row"><span>Starts</span><span class="dt"><b class="dow" data-for="sd"></b><input type="date" name="sd"><input type="time" name="st" step="300"></span></label>
       <label class="row"><span>Ends</span><span class="dt"><b class="dow" data-for="ed"></b><input type="date" name="ed"><input type="time" name="et" step="300"></span></label>
       <label class="row chk"><span></span><span><input type="checkbox" name="allday"> All day</span></label>
-      <label class="row tzrow"><span>Time zone</span><span class="dt"><select name="tz" title="The times above are times in this time zone"></select><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
+      <label class="row tzrow"><span>Time zone</span><span class="dt"><span class="tz2w"><span>Starts in</span><select name="tz" title="The start time is a time in this time zone (and the end too, unless you choose another for it)"></select></span><span class="tz2w"><span>Ends in</span><select name="tz2" title="The end time is a time in this time zone. Useful for a flight, or anything that ends somewhere else."></select></span><button type="button" class="btn tz-def" data-x="tzdef" hidden></button></span></label>
       <label class="row" data-rep><span>Repeats</span><span class="dt"><select name="rep"><option value="none">Does not repeat</option><option value="daily">Every day</option><option value="weekdays">Every weekday</option><option value="weekly">Every week</option><option value="fortnightly">Every two weeks</option><option value="monthly">Every month</option><option value="yearly">Every year</option><option value="keep" hidden>As set in Outlook</option></select><span class="until">until <input type="date" name="until"></span></span></label>
       <label class="row"><span>Where</span><input name="loc"></label>
       <label class="row chk"><span></span><span><input type="checkbox" name="teams"> Teams meeting</span></label>
@@ -12403,13 +12403,19 @@ body { width: max-content !important; min-width: 0 !important; }
       f('tz').append(g1, g2);
       const own = ev && ev.originalStartTimeZone && [...f('tz').options].some(o => o.value === ev.originalStartTimeZone) ? ev.originalStartTimeZone : '';
       f('tz').value = own || tzDefault(tzPid);
+      // The end can be in a zone of its own (a flight lands somewhere else). Left alone, it follows the start.
+      { const same = document.createElement('option'); same.value = ''; same.textContent = 'Same as the start'; f('tz2').append(same, ...[...f('tz').children].map(x => x.cloneNode(true)));
+        const e2 = ev && ev.originalEndTimeZone && ev.originalEndTimeZone !== f('tz').value && [...f('tz2').options].some(o => o.value === ev.originalEndTimeZone) ? ev.originalEndTimeZone : '';
+        f('tz2').value = e2; }
     }
     const tzSel = () => (f('allday') && f('allday').checked ? calTz() : f('tz').value || calTz());
+    const tzEnd = () => (f('allday') && f('allday').checked ? calTz() : f('tz2').value || tzSel());
     const zYmd = dt => tzWall(+dt, tzSel()).ymd, zHm = dt => tzWall(+dt, tzSel()).hm;
+    const eYmd = dt => tzWall(+dt, tzEnd()).ymd, eHm = dt => tzWall(+dt, tzEnd()).hm;          // (the end, in its own zone)
     d.querySelector('h2').textContent = inst ? (series ? 'Change the Series' : 'Change Meeting') : 'New Meeting';
     f('title').value = ev ? ev.subject || '' : '';
     f('allday').checked = !!(ev && ev.isAllDay);
-    f('sd').value = zYmd(s0); f('st').value = zHm(s0); f('ed').value = zYmd(e0); f('et').value = zHm(e0);
+    f('sd').value = zYmd(s0); f('st').value = zHm(s0); f('ed').value = eYmd(e0); f('et').value = eHm(e0);
     f('loc').value = ev ? (ev.location && ev.location.displayName) || '' : '';
     f('att').value = ev ? (ev.attendees || []).map(a => a.emailAddress && a.emailAddress.address).filter(Boolean).join(', ') : '';
     f('teams').checked = !!(ev && ev.isOnlineMeeting);
@@ -12481,7 +12487,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     if (seed && !inst && seed.teams) f('teams').checked = true;
     if (seed && !inst && seed.check) { const ck = document.createElement('p'); ck.className = 'cal-check'; ck.textContent = seed.check; d.querySelector('.ev-form').prepend(ck); }
-    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = zYmd(seed.end); f('et').value = zHm(seed.end); } }
+    if (seed && !inst) { f('title').value = seed.title || ''; f('att').value = seed.att || ''; f('notes').value = seed.notes || ''; if (seed.loc) f('loc').value = seed.loc; if (seed.end && seed.end > s0) { f('ed').value = eYmd(seed.end); f('et').value = eHm(seed.end); } }
     if (seed && !inst && seed.allday) { f('allday').checked = true; f('allday').dispatchEvent(new Event('change', { bubbles: true })); }
     const online0 = !!(ev && ev.isOnlineMeeting);
     if (online0) { f('teams').disabled = true;
@@ -12504,6 +12510,7 @@ body { width: max-content !important; min-width: 0 !important; }
     }
     const tzPaint = () => { const b = d.querySelector('.tz-def'), pr = calProfiles().find(x => x.id === state.profileId); b.hidden = f('tz').value === tzDefault(tzPid); b.textContent = `Make This the Default${pr ? ' for ' + pr.name : ''}`; d.querySelector('.tzrow').hidden = f('allday').checked; };
     f('tz').addEventListener('change', () => { tzPaint(); f('et').dispatchEvent(new Event('change')); });
+    f('tz2').addEventListener('change', () => { if (f('tz2').value === f('tz').value) f('tz2').value = ''; f('et').dispatchEvent(new Event('change')); });
     setTimeout(tzPaint, 0);
     const sync = () => { const ad = f('allday').checked; try { tzPaint(); } catch (e) { /* not built yet */ } f('st').hidden = ad; f('et').hidden = ad; d.querySelector('.until').hidden = f('rep').value === 'none' || f('rep').value === 'keep'; };
     f('allday').addEventListener('change', sync); f('rep').addEventListener('change', sync); sync();
@@ -12512,9 +12519,9 @@ body { width: max-content !important; min-width: 0 !important; }
       dow(); d.addEventListener('input', dow); d.addEventListener('change', dow); const tick = setInterval(() => { if (!d.isConnected) return clearInterval(tick); dow(); }, 400); }
     // Moving the start moves the end with it.
     let gap = (seed && !inst && seed.end && seed.end > s0 ? seed.end : e0).getTime() - s0.getTime();
-    if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = zYmd(b); f('et').value = zHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
-    const readDt = (dn, tn) => new Date(tzInstant(f(dn).value, f('allday').checked ? '00:00' : (f(tn).value || '00:00'), tzSel()));          // (the moment those typed times mean, in the meeting's time zone)
-    for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = zYmd(e); f('et').value = zHm(e); });
+    if (inst && !series && seed && seed.at) { const a = new Date(seed.at[0]), b = new Date(seed.at[1]); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = eYmd(b); f('et').value = eHm(b); gap = b - a; }   // (opened from a drag: the new time is filled in)
+    const readDt = (dn, tn) => new Date(tzInstant(f(dn).value, f('allday').checked ? '00:00' : (f(tn).value || '00:00'), dn === 'ed' ? tzEnd() : tzSel()));          // (the moment those typed times mean, in the meeting's time zone)
+    for (const n of ['sd', 'st']) f(n).addEventListener('change', () => { const s = readDt('sd', 'st'); if (isNaN(s)) return; const e = new Date(s.getTime() + gap); f('ed').value = eYmd(e); f('et').value = eHm(e); });
     for (const n of ['ed', 'et']) f(n).addEventListener('change', () => { const g = readDt('ed', 'et') - readDt('sd', 'st'); if (g >= 0) gap = g; });
     // Are the people you are inviting free then? (Outlook's free and busy times, for people whose calendars it can see.)
     const frRow = d.querySelector('.row.free'), frOut = d.querySelector('.fr-out');
@@ -12558,7 +12565,7 @@ body { width: max-content !important; min-width: 0 !important; }
         const e2 = new Date(t.getTime() + len), wd = t.getDay();
         if (wd === 0 || wd === 6 || t.getHours() < 8 || e2.getHours() + e2.getMinutes() / 60 > 18 || e2.getDate() !== t.getDate()) continue;
         if (taken.some(([a, b]) => a < e2.getTime() && b > t.getTime())) continue;
-        f('sd').value = zYmd(t); f('st').value = zHm(t); f('ed').value = zYmd(e2); f('et').value = zHm(e2); gap = len;
+        f('sd').value = zYmd(t); f('st').value = zHm(t); f('ed').value = eYmd(e2); f('et').value = eHm(e2); gap = len;
         frCheck(); return toast(`${t.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(t.getTime())} suits everyone whose calendar can be seen.`);
       }
       frOut.textContent = 'No time in working hours over the next two weeks suits everyone.';
@@ -12579,7 +12586,7 @@ body { width: max-content !important; min-width: 0 !important; }
       avCache.set(key, pr); return pr;
     };
     const clash = (rows, mine, a, b) => rows.filter(r0 => r0.items.some(i => i.a < b && i.b > a)).length + (mine.some(i => i.status !== 'free' && i.a < b && i.b > a) ? 1 : 0);
-    const setTimes = (startMs, lenMs) => { const a = new Date(startMs), b = new Date(startMs + lenMs); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = zYmd(b); f('et').value = zHm(b); gap = lenMs; f('et').dispatchEvent(new Event('change')); };
+    const setTimes = (startMs, lenMs) => { const a = new Date(startMs), b = new Date(startMs + lenMs); f('sd').value = zYmd(a); f('st').value = zHm(a); f('ed').value = eYmd(b); f('et').value = eHm(b); gap = lenMs; f('et').dispatchEvent(new Event('change')); };
     const span = () => { const s = readDt('sd', 'st'), en = readDt('ed', 'et'); return isNaN(s) || isNaN(en) || en <= s ? null : [s.getTime(), en.getTime()]; };
     const lenText = ms => { const m = Math.round(ms / 60e3); return m % 60 === 0 ? `${m / 60} h` : m > 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
     // The day, on the right of the form.
@@ -12694,12 +12701,14 @@ body { width: max-content !important; min-width: 0 !important; }
       if (isNaN(s) || isNaN(en) || en < s || (!ad && en.getTime() === s.getTime())) return toast('The end must be after the start.');
       const people = mailParse(f('att').value);
       if (people.find(p => p.bad)) return toast(`“${people.find(p => p.bad).bad}” is not an email address.`);
-      const tz = tzSel(), iso = dt => `${zYmd(dt)}T${ad ? '00:00' : zHm(dt)}:00`;
+      const tz = tzSel(), tzE = tzEnd(), iso = dt => `${zYmd(dt)}T${ad ? '00:00' : zHm(dt)}:00`, isoE = dt => `${eYmd(dt)}T${eHm(dt)}:00`;
+      // (when the end is in another zone, its time is said with the place, so nobody reads it as a time at the start)
+      const endSay = tzE !== tz ? `${tzTime(en.getTime(), tzE)} ${tzCity(tzE)} time` : tzTime(en.getTime(), tz);
       const endAd = new Date(en.getTime() + 86400e3);
-      const body = { subject: f('title').value.trim(), isAllDay: ad, start: { dateTime: iso(s), timeZone: tz }, end: { dateTime: ad ? iso(endAd) : iso(en), timeZone: tz },
+      const body = { subject: f('title').value.trim(), isAllDay: ad, start: { dateTime: iso(s), timeZone: tz }, end: { dateTime: ad ? iso(endAd) : isoE(en), timeZone: ad ? tz : tzE },
         location: { displayName: f('loc').value.trim() }, attendees: people.map(p => ({ emailAddress: p.emailAddress, type: 'required' })), showAs: f('show').value };
       // A plain invitation says the time in words too, time zone included, as its first line.
-      const whenLine = ad ? '' : `When: ${s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })}, ${tzTime(s.getTime(), tz)} to ${tzTime(en.getTime(), tz)}, ${tzLabel(tz, s.getTime())}`;
+      const whenLine = ad ? '' : `When: ${s.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz })}, ${tzTime(s.getTime(), tz)} to ${endSay}, ${tzLabel(tz, s.getTime())}`;
       if (!online0) { body.body = { contentType: 'text', content: (whenLine && people.length ? whenLine + '\n\n' : '') + f('notes').value.replace(/^When: [^\n]*\n\n?/, '') }; if (f('teams').checked) { body.isOnlineMeeting = true; body.onlineMeetingProvider = 'teamsForBusiness'; } }
       const rep = f('rep').value;
       if (canRepeat && rep !== 'keep') {
@@ -12739,7 +12748,7 @@ body { width: max-content !important; min-width: 0 !important; }
           const mins = Math.round((en - s) / 60e3), len = ad ? '' : mins % 60 === 0 ? `${mins / 60} ${mins === 60 ? 'hour' : 'hours'}` : mins > 60 ? `${Math.floor(mins / 60)} h ${mins % 60} min` : `${mins} min`;
           const acc0 = mailAccById(A) || {};
           const repT = { daily: 'Repeats every day', weekdays: 'Repeats every weekday', weekly: `Repeats every ${s.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz })}`, fortnightly: `Repeats every second ${s.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz })}`, monthly: 'Repeats every month', yearly: 'Repeats every year' }[rep] || '';
-          const htmlOf = join => inviteHtml(kit, Object.assign({ title: body.subject, cid, day: dayT, time: ad ? 'All day' : `${tzTime(s.getTime(), tz)} to ${tzTime(en.getTime(), tz)} (${len})`, zone: ad ? '' : tzLabel(tz, s.getTime()), repeats: canRepeat ? repT : '', online, joinUrl: join, loc: body.location.displayName,
+          const htmlOf = join => inviteHtml(kit, Object.assign({ title: body.subject, cid, day: dayT, time: ad ? 'All day' : `${tzTime(s.getTime(), tz)} to ${endSay} (${len})`, zone: ad ? '' : tzLabel(tz, s.getTime()), repeats: canRepeat ? repT : '', online, joinUrl: join, loc: body.location.displayName,
             who: [`${acc0.name || acc0.email || 'Organiser'} (organiser)`].concat(people.map(p2 => p2.emailAddress.name && p2.emailAddress.name !== p2.emailAddress.address ? p2.emailAddress.name : p2.emailAddress.address)) }, words));
           const first = Object.assign({}, body, { attendees: [], body: { contentType: 'html', content: htmlOf(PH) } });
           const extBody = Object.assign({ '@odata.type': 'microsoft.graph.openTypeExtension', extensionName: INVITE_EXT }, words);
