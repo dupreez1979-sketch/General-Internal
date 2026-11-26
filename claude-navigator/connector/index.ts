@@ -150,6 +150,8 @@ async function mcp(req: Request, secret: string) {
     const p = m.params || {}, meta = (p && typeof p._meta === "object" && p._meta) || {};
     const asked = typeof meta[PV] === "string" ? meta[PV] : "";
     const modern = m.method !== "initialize" && !!asked && !LEGACY.includes(asked);
+    // A one-line note of which call this was, for finding out what Claude asks for. Names only: never what was handed over.
+    try { const ci = meta["io.modelcontextprotocol/clientInfo"] || (p.clientInfo || {}), cc = meta["io.modelcontextprotocol/clientCapabilities"] || p.capabilities || {}; console.log("mcp " + JSON.stringify({ call: String(m.method).slice(0, 60), style: modern ? asked : "older", client: `${String(ci.name || "").slice(0, 40)} ${String(ci.version || "").slice(0, 20)}`.trim(), can: Object.keys(cc).slice(0, 12), ext: Object.keys((cc && cc.extensions) || {}).slice(0, 12), ...(m.method === "resources/read" || m.method === "skills/get" ? { uri: String(p.uri || "").slice(0, 80) } : {}) })); } catch { /* the call is answered all the same */ }
     const err = (code: number, message: string, status: number, data?: unknown): Ans => ({ body: { jsonrpc: "2.0", id: m.id, error: data === undefined ? { code, message } : { code, message, data } }, status: modern ? status : 200 });
     // every answer in the newer era says it is complete; the older era's answers are left exactly as they were
     const ok = (result: Record<string, unknown>): Ans => ({ body: { jsonrpc: "2.0", id: m.id, result: modern ? { resultType: "complete", ...result } : result }, status: 200 });
