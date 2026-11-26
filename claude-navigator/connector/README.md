@@ -52,5 +52,18 @@ that is simply absent is let through, so that a slightly different client is not
 In both styles it refuses a browser request from any site other than Claude's own (`Origin` check). A request from
 Claude's servers carries no `Origin` and is unaffected.
 
-Not built: file upload (Claude only passes files to connectors in its public directory), questions part-way through
-(elicitation), and skills carried by the connector.
+Not built: file upload (Claude only passes files to connectors in its public directory) and questions part-way
+through (elicitation).
+
+## The skill it carries
+
+In the newer style the relay also offers one skill, `chief-of-staff-app`: a single page of plain words telling Claude
+how to use `show_for_approval` well (which kind of item to use, how to describe a reply, time zones, never giving ids,
+which account). It is the `SKILL_MD` text in `index.ts`. There are no scripts and no other files.
+
+It is advertised in `server/discover` (`resources` and the `io.modelcontextprotocol/skills` extension) and served by
+`skills/list`, `skills/get` and `resources/read`. Its fingerprint (digest) is worked out from the words actually
+served, so changing the text and redeploying is all an update takes. Claude may ask the user to approve the skill
+again after a change.
+
+This part of the standard is in beta. It is offered only in the newer style; the older style is unchanged.

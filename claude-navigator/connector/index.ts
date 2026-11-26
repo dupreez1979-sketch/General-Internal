@@ -55,13 +55,82 @@ const TOOLS = [{
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
 }];
 
+// ---------- The skill the connector carries ----------
+// How to use the one tool well, sent with the connector itself (the "skills" extension of the newer standard), so the
+// guidance does not have to be pasted into each project's instructions. It is plain words: no scripts, no other files.
+const SKILL_NAME = "chief-of-staff-app", SKILL_URI = `skill://${SKILL_NAME}/SKILL.md`;
+const SKILL_DESC = "How to hand emails, meetings, calendar entries, mail rules and folders, actions for his staff and documents to the user's Chief of Staff app for his approval. Use whenever he asks you to draft or send an email, reply to one, set up or change a meeting, put something in his calendar, make a mail rule or folder, give a staff member something to do, or save something as a document.";
+const SKILL_MD = `---
+name: ${SKILL_NAME}
+description: ${SKILL_DESC}
+---
+
+# Handing things to the Chief of Staff app
+
+The user runs a Mac app called Chief of Staff. It holds his mail, calendar, staff and company folders. You cannot
+change any of those yourself. You hand him what you propose with the tool \`show_for_approval\`, and he approves each
+item in the app. Nothing is sent, made or changed until he does.
+
+## The rules that never bend
+
+- He sends every email and every invitation himself. Never say something was sent, booked or changed. Say it is
+  waiting in his app.
+- Use \`show_for_approval\` for making or changing things, and no other calendar or email tool, even if one is
+  connected. Other tools are for looking things up.
+- Put everything from one request into a single call. Do not call it once per item.
+- After the call, tell him in one short line that it is waiting in the Chief of Staff app. Do not repeat the whole
+  contents back to him.
+- Never use em dashes in anything you write for him. Use Australian English spelling.
+
+## Choosing the right kind of item
+
+- \`emails\`: anything he will send to someone. No signature, his mail app adds it.
+- \`meetings\`: anything with other people invited. It opens as an invitation for him to check.
+- \`changes\`: entries in his own calendar with nobody invited (\`add_event\`, \`change_event\`, \`remove_event\`), and
+  mail rules and folders (\`add_rule\`, \`add_folder\`). If other people should know about a calendar entry, it is a
+  meeting, not a change.
+- \`actions\`: a to-do for one of his staff members. One short line starting with a verb.
+- \`documents\`: something to keep as a Word file in a company folder. He chooses the folder.
+
+## Emails
+
+- For a reply, give \`reply_to\` with the subject of the email being answered, exactly as written, plus who sent it
+  and the date if you know them. The app finds that email and puts the earlier messages underneath.
+- In a reply, write only the new words. Do not paste the earlier emails into the body.
+- Set \`reply_all\` to true only when everyone on the email should get the answer.
+- Give addresses only when you are certain of them. Otherwise give the person's name exactly, and he picks the
+  address. Never guess an address.
+
+## Meetings and calendar entries
+
+- Give times as they are on the clock where the thing happens. When that place is not his home time zone, add
+  \`time_zone\` as an IANA name such as "Australia/Perth". Do not convert times yourself.
+- To change or remove an entry, name it by its title exactly as it shows in his calendar, and the day it is on.
+  Never give an id for a calendar entry or an email. The app has its own and yours will not match.
+- Put anything you assumed into \`check\` on a meeting, so he sees it before he saves.
+- In \`invite\`, separate people with semicolons.
+
+## Which account
+
+He has more than one organisation and mailbox. When the chat makes it clear which one this belongs to, say so in
+\`for_account\`, in his own words or as an email address. If it is not clear, leave it out and he chooses in the app.
+
+## What you cannot know
+
+You do not see whether he approved, changed or dismissed an item. Do not assume it happened. If he later says
+something was not right, hand him a corrected version in a new call.
+`;
+const skillEntry = async () => { const bytes = new TextEncoder().encode(SKILL_MD); return { uri: SKILL_URI, frontmatter: { name: SKILL_NAME, description: SKILL_DESC }, resources: [{ uri: SKILL_URI, digest: "sha256:" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(x => x.toString(16).padStart(2, "0")).join(""), size: bytes.length }] }; };
+const CACHE = { ttlMs: 300000, cacheScope: "private" };
+const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/skills": {} } };
+
 // ---------- The protocol ----------
 // Two eras are spoken at once. The older one opens with an "initialize" handshake. The newer one (2026-07-28) has no
 // handshake: every request says which version it speaks, in its _meta and in a header, and is answered by itself.
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.1.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.2.0" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -91,13 +160,20 @@ async function mcp(req: Request, secret: string) {
         const hv = hdr("mcp-protocol-version"), hm = hdr("mcp-method"), hn = hdr("mcp-name");
         if (hv !== null && hv !== asked) return err(-32020, "The MCP-Protocol-Version header does not match the request", 400);
         if (hm !== null && hm !== m.method) return err(-32020, "The Mcp-Method header does not match the request", 400);
+        if (hn !== null && m.method === "resources/read" && hn !== String(p.uri || "")) return err(-32020, "The Mcp-Name header does not match the request", 400);
         if (hn !== null && m.method === "tools/call" && hn !== String(p.name || "")) return err(-32020, "The Mcp-Name header does not match the request", 400);
       }
     }
     if (m.method === "initialize") return ok({ protocolVersion: LEGACY.includes(p.protocolVersion) ? p.protocolVersion : "2025-06-18", capabilities: { tools: {} }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS });
     // Who this is and what it speaks. Answered whether or not the caller has said its version yet (this is how it finds out).
-    if (m.method === "server/discover") return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "complete", supportedVersions: MODERN.concat(LEGACY), capabilities: { tools: {} }, instructions: INSTRUCTIONS, ttlMs: 3600000, cacheScope: "private", _meta: { "io.modelcontextprotocol/serverInfo": SERVER_INFO } } }, status: 200 };
+    if (m.method === "server/discover") return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "complete", supportedVersions: MODERN.concat(LEGACY), capabilities: CAPS, instructions: INSTRUCTIONS, ttlMs: 3600000, cacheScope: "private", _meta: { "io.modelcontextprotocol/serverInfo": SERVER_INFO } } }, status: 200 };
     if (m.method === "ping") return ok({});
+    // The skill: listed, described, and read as a single page of words.
+    if (m.method === "skills/list") return ok({ skills: [await skillEntry()], ...CACHE });
+    if (m.method === "skills/get") return p.uri === SKILL_URI ? ok({ skill: await skillEntry(), ...CACHE }) : err(-32602, `No skill is served at ${String(p.uri || "").slice(0, 200)}`, 400);
+    if (m.method === "resources/list") return ok({ resources: [{ uri: SKILL_URI, name: "SKILL.md", title: "How to use the Chief of Staff app", mimeType: "text/markdown" }], ...CACHE });
+    if (m.method === "resources/templates/list") return ok({ resourceTemplates: [], ...CACHE });
+    if (m.method === "resources/read") return p.uri === SKILL_URI ? ok({ contents: [{ uri: SKILL_URI, mimeType: "text/markdown", text: SKILL_MD }], ...CACHE }) : err(-32602, "No such resource", 400);
     if (m.method === "tools/list") return ok(modern ? { tools: TOOLS, ttlMs: 300000, cacheScope: "private" } : { tools: TOOLS });
     if (m.method === "tools/call") {
       const a = p.arguments || {};
