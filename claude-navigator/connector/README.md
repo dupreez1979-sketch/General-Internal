@@ -33,3 +33,24 @@ on with no policies, so only the function can touch them. The app's address for 
 
 Edit `index.ts` and deploy it again as `cos-connector`. Changes to the tool's description or fields take effect at
 once for the app. Claude keeps the old description until the connector is disconnected and added again.
+
+## Which version of the connector standard it speaks
+
+Both, at once. Nothing has to be set.
+
+- **The older style** (versions up to 2025-11-25): opens with an `initialize` handshake. Answers are exactly as before.
+- **The newer style** (2026-07-28): no handshake. Each request names its version in its `_meta` and in a header, and is
+  answered by itself. The relay answers `server/discover` (who it is and which versions it speaks), marks every answer
+  `resultType: "complete"`, and says how long the tool list may be kept.
+
+A request counts as the newer style when it carries `io.modelcontextprotocol/protocolVersion` in its `_meta`.
+
+What it refuses, in the newer style: a version it does not speak (it lists the ones it does), and a request whose
+`MCP-Protocol-Version`, `Mcp-Method` or `Mcp-Name` header says something different from the request itself. A header
+that is simply absent is let through, so that a slightly different client is not locked out.
+
+In both styles it refuses a browser request from any site other than Claude's own (`Origin` check). A request from
+Claude's servers carries no `Origin` and is unaffected.
+
+Not built: file upload (Claude only passes files to connectors in its public directory), questions part-way through
+(elicitation), and skills carried by the connector.

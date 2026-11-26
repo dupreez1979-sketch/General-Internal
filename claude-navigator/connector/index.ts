@@ -55,23 +55,54 @@ const TOOLS = [{
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
 }];
 
+// ---------- The protocol ----------
+// Two eras are spoken at once. The older one opens with an "initialize" handshake. The newer one (2026-07-28) has no
+// handshake: every request says which version it speaks, in its _meta and in a header, and is answered by itself.
+// A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
+const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
+const PV = "io.modelcontextprotocol/protocolVersion";
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.1.0" };
+const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
+// Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
+const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
+
+type Ans = { body: unknown; status: number } | null;
 async function mcp(req: Request, secret: string) {
+  if (!originOk(req.headers.get("origin"))) return json({ jsonrpc: "2.0", error: { code: -32600, message: "origin not allowed" } }, 403);
   const sHash = await sha(secret);
   const box = await (await db(`cos_boxes?s_hash=eq.${sHash}&select=pub`)).json().catch(() => []);
   if (!Array.isArray(box) || !box.length) return json({ error: "not found" }, 404);
   if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
   const raw = await req.text(); if (raw.length > 400_000) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "too large" } }, 413);
   let msg: any; try { msg = JSON.parse(raw); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "parse error" } }, 400); }
-  const one = async (m: any) => {
+  const hdr = (n: string) => { const v = req.headers.get(n); return v === null ? null : v.trim(); };
+  const one = async (m: any, single: boolean): Promise<Ans> => {
     if (!m || m.id === undefined || m.id === null) return null;                                   // a notification: nothing to answer
-    const ok = (result: unknown) => ({ jsonrpc: "2.0", id: m.id, result });
-    if (m.method === "initialize") return ok({ protocolVersion: (m.params && m.params.protocolVersion) || "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.0.0" }, instructions: "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself." });
+    const p = m.params || {}, meta = (p && typeof p._meta === "object" && p._meta) || {};
+    const asked = typeof meta[PV] === "string" ? meta[PV] : "";
+    const modern = m.method !== "initialize" && !!asked && !LEGACY.includes(asked);
+    const err = (code: number, message: string, status: number, data?: unknown): Ans => ({ body: { jsonrpc: "2.0", id: m.id, error: data === undefined ? { code, message } : { code, message, data } }, status: modern ? status : 200 });
+    // every answer in the newer era says it is complete; the older era's answers are left exactly as they were
+    const ok = (result: Record<string, unknown>): Ans => ({ body: { jsonrpc: "2.0", id: m.id, result: modern ? { resultType: "complete", ...result } : result }, status: 200 });
+    if (modern) {
+      if (!MODERN.includes(asked)) return err(-32022, "Unsupported protocol version", 400, { supported: MODERN.concat(LEGACY), requested: asked });
+      // (only when this is the one request in the body: the headers describe a single request)
+      if (single) {
+        const hv = hdr("mcp-protocol-version"), hm = hdr("mcp-method"), hn = hdr("mcp-name");
+        if (hv !== null && hv !== asked) return err(-32020, "The MCP-Protocol-Version header does not match the request", 400);
+        if (hm !== null && hm !== m.method) return err(-32020, "The Mcp-Method header does not match the request", 400);
+        if (hn !== null && m.method === "tools/call" && hn !== String(p.name || "")) return err(-32020, "The Mcp-Name header does not match the request", 400);
+      }
+    }
+    if (m.method === "initialize") return ok({ protocolVersion: LEGACY.includes(p.protocolVersion) ? p.protocolVersion : "2025-06-18", capabilities: { tools: {} }, serverInfo: SERVER_INFO, instructions: INSTRUCTIONS });
+    // Who this is and what it speaks. Answered whether or not the caller has said its version yet (this is how it finds out).
+    if (m.method === "server/discover") return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "complete", supportedVersions: MODERN.concat(LEGACY), capabilities: { tools: {} }, instructions: INSTRUCTIONS, ttlMs: 3600000, cacheScope: "private", _meta: { "io.modelcontextprotocol/serverInfo": SERVER_INFO } } }, status: 200 };
     if (m.method === "ping") return ok({});
-    if (m.method === "tools/list") return ok({ tools: TOOLS });
+    if (m.method === "tools/list") return ok(modern ? { tools: TOOLS, ttlMs: 300000, cacheScope: "private" } : { tools: TOOLS });
     if (m.method === "tools/call") {
-      const p = m.params || {}, a = p.arguments || {};
-      if (p.name !== "show_for_approval") return { jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "unknown tool" } };
-      const n = [a.emails, a.meetings, a.changes, a.actions, a.documents].reduce((t, l) => t + (Array.isArray(l) ? l.length : 0), 0);
+      const a = p.arguments || {};
+      if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
+      const n = [a.emails, a.meetings, a.changes, a.actions, a.documents].reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
       if (!n) return ok({ content: [{ type: "text", text: "Nothing was given to show. Include emails, meetings, changes, actions or documents." }], isError: true });
       const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), summary: String(a.summary || "").slice(0, 300), for_account: String(a.for_account || "").slice(0, 120), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [], actions: a.actions || [], documents: a.documents || [] }));
       // a box never holds more than a handful, and nothing older than two days
@@ -82,10 +113,10 @@ async function mcp(req: Request, secret: string) {
       if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be handed to the app just now. Try again in a moment." }], isError: true });
       return ok({ content: [{ type: "text", text: `Handed to his Chief of Staff app: ${n} item${n === 1 ? "" : "s"} are waiting there for him to check and approve. Nothing has been sent, created or changed yet, and you cannot see whether he approves. Tell him briefly that it is waiting in the app (it shows within a few seconds if the app is open on his Mac). Do not also make these changes with any other tool.` }] });
     }
-    return { jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "method not found" } };
+    return err(-32601, "method not found", 404);
   };
-  if (Array.isArray(msg)) { const out = (await Promise.all(msg.map(one))).filter(Boolean); return out.length ? json(out) : new Response(null, { status: 202 }); }
-  const out = await one(msg); return out ? json(out) : new Response(null, { status: 202 });
+  if (Array.isArray(msg)) { const out = (await Promise.all(msg.map(x => one(x, false)))).filter(Boolean) as { body: unknown }[]; return out.length ? json(out.map(o => o.body)) : new Response(null, { status: 202 }); }
+  const out = await one(msg, true); return out ? json(out.body, out.status) : new Response(null, { status: 202 });
 }
 
 async function app(req: Request, what: string) {
