@@ -130,7 +130,7 @@ const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.2.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.3.0" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -139,7 +139,7 @@ type Ans = { body: unknown; status: number } | null;
 async function mcp(req: Request, secret: string) {
   if (!originOk(req.headers.get("origin"))) return json({ jsonrpc: "2.0", error: { code: -32600, message: "origin not allowed" } }, 403);
   const sHash = await sha(secret);
-  const box = await (await db(`cos_boxes?s_hash=eq.${sHash}&select=pub`)).json().catch(() => []);
+  const box = await (await db(`cos_boxes?s_hash=eq.${sHash}&select=pub,profiles`)).json().catch(() => []);
   if (!Array.isArray(box) || !box.length) return json({ error: "not found" }, 404);
   if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
   const raw = await req.text(); if (raw.length > 400_000) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "too large" } }, 413);
@@ -182,6 +182,19 @@ async function mcp(req: Request, secret: string) {
       if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
       const n = [a.emails, a.meetings, a.changes, a.actions, a.documents].reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
       if (!n) return ok({ content: [{ type: "text", text: "Nothing was given to show. Include emails, meetings, changes, actions or documents." }], isError: true });
+      // Which of his profiles is this for? When Claude has not said, the app has given their names, and this chat can
+      // put a question to him, he is asked once, with the names to pick from. Whatever he does, the hand-over goes on:
+      // if he skips the question he chooses in the app, as before.
+      const names: string[] = Array.isArray(box[0].profiles) ? box[0].profiles.filter((x: unknown) => typeof x === "string" && x) : [];
+      const cc = (meta["io.modelcontextprotocol/clientCapabilities"] || {}) as Record<string, any>, el = cc.elicitation;
+      const canAsk = modern && !!el && typeof el === "object" && (!Object.keys(el).length || "form" in el);
+      const said = p.inputResponses && typeof p.inputResponses === "object" ? p.inputResponses.account : null;
+      if (said && said.action === "accept" && said.content && names.includes(String(said.content.account))) a.for_account = String(said.content.account);
+      else if (!said && !p.inputResponses && canAsk && names.length > 1 && !String(a.for_account || "").trim()) {
+        console.log("mcp " + JSON.stringify({ call: "tools/call", step: "asked which profile", choices: names.length }));
+        return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { account: { method: "elicitation/create", params: { mode: "form", message: "Which of your profiles is this for? It decides which mailbox and calendar it goes into.", requestedSchema: { type: "object", properties: { account: { type: "string", title: "Profile", enum: names } }, required: ["account"] } } } } } }, status: 200 };
+      }
+      if (said) console.log("mcp " + JSON.stringify({ call: "tools/call", step: "answer to which profile", action: String(said.action || "").slice(0, 12) }));
       const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), summary: String(a.summary || "").slice(0, 300), for_account: String(a.for_account || "").slice(0, 120), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [], actions: a.actions || [], documents: a.documents || [] }));
       // a box never holds more than a handful, and nothing older than two days
       await db(`cos_relay?s_hash=eq.${sHash}&created_at=lt.${new Date(Date.now() - 2 * 864e5).toISOString()}`, { method: "DELETE" });
@@ -213,10 +226,13 @@ async function app(req: Request, what: string) {
   const s = box[0].s_hash;
   if (what === "pull") { const rows = await (await db(`cos_relay?s_hash=eq.${s}&select=id,sealed,created_at&order=created_at.asc&limit=20`)).json().catch(() => []); return json({ ok: true, rows: Array.isArray(rows) ? rows : [] }); }
   if (what === "ack") { const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x: unknown) => typeof x === "string" && /^[0-9a-f-]{36}$/.test(x as string)).slice(0, 40); if (ids.length) await db(`cos_relay?s_hash=eq.${s}&id=in.(${ids.join(",")})`, { method: "DELETE" }); return json({ ok: true }); }
+  // The names of his profiles (names only), so Claude can offer them as choices. An empty list turns the question off.
+  if (what === "profiles") { const names = (Array.isArray(body.names) ? body.names : []).filter((x: unknown) => typeof x === "string").map((x: string) => x.trim().slice(0, 60)).filter(Boolean).slice(0, 20); const r = await db(`cos_boxes?s_hash=eq.${s}`, { method: "PATCH", body: JSON.stringify({ profiles: names }) }); return r.ok ? json({ ok: true, count: names.length }) : json({ error: "could not keep them" }, 400); }
   if (what === "rotate") {                                              // a new address and key for the same app; the old address stops at once
     if (!okHash(body.s_hash) || !okHash(body.t_hash) || typeof body.pub !== "string" || body.pub.length > 200) return json({ error: "bad request" }, 400);
+    const was = await (await db(`cos_boxes?s_hash=eq.${s}&select=profiles`)).json().catch(() => []);
     await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" });
-    const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub }) });
+    const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub, profiles: (Array.isArray(was) && was[0] && was[0].profiles) || [] }) });
     return r.ok ? json({ ok: true }) : json({ error: "could not change it" }, 400);
   }
   if (what === "unregister") { await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); return json({ ok: true }); }

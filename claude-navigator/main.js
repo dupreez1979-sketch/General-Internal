@@ -2060,6 +2060,8 @@ ipcMain.handle('conn-rotate', async e => {
     connPut(n); return { ok: true, url: `${connBase()}/mcp/${n.s}` };
   } catch (er) { return { ok: false, error: 'The address could not be changed just now.' }; }
 });
+// The names of your profiles go to the relay (names only), so Claude can ask which one something is for.
+ipcMain.handle('conn-profiles', async (e, names) => { if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on || !c.t) return { ok: false }; try { const r = await connPost('profiles', { names: (Array.isArray(names) ? names : []).filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, 20) }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; } });
 ipcMain.handle('conn-status', e => { if (!fromOwnWindow(e)) return null; const c = connGet(); return { on: !!(c && c.on), url: c && c.on ? `${connBase()}/mcp/${c.s}` : '' }; });
 ipcMain.handle('conn-on', async e => {
   if (!fromOwnWindow(e)) return null;

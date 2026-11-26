@@ -18322,6 +18322,8 @@ body { width: max-content !important; min-width: 0 !important; }
         if (st.on) {
           row('Add It in Claude, Once', 'Copy the address, then in Claude open Settings, Connectors, Add custom connector. Name it \u201cChief of Staff app\u201d, paste the address and choose no sign-in. Keep the address to yourself: anyone who has it could put suggestions on your approval card (they could not read or change anything).', ['Copy the Address', async () => { try { await navigator.clipboard.writeText(st.url); toast('Copied. Paste it into Claude\u2019s Add custom connector box.'); } catch (e) { toast('Could not copy it.'); } }], ['Open Claude\u2019s Connectors', leave(() => go({ kind: 'page', url: 'https://claude.ai/settings/connectors' }))]);
           row('If the Address Gets Out', 'Make a new one. The old address stops working at once, and you add the new one in Claude in its place.', ['New Address\u2026', async () => { if (!confirm('Make a new address? The one in Claude stops working until you replace it there.')) return; const r = await window.navigatorApp.connRotate(); if (!r || !r.ok) return toast((r && r.error) || 'The address could not be changed.'); connUi.status = await window.navigatorApp.connStatus(); try { await navigator.clipboard.writeText(r.url); toast('The new address is copied. Replace the connector in Claude with it.'); } catch (e) { /* copied from the row above */ } show(); }]);
+          row('Claude Asks Which Profile', connAskOn() ? 'On. When Claude is not sure which of your profiles something is for, it asks you in the chat, with your profile names to pick from. Only the names are given to the relay.' : 'Off. Claude does not ask, and the relay holds none of your profile names. You choose the profile on the card in this app.',
+            [connAskOn() ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connAsk', connAskOn() ? '0' : '1'); await connTellProfiles(true); show(); }]);
           row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
         }
       },
@@ -18686,8 +18688,20 @@ body { width: max-content !important; min-width: 0 !important; }
     d.querySelector('[data-x="later"]').addEventListener('click', () => shut(true));
     d.addEventListener('cancel', e => { e.preventDefault(); shut(true); });
   }
+  // Claude can ask "which profile?" when it is unsure: for that the relay is given the names of your profiles, and
+  // nothing else about them. Sent when they change; an empty list (the setting off) stops the question.
+  const connAskOn = () => ls.get('claudeNavigator.connAsk') !== '0';
+  async function connTellProfiles(force) {
+    if (!isApp || !window.navigatorApp.connProfiles || !connUi.status || !connUi.status.on) return;
+    let names = []; try { names = connAskOn() ? profiles().map(p => String(p.name || '').trim()).filter(Boolean) : []; } catch (e) { return; }
+    const key = JSON.stringify(names) + '|' + ((connUi.status.url || '').slice(-8));
+    if (!force && ls.get('claudeNavigator.connProfilesSent') === key) return;
+    const r = await window.navigatorApp.connProfiles(names).catch(() => null);
+    if (r && r.ok) ls.set('claudeNavigator.connProfilesSent', key);
+  }
   async function connPoll() {
     clearTimeout(connUi.timer);
+    try { connTellProfiles(); } catch (e) { /* next time round */ }
     if (!isApp || !window.navigatorApp.connPull) return;
     try {
       if (!connUi.status) { connUi.status = (await window.navigatorApp.connStatus()) || { on: false }; ls.set('claudeNavigator.connOn', connUi.status.on ? '1' : '0'); if (connUi.status.on) { connUi.items = (await window.navigatorApp.connWaiting()) || []; connPaint(); } }

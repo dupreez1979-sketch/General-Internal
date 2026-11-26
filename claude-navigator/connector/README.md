@@ -52,8 +52,20 @@ that is simply absent is let through, so that a slightly different client is not
 In both styles it refuses a browser request from any site other than Claude's own (`Origin` check). A request from
 Claude's servers carries no `Origin` and is unaffected.
 
-Not built: file upload (Claude only passes files to connectors in its public directory) and questions part-way
-through (elicitation).
+Not built: file upload (Claude only passes files to connectors in its public directory).
+
+## The one thing it knows about you: profile names
+
+So that Claude can ask "which profile is this for?" with a list to pick from, the app gives the relay the names of
+your profiles (for example "NCTI"), and nothing else about them. They are kept in the `profiles` column of
+`cos_boxes`. The question is asked only when all of these hold: the chat speaks the newer style and says it can show
+a form, Claude did not name an account, and there is more than one profile. Whatever the answer (or none), the
+hand-over still goes through; without an answer you choose the profile in the app, as before.
+
+Turning off "Claude Asks Which Profile" in the app's settings empties the list on the relay.
+
+The relay also writes one line per call to the function's log with the call's name (for example `skills/list`) and
+what the caller says it supports. Never any content.
 
 ## The skill it carries
 
