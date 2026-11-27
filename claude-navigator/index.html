@@ -15122,6 +15122,7 @@ body { width: max-content !important; min-width: 0 !important; }
     };
     if (mode === 'forward' || mode === 'draft') mailApi(C.acc, { path: `/me/messages/${C.id}/attachments?$select=id,name,size,isInline` }).then(r => { if (!r.ok || mailUi.compose !== C) return; for (const a of (r.data.value || []).filter(z => !z.isInline)) if (!C.files.some(z => z.id === a.id)) C.files.push({ name: a.name, id: a.id, size: a.size, sent: true }); paintFiles(); });
     C.paintFiles = paintFiles;
+    C.attach = files => attach(files);          // (so files Claude named can be added once the message is open)
     const fileIn = el.querySelector('input[type="file"]:not(.mc-img)');
     // Files join the draft in Outlook as you add them: small ones in one go, larger ones (to 25 MB) in pieces.
     const attach = async files => {
@@ -18669,13 +18670,15 @@ body { width: max-content !important; min-width: 0 !important; }
       d.querySelector('.mt-list').appendChild(r); paint();
     };
     for (const m of emails) { const rt = m._raw.reply_to && typeof m._raw.reply_to === 'object' && m._raw.reply_to.subject ? m._raw.reply_to : null;
-      if (!rt) { row(`Email: ${m.subject || '(No subject)'}`, m.to ? `To ${m.to}` : 'Nobody in To yet', m._raw, () => chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})), undefined, 'mail'); continue; }
+      const files = (Array.isArray(m._raw.attach) ? m._raw.attach : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 10);
+      const fnote = files.length ? ` \u00b7 ${files.length === 1 ? `with \u201c${files[0].split('/').pop()}\u201d attached` : `with ${files.length} files attached`}` : '';
+      if (!rt) { row(`Email: ${m.subject || '(No subject)'}`, (m.to ? `To ${m.to}` : 'Nobody in To yet') + fnote, m._raw, async () => { await chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})); await connAttach(files); }, undefined, 'mail'); continue; }
       // a reply opens as a real reply: on the original email, in its conversation, with the history underneath
       row(`Reply: ${rt.subject}`, `To ${rt.from || 'the sender'}${m._raw.reply_all ? ' and everyone on it' : ''}, with the earlier emails underneath`, m._raw, async b => {
         b.disabled = true; const hit = await connFindMail(rt, acc); b.disabled = false;
-        if (!hit) { toast('The email this answers was not found in your mail, so it opened as a new email.'); return chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject || `RE: ${rt.subject}`, text: m.text }, acc ? { acc } : {})); }
+        if (!hit) { toast('The email this answers was not found in your mail, so it opened as a new email.'); await chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject || `RE: ${rt.subject}`, text: m.text }, acc ? { acc } : {})); return connAttach(files); }
         if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
-        await mailCompose(m._raw.reply_all ? 'replyAll' : 'reply', hit, { text: m.text });
+        await mailCompose(m._raw.reply_all ? 'replyAll' : 'reply', hit, { text: m.text }); await connAttach(files);
       }, undefined, 'mail'); }
     meets.forEach((M, i) => { if (acc) M.acc = acc; row(`Meeting: ${M.title}`, M.start ? `${M.start.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })}, ${calFmtTime(M.start.getTime())}${M.att ? ' \u00b7 invites ' + M.att : ''}` : 'No date given', mraw[i] || (mraw[i] = {}), () => calMeetOpen([M]), undefined, 'cal'); });
     for (const a of acts) { const st = botStaffNamed(a.for), text = String(a.action).replace(/\s+/g, ' ').trim(), why = String(a.why || '').trim();
@@ -18698,6 +18701,25 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // Claude can ask "which profile?" when it is unsure: for that the relay is given the names of your profiles, and
   // nothing else about them. Sent when they change; an empty list (the setting off) stops the question.
+  // The files Claude named for an email are attached from your company folders once the message is open. Each is
+  // looked for where Claude said, then by that path inside each profile's folder. One that cannot be found is said so:
+  // an email never goes out looking as if it carries a file that is not there.
+  async function connAttach(paths) {
+    if (!paths || !paths.length) return;
+    const C = mailUi.compose;
+    if (!C || !C.attach) return toast(`The message did not open, so ${paths.length === 1 ? 'the file was' : 'the files were'} not attached.`);
+    if (!window.navigatorApp.fsFileBytes) return toast('Attaching files Claude names needs the Mac app.');
+    const got = [], missing = [];
+    for (const raw of paths) {
+      const want = String(raw).trim(); let r = await window.navigatorApp.fsFileBytes(want).catch(() => null);
+      if (!(r && r.ok) && !/^[\/~]/.test(want)) for (const p of profiles()) { const base = p.path || p.name; if (!base) continue; r = await window.navigatorApp.fsFileBytes(base + '/' + want.replace(/^\.?\/+/, '')).catch(() => null); if (r && r.ok) break; }
+      if (r && r.ok) { const ext = (r.name.split('.').pop() || '').toLowerCase(), type = { pdf: 'application/pdf', docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', csv: 'text/csv', txt: 'text/plain' }[ext] || 'application/octet-stream'; got.push(new File([r.bytes], r.name, { type })); }
+      else missing.push({ name: want.split('/').pop() || want, why: r && r.error === 'over 25 MB' ? 'it is over 25 MB' : 'it was not found in your company folders' });
+    }
+    if (got.length) await C.attach(got);
+    if (missing.length) toast(missing.length === 1 ? `\u201c${missing[0].name}\u201d is not attached: ${missing[0].why}. Attach it yourself before you send.` : `${missing.length} files are not attached (${missing.map(x => x.name).join(', ')}). Attach them yourself before you send.`);
+    else if (got.length) toast(got.length === 1 ? `Attached \u201c${got[0].name}\u201d` : `Attached ${got.length} files`);
+  }
   const connAskOn = () => ls.get('claudeNavigator.connAsk') !== '0';
   async function connTellProfiles(force) {
     if (!isApp || !window.navigatorApp.connProfiles || !connUi.status || !connUi.status.on) return;

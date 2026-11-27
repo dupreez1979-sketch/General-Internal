@@ -152,6 +152,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   fsOpen: (rel) => ipcRenderer.invoke('fs-open', rel),
   fsReveal: (rel) => ipcRenderer.invoke('fs-reveal', rel),
   fsAbs: (rel) => ipcRenderer.invoke('fs-abs', rel),
+  fsFileBytes: where => ipcRenderer.invoke('fs-file-bytes', where),
   fsCosNotes: (profileRel, files) => ipcRenderer.invoke('fs-cos-notes', profileRel, files),
   fsNewFile: (kind, destRel, name) => ipcRenderer.invoke('fs-new-file', kind, destRel, name),
   fsImport: (paths, destRel) => ipcRenderer.invoke('fs-import', paths, destRel),

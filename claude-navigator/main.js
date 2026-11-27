@@ -1319,6 +1319,21 @@ ipcMain.handle('fs-cos-notes', async (_e, profileRel, files) => {
 });
 ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
+// A file in your company folders, read so it can be attached to an email (what Claude names when it hands one over).
+// Only a file inside the synced folder is ever read: a full path is first turned into a path from that folder, and
+// anything that leads outside it (by name or through a shortcut) is refused. Nothing over 25 MB.
+ipcMain.handle('fs-file-bytes', (e, where) => {
+  if (!fromOwnWindow(e) || !folderSync) return { ok: false, error: 'Company folders are not on' };
+  try {
+    let rel = String(where || '').trim().replace(/^file:\/\//, ''); if (!rel || rel.length > 1000) return { ok: false, error: 'not found' };
+    if (rel.startsWith('~/')) rel = path.join(app.getPath('home'), rel.slice(2));
+    if (path.isAbsolute(rel)) rel = path.relative(folderSync.root, rel);
+    const abs = folderSync.abs(rel), st = fs.statSync(abs);
+    if (!st.isFile()) return { ok: false, error: 'not a file' };
+    if (st.size > 25e6) return { ok: false, error: 'over 25 MB', name: path.basename(abs) };
+    return { ok: true, name: path.basename(abs), size: st.size, bytes: fs.readFileSync(abs) };
+  } catch (err) { return { ok: false, error: 'not found' }; }
+});
 ipcMain.handle('fs-copy', (_e, srcRel, destDirRel, keepName) => {
   if (!folderSync) return { error: 'Folders on this Mac are not turned on' };
   return folderSync.copy(srcRel, destDirRel, !!keepName).catch(e => ({ error: e.message }));
