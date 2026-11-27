@@ -9412,7 +9412,7 @@
   }
   const connOnFlag = () => ls.get('claudeNavigator.connOn') === '1';
   const staffSkillsOnly = n => staffSkillNames(n).slice().sort().join('|');
-  const staffSkillSig = n => staffSkillsOnly(n) + (connOnFlag() ? '|+app connector' : '') + '|+top folder';          // (what their project instructions were written from)
+  const staffSkillSig = n => staffSkillsOnly(n) + (connOnFlag() ? '|+app skill' : '') + '|+top folder';          // (what their project instructions were written from)
   function cosProjectInstructions(n) {
     const p = activeProfile();
     const skills = n.chief ? [] : staffSkillNames(n);
@@ -9425,7 +9425,8 @@
       ...(companyFolderPath(p) ? [`Before answering, read ${companyFolderPath(p)}/.chief-of-staff/Team overview.md (every staff member: role, Claude Project, folder, open and recent work with links, skills and routines; kept up to date by Claude Navigator) and What the Chief of Staff has learned.md in the same folder (how I like things done). Use them, and the staff folders, to answer for the whole team.`] : []),
     ] : [];
     const outputLine = n.chief ? '' : 'When a piece of work is finished, give me the final version as its own output: an artifact, a document, a PDF or a file, with a clear title that says what it is. Outputs are what get filed in the company folders. This chat is the working and stays with you, so do not leave the final version only in the middle of a chat.';
-    const appLine = connOnFlag() ? 'To put anything in my calendar, change or remove a calendar entry, draft an email, set up a meeting, add an action for one of my staff, make a mail rule or folder, or save a document for me, use the Chief of Staff app connector (its show_for_approval tool). It shows me what you propose and I approve it in my app. Never use the Microsoft 365 or Outlook connector, Gmail, or any other tool to create, change, send or delete: use those only to read.' : '';
+    // (kept short: how to use the connector well is in the skill the connector itself carries, "chief-of-staff-app")
+    const appLine = connOnFlag() ? 'Anything that makes or changes something of mine (calendar entries, emails, meetings, actions for my staff, mail rules and folders, documents) goes through the Chief of Staff app connector, following its chief-of-staff-app skill. I approve it in my app. Use Microsoft 365, Outlook, Gmail and other tools only to read, never to create, change, send or delete.' : '';
     return [`You are ${n.name}${p ? ` at ${p.name}` : ''}.`, n.role ? `Your role: ${n.role}` : '', ...skillLines, ...chiefLines, outputLine, appLine, ...folderAccessLines(n)].filter(Boolean).join('\n\n');
   }
   function cosCopyInstructions(n) {
@@ -9793,11 +9794,11 @@
       setup = document.createElement('div');
       setup.className = 'cos-setup';
       setup.innerHTML = `<span class="ic">${small('skill', KIND_COLOUR.skill || 'currentColor')}</span><div class="tx"><b></b><span></span></div><div class="bt"></div>`;
-      const was = String(n.instructionsSkills || ''), appOnly = staffSkillsOnly(n) === was.replace(/\|\+top folder$/, '').replace(/\|\+app connector$/, '');          // (their skills are the same: the app's own lines changed)
-      const folderOnly = appOnly && !/\|\+top folder$/.test(was) && /\|\+app connector/.test(was) === connOnFlag();
-      setup.querySelector('b').textContent = folderOnly ? `Update ${n.name}’s instructions` : appOnly ? `Tell ${n.name} to use the app connector` : `Tell Claude about ${n.name}’s skills`;
+      const was = String(n.instructionsSkills || ''), appOnly = staffSkillsOnly(n) === was.replace(/\|\+top folder$/, '').replace(/\|\+app (?:connector|skill)$/, '');          // (their skills are the same: the app's own lines changed)
+      const folderOnly = appOnly && !/\|\+top folder$/.test(was) && /\|\+app skill/.test(was) === connOnFlag();
+      setup.querySelector('b').textContent = folderOnly ? `Update ${n.name}’s instructions` : appOnly ? (/\|\+app connector/.test(was) && connOnFlag() ? `Shorten ${n.name}\u2019s instructions` : `Tell ${n.name} to use the app connector`) : `Tell Claude about ${n.name}’s skills`;
       const names = staffSkillNames(n);
-      setup.querySelector('.tx span').textContent = folderOnly ? `So Claude asks for your top folder on this Mac and can read files saved for any staff member, including attachments handed over from Mail.` : appOnly ? (connOnFlag() ? `Update their project instructions so that calendar entries, emails and meetings come to this app for you to approve, and never go straight through Outlook.` : `The app connector is off. Update their project instructions so Claude stops trying to use it.`) : names.length
+      setup.querySelector('.tx span').textContent = folderOnly ? `So Claude asks for your top folder on this Mac and can read files saved for any staff member, including attachments handed over from Mail.` : appOnly ? (connOnFlag() ? (/\|\+app connector/.test(was) ? `A shorter version: the connector now carries its own instructions, so their project only needs one line about it.` : `Update their project instructions so that calendar entries, emails and meetings come to this app for you to approve, and never go straight through Outlook.`) : `The app connector is off. Update their project instructions so Claude stops trying to use it.`) : names.length
         ? `Claude only knows which skills ${n.name} uses from their project instructions. Update them to include ${names.length === 1 ? `“${names[0]}”` : `their ${names.length} skills`}.`
         : `${n.name} no longer has skills here. Update their project instructions so Claude stops using the old ones.`;
       const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Update Instructions';
