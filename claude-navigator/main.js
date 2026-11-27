@@ -204,6 +204,9 @@ function openItemWindow(solo, itemJson, b) {
   return { ok: true };
 }
 ipcMain.handle('item-window-open', (e, solo, itemJson, b) => (fromOwnWindow(e) ? openItemWindow(String(solo), itemJson, b) : { ok: false }));
+// The window's own three dots are drawn by macOS above everything in the page, so a floating window dragged under
+// them cannot cover them. While one is there, they are put away; they come back the moment it moves off.
+ipcMain.on('win-lights', (e, show) => { if (!isMac || !fromOwnWindow(e)) return; try { const w = BrowserWindow.fromWebContents(e.sender); if (w && !w.isDestroyed()) w.setWindowButtonVisibility(!!show); } catch (err) { /* an older macOS: they stay */ } });
 ipcMain.handle('app-window-list', () => [...appWindows.keys()]);
 ipcMain.handle('app-window-main', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } return true; });
 

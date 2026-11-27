@@ -276,7 +276,7 @@
 
   /* ---------- Apps and Chief of Staff ---------- */
   .app-btn { -webkit-app-region: no-drag; color: var(--muted); }
-  #appPop { position: fixed; z-index: 60; background: var(--win); border-radius: var(--r-sheet); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.12); padding: var(--sp-2); display: grid; grid-auto-flow: column; grid-auto-columns: 92px; gap: var(--sp-1); }
+  #appPop { position: fixed; z-index: 76; background: var(--win); border-radius: var(--r-sheet); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.12); padding: var(--sp-2); display: grid; grid-auto-flow: column; grid-auto-columns: 92px; gap: var(--sp-1); }
   #appPop[hidden] { display: none; }
   .app-tile { display: grid; justify-items: center; align-content: start; gap: var(--sp-2); text-align: center; padding: var(--sp-3) var(--sp-1h) var(--sp-2h); border-radius: var(--r-card); border: 1.5px solid transparent; background: none; color: var(--text); }
   .app-tile:hover { background: var(--hover); }
@@ -355,11 +355,11 @@
   body.bot-dock { --sp-def: calc((100vw - var(--dock-w, 0px) - var(--side-now) - var(--bot-dock, 0px)) * var(--sp-f, .5)); }
   body.bot-dock #cosBot, body.bot-over #cosBot { top: 0; bottom: 0; right: 0; width: var(--bot-dock, 400px); align-items: stretch; gap: 0; z-index: var(--z-inspector); }
   body.bot-dock #cosBot .bot-panel, body.bot-over #cosBot .bot-panel { width: 100%; height: 100%; border-radius: 0; border: 0; border-left: 1px solid var(--line); box-shadow: none; }
-  body.bot-over #cosBot { z-index: 62; } body.bot-over #cosBot .bot-panel { box-shadow: -14px 0 40px rgba(0,0,0,.22); }
+  body.bot-over #cosBot { z-index: 68; } body.bot-over #cosBot .bot-panel { box-shadow: -14px 0 40px rgba(0,0,0,.22); }
   body.bot-dock #cosBot .bot-btn, body.bot-dock #cosBot .bot-tips, body.bot-over #cosBot .bot-btn, body.bot-over #cosBot .bot-tips { display: none; }
   body.bot-dock .bot-size, body.bot-over .bot-size { top: 0; bottom: 0; left: -3px; width: 8px; height: auto; cursor: ew-resize; } body.bot-dock .bot-size::before, body.bot-over .bot-size::before { display: none; }
   body.bot-dock .bot-size:hover, body.bot-over .bot-size:hover { background: color-mix(in srgb, var(--accent) 35%, transparent); }
-  #botScrim { position: fixed; inset: 0; background: var(--scrim); z-index: 61; } #botScrim[hidden] { display: none; }
+  #botScrim { position: fixed; inset: 0; background: var(--scrim); z-index: 67; } #botScrim[hidden] { display: none; }
   body.bot-dock #notesPanel, body.bot-dock.cos-acts-pop #actPanel { margin-right: var(--bot-dock, 0px); }
   #cosBot:not(.open) .bot-panel { position: absolute; right: 0; bottom: 56px; visibility: hidden; pointer-events: none; }
   /* ---- Design system, step 4: the rail, the profile control and the toolbars ---- */
@@ -882,7 +882,7 @@
   .mail-body { position: relative; }
   .mail-body.nopane { grid-template-columns: minmax(0, 1fr); }
   .mail-body.nopane .mail-col { border-right: 0; }
-  .mail-read.pop { position: absolute; z-index: 9; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
+  .mail-read.pop { position: absolute; z-index: 64; top: 18px; bottom: 18px; left: 7%; right: 7%; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; }
   .mail-read.pop[hidden] { display: none; }
   .mail-read.pop .mail-rh { padding-right: 46px; }
   .mail-popbar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-h); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--tint, #8a8f98) 6%, var(--win)); }
@@ -937,7 +937,7 @@
   dialog.mail-monday, dialog.mail-prefs, dialog.mail-rules, dialog.mail-health, dialog.outs-dlg, dialog.clara-dlg, dialog.mail-sigdlg.granola-dlg, dialog.mail-hand { width: min(640px, calc(100vw - 32px)); }
   dialog.mail-sigdlg.gran-dlg, dialog.mail-sigdlg.sigman, dialog.gran-list, dialog.settings-win { width: min(880px, 94vw); }
   /* The meeting window is a window: it can be moved, made full size or tucked away, and does not lock the app. */
-  dialog.cal-evdlg.with-day.ev-win { z-index: 45; margin: 0; top: max(14px, calc(50vh - 430px)); left: max(12px, calc(50vw - 590px)); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.18); }
+  dialog.cal-evdlg.with-day.ev-win { z-index: 66; margin: 0; top: max(14px, calc(50vh - 430px)); left: max(12px, calc(50vw - 590px)); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.18); }
   dialog.cal-evdlg.with-day.ev-win.full { top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; box-sizing: border-box; border-radius: 0; }
   dialog.cal-evdlg.with-day.ev-win.min { top: auto !important; bottom: 0 !important; left: 18px !important; width: min(360px, 80vw) !important; height: 40px !important; min-height: 0 !important; overflow: hidden !important; box-sizing: border-box; padding: 0 !important; border-radius: 10px 10px 0 0; cursor: pointer; }
   dialog.cal-evdlg.with-day.ev-win.min > :not(.ev-top) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top > :not(.lights):not(h2) { display: none !important; } dialog.cal-evdlg.ev-win.min .ev-top { border: 0; height: 40px; }
@@ -958,7 +958,7 @@
   .bplan .bp-row.skipped { opacity: .5; }
   .bplan .bp-foot { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--line); }
   .bplan .bp-note { margin-left: auto; font-size: var(--fs-caption); color: var(--muted); }
-  .mail-sug { position: fixed; z-index: 60; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
+  .mail-sug { position: fixed; z-index: 76; background: var(--win); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--e-menu); padding: var(--sp-1); display: grid; max-width: 420px; }
   .mail-sug .ms { display: grid; grid-template-columns: 64px minmax(0, auto) minmax(0, 1fr); gap: var(--sp-2); align-items: baseline; text-align: left; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); padding: var(--sp-1h) var(--sp-2); border-radius: var(--r-control); white-space: nowrap; }
   .mail-sug .ms:hover, .mail-sug .ms.on { background: var(--hover); }
   .mail-sug .ms i { font-style: normal; color: var(--muted); font-size: var(--fs-caption); } .mail-sug .ms b { font-weight: var(--fw-medium); overflow: hidden; text-overflow: ellipsis; } .mail-sug .ms span { color: var(--muted); font-size: var(--fs-caption); overflow: hidden; text-overflow: ellipsis; }
@@ -983,7 +983,7 @@
   .mail-att .att-s { font-size: var(--fs-label); color: var(--muted); }
   .mail-files { max-height: 96px; overflow-y: auto; }
   button.mail-att:hover { background: var(--sel); }
-  .mail-compose { position: absolute; top: 18px; bottom: 18px; left: 7%; right: 7%; z-index: 11; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .mail-compose { position: absolute; top: 18px; bottom: 18px; left: 7%; right: 7%; z-index: 66; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
   .mail-cshade { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,.16); }
   .mail-compose .mc-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1h); padding: var(--sp-2) var(--sp-3h); border-bottom: 1px solid var(--line); }
   .mail-compose .mc-bar > * { flex: none; white-space: nowrap; }
@@ -1038,7 +1038,7 @@
   dialog.sigman .sm-i b { font-weight: var(--fw-bold); font-size: var(--fs-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } dialog.sigman .sm-i span { font-size: var(--fs-label); color: var(--muted); flex: none; } dialog.sigman .sm-none { color: var(--muted); font-size: var(--fs-body); padding: var(--sp-2); }
   dialog.sigman .sm-r { display: grid; gap: var(--sp-2); align-content: start; min-width: 0; } dialog.sigman .sm-name, dialog.sigman .sm-logo input { font: inherit; padding: var(--sp-2) var(--sp-2h); border: 1px solid var(--line); border-radius: var(--r-control); background: var(--win); color: var(--text); }
   dialog.sigman .sm-row { display: flex; gap: var(--sp-2); } dialog.sigman .sm-logo { display: grid; gap: var(--sp-1); font-size: var(--fs-body); margin-top: var(--sp-3); } dialog.sigman .dlg-actions { flex-wrap: wrap; } dialog.sigman .dlg-actions .btn, dialog.sigman .dlg-actions .btn-primary { white-space: nowrap; flex: none; }
-  .sig-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 60; display: flex; align-items: center; gap: var(--sp-3); background: var(--win); border: 1px solid var(--line); border-radius: var(--r-sheet); box-shadow: var(--e-sheet); padding: var(--sp-2h) var(--sp-3h); max-width: min(820px, 92vw); font-size: var(--fs-body); } .sig-bar .t { color: var(--muted); flex: 1; min-width: 0; } .sig-bar .t i { font-style: normal; font-weight: var(--fw-bold); color: var(--text); } .sig-bar .btn { white-space: nowrap; flex: none; }
+  .sig-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 22px; z-index: 76; display: flex; align-items: center; gap: var(--sp-3); background: var(--win); border: 1px solid var(--line); border-radius: var(--r-sheet); box-shadow: var(--e-sheet); padding: var(--sp-2h) var(--sp-3h); max-width: min(820px, 92vw); font-size: var(--fs-body); } .sig-bar .t { color: var(--muted); flex: 1; min-width: 0; } .sig-bar .t i { font-style: normal; font-weight: var(--fw-bold); color: var(--text); } .sig-bar .btn { white-space: nowrap; flex: none; }
   dialog.mail-sigdlg .sig-ed { min-height: 140px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-control); padding: var(--sp-2h) var(--sp-3); font-size: var(--fs-body); outline: none; background: #fff; color: #1d1d1f; }
   .mail-acc.shared b { font-weight: var(--fw-bold); }
   .mail-f.all { margin-bottom: var(--sp-1); }
@@ -1402,8 +1402,8 @@
   dialog.cal-movedlg .mv b { font-size: var(--fs-headline); margin-bottom: var(--sp-1); }
   dialog.cal-movedlg .mv .a { color: var(--muted); text-decoration: line-through; }
   dialog.cal-movedlg p.hint { margin: 0 0 var(--sp-1); }
-  .cal-vshade { position: absolute; inset: 0; z-index: 40; background: rgba(0,0,0,.16); }
-  .cal-view { position: absolute; top: 18px; bottom: 18px; left: 6%; right: 6%; z-index: 41; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; container-type: inline-size; }
+  .cal-vshade { position: absolute; inset: 0; z-index: 64; background: rgba(0,0,0,.16); }
+  .cal-view { position: absolute; top: 18px; bottom: 18px; left: 6%; right: 6%; z-index: 65; background: var(--win); border-radius: var(--r-card); box-shadow: var(--e-sheet), 0 0 0 .5px rgba(0,0,0,.15); overflow: hidden; display: flex; flex-direction: column; min-height: 0; container-type: inline-size; }
   #sidePanel .cal-view { top: 0; bottom: 0; left: 0; right: 0; border-radius: 0; }
   .cal-view.full { top: 0 !important; bottom: 0 !important; left: 0 !important; right: 0 !important; border-radius: 0; }
   .cal-view.min { top: auto !important; bottom: 0 !important; left: 18px !important; right: auto !important; width: min(340px, 80%); height: 38px; border-radius: 10px 10px 0 0; cursor: pointer; }
@@ -1523,10 +1523,17 @@
   /* (the time zone row lets its button drop to a second line, and nothing in the form runs under the day beside it) */
   dialog.cal-evdlg .ev-form { overflow-x: hidden; } dialog.cal-evdlg .ev-form > .tzrow { height: auto; } dialog.cal-evdlg .ev-form > .tzrow .dt { flex-wrap: wrap; row-gap: var(--sp-1); min-width: 0; } dialog.cal-evdlg .ev-form > .tzrow select { min-width: 0; }
   /* (the sidebar button does not show through a meeting window that sits over it) */
-  body:has(dialog.ev-win[open]:not(.min)) #topLeft { z-index: 40; }
-  /* The same for every window that floats over an app (an email you are writing or reading, a meeting, a helper):
-     the sidebar's button stays where it is, and the window passes over it. */
-  body:has(.mail-compose:not(.min):not([hidden]), .mail-read.pop:not(.min):not([hidden]), .cal-view:not([hidden])) #topLeft { z-index: 8; }
+  /* THE ORDER OF LAYERS, in one place (lowest first):
+       the app's own furniture   up to 62   the split panel 40, Clara 45, the strip of apps 50, edge tabs 55, the chips 58,
+                                            a peeking sidebar 60, the sidebar's button 62
+       floating windows          64 to 66   an open email 64, an open meeting 65, an email you are writing and the meeting form 66
+       an expanded Clara         67, 68
+       help windows              69, 70
+       pickers and suggestions   76         the app switcher, names as you type, the signature bar
+       tips, dictation           80
+       menus 90, notes at the bottom 95, and system dialogs above everything
+     A floating window therefore passes over every part of the app it is dragged across, and nothing shows through it. */
+
   dialog.cal-evdlg .ev-side .fr { flex-wrap: wrap; }
   dialog.cal-evdlg .ev-side .fr .fr-out, dialog.cal-evdlg .ev-side .fr .kit-on { flex: 1 1 100%; }
   dialog.cal-evdlg .ev-notes .row > span:first-child { text-align: left; }
@@ -2047,7 +2054,7 @@
 
   /* ---------- Menus, dialogs, toast ---------- */
   #menu {
-    position: fixed; z-index: 50; min-width: 220px; background: var(--menu); border-radius: var(--r-control);
+    position: fixed; z-index: 90; min-width: 220px; background: var(--menu); border-radius: var(--r-control);
     -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
     box-shadow: var(--e-menu); padding: var(--sp-1); display: none;
     width: max-content; max-width: calc(100vw - 16px);   /* never squeezed by the window's edge */
@@ -2128,7 +2135,7 @@
   #toast {
     position: fixed; left: 50%; bottom: 40px; transform: translate(-50%, 8px); background: rgba(40,40,40,.92); color: #fff;
     border-radius: var(--r-card); padding: var(--sp-2) var(--sp-3h); display: flex; gap: var(--sp-3); align-items: center; box-shadow: var(--e-menu);
-    opacity: 0; transition: .18s ease; pointer-events: none; z-index: 60; max-width: min(560px, calc(100vw - 32px));
+    opacity: 0; transition: .18s ease; pointer-events: none; z-index: 95; max-width: min(560px, calc(100vw - 32px));
     -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
   }
   #toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
@@ -20722,6 +20729,25 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       const b = $('liveBadge');
       if (b && s && !s.autoPull) b.title = 'Running from the code folder. To get new changes, click Fetch origin then Pull origin in GitHub Desktop; this window refreshes by itself.';
     });
+  }
+
+  // ---------- The window's own three dots ----------
+  // macOS draws them over the page, so nothing in the app can cover them. Whenever a floating window, sheet or menu
+  // lies across that corner they are put away, and they return as soon as the corner is clear again.
+  if (isApp && isMac && window.navigatorApp.winLights) {
+    let shown = true;
+    const ZONE = { r: 80, b: 40 };
+    const FLOATS = '.mail-compose, .mail-read.pop, .cal-view, dialog[open], #menu, #appPop, .cal-pop';
+    setInterval(() => {
+      let over = false;
+      for (const f of document.querySelectorAll(FLOATS)) {
+        if (f.hidden || f.classList.contains('min')) continue;
+        const r = f.getBoundingClientRect(); if (!r.width || !r.height) continue;
+        if (getComputedStyle(f).display === 'none') continue;
+        if (r.left < ZONE.r && r.top < ZONE.b && r.right > 0 && r.bottom > 0) { over = true; break; }
+      }
+      if (over === shown) { shown = !over; window.navigatorApp.winLights(shown); }
+    }, 200);
   }
 
   // ---------- Updates ----------
