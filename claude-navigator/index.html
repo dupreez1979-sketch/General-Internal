@@ -287,9 +287,15 @@
   .app-ic.cal { background: #D9534F; }
   .app-ic.studio { background: #B36E24; }
   /* ---- Design Studio: a grid of saved designs, each with its picture ---- */
-  body[data-face="studio"]:not(.cos-mode) #viewSeg, body[data-face="studio"]:not(.cos-mode) #splitBtn { display: none !important; }
+  body[data-face="studio"]:not(.cos-mode) #splitBtn { display: none !important; }
   .ds-page { padding: var(--sp-3) var(--sp-4) 40px; }
   .ds-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; margin: 0 0 var(--sp-3); }
+  #browse > .ds-head { padding: var(--sp-2) var(--sp-1) 0; }
+  .grid.ds-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: var(--sp-3); }
+  .tile.ds-card { align-items: stretch; padding: var(--sp-1h); } .tile.ds-card .label.ds-name { text-align: left; margin: var(--sp-2) 0 2px; padding: 1px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .tile.ds-card .lchk { position: absolute; z-index: 2; top: 10px; left: 10px; }
+  .lrow .ds-chip { margin-left: 8px; font-size: 11px; font-weight: var(--fw-bold); padding: 1px 7px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--text); flex: none; }
+  .lrow .ds-who { margin-left: 8px; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: var(--fs-label); flex: none; } .lrow .ds-who i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
   .ds-head .ds-h { flex: 1; min-width: 160px; display: grid; } .ds-head .ds-h b { font-size: var(--fs-title, 17px); font-weight: var(--fw-bold); } .ds-head .ds-h span { color: var(--muted); font-size: var(--fs-label); }
   .ds-q { font: inherit; font-size: var(--fs-body); padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--win); color: var(--text); width: 180px; }
   .ds-new { white-space: nowrap; }
@@ -3707,10 +3713,13 @@
   }
   function renderMainList() {
     if (state.loc.kind === 'library') return renderLibrary();
-    if (isApp && currentApp === 'navigator' && navFace === 'studio' && !state.query) return renderStudio();
-
-    let items, where = false;
-    if (state.query) {
+    // The Design Studio is the same list (or icons), holding only the items saved as designs, from this folder down.
+    const studio = isApp && currentApp === 'navigator' && navFace === 'studio' && !state.query;
+    let items, where = false, dsAllCount = 0;
+    if (studio) {
+      const S = dsS(), q = S.q.trim().toLowerCase(), all = dsRows(childrenOf(state.loc.id)); dsAllCount = all.length;
+      items = all.filter(r => (!S.staff || r.n.design.staff === S.staff) && dsMatch(r, q)).map(r => r.n);
+    } else if (state.query) {
       const m = searchMatcher(state.query);
       items = [];
       walk(rootList(), n => {
@@ -3722,7 +3731,7 @@
       // In a staff member's Work tab their Skills folder is not shown (skills have their own tab).
       try { if (currentApp === 'cos' && cosUi.page && cosUi.tab === 'work') items = items.filter(x => !x.skillsFolder); } catch (e) { /* starting up */ }
     }
-    items = sortItems(items, where ? 'search' : 'folder', { updated: libUpdatedIndex() });
+    items = sortItems(items, where || studio ? 'search' : 'folder', { updated: libUpdatedIndex() });
     const unfiltered = items.length;
     items = folderFilter(items);
     state.folderFiltered = items;
@@ -3744,18 +3753,19 @@
     if (!items.length) {
       const e = document.createElement('div');
       e.className = 'empty';
-      e.innerHTML = state.query
+      e.innerHTML = studio ? (dsAllCount ? '<b>Nothing matches</b>Clear the search or choose All Staff.' : '<b>No designs here yet</b>A design appears here only when you save it as one: say \u201csave this to the Design Studio\u201d in a Claude chat, press the Design Studio button above a Claude page, or right-click anything in your folders and choose Add to Design Studio.')
+        : state.query
         ? '<b>No results</b>Try a different word.'
         : unfiltered ? '<b>Nothing matches these filters</b>Change or reset them in Filter at the top.'
         : `<b>This folder is empty</b>Open a Claude chat and press ${K.mod}S to save it here, drag links in, or right-click for more.`;
       frag.appendChild(e);
     } else if (state.view === 'icons' && !where) {
       const g = document.createElement('div');
-      g.className = 'grid';
-      for (const n of pageItems) g.appendChild(tileFor(n));
+      g.className = studio ? 'grid ds-grid' : 'grid';
+      for (const n of pageItems) g.appendChild(studio ? dsTile(n) : tileFor(n));
       frag.appendChild(g);
     } else {
-      const view = where ? 'search' : 'folder';
+      const view = where || studio ? 'search' : 'folder';
       const l = makeList(view);
       if (state.libSelectMode) {
         const all2 = document.createElement('input');
@@ -3775,7 +3785,8 @@
       const updated = libUpdatedIndex();
       for (const n of pageItems) {
         const row = listRowFor(n, view, updated);
-        const showKids = state.libShowAttached && !where;   // the Outputs button switches attached items on and off
+        if (studio) { try { dsRowMark(row, n); } catch (e) { /* the row is still listed */ } }
+        const showKids = state.libShowAttached && !where && !studio;   // the Outputs button switches attached items on and off
         if (n.type === 'link' && n.children && n.children.length && showKids) {
           addDisclosure(row, isOpen(n), `${n.children.length} attached`);
           subTargets.push({ isOpen: () => isOpen(n), set: open => { n.open = open; } });
@@ -3797,6 +3808,7 @@
       frag.appendChild(l);
     }
     browseEl.replaceChildren(frag);
+    if (studio) browseEl.prepend(dsHead(dsAllCount, items.length));
     updateSubAll();
     renderPathbar(items.length);
     applyBrowseSel(false);
@@ -5072,6 +5084,7 @@
 
   function openNode(n, { newWindow = false } = {}) {
     if (!n) return;
+    try { if (isDesign(n) && n.type === 'link' && !n.madeFile && !newWindow) dsPictureSoon(n); } catch (e) { /* no picture this time */ }
     if (n.type === 'folder') return go({ kind: 'folder', id: n.id });
     if (n.type === 'link' && n.madeFile && /#file=/.test(n.url || '')) return openOutput({ name: n.name, url: n.url, file: n.madeFile }, false);      // a file Claude made in a chat, filed here: opens as the file
     if (n.type === 'file') {                                   // opens in its own app (Word, Excel, Preview...)
@@ -6574,7 +6587,10 @@
       '-',
       { label: 'Rename', key: K.rename, run: () => startRename(n.id, scope) },
       { label: 'Move To…', run: () => moveTo(n.id) },
-      { label: isDesign(n) ? 'Design Studio Details\u2026' : 'Add to Design Studio\u2026', run: () => dsSaveDlg({ node: n }) },
+      { label: isDesign(n) ? 'Design Details\u2026' : 'Add to Design Studio\u2026', run: () => dsSaveDlg({ node: n }) },
+      isDesign(n) && { label: 'Choose a Picture\u2026', run: () => dsPickPicture(n) },
+      isDesign(n) && n.type === 'link' && !n.madeFile && { label: 'Use What Is on Screen as the Picture', disabled: !dsShowing(n), run: () => dsCapture(n) },
+      isDesign(n) && { label: 'Remove from the Design Studio', run: () => dsRemove(n) },
       { label: 'More', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, [
         { label: 'Copy Link', run: () => navigator.clipboard.writeText(n.url).then(() => toast('Link copied')) },
         { label: 'Change Icon\u2026', run: () => chooseKindMenu(lastMenuX, lastMenuY, kindOf(n), k => { snap(); n.as = k; commit(); }) },
@@ -21433,10 +21449,10 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   }
   const dsShowing = n => !!(n && n.url && state.pageUrl && !pane.hidden && normUrl(state.pageUrl) === normUrl(String(n.url).split('#')[0]));
   function dsRepaint() { try { if (currentApp === 'navigator' && navFace === 'studio') renderMain(); else if (currentApp === 'cos' && cosUi.tab === 'designs') renderCos(); } catch (e) { /* not showing */ } }
+  // No picture yet: take one once the page has had time to draw, if it is still the page on screen.
+  function dsPictureSoon(n) { if (!dsS().thumbs[n.id]) setTimeout(() => { if (nodeOf(n.id) && dsShowing(n) && !dsS().thumbs[n.id]) dsCapture(n, true); }, 7000); }
   function dsOpen(n) {
-    if (currentApp === 'cos' && n.type === 'link') { if (n.madeFile) openOutput({ name: n.name, url: n.url, file: n.madeFile }, true); else cosOpenLink({ name: n.name, url: n.url }); } else openNode(n);
-    // No picture yet: take one once the page has had time to draw, if it is still the page on screen.
-    if (n.type === 'link' && !n.madeFile && !dsS().thumbs[n.id]) setTimeout(() => { if (nodeOf(n.id) && dsShowing(n) && !dsS().thumbs[n.id]) dsCapture(n, true); }, 7000);
+    if (currentApp === 'cos' && n.type === 'link') { if (n.madeFile) openOutput({ name: n.name, url: n.url, file: n.madeFile }, true); else { cosOpenLink({ name: n.name, url: n.url }); dsPictureSoon(n); } } else openNode(n);
   }
   function dsRemove(n) { snap(); delete n.design; commit(); try { window.navigatorApp.designThumbDel(n.id); } catch (e) { /* no picture */ } delete dsS().thumbs[n.id]; toast(`“${n.name}” is no longer in the Design Studio. It is still in its folder.`, { label: 'Undo', run: () => undo() }); }
   function dsPickPicture(n) {
@@ -21545,25 +21561,47 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     if (here) return start(here);
     openDialog({ title: 'Save the new design in:', folderId: (activeProfile() || {}).id || null, folderOnly: true, okLabel: 'Start', onSave: ({ folderId }) => { if (folderId) start(folderId); } });
   }
-  function renderStudio() {
-    const S = dsS(), el = browseEl, p = activeProfile(); el.replaceChildren(); el.scrollTop = 0;
-    const here = state.loc.id && nodeOf(state.loc.id), all = dsRows(childrenOf(state.loc.id)), q = S.q.trim().toLowerCase();
+  // The strip above the designs: whose, the search, the profile's design system, and New Design.
+  function dsHead(allCount, shown) {
+    const S = dsS(), p = activeProfile(), here = state.loc.id && nodeOf(state.loc.id);
     const people = p ? dsStaffChoices(p) : []; if (S.staff && !people.some(x => x.id === S.staff)) S.staff = '';
-    const rows = dsSorted(all.filter(r => (!S.staff || r.n.design.staff === S.staff) && dsMatch(r, q)));
-    const page = document.createElement('div'); page.className = 'ds-page';
     const head = document.createElement('div'); head.className = 'ds-head';
-    const h = document.createElement('div'); h.className = 'ds-h'; h.appendChild(Object.assign(document.createElement('b'), { textContent: here ? here.name : (p ? p.name : 'All profiles') })); h.appendChild(Object.assign(document.createElement('span'), { textContent: `${rows.length} design${rows.length === 1 ? '' : 's'}${rows.length !== all.length ? ' of ' + all.length : ''}${here ? ', with its folders' : ''}` }));
-    const btn = (label, title, run, cls) => { const b = document.createElement('button'); b.className = cls || 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', e => { e.stopPropagation(); run(b); }); return b; };
-    const who = btn(`${S.staff ? (people.find(x => x.id === S.staff) || {}).name : 'All Staff'} ▾`, 'Show one staff member’s designs', b => { const r0 = b.getBoundingClientRect(); const counts = new Map(); for (const r of all) counts.set(r.n.design.staff || '', (counts.get(r.n.design.staff || '') || 0) + 1); showMenu(r0.left, r0.bottom + 4, [{ label: `All Staff (${all.length})`, checked: !S.staff, run: () => { S.staff = ''; renderMain(); } }, '-', ...people.map(z => ({ label: `${z.name} (${counts.get(z.id) || 0})`, checked: S.staff === z.id, run: () => { S.staff = z.id; renderMain(); } }))]); });
+    for (const ev of ['click', 'dblclick', 'keydown', 'contextmenu', 'mousedown']) head.addEventListener(ev, e => e.stopPropagation());
+    const h = document.createElement('div'); h.className = 'ds-h'; h.appendChild(Object.assign(document.createElement('b'), { textContent: here ? here.name : (p ? p.name : 'All profiles') })); h.appendChild(Object.assign(document.createElement('span'), { textContent: `${shown} design${shown === 1 ? '' : 's'}${shown !== allCount ? ' of ' + allCount : ''}${here ? ', with its folders' : ''}` }));
+    const btn = (label, title, run, cls) => { const b = document.createElement('button'); b.className = cls || 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', () => run(b)); return b; };
+    const who = btn(`${S.staff ? (people.find(x => x.id === S.staff) || {}).name : 'All Staff'} ▾`, 'Show one staff member’s designs', b => { const r0 = b.getBoundingClientRect(), counts = new Map(); for (const r of dsRows(childrenOf(state.loc.id))) counts.set(r.n.design.staff || '', (counts.get(r.n.design.staff || '') || 0) + 1); showMenu(r0.left, r0.bottom + 4, [{ label: `All Staff (${allCount})`, checked: !S.staff, run: () => { S.staff = ''; renderMain(); } }, '-', ...people.map(z => ({ label: `${z.name} (${counts.get(z.id) || 0})`, checked: S.staff === z.id, run: () => { S.staff = z.id; renderMain(); } }))]); });
     who.classList.toggle('on', !!S.staff); who.hidden = !people.length;
-    const sort = btn(ls.get('claudeNavigator.dsSort') === 'name' ? 'By Name ▾' : 'Newest First ▾', 'The order of the designs', b => { const r0 = b.getBoundingClientRect(), cur = ls.get('claudeNavigator.dsSort') === 'name' ? 'name' : 'new'; showMenu(r0.left, r0.bottom + 4, [{ label: 'Newest First', checked: cur === 'new', run: () => { ls.set('claudeNavigator.dsSort', 'new'); renderMain(); } }, { label: 'By Name', checked: cur === 'name', run: () => { ls.set('claudeNavigator.dsSort', 'name'); renderMain(); } }]); });
+    // The design system of the profile: open it in Claude to look at it or change it, or choose a different one.
+    const sysOf = pr => [pr.designSystem ? { label: `Open “${pr.designSystem.name}” in Claude`, icon: 'designsystem', run: () => go({ kind: 'page', url: pr.designSystem.url }) } : null, { label: pr.designSystem ? 'Choose a Different One…' : `Choose ${pr.name}’s Design System…`, run: () => { openProfileDialog(pr); try { profileTab('look'); } catch (e) { /* the first tab shows */ } } }].filter(Boolean);
+    const dsys = btn(p ? (p.designSystem ? `Design System: ${p.designSystem.name} ▾` : 'Design System ▾') : 'Design Systems ▾', 'The design system this profile’s designs start from. Open it in Claude to view or edit it.', b => { const r0 = b.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, p ? sysOf(p) : profiles().flatMap((pr, i2) => [...(i2 ? ['-'] : []), { label: pr.name, disabled: true, run: () => {} }, ...sysOf(pr)])); });
     const sq = document.createElement('input'); sq.type = 'search'; sq.className = 'ds-q'; sq.placeholder = 'Search designs'; sq.value = S.q;
     sq.addEventListener('input', () => { S.q = sq.value; clearTimeout(S.qt); S.qt = setTimeout(() => { renderMain(); const again = browseEl.querySelector('.ds-q'); if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); } }, 180); });
-    for (const ev of ['click', 'dblclick', 'keydown', 'contextmenu']) sq.addEventListener(ev, e => e.stopPropagation());
     const mk = btn('New Design ▾', 'Start a design in Claude, with this profile’s design system. What it makes is saved here as a design.', b => { const r0 = b.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [['slides', 'Slides'], ['doc', 'Document'], ['design', 'Design'], ['dashboard', 'Dashboard'], ['whiteboard', 'Whiteboard']].map(([k, label]) => ({ label, icon: NEW_KINDS[k].icon, run: () => dsNew(k) })).concat(['-', { label: 'Save the Claude Page on Screen…', disabled: !state.pageUrl || pane.hidden, run: dsSavePage }])); }, 'btn-primary ds-new');
-    head.append(h, who, sort, sq, mk); page.appendChild(head);
-    dsGrid(page, rows, { empty: all.length ? 'Nothing matches. Clear the search or choose All Staff.' : `No designs ${here ? 'in this folder' : 'yet'}. A design appears here only when you save it as one: say “save this to the Design Studio” in a Claude chat, press the Design Studio button above a Claude page, or right-click anything in your folders and choose Add to Design Studio.` });
-    el.appendChild(page);
+    head.append(h, who, dsys, sq, mk);
+    return head;
+  }
+  // A design as an icon: its picture. It is an ordinary item underneath, so selecting, renaming, dragging, moving,
+  // deleting and the right-click menu are the same as everywhere else.
+  function dsTile(n) {
+    const t = document.createElement('div'); t.className = 'tile item ds-card'; t.dataset.id = n.id; t.draggable = true; t.title = n.name;
+    const st = dsStaffOf(n), type = (n.design.type || 'Other'), ext = dsExt(n), par = (locate(n.id) || {}).parent;
+    if (state.libSelectMode) t.appendChild(Object.assign(document.createElement('input'), { type: 'checkbox', className: 'lchk', title: 'Select' }));
+    const box = document.createElement('div'); box.className = 'ds-pic';
+    const tile = document.createElement('div'); tile.className = 'ds-tile'; tile.style.background = dsTint(type); tile.appendChild(Object.assign(document.createElement('b'), { textContent: type })); if (ext) tile.appendChild(Object.assign(document.createElement('i'), { textContent: ext })); box.appendChild(tile);
+    box.appendChild(Object.assign(document.createElement('span'), { className: 'ds-type', textContent: type }));
+    const nm = Object.assign(document.createElement('div'), { className: 'label ds-name', textContent: n.name });
+    const meta = document.createElement('div'); meta.className = 'ds-meta';
+    if (st) { const who = document.createElement('span'); who.className = 'who'; const dot = document.createElement('i'); dot.style.background = st.color || 'var(--muted)'; who.append(dot, document.createTextNode(st.name)); meta.appendChild(who); }
+    if (par && par.id !== state.loc.id) meta.appendChild(Object.assign(document.createElement('span'), { className: 'fo', textContent: par.name }));
+    meta.appendChild(Object.assign(document.createElement('span'), { className: 'at', textContent: new Date(n.design.at || n.added || Date.now()).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) }));
+    t.append(box, nm, meta); dsThumbInto(n, box);
+    return t;
+  }
+  // In the list: the type and the staff member sit beside the name.
+  function dsRowMark(row, n) {
+    const nm = row.querySelector('.nm'); if (!nm) return; const st = dsStaffOf(n);
+    nm.appendChild(Object.assign(document.createElement('span'), { className: 'ds-chip', textContent: n.design.type || 'Other' }));
+    if (st) { const who = document.createElement('span'); who.className = 'ds-who'; const dot = document.createElement('i'); dot.style.background = st.color || 'var(--muted)'; who.append(dot, document.createTextNode(st.name)); nm.appendChild(who); }
   }
   // A design handed over from a Claude chat (you filled in the form there). It is matched to what the chat made,
   // or to the chat itself, and saved; if no folder was chosen in the chat, you are asked here.
