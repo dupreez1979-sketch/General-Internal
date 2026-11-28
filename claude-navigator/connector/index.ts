@@ -174,7 +174,7 @@ const UI_HTML = String.raw`<!DOCTYPE html>
   }
   function top() {
     var t = document.getElementById("top"), sel = document.getElementById("prof"), names = (pick && pick.profiles) || [];
-    if (!ref || names.length < 2) { t.hidden = true; return; }
+    if (!ref || !pick || names.length < 2) { t.hidden = true; return; }
     if (!sel.options.length) {
       names.concat(["I will choose in the app"]).forEach(function (nm, k) { var o = el("option", "", nm); o.value = k < names.length ? nm : ""; sel.appendChild(o); });
       var cur = pick.account || pick.active || ""; sel.value = names.indexOf(cur) >= 0 ? cur : (names.filter(function (x) { return x.toLowerCase() === String(cur).toLowerCase(); })[0] || "");
@@ -194,7 +194,7 @@ const UI_HTML = String.raw`<!DOCTYPE html>
         var g = el("span", "go"), verb = { emails: "Open", meetings: "Open", changes: "Review", actions: "Add", documents: "Make" }[r[0]] || "Open";
         var b = el("button", st && st !== "waiting" ? "" : "main", st && st !== "waiting" && r[0] !== "changes" ? (verb === "Open" ? "Open Again" : verb) : verb); b.title = "Opens it in your Chief of Staff app. Nothing is sent.";
         b.addEventListener("click", (function (kind, n, btn) { return function () { act(kind, n, "open", btn); }; })(r[0], i, b)); g.appendChild(b);
-        if ((!st || st === "waiting") && FIELDS[r[0]]) { var e = el("button", "e", editing === r[0] + ":" + i ? "Close" : "Edit"); e.title = "Change it here before you open it"; e.addEventListener("click", (function (key) { return function () { editing = editing === key ? "" : key; paint(lastState); }; })(r[0] + ":" + i)); g.appendChild(e); }
+        if (pick && (!st || st === "waiting") && FIELDS[r[0]]) { var e = el("button", "e", editing === r[0] + ":" + i ? "Close" : "Edit"); e.title = "Change it here before you open it"; e.addEventListener("click", (function (key) { return function () { editing = editing === key ? "" : key; paint(lastState); }; })(r[0] + ":" + i)); g.appendChild(e); }
         if (!st || st === "waiting") { var x = el("button", "x", "×"); x.title = "Take this one off the list"; x.addEventListener("click", (function (kind, n, btn) { return function () { act(kind, n, "dismiss", btn); }; })(r[0], i, x)); g.appendChild(x); }
         it.appendChild(g);
       }
@@ -400,7 +400,7 @@ async function mcp(req: Request, secret: string) {
     const caps = (meta["io.modelcontextprotocol/clientCapabilities"] || p.capabilities || {}) as Record<string, any>;
     const uiCap = caps.extensions && caps.extensions["io.modelcontextprotocol/ui"];
     const panel = ctx.panel !== false && !!uiCap && (!Array.isArray(uiCap.mimeTypes) || uiCap.mimeTypes.includes(UI_MIME));
-    const answers = ctx.answers !== false;
+    const answers = ctx.answers === true;        // (an older app says nothing about it, and could not answer)
     const toolList = () => TOOLS.map(t => panel && t.name === "show_for_approval" ? { ...t, _meta: { ui: { resourceUri: UI_URI, visibility: ["model", "app"] }, "ui/resourceUri": UI_URI } } : t).concat(answers ? ASK_TOOLS as any[] : []);
     if (m.method === "tools/list") return ok(modern ? { tools: toolList(), ttlMs: 300000, cacheScope: "private" } : { tools: toolList() });
     if (m.method === "tools/call") {
@@ -516,7 +516,7 @@ async function mcp(req: Request, secret: string) {
       const r = await db("cos_relay", { method: "POST", body: JSON.stringify({ s_hash: sHash, sealed }) });
       if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be handed to the app just now. Try again in a moment." }], isError: true });
       await db("cos_outcomes", { method: "POST", body: JSON.stringify({ s_hash: sHash, ref, state }) }).catch(() => null);
-      return ok({ content: [{ type: "text", text: `Handed to his Chief of Staff app: ${n} item${n === 1 ? "" : "s"} are waiting there for him to check and approve. Nothing has been sent, created or changed yet. Tell him briefly that it is waiting in the app (it shows within a few seconds if the app is open on his Mac). Do not also make these changes with any other tool. Reference ${ref}: use check_outcome with it to see what he did, before you say anything was done.` }], structuredContent: { ref, state, pick: { profiles: names, staff: staffBy, active, account: String(a.for_account || "") } } });
+      return ok({ content: [{ type: "text", text: `Handed to his Chief of Staff app: ${n} item${n === 1 ? "" : "s"} are waiting there for him to check and approve. Nothing has been sent, created or changed yet. Tell him briefly that it is waiting in the app (it shows within a few seconds if the app is open on his Mac). Do not also make these changes with any other tool. Reference ${ref}: use check_outcome with it to see what he did, before you say anything was done.` }], structuredContent: { ref, state, ...(ctx.edits ? { pick: { profiles: names, staff: staffBy, active, account: String(a.for_account || "") } } : {}) } });
     }
     return err(-32601, "method not found", 404);
   };
@@ -558,7 +558,7 @@ async function app(req: Request, what: string) {
     const clean = (l: unknown, max: number) => (Array.isArray(l) ? l : []).filter((x: unknown) => typeof x === "string").map((x: string) => x.trim().slice(0, 60)).filter(Boolean).slice(0, max);
     const names = clean(body.names, 20), staff: Record<string, string[]> = {};
     if (body.staff && typeof body.staff === "object") for (const k of Object.keys(body.staff).slice(0, 20)) if (names.includes(k)) staff[k] = clean(body.staff[k], 40);
-    const ctx = { active: typeof body.active === "string" && names.includes(body.active.trim()) ? body.active.trim() : "", staff, panel: body.panel !== false, answers: body.answers !== false };
+    const ctx = { active: typeof body.active === "string" && names.includes(body.active.trim()) ? body.active.trim() : "", staff, panel: body.panel !== false, answers: body.answers === true, edits: typeof body.answers === "boolean" };
     const r = await db(`cos_boxes?s_hash=eq.${s}`, { method: "PATCH", body: JSON.stringify({ profiles: names, ctx }) });
     return r.ok ? json({ ok: true, count: names.length }) : json({ error: "could not keep them" }, 400);
   }
