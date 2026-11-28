@@ -370,7 +370,7 @@ const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.8.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.8.1" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -500,9 +500,14 @@ async function mcp(req: Request, secret: string) {
         const el = caps.elicitation, canAsk = modern && !!el && typeof el === "object" && (!Object.keys(el).length || "form" in el);
         const NOBODY = "Nobody in particular", LATER = "I will choose in the app";
         const resp = p.inputResponses && typeof p.inputResponses === "object" ? (p.inputResponses.details || p.inputResponses.design) : null;
+        let inApp = false;          // (the form did not get an answer in the chat: his app asks him instead)
         if (resp) {
-          if (resp.action !== "accept") return ok({ content: [{ type: "text", text: "He did not save it. Nothing was added to his Design Studio." }] });
-          const c = resp.content && typeof resp.content === "object" ? resp.content : {};
+          console.log("mcp " + JSON.stringify({ call: "tools/call", step: "design form answered", action: String(resp.action || "").slice(0, 12), fields: resp.content && typeof resp.content === "object" ? Object.keys(resp.content).slice(0, 8) : [] }));
+          // "decline" is his no. Anything else that is not a yes (a chat that could not show the form, or one that
+          // closed it by itself) must not lose the design: it goes to his app, which asks him there.
+          if (resp.action === "decline") return ok({ content: [{ type: "text", text: "He chose not to save it. Nothing was added to his Design Studio." }] });
+          if (resp.action !== "accept") inApp = true;
+          const c = resp.action === "accept" && resp.content && typeof resp.content === "object" ? resp.content : {};
           if (clip(c.name, 140)) D.name = clip(c.name, 140);
           if (DESIGN_TYPES.includes(String(c.type))) D.type = String(c.type);
           if (typeof c.staff === "string") D.staff = c.staff === NOBODY ? "" : clip(c.staff, 80);
@@ -524,17 +529,23 @@ async function mcp(req: Request, secret: string) {
           }
           let list = Array.isArray(staffBy[prof]) ? (staffBy[prof] as unknown[]) : ([] as unknown[]).concat(...Object.values(staffBy).filter(Array.isArray) as unknown[][]);
           list = [...new Set(list.filter(x => typeof x === "string" && x))].slice(0, 40);
-          const props: Record<string, unknown> = { name: { type: "string", title: "Name", default: D.name }, type: { type: "string", title: "Type", enum: DESIGN_TYPES, default: D.type || "Other" } };
-          if (list.length) { const cur = (list as string[]).find(x => x.toLowerCase() === D.staff.toLowerCase()); props.staff = { type: "string", title: "Staff member", enum: [...list, NOBODY], default: cur || NOBODY }; }
+          // The plainest form there is (no pre-filled values, nothing compulsory), since a chat that cannot draw a form
+          // closes it without asking. What is suggested is said in words; a field left alone keeps the suggestion.
+          const props: Record<string, unknown> = { name: { type: "string", title: "Name (leave empty to keep it)" }, type: { type: "string", title: "Type", enum: DESIGN_TYPES } };
+          const curStaff = (list as string[]).find(x => x.toLowerCase() === D.staff.toLowerCase()) || "";
+          if (list.length) props.staff = { type: "string", title: "Staff member", enum: [...list, NOBODY] };
           if (!prof && names.length > 1) props.profile = { type: "string", title: "Profile", enum: names };
-          if (folders.length) { const cur = folders.find(x => x.toLowerCase() === D.folder.toLowerCase()) || folders.find(x => D.folder && x.toLowerCase().endsWith(D.folder.toLowerCase())); props.folder = { type: "string", title: "Folder", enum: [...folders, LATER], default: cur || LATER }; }
+          const curFolder = folders.find(x => x.toLowerCase() === D.folder.toLowerCase()) || folders.find(x => D.folder && x.toLowerCase().endsWith(D.folder.toLowerCase())) || "";
+          if (folders.length) props.folder = { type: "string", title: "Folder", enum: [...folders, LATER] };
+          const said = [D.type || "", curStaff ? "for " + curStaff : "", curFolder ? "in " + curFolder : ""].filter(Boolean).join(", ");
           console.log("mcp " + JSON.stringify({ call: "tools/call", step: "design form", fields: Object.keys(props) }));
-          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: "Save this to your Design Studio?", requestedSchema: { type: "object", properties: props, required: ["name", "type"] } } } } } }, status: 200 };
+          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: `Save \u201c${D.name}\u201d to your Design Studio?${said ? " Suggested: " + said + "." : ""} Change anything below, or leave it as it is.`, requestedSchema: { type: "object", properties: props, required: [] } } } } } }, status: 200 };
         }
+        if (inApp) D.folder = "";          // (with no folder given, his app opens its own Save form for him to confirm)
         const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), design: D }));
         const r = await db("cos_relay", { method: "POST", body: JSON.stringify({ s_hash: sHash, sealed }) });
         if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be passed to his app just now. Try again in a moment." }], isError: true });
-        return ok({ content: [{ type: "text", text: `Passed to his Chief of Staff app to save as a design called "${D.name}". It appears in the Design Studio within a few seconds if the app is open on his Mac${D.folder ? "" : "; the app asks him which folder"}. Tell him briefly. If his app cannot tell which page it is, it will say so there.` }], structuredContent: { saved: "asked", name: D.name } });
+        return ok({ content: [{ type: "text", text: `Passed to his Chief of Staff app to save as a design called "${D.name}". ${inApp ? "The form could not be shown in this chat, so his app is asking him to confirm the details there: tell him to look at the Chief of Staff app" : `It appears in the Design Studio within a few seconds if the app is open on his Mac${D.folder ? "" : "; the app asks him which folder"}`}. Tell him briefly. If his app cannot tell which page it is, it will say so there.` }], structuredContent: { saved: "asked", name: D.name } });
       }
       if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
       const n = KINDS.map(k => a[k]).reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
