@@ -18829,6 +18829,10 @@ body { width: max-content !important; min-width: 0 !important; }
     const a = q.args || {};
     if (mailUi.accounts === null) await mailLoadAccounts();
     const accs = planAccs();
+    if (q.kind === 'list_design_folders') {          // (for the Save to the Design Studio form in a chat: the folders of that profile, by name)
+      const p = profiles().find(x => String(x.name).trim().toLowerCase() === String(a.profile || '').trim().toLowerCase()) || activeProfile();
+      return p ? dsFolderChoices(p).map(z => z[1]).slice(0, 80).join('\n') : '';
+    }
     if (q.kind === 'list_staff') {
       const out = [];
       for (const p of profiles()) { const t = (cos.teams || {})[p.id]; const l = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief && String(n.name || '').trim()) : []; if (l.length) out.push(`${String(p.name).trim()}:\n` + l.map(n => `- ${String(n.name).trim()}${n.role ? ': ' + String(n.role).replace(/\s+/g, ' ').slice(0, 140) : ''}`).join('\n')); }
@@ -19018,7 +19022,7 @@ body { width: max-content !important; min-width: 0 !important; }
       //  so it does not ask which profile when you are plainly working in one)
       for (const p of ps) { const t = (cos.teams || {})[p.id]; const l = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief).map(n => String(n.name || '').trim()).filter(Boolean) : []; if (l.length) staff[p.name.trim()] = l; }
       const act = activeProfile();
-      about = { names: ps.map(p => p.name.trim()), active: connAskOn() && act ? String(act.name || '').trim() : '', staff, panel: ls.get('claudeNavigator.connPanel') !== '0', answers: connAnswersOn() };
+      about = { names: ps.map(p => p.name.trim()), active: connAskOn() && act ? String(act.name || '').trim() : '', staff, panel: ls.get('claudeNavigator.connPanel') !== '0', answers: connAnswersOn(), studio: true };
     } catch (e) { return; }
     const key = JSON.stringify(about) + '|' + ((connUi.status.url || '').slice(-8));
     if (!force && ls.get('claudeNavigator.connProfilesSent') === key) return;
@@ -19035,6 +19039,7 @@ body { width: max-content !important; min-width: 0 !important; }
         connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
         if (r && r.gone) connUi.status = { on: false };
         if (r && r.ok && (r.asks || []).length) connAsks(r.asks);
+        if (r && r.ok && (r.designs || []).length) for (const D of r.designs) { try { dsFromChat(D); } catch (e) { toast('A design from Claude could not be saved. Save it from the Design Studio button above the chat.'); } }
         if (r && r.ok && (r.cmds || []).length) setTimeout(() => connCmds(r.cmds), (r.fresh || []).length ? 600 : 0);
         if (r && r.ok && (r.fresh || []).length) {
           const open = Object.keys(connUi.open); connUi.items = (r.items || []).map(x => (open.includes(x.id) && connUi.items.find(y => y.id === x.id)) || x); connPaint(); chime('ready');

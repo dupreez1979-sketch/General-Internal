@@ -94,3 +94,10 @@ off in the app, which also removes the three tools from the list.
 title, date and times; who an action is for; the profile of the whole hand-over). The body of an email can never be
 changed this way. The panel tells Claude what the user did through `ui/update-model-context`, so nothing is typed
 into the chat.
+
+## Saving a design to the Design Studio (1.8.0)
+
+`save_design` passes one finished design to the app's Design Studio, and only when the user asks for it in the chat.
+He confirms name, type, staff member and folder in a short form. The folder names for that form are asked of his Mac
+for that one call and kept nowhere. The design travels sealed, like a hand-over, and the app files it without an
+approval step (the form was the approval). The tool is offered only to an app new enough to have the Design Studio.

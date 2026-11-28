@@ -2118,7 +2118,7 @@ ipcMain.handle('conn-profiles', async (e, about) => {
   const a = Array.isArray(about) ? { names: about } : (about && typeof about === 'object' ? about : {});
   const clean = (l, max) => (Array.isArray(l) ? l : []).filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, max);
   const staff = {}; if (a.staff && typeof a.staff === 'object') for (const k of Object.keys(a.staff).slice(0, 20)) staff[String(k).slice(0, 60)] = clean(a.staff[k], 40);
-  try { const r = await connPost('profiles', { names: clean(a.names, 20), active: typeof a.active === 'string' ? a.active.slice(0, 60) : '', staff, panel: a.panel !== false, answers: a.answers !== false }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
+  try { const r = await connPost('profiles', { names: clean(a.names, 20), active: typeof a.active === 'string' ? a.active.slice(0, 60) : '', staff, panel: a.panel !== false, answers: a.answers !== false, studio: a.studio === true }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
 });
 // What you did with something Claude handed over: only the state of each item, by its place in the list.
 ipcMain.handle('conn-outcome', async (e, ref, state) => {
@@ -2150,8 +2150,9 @@ ipcMain.handle('conn-pull', async e => {
   if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [], fresh: [], cmds: [] };
   try {
     const r = await connPost('pull', {}, c.t); if (!r.ok) return { ok: false, gone: r.status === 401 };
-    const items = [], ids = [];
-    for (const row of r.data.rows || []) { ids.push(row.id); try { items.push(Object.assign(connOpen(c, row.sealed), { id: row.id })); } catch (er) { /* not for this Mac, or damaged: dropped */ } }
+    const items = [], ids = [], designs = [];
+    // (a design he saved from a chat is not something to approve: it goes straight to the Design Studio)
+    for (const row of r.data.rows || []) { ids.push(row.id); try { const o = connOpen(c, row.sealed); if (o && o.design && typeof o.design === 'object') { const D = {}; for (const k of ['name', 'type', 'staff', 'profile', 'folder', 'file', 'link']) D[k] = typeof o.design[k] === 'string' ? o.design[k].slice(0, 300) : ''; designs.push(D); } else items.push(Object.assign(o, { id: row.id })); } catch (er) { /* not for this Mac, or damaged: dropped */ } }
     if (items.length) connBoxPut(connBox().filter(x => !items.some(y => y.id === x.id)).concat(items));        // kept here before the relay's copy goes
     if (ids.length) await connPost('ack', { ids }, c.t);
     // (buttons pressed in the panel in the Claude chat: which item of which hand-over, and whether to open or dismiss it)
@@ -2160,8 +2161,8 @@ ipcMain.handle('conn-pull', async e => {
     const cmds = (Array.isArray(r.data.cmds) ? r.data.cmds : []).filter(x => x && /^[0-9a-f]{10}$/.test(String(x.ref)) && ['emails', 'meetings', 'changes', 'actions', 'documents', 'handover'].includes(x.kind) && Number.isInteger(x.index) && ['open', 'dismiss', 'amend'].includes(x.act) && (x.kind !== 'handover' || x.act === 'amend')).slice(0, 20)
       .map(x => { const o = { ref: String(x.ref), kind: x.kind, index: x.index, act: x.act }; if (x.act === 'amend') { o.data = {}; for (const k of AMEND[x.kind] || []) if (x.data && typeof x.data[k] === 'string') o.data[k] = x.data[k].slice(0, 400); } return o; });
     // (small questions Claude has for this Mac: a name to look up, when you are free, who your staff are)
-    const asks = (Array.isArray(r.data.asks) ? r.data.asks : []).filter(q => q && /^[0-9a-f-]{36}$/.test(String(q.id)) && ['lookup_address', 'find_free_time', 'list_staff'].includes(q.kind)).slice(0, 10).map(q => ({ id: String(q.id), kind: q.kind, args: q.args && typeof q.args === 'object' ? q.args : {} }));
-    return { ok: true, fresh: items.map(x => x.id), items: connBox(), cmds, asks };
+    const asks = (Array.isArray(r.data.asks) ? r.data.asks : []).filter(q => q && /^[0-9a-f-]{36}$/.test(String(q.id)) && ['lookup_address', 'find_free_time', 'list_staff', 'list_design_folders'].includes(q.kind)).slice(0, 10).map(q => ({ id: String(q.id), kind: q.kind, args: q.args && typeof q.args === 'object' ? q.args : {} }));
+    return { ok: true, fresh: items.map(x => x.id), items: connBox(), cmds, asks, designs };
   } catch (er) { return { ok: false }; }
 });
 const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');

@@ -68,6 +68,23 @@ const TOOLS = [{
 }];
 // Small questions his Mac answers, so that Claude need not be given his mail or calendar to find one fact. Each
 // answer is the least that settles the question, it comes from the app on his Mac, and it is not kept here.
+// Saving a finished design to his Design Studio. Only ever at his word: nothing is gathered there by itself.
+const DESIGN_TYPES = ["Presentation", "Proposal", "Document", "Report", "Video", "Social", "Email", "Invitation", "Brand", "Web page", "Other"];
+const DESIGN_TOOL = {
+  name: "save_design",
+  title: "Save a design to his Design Studio",
+  description: "Save a finished design (a presentation, proposal, document, video, artifact or file made in this chat) to the Design Studio in the user's Chief of Staff app. Call this ONLY when he asks for it in words like 'save this to the Design Studio' or 'add this to my designs'. Never call it by yourself, and never for ordinary answers or drafts: the Design Studio holds only what he chose to keep. He confirms the name, type, staff member and folder in a short form. Give the design's exact title as it appears in this chat (the artifact's title, or the file's name) so his app can find it.",
+  inputSchema: { type: "object", properties: {
+    name: { type: "string", description: "The design's title, exactly as the artifact or document is titled in this chat" },
+    type: { type: "string", enum: DESIGN_TYPES, description: "What kind of design it is" },
+    staff: { type: "string", description: "The staff member it belongs to, by title, if he said or if this chat is plainly that staff member's" },
+    profile: { type: "string", description: "The profile it belongs to, if he said" },
+    folder: { type: "string", description: "The folder to save it in, if he named one" },
+    file: { type: "string", description: "If the design is a file you made in this chat (a .pptx, .pdf, .docx, .mp4 and so on), its exact file name" },
+    link: { type: "string", description: "The design's claude.ai address, only if you know it for certain. Never guess one." },
+  }, required: ["name"] },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+};
 const ASK_TOOLS = [{
   name: "lookup_address",
   title: "Find a person's email address",
@@ -314,6 +331,10 @@ The app can only attach a file that is on his Mac, inside his company folders. I
 He has more than one organisation and mailbox. When the chat makes it clear which one this belongs to, say so in
 \`for_account\`, in his own words or as an email address. If it is not clear, leave it out and he chooses in the app.
 
+## Saving a design to his Design Studio
+
+His app has a Design Studio: finished designs he has chosen to keep (presentations, proposals, documents, videos). Nothing goes there by itself. When, and only when, he asks you to save something there ("save this to the Design Studio", "add this to my designs"), call save_design with the design's exact title as it appears in this chat, its type, and the file name if it is a file you made. He confirms the details in a short form. Never call it on your own initiative, and never for drafts or ordinary answers.
+
 ## Small questions his Mac can answer
 
 Three tools ask the app on his Mac one narrow thing each. They are quick, and they give you only what you asked for.
@@ -349,7 +370,7 @@ const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.7.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.8.0" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -401,7 +422,7 @@ async function mcp(req: Request, secret: string) {
     const uiCap = caps.extensions && caps.extensions["io.modelcontextprotocol/ui"];
     const panel = ctx.panel !== false && !!uiCap && (!Array.isArray(uiCap.mimeTypes) || uiCap.mimeTypes.includes(UI_MIME));
     const answers = ctx.answers === true;        // (an older app says nothing about it, and could not answer)
-    const toolList = () => TOOLS.map(t => panel && t.name === "show_for_approval" ? { ...t, _meta: { ui: { resourceUri: UI_URI, visibility: ["model", "app"] }, "ui/resourceUri": UI_URI } } : t).concat(answers ? ASK_TOOLS as any[] : []);
+    const toolList = () => TOOLS.map(t => panel && t.name === "show_for_approval" ? { ...t, _meta: { ui: { resourceUri: UI_URI, visibility: ["model", "app"] }, "ui/resourceUri": UI_URI } } : t).concat(ctx.studio === true ? [DESIGN_TOOL as any] : []).concat(answers ? ASK_TOOLS as any[] : []);
     if (m.method === "tools/list") return ok(modern ? { tools: toolList(), ttlMs: 300000, cacheScope: "private" } : { tools: toolList() });
     if (m.method === "tools/call") {
       const a = p.arguments || {};
@@ -467,6 +488,53 @@ async function mcp(req: Request, secret: string) {
         const r = await db("cos_cmds", { method: "POST", body: JSON.stringify({ s_hash: sHash, ref: a.ref, kind: a.kind, idx, act: a.do, data }) });
         if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be passed to the app just now. Try again in a moment." }], isError: true });
         return ok({ content: [{ type: "text", text: a.do === "open" ? "His app has been asked to open it. It opens within a few seconds if the app is running on his Mac. Nothing has been sent." : a.do === "amend" ? "His app has been given the correction. It applies before he opens the item." : "His app has been asked to take it off the list." }], structuredContent: { asked: a.do, kind: a.kind, index: idx } });
+      }
+      if (p.name === "save_design") {
+        if (ctx.studio !== true) return ok({ content: [{ type: "text", text: "His app does not have the Design Studio yet. Ask him to update the Chief of Staff app." }], isError: true });
+        const clip = (v: unknown, n: number) => String(v == null ? "" : v).replace(/[\u0000-\u001f]+/g, " ").trim().slice(0, n);
+        const D: Record<string, string> = { name: clip(a.name, 140), type: DESIGN_TYPES.includes(String(a.type)) ? String(a.type) : "", staff: clip(a.staff, 80), profile: clip(a.profile, 60), folder: clip(a.folder, 200), file: clip(a.file, 200), link: /^https:\/\/claude\.ai\/[^\s"<>]{1,300}$/.test(String(a.link || "")) ? String(a.link) : "" };
+        if (!D.name) return ok({ content: [{ type: "text", text: "Give the design's title." }], isError: true });
+        const names: string[] = Array.isArray(box[0].profiles) ? box[0].profiles.filter((x: unknown) => typeof x === "string" && x) : [];
+        const active = typeof ctx.active === "string" ? ctx.active : "";
+        const staffBy = (ctx.staff && typeof ctx.staff === "object" ? ctx.staff : {}) as Record<string, unknown>;
+        const el = caps.elicitation, canAsk = modern && !!el && typeof el === "object" && (!Object.keys(el).length || "form" in el);
+        const NOBODY = "Nobody in particular", LATER = "I will choose in the app";
+        const resp = p.inputResponses && typeof p.inputResponses === "object" ? (p.inputResponses.details || p.inputResponses.design) : null;
+        if (resp) {
+          if (resp.action !== "accept") return ok({ content: [{ type: "text", text: "He did not save it. Nothing was added to his Design Studio." }] });
+          const c = resp.content && typeof resp.content === "object" ? resp.content : {};
+          if (clip(c.name, 140)) D.name = clip(c.name, 140);
+          if (DESIGN_TYPES.includes(String(c.type))) D.type = String(c.type);
+          if (typeof c.staff === "string") D.staff = c.staff === NOBODY ? "" : clip(c.staff, 80);
+          if (names.includes(String(c.profile))) D.profile = String(c.profile);
+          if (typeof c.folder === "string") D.folder = c.folder === LATER ? "" : clip(c.folder, 200);
+        } else if (!p.inputResponses && canAsk) {
+          const prof = names.find(x => x.toLowerCase() === D.profile.toLowerCase()) || active;
+          // His folders are asked of his Mac for this one form, shown to him, and kept nowhere.
+          let folders: string[] = [];
+          if (answers) {
+            const made = await (await db("cos_asks", { method: "POST", body: JSON.stringify({ s_hash: sHash, kind: "list_design_folders", args: { profile: prof } }) })).json().catch(() => []);
+            const qid = Array.isArray(made) && made[0] && made[0].id;
+            if (qid) {
+              let answer: any = null;
+              for (let i = 0; i < 20 && answer === null; i++) { await new Promise(r => setTimeout(r, 500)); const row = await (await db(`cos_asks?id=eq.${qid}&select=answer`)).json().catch(() => []); if (Array.isArray(row) && row[0] && row[0].answer !== null && row[0].answer !== undefined) answer = row[0].answer; }
+              await db(`cos_asks?id=eq.${qid}`, { method: "DELETE" });
+              if (answer && typeof answer.text === "string") folders = answer.text.split("\n").map((x: string) => x.trim().slice(0, 200)).filter(Boolean).slice(0, 80);
+            }
+          }
+          let list = Array.isArray(staffBy[prof]) ? (staffBy[prof] as unknown[]) : ([] as unknown[]).concat(...Object.values(staffBy).filter(Array.isArray) as unknown[][]);
+          list = [...new Set(list.filter(x => typeof x === "string" && x))].slice(0, 40);
+          const props: Record<string, unknown> = { name: { type: "string", title: "Name", default: D.name }, type: { type: "string", title: "Type", enum: DESIGN_TYPES, default: D.type || "Other" } };
+          if (list.length) { const cur = (list as string[]).find(x => x.toLowerCase() === D.staff.toLowerCase()); props.staff = { type: "string", title: "Staff member", enum: [...list, NOBODY], default: cur || NOBODY }; }
+          if (!prof && names.length > 1) props.profile = { type: "string", title: "Profile", enum: names };
+          if (folders.length) { const cur = folders.find(x => x.toLowerCase() === D.folder.toLowerCase()) || folders.find(x => D.folder && x.toLowerCase().endsWith(D.folder.toLowerCase())); props.folder = { type: "string", title: "Folder", enum: [...folders, LATER], default: cur || LATER }; }
+          console.log("mcp " + JSON.stringify({ call: "tools/call", step: "design form", fields: Object.keys(props) }));
+          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: "Save this to your Design Studio?", requestedSchema: { type: "object", properties: props, required: ["name", "type"] } } } } } }, status: 200 };
+        }
+        const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), design: D }));
+        const r = await db("cos_relay", { method: "POST", body: JSON.stringify({ s_hash: sHash, sealed }) });
+        if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be passed to his app just now. Try again in a moment." }], isError: true });
+        return ok({ content: [{ type: "text", text: `Passed to his Chief of Staff app to save as a design called "${D.name}". It appears in the Design Studio within a few seconds if the app is open on his Mac${D.folder ? "" : "; the app asks him which folder"}. Tell him briefly. If his app cannot tell which page it is, it will say so there.` }], structuredContent: { saved: "asked", name: D.name } });
       }
       if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
       const n = KINDS.map(k => a[k]).reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
@@ -558,7 +626,7 @@ async function app(req: Request, what: string) {
     const clean = (l: unknown, max: number) => (Array.isArray(l) ? l : []).filter((x: unknown) => typeof x === "string").map((x: string) => x.trim().slice(0, 60)).filter(Boolean).slice(0, max);
     const names = clean(body.names, 20), staff: Record<string, string[]> = {};
     if (body.staff && typeof body.staff === "object") for (const k of Object.keys(body.staff).slice(0, 20)) if (names.includes(k)) staff[k] = clean(body.staff[k], 40);
-    const ctx = { active: typeof body.active === "string" && names.includes(body.active.trim()) ? body.active.trim() : "", staff, panel: body.panel !== false, answers: body.answers === true, edits: typeof body.answers === "boolean" };
+    const ctx = { active: typeof body.active === "string" && names.includes(body.active.trim()) ? body.active.trim() : "", staff, panel: body.panel !== false, answers: body.answers === true, edits: typeof body.answers === "boolean", studio: body.studio === true };
     const r = await db(`cos_boxes?s_hash=eq.${s}`, { method: "PATCH", body: JSON.stringify({ profiles: names, ctx }) });
     return r.ok ? json({ ok: true, count: names.length }) : json({ error: "could not keep them" }, 400);
   }
