@@ -1,0 +1,21 @@
+# Checks that the small Mac helper (on-device drafting) still builds. Nothing is published from here.
+name: Check the Mac drafting helper
+
+on:
+  push:
+    branches: ['**']
+    paths: ['claude-navigator/helper/**', '.github/workflows/claude-navigator-helper.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the helper
+        working-directory: claude-navigator
+        run: bash helper/build.sh

@@ -1,0 +1,241 @@
+// Chief of Staff for the phone.
+// The screens (Team, a staff member, Today, Recent) are the web page in Web/index.html, shown full screen.
+// This file does three things for that page: reads the team files the Mac app keeps in iCloud Drive,
+// lets you choose that folder once, and shows Claude over the top when you open or start a chat.
+
+import SwiftUI
+import WebKit
+import UniformTypeIdentifiers
+
+@main
+struct ChiefOfStaffApp: App {
+    var body: some Scene {
+        WindowGroup { RootView() }
+    }
+}
+
+final class Store: NSObject, ObservableObject, WKScriptMessageHandler, UIDocumentPickerDelegate {
+    @Published var chatOpen = false
+    @Published var chatTitle = "Claude"
+    let ui: WKWebView
+    let claude: WKWebView
+    private let bookmarkKey = "teamFolderBookmark"
+    private(set) var drive: Drive!
+
+    override init() {
+        let content = WKUserContentController()
+        let uiConfig = WKWebViewConfiguration()
+        uiConfig.userContentController = content
+        ui = WKWebView(frame: .zero, configuration: uiConfig)
+        let claudeConfig = WKWebViewConfiguration()
+        claudeConfig.websiteDataStore = .default()          // the Claude sign-in is kept between launches
+        claudeConfig.allowsInlineMediaPlayback = true
+        claude = WKWebView(frame: .zero, configuration: claudeConfig)
+        super.init()
+        content.add(self, name: "phone")
+        drive = Drive(ui: ui, claude: claude)
+        // "Hey Siri, talk to my Chief of Staff": go to Drive and start listening (tried a few times while the page loads).
+        NotificationCenter.default.addObserver(forName: .startDrive, object: nil, queue: .main) { [weak self] _ in self?.startDriveFromSiri(tries: 0) }
+        if Date().timeIntervalSince1970 - UserDefaults.standard.double(forKey: "startDriveAt") < 20 { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startDriveFromSiri(tries: 0) } }
+        ui.scrollView.contentInsetAdjustmentBehavior = .never
+        ui.scrollView.bounces = false
+        ui.isOpaque = false
+        claude.allowsBackForwardNavigationGestures = true
+        if let page = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") {
+            ui.loadFileURL(page, allowingReadAccessTo: page.deletingLastPathComponent())
+        }
+    }
+
+    private func startDriveFromSiri(tries: Int) {
+        ui.evaluateJavaScript("window.driveFromSiri ? window.driveFromSiri() : false") { value, _ in
+            if (value as? Bool) == true { UserDefaults.standard.removeObject(forKey: "startDriveAt"); return }
+            if tries < 8 { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.startDriveFromSiri(tries: tries + 1) } }
+        }
+    }
+
+    // Messages from the page: load the team, choose the folder, open a chat.
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: Any], let what = body["do"] as? String else { return }
+        switch what {
+        case "load": sendData()
+        case "pick": pickFolder()
+        case "save": if let text = body["json"] as? String { saveChanges(text) }
+        // Drive mode
+        case "awake": drive.setAwake((body["on"] as? Bool) ?? false)
+        case "listen": drive.listen(wait: (body["wait"] as? Double) ?? 8)
+        case "stopListening": drive.stopListening(send: true)
+        case "say": if let text = body["text"] as? String { drive.say(text) }
+        case "hush": drive.hush()
+        case "copy": if let text = body["text"] as? String { UIPasteboard.general.string = text }
+        case "chime": if let name = body["name"] as? String { drive.chime(name) }
+        case "fastModel": break                 // (no longer done: Claude's page is only used when you open it and can see it)
+        case "restoreModel": break
+        case "warm": break
+        case "voiceGet": sendVoice()
+        case "localGet": drive.local.warm(); drive.tell("driveLocal", ["ok": drive.local.ready])
+        case "localAsk": if let id = body["id"] as? String, let ins = body["instructions"] as? String, let prompt = body["prompt"] as? String { drive.local.answer(id: id, instructions: String(ins.prefix(3000)), prompt: String(prompt.prefix(9000))) }
+        // Fast answers: Claude's API on the fast model, and Granola asked directly
+        case "fastState": drive.tell("driveFastState", ["hasKey": drive.api.hasKey, "model": FastClaude.model, "granola": drive.gran.connected, "mail": drive.mail.emails])
+        case "apiKey": drive.api.askForKey(from: topController()) { self.drive.tell("driveFastState", ["hasKey": self.drive.api.hasKey, "model": FastClaude.model, "granola": self.drive.gran.connected, "mail": self.drive.mail.emails]) }
+        case "apiAsk":
+            if let id = body["id"] as? String, let system = body["system"] as? String, let turns = body["turns"] as? [[String: String]] { drive.api.ask(id: id, system: system, turns: turns, maxTokens: (body["max"] as? Int) ?? 300, mail: (body["lookups"] as? Bool) == true ? drive.mail : nil) }
+        case "mailRun": Task { @MainActor in let out = await self.drive.mail.run((body["name"] as? String) ?? "", (body["input"] as? [String: Any]) ?? [:]); self.drive.tell("driveMailRun", ["id": (body["id"] as? String) ?? "", "text": out]) }
+        case "mailConnect": drive.mail.connect()
+        case "mailDisconnect": drive.mail.disconnect((body["email"] as? String) ?? "")
+        case "mailCheck": Task { @MainActor in let line = await self.drive.mail.check(); self.drive.tell("driveMailCheck", ["id": (body["id"] as? String) ?? "", "text": line]) }
+        case "granConnect": drive.gran.connect()
+        case "granDisconnect": drive.gran.disconnect(); drive.tell("driveFastState", ["hasKey": drive.api.hasKey, "model": FastClaude.model, "granola": false, "mail": drive.mail.emails])
+        case "granAsk": if let id = body["id"] as? String, let text = body["text"] as? String { drive.gran.ask(id: id, question: text) }
+        case "claudeCheck": drive.claudeCheck()
+        case "barge": drive.bargeIn = (body["on"] as? Bool) ?? true
+        case "pause": drive.pause = max(0, min(15, (body["seconds"] as? Double) ?? 4))
+        case "names": drive.names = ((body["list"] as? [String]) ?? []).prefix(80).map { String($0.prefix(60)) }
+        case "voicePick": drive.voice.chosenID = (body["id"] as? String) ?? ""; sendVoice()
+        case "voiceTry": drive.say("This is how I will sound when you are driving.")
+        case "ask": break                       // (the hidden-page lane is gone: questions go to the API, your lists, your email and Granola)
+        case "chat":
+            guard let text = body["url"] as? String, let url = URL(string: text), url.scheme == "https",
+                  let host = url.host, host == "claude.ai" || host.hasSuffix(".claude.ai") else { return }
+            chatTitle = (body["title"] as? String) ?? "Claude"
+            claude.load(URLRequest(url: url))
+            chatOpen = true
+        default: break
+        }
+    }
+
+    private func topController() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        var top = scenes.first?.keyWindow?.rootViewController
+        while let next = top?.presentedViewController { top = next }
+        return top
+    }
+
+    private func sendVoice() {
+        let payload: [String: Any] = ["phoneVoice": drive.voice.phoneVoiceNote, "voices": drive.voice.voiceList, "chosen": !drive.voice.chosenID.isEmpty]
+        guard let json = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: json, encoding: .utf8) else { return }
+        ui.evaluateJavaScript("window.driveVoice && window.driveVoice(\(text))", completionHandler: nil)
+    }
+
+    func chatClosed() {
+        chatOpen = false
+        // Where the chat ended up, so a chat started here can be added to that staff member's work.
+        let info: [String: Any] = ["url": claude.url?.absoluteString ?? "", "title": claude.title ?? ""]
+        let text = (try? JSONSerialization.data(withJSONObject: info)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        ui.evaluateJavaScript("window.phoneChatClosed && window.phoneChatClosed(\(text))", completionHandler: nil)
+    }
+
+    // MARK: The team files
+
+    private func folderURL() -> URL? {
+        guard let saved = UserDefaults.standard.data(forKey: bookmarkKey) else { return nil }
+        var stale = false
+        guard let url = try? URL(resolvingBookmarkData: saved, bookmarkDataIsStale: &stale) else { return nil }
+        if stale {
+            let ok = url.startAccessingSecurityScopedResource()
+            if let fresh = try? url.bookmarkData() { UserDefaults.standard.set(fresh, forKey: bookmarkKey) }
+            if ok { url.stopAccessingSecurityScopedResource() }
+        }
+        return url
+    }
+
+    // A file in iCloud Drive may not be on the phone yet: ask for it, and read it once it is here.
+    private func read(_ url: URL) -> Any? {
+        try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+        var data: Data?
+        var problem: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &problem) { at in data = try? Data(contentsOf: at) }
+        guard let found = data else { return nil }
+        return try? JSONSerialization.jsonObject(with: found)
+    }
+
+    func sendData() {
+        guard let folder = folderURL() else { return deliver(["state": "none"]) }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let ok = folder.startAccessingSecurityScopedResource()
+            defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+            var out: [String: Any] = ["state": "empty"]
+            if let index = self.read(folder.appendingPathComponent("index.json")) as? [String: Any],
+               let profiles = index["profiles"] as? [[String: Any]] {
+                var teams: [String: Any] = [:]
+                for profile in profiles {
+                    guard let id = profile["id"] as? String, let file = profile["file"] as? String,
+                          !file.contains("/"), file.hasSuffix(".json") else { continue }
+                    if let team = self.read(folder.appendingPathComponent(file)) { teams[id] = team }
+                }
+                out = ["state": teams.isEmpty ? "empty" : "ok", "index": index, "teams": teams]
+                if let done = self.read(folder.appendingPathComponent("mac-applied.json")) as? [String: Any], let ids = done["ids"] { out["applied"] = ids }
+            }
+            DispatchQueue.main.async { self.deliver(out) }
+        }
+    }
+
+    // What you did on the phone, for the Mac to pick up: written beside the team files.
+    func saveChanges(_ text: String) {
+        guard let folder = folderURL(), let data = text.data(using: .utf8) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let ok = folder.startAccessingSecurityScopedResource()
+            defer { if ok { folder.stopAccessingSecurityScopedResource() } }
+            var problem: NSError?
+            NSFileCoordinator().coordinate(writingItemAt: folder.appendingPathComponent("phone-changes.json"), options: .forReplacing, error: &problem) { at in
+                try? data.write(to: at, options: .atomic)
+            }
+        }
+    }
+
+    private func deliver(_ payload: [String: Any]) {
+        guard let json = try? JSONSerialization.data(withJSONObject: payload), let text = String(data: json, encoding: .utf8) else { return }
+        ui.evaluateJavaScript("window.phoneData && window.phoneData(\(text))", completionHandler: nil)
+    }
+
+    // MARK: Choosing the folder (once)
+
+    func pickFolder() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.folder])
+        picker.delegate = self
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        var top = scenes.first?.keyWindow?.rootViewController
+        while let next = top?.presentedViewController { top = next }
+        top?.present(picker, animated: true)
+    }
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        let ok = url.startAccessingSecurityScopedResource()
+        if let bookmark = try? url.bookmarkData() { UserDefaults.standard.set(bookmark, forKey: bookmarkKey) }
+        if ok { url.stopAccessingSecurityScopedResource() }
+        sendData()
+    }
+}
+
+struct WebHost: UIViewRepresentable {
+    let view: WKWebView
+    func makeUIView(context: Context) -> WKWebView { view }
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
+}
+
+struct RootView: View {
+    @StateObject private var store = Store()
+    @Environment(\.scenePhase) private var phase
+
+    var body: some View {
+        ZStack {
+            if !store.chatOpen { WebHost(view: store.claude).opacity(0.02).allowsHitTesting(false) }
+            WebHost(view: store.ui).ignoresSafeArea()
+        }
+            .onChange(of: phase) { now in if now == .active { store.sendData() } }      // fresh each time you come back
+            .fullScreenCover(isPresented: $store.chatOpen) {
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button("Done") { store.chatClosed() }.font(.body.weight(.semibold))
+                        Spacer()
+                        Text(store.chatTitle).font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Spacer()
+                        Button { store.claude.reload() } label: { Image(systemName: "arrow.clockwise") }
+                    }
+                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    Divider()
+                    WebHost(view: store.claude)
+                }
+            }
+    }
+}
