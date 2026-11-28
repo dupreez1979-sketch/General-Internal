@@ -2085,7 +2085,7 @@ ipcMain.handle('conn-profiles', async (e, about) => {
   const a = Array.isArray(about) ? { names: about } : (about && typeof about === 'object' ? about : {});
   const clean = (l, max) => (Array.isArray(l) ? l : []).filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, max);
   const staff = {}; if (a.staff && typeof a.staff === 'object') for (const k of Object.keys(a.staff).slice(0, 20)) staff[String(k).slice(0, 60)] = clean(a.staff[k], 40);
-  try { const r = await connPost('profiles', { names: clean(a.names, 20), active: typeof a.active === 'string' ? a.active.slice(0, 60) : '', staff, panel: a.panel !== false }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
+  try { const r = await connPost('profiles', { names: clean(a.names, 20), active: typeof a.active === 'string' ? a.active.slice(0, 60) : '', staff, panel: a.panel !== false, answers: a.answers !== false }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
 });
 // What you did with something Claude handed over: only the state of each item, by its place in the list.
 ipcMain.handle('conn-outcome', async (e, ref, state) => {
@@ -2093,6 +2093,10 @@ ipcMain.handle('conn-outcome', async (e, ref, state) => {
   const OKS = ['waiting', 'opened', 'done', 'added', 'made', 'dismissed', 'failed'], out = {};
   for (const k of ['emails', 'meetings', 'changes', 'actions', 'documents']) if (state && Array.isArray(state[k])) out[k] = state[k].slice(0, 100).map(v => (OKS.includes(v) ? v : 'waiting'));
   try { const r = await connPost('outcome', { ref: String(ref), state: out }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
+});
+ipcMain.handle('conn-answer', async (e, id, text) => {
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on || !c.t || !/^[0-9a-f-]{36}$/.test(String(id))) return { ok: false };
+  try { const r = await connPost('answer', { id: String(id), text: String(text || '').slice(0, 6000) }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
 });
 ipcMain.handle('conn-status', e => { if (!fromOwnWindow(e)) return null; const c = connGet(); return { on: !!(c && c.on), url: c && c.on ? `${connBase()}/mcp/${c.s}` : '' }; });
 ipcMain.handle('conn-on', async e => {
@@ -2118,8 +2122,13 @@ ipcMain.handle('conn-pull', async e => {
     if (items.length) connBoxPut(connBox().filter(x => !items.some(y => y.id === x.id)).concat(items));        // kept here before the relay's copy goes
     if (ids.length) await connPost('ack', { ids }, c.t);
     // (buttons pressed in the panel in the Claude chat: which item of which hand-over, and whether to open or dismiss it)
-    const cmds = (Array.isArray(r.data.cmds) ? r.data.cmds : []).filter(x => x && /^[0-9a-f]{10}$/.test(String(x.ref)) && ['emails', 'meetings', 'changes', 'actions', 'documents'].includes(x.kind) && Number.isInteger(x.index) && ['open', 'dismiss'].includes(x.act)).slice(0, 20);
-    return { ok: true, fresh: items.map(x => x.id), items: connBox(), cmds };
+    // (and corrections made in the panel before opening: only named, short text fields; never the body of an email)
+    const AMEND = { emails: ['to', 'cc', 'subject'], meetings: ['title', 'date', 'start', 'end', 'invite', 'where'], actions: ['for', 'action'], documents: ['title'], handover: ['for_account'] };
+    const cmds = (Array.isArray(r.data.cmds) ? r.data.cmds : []).filter(x => x && /^[0-9a-f]{10}$/.test(String(x.ref)) && ['emails', 'meetings', 'changes', 'actions', 'documents', 'handover'].includes(x.kind) && Number.isInteger(x.index) && ['open', 'dismiss', 'amend'].includes(x.act) && (x.kind !== 'handover' || x.act === 'amend')).slice(0, 20)
+      .map(x => { const o = { ref: String(x.ref), kind: x.kind, index: x.index, act: x.act }; if (x.act === 'amend') { o.data = {}; for (const k of AMEND[x.kind] || []) if (x.data && typeof x.data[k] === 'string') o.data[k] = x.data[k].slice(0, 400); } return o; });
+    // (small questions Claude has for this Mac: a name to look up, when you are free, who your staff are)
+    const asks = (Array.isArray(r.data.asks) ? r.data.asks : []).filter(q => q && /^[0-9a-f-]{36}$/.test(String(q.id)) && ['lookup_address', 'find_free_time', 'list_staff'].includes(q.kind)).slice(0, 10).map(q => ({ id: String(q.id), kind: q.kind, args: q.args && typeof q.args === 'object' ? q.args : {} }));
+    return { ok: true, fresh: items.map(x => x.id), items: connBox(), cmds, asks };
   } catch (er) { return { ok: false }; }
 });
 const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');

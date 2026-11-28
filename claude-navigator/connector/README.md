@@ -79,3 +79,18 @@ served, so changing the text and redeploying is all an update takes. Claude may 
 again after a change.
 
 This part of the standard is in beta. It is offered only in the newer style; the older style is unchanged.
+
+## Small questions the Mac answers (1.7.0)
+
+Three read-only tools let Claude ask the app something only the Mac knows: `lookup_address` (a person's email
+address by name), `find_free_time` (free stretches only, never titles or people) and `list_staff`. The question is
+left in `cos_asks`, the app collects it on its next pull, answers through `app/answer`, and the waiting call passes
+the answer on and wipes the row. If the app is shut the call says so after about 25 seconds. The user can turn this
+off in the app, which also removes the three tools from the list.
+
+## Editing in the panel (1.7.0)
+
+`act_on_item` also takes `do: "amend"` with a `set` of short named fields (an email's to, cc and subject; a meeting's
+title, date and times; who an action is for; the profile of the whole hand-over). The body of an email can never be
+changed this way. The panel tells Claude what the user did through `ui/update-model-context`, so nothing is typed
+into the chat.

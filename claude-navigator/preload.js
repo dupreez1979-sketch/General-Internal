@@ -17,6 +17,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   connRotate: () => ipcRenderer.invoke('conn-rotate'),
   connProfiles: about => ipcRenderer.invoke('conn-profiles', about),
   connOutcome: (ref, state) => ipcRenderer.invoke('conn-outcome', ref, state),
+  connAnswer: (id, text) => ipcRenderer.invoke('conn-answer', id, text),
   apiKeySet: (key) => ipcRenderer.invoke('api-key-set', key),
   apiRun: (req) => ipcRenderer.invoke('api-run', req),
   apiAsk: (system, turns, max) => ipcRenderer.invoke('api-ask', system, turns, max),

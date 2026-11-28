@@ -18468,6 +18468,8 @@ body { width: max-content !important; min-width: 0 !important; }
             [connAskOn() ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connAsk', connAskOn() ? '0' : '1'); await connTellProfiles(true); show(); }]);
           row('A Panel in the Claude Chat', ls.get('claudeNavigator.connPanel') !== '0' ? 'On. When Claude hands something over, the chat shows it in a small panel. You open or dismiss each item from there, and nothing pops up over the chat. It also waits under From Claude.' : 'Off. Claude just says that it is waiting, and this app shows it to you in a window.',
             [ls.get('claudeNavigator.connPanel') !== '0' ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connPanel', ls.get('claudeNavigator.connPanel') !== '0' ? '0' : '1'); await connTellProfiles(true); show(); }]);
+          row('Claude Can Ask This Mac Small Questions', connAnswersOn() ? 'On. From a chat, Claude can ask this app for a person\u2019s email address by name, for when you are free (free times only, never what your meetings are), and for the names of your staff. It only reads. The answer passes through the relay and is wiped as soon as Claude has it. It works while this app is open.' : 'Off. Claude cannot ask this app anything; it can only hand things over.',
+            [connAnswersOn() ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connAnswers', connAnswersOn() ? '0' : '1'); await connTellProfiles(true); show(); }]);
           row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
         }
       },
@@ -18774,10 +18776,65 @@ body { width: max-content !important; min-width: 0 !important; }
   }
   // A button pressed in the panel in the Claude chat: open that item, or take it off the list, without the list window
   // getting in the way. (An item that needs a choice from you, such as a change to approve, shows the window.)
+  // Small questions from Claude that only this Mac can answer. Each is read-only, answered once, and the answer is
+  // wiped from the relay as soon as Claude has read it. Free time is given as free stretches only: no titles, no people.
+  const connAnswersOn = () => ls.get('claudeNavigator.connAnswers') !== '0';
+  async function connAnswer(q) {
+    const a = q.args || {};
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    const accs = planAccs();
+    if (q.kind === 'list_staff') {
+      const out = [];
+      for (const p of profiles()) { const t = (cos.teams || {})[p.id]; const l = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief && String(n.name || '').trim()) : []; if (l.length) out.push(`${String(p.name).trim()}:\n` + l.map(n => `- ${String(n.name).trim()}${n.role ? ': ' + String(n.role).replace(/\s+/g, ' ').slice(0, 140) : ''}`).join('\n')); }
+      return out.length ? out.join('\n\n') : 'He has no staff set up in the app yet.';
+    }
+    if (q.kind === 'lookup_address') {
+      const name = String(a.name || '').trim().slice(0, 120); if (!name) return 'No name was given.';
+      if (!accs.length) return 'No mail account is connected in the app, so it could not look.';
+      const seen = new Set(), hits = [];
+      for (const A of accs.slice(0, 4)) { try { const pr = await mailApi(A.id, { path: `/me/people?$search=${encodeURIComponent('"' + name.replace(/"/g, '') + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); for (const x of (pr.ok && pr.data.value) || []) { const ad = ((x.scoredEmailAddresses || [])[0] || {}).address; if (ad && !seen.has(ad.toLowerCase())) { seen.add(ad.toLowerCase()); hits.push(`${String(x.displayName || name).replace(/[<>,]/g, ' ').trim()} <${ad}>`); } } } catch (e) { /* that account could not be asked */ } }
+      return hits.length ? `People he writes to who match “${name}”:\n` + hits.slice(0, 3).join('\n') + (hits.length > 1 ? '\nIf it is not plain which one he means, ask him.' : '') : `Nobody he writes to matches “${name}”. Give the name as it is and he will pick the address.`;
+    }
+    if (q.kind === 'find_free_time') {
+      const D = /^\d{4}-\d{2}-\d{2}$/, T = /^\d{2}:\d{2}$/; if (!D.test(String(a.from)) || !D.test(String(a.to))) return 'The days were not given as YYYY-MM-DD.';
+      if (!accs.length) return 'No calendar is connected in the app, so it could not look.';
+      const first = new Date(a.from + 'T00:00:00'); let last = new Date(a.to + 'T00:00:00'); if (last < first) last = first; if (last - first > 14 * 864e5) last = new Date(+first + 14 * 864e5);
+      const mins = Math.max(10, Math.min(480, Number(a.minutes) || 30)), e0 = T.test(String(a.earliest)) ? a.earliest : '09:00', l0 = T.test(String(a.latest)) ? a.latest : '17:00';
+      const end = new Date(+last + 864e5), busy = [], bad = [], when = v => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? v : v + 'Z');
+      for (const A of accs.slice(0, 6)) {
+        const r = await mailApi(A.id, { path: `/me/calendarView?startDateTime=${encodeURIComponent(first.toISOString())}&endDateTime=${encodeURIComponent(end.toISOString())}&$top=250&$select=start,end,isAllDay,isCancelled,showAs` }).catch(() => null);
+        if (!r || !r.ok) { bad.push(A.email || 'one calendar'); continue; }
+        for (const ev of (r.data && r.data.value) || []) { if (ev.isCancelled || !ev.start || !ev.end || ev.showAs === 'free') continue; if (ev.isAllDay && !['busy', 'oof'].includes(ev.showAs)) continue; busy.push(ev.isAllDay ? [new Date(ev.start.dateTime.slice(0, 10) + 'T00:00:00'), new Date(ev.end.dateTime.slice(0, 10) + 'T00:00:00')] : [when(ev.start.dateTime), when(ev.end.dateTime)]); }
+      }
+      if (bad.length === Math.min(accs.length, 6)) return 'His calendar could not be read just now. Say that it could not be checked.';
+      const clock = d => d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }), lines = [], now = new Date();
+      for (let d = new Date(first); d <= last; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+        if (!a.weekends && (d.getDay() === 0 || d.getDay() === 6)) continue;
+        const at = hm => new Date(d.getFullYear(), d.getMonth(), d.getDate(), +hm.slice(0, 2), +hm.slice(3)); let s = at(e0); const e = at(l0); if (s < now) s = new Date(Math.ceil(+now / 9e5) * 9e5);
+        const free = []; for (const b of busy.filter(b => b[1] > s && b[0] < e).sort((x, y) => x[0] - y[0])) { if (b[0] - s >= mins * 6e4) free.push([s, b[0]]); if (b[1] > s) s = b[1]; }
+        if (e - s >= mins * 6e4) free.push([s, e]);
+        lines.push(`${d.toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} (${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}): ${free.length ? free.map(f => `${clock(f[0])} to ${clock(f[1])}`).join(', ') : 'nothing free'}`);
+      }
+      return `When he is free for at least ${mins} minutes, between ${e0} and ${l0}, in his own time (${Intl.DateTimeFormat().resolvedOptions().timeZone}):\n` + (lines.join('\n') || 'No days in that range.') + (bad.length ? `\nNot checked (could not be read): ${bad.length} calendar${bad.length === 1 ? '' : 's'}. Say so.` : '') + '\nThese are gaps in his calendar only. He still decides the time.';
+    }
+    return 'That is not something this app can answer.';
+  }
+  async function connAsks(asks) {
+    for (const q of asks) { let text = ''; try { text = connAnswersOn() ? await connAnswer(q) : 'He has turned off questions to his Mac.'; } catch (e) { text = 'His Mac could not work that out just now.'; } try { await window.navigatorApp.connAnswer(q.id, text); } catch (e) { /* Claude is told there was no answer */ } }
+  }
+  // A correction made in the panel, before the item is opened: only the short fields the panel offers.
+  async function connAmend(it, c) {
+    const d = c.data || {}, keys = Object.keys(d); if (!keys.length) return;
+    if (c.kind === 'handover') { if (typeof d.for_account === 'string') it.for_account = d.for_account; }
+    else { const item = (Array.isArray(it[c.kind]) ? it[c.kind] : [])[c.index]; if (!item || typeof item !== 'object') return; for (const k of keys) item[k] = d[k]; }
+    await window.navigatorApp.connKeep(it); connPaint();
+    toast(c.kind === 'handover' ? `Claude’s hand-over is now for ${d.for_account || 'you to place'}.` : 'Changed from the Claude chat. It is under From Claude.');
+  }
   async function connCmds(cmds) {
     for (const c of cmds) {
       const it = connUi.items.find(x => x.ref === c.ref);
       if (!it) { toast('That one has already been dealt with.'); continue; }
+      if (c.act === 'amend') { if (connUi.open[it.id]) toast('That one is open here, so change it in its window.'); else { try { await connAmend(it, c); } catch (e) { /* it stays as it was */ } } continue; }
       if (connUi.open[it.id]) continue;                       // its window is open: you are already looking at it
       if (mailUi.compose && c.act === 'open' && (c.kind === 'emails')) { toast('Finish or close the email you are writing, then open it again.'); continue; }
       try { await connShow(it, c); } catch (e) { toast('It could not be opened from the chat. It is under From Claude.'); }
@@ -18915,7 +18972,7 @@ body { width: max-content !important; min-width: 0 !important; }
       //  so it does not ask which profile when you are plainly working in one)
       for (const p of ps) { const t = (cos.teams || {})[p.id]; const l = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief).map(n => String(n.name || '').trim()).filter(Boolean) : []; if (l.length) staff[p.name.trim()] = l; }
       const act = activeProfile();
-      about = { names: ps.map(p => p.name.trim()), active: connAskOn() && act ? String(act.name || '').trim() : '', staff, panel: ls.get('claudeNavigator.connPanel') !== '0' };
+      about = { names: ps.map(p => p.name.trim()), active: connAskOn() && act ? String(act.name || '').trim() : '', staff, panel: ls.get('claudeNavigator.connPanel') !== '0', answers: connAnswersOn() };
     } catch (e) { return; }
     const key = JSON.stringify(about) + '|' + ((connUi.status.url || '').slice(-8));
     if (!force && ls.get('claudeNavigator.connProfilesSent') === key) return;
@@ -18931,6 +18988,7 @@ body { width: max-content !important; min-width: 0 !important; }
       if (connUi.status.on && !connUi.busy && navigator.onLine !== false && !offIs()) {
         connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
         if (r && r.gone) connUi.status = { on: false };
+        if (r && r.ok && (r.asks || []).length) connAsks(r.asks);
         if (r && r.ok && (r.cmds || []).length) setTimeout(() => connCmds(r.cmds), (r.fresh || []).length ? 600 : 0);
         if (r && r.ok && (r.fresh || []).length) {
           const open = Object.keys(connUi.open); connUi.items = (r.items || []).map(x => (open.includes(x.id) && connUi.items.find(y => y.id === x.id)) || x); connPaint(); chime('ready');
@@ -18942,7 +19000,7 @@ body { width: max-content !important; min-width: 0 !important; }
         }
       }
     } catch (e) { connUi.busy = false; }
-    if (connUi.status && connUi.status.on) connUi.timer = setTimeout(connPoll, document.visibilityState === 'visible' ? 5000 : 60000);
+    if (connUi.status && connUi.status.on) connUi.timer = setTimeout(connPoll, document.visibilityState === 'visible' ? 5000 : connAnswersOn() ? 20000 : 60000);
   }
   window.addEventListener('focus', () => { if (connUi.status && connUi.status.on) connPoll(); });
   setTimeout(connPoll, 5000);
