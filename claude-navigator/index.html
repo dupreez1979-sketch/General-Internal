@@ -5443,7 +5443,7 @@
   }
   function showNewMenu(x, y, folderId = newHereFolder()) {
     // In the Design Studio, New means a new design (and still a new folder to keep designs in).
-    if (isApp && currentApp === 'navigator' && navFace === 'studio') return showMenu(x, y, [['slides', 'Slides'], ['doc', 'Document'], ['design', 'Design'], ['dashboard', 'Dashboard'], ['whiteboard', 'Whiteboard']].map(([k, label]) => ({ label: `New ${label} Design`, icon: NEW_KINDS[k].icon, run: () => dsNew(k) })).concat(['-', { label: 'Save the Claude Page on Screen\u2026', disabled: !state.pageUrl || pane.hidden, run: dsSavePage }, '-', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) }]));
+    if (isApp && currentApp === 'navigator' && navFace === 'studio') return showMenu(x, y, [['slides', 'Slides'], ['doc', 'Document'], ['design', 'Design'], ['dashboard', 'Dashboard'], ['whiteboard', 'Whiteboard']].map(([k, label]) => ({ label: `New ${label}`, icon: NEW_KINDS[k].icon, run: () => dsNew(k) })).concat(['-', { label: 'Save the Claude Page on Screen\u2026', disabled: !state.pageUrl || pane.hidden, run: dsSavePage }, '-', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) }]));
     const f = nodeOf(folderId);
     const where = f ? ` in “${f.name}”` : '';
     showMenu(x, y, [
@@ -7455,6 +7455,7 @@
     ].filter(Boolean)); });
   $('bNewMenu').addEventListener('click', e => {
     const b = e.currentTarget.getBoundingClientRect();
+    if (isApp && currentApp === 'navigator' && navFace === 'studio') return showNewMenu(b.left, b.bottom + 4);          // (in the Design Studio, + makes a design)
     if (!inMondayList()) return showNewPanel(b.left, b.bottom + 4);
     if (inMondayList()) return showMenu(b.left, b.bottom + 4, [{ label: 'New Folder for Workspaces\u2026', icon: 'folder', run: () => mgNew() }, mondayData.connected && mondayData.error !== 'token' ? { label: 'New Board\u2026', run: () => openNewBoard() } : null].filter(Boolean));
     showNewMenu(b.left, b.bottom + 4);
