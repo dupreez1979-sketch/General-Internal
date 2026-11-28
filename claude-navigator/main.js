@@ -2110,14 +2110,16 @@ ipcMain.handle('conn-on', async e => {
 });
 ipcMain.handle('conn-off', async e => { if (!fromOwnWindow(e)) return null; const c = connGet(); try { if (c && c.t) await connPost('unregister', {}, c.t); } catch (er) { /* removed here all the same */ } try { fs.rmSync(connFile(), { force: true }); fs.rmSync(connBoxFile(), { force: true }); } catch (er) { /* gone */ } return { ok: true }; });
 ipcMain.handle('conn-pull', async e => {
-  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [], fresh: [] };
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on) return { ok: true, items: [], fresh: [], cmds: [] };
   try {
     const r = await connPost('pull', {}, c.t); if (!r.ok) return { ok: false, gone: r.status === 401 };
     const items = [], ids = [];
     for (const row of r.data.rows || []) { ids.push(row.id); try { items.push(Object.assign(connOpen(c, row.sealed), { id: row.id })); } catch (er) { /* not for this Mac, or damaged: dropped */ } }
     if (items.length) connBoxPut(connBox().filter(x => !items.some(y => y.id === x.id)).concat(items));        // kept here before the relay's copy goes
     if (ids.length) await connPost('ack', { ids }, c.t);
-    return { ok: true, fresh: items.map(x => x.id), items: connBox() };
+    // (buttons pressed in the panel in the Claude chat: which item of which hand-over, and whether to open or dismiss it)
+    const cmds = (Array.isArray(r.data.cmds) ? r.data.cmds : []).filter(x => x && /^[0-9a-f]{10}$/.test(String(x.ref)) && ['emails', 'meetings', 'changes', 'actions', 'documents'].includes(x.kind) && Number.isInteger(x.index) && ['open', 'dismiss'].includes(x.act)).slice(0, 20);
+    return { ok: true, fresh: items.map(x => x.id), items: connBox(), cmds };
   } catch (er) { return { ok: false }; }
 });
 const apiKeyFile = () => path.join(app.getPath('userData'), 'api-key.bin');

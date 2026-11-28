@@ -59,6 +59,12 @@ const TOOLS = [{
   description: "Find out what the user did in his Chief of Staff app with things you handed over using show_for_approval: for each email, meeting, change, action and document, whether it is still waiting, was opened, done, dismissed or failed. Use it before you say that anything was sent, booked, added or changed, and when he asks what happened. It tells you only the state of each item, in the order you gave them. An email or meeting that was opened is with him to check and send: you cannot know whether he sent it.",
   inputSchema: { type: "object", properties: { ref: { type: "string", description: "The reference show_for_approval gave you. Leave out for the most recent hand-overs." } } },
   annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+}, {
+  name: "act_on_item",
+  title: "Open or dismiss one item in his app",
+  description: "Open one item you handed over in the user's Chief of Staff app (an email or meeting opens for him to check; nothing is sent), or take it off his list. This is what the buttons in the panel do. Call it yourself only when he asks you to open or dismiss a particular item. Never dismiss anything he did not ask you to.",
+  inputSchema: { type: "object", properties: { ref: { type: "string", description: "The reference show_for_approval gave" }, kind: { type: "string", enum: ["emails", "meetings", "changes", "actions", "documents"] }, index: { type: "integer", description: "Which one of that kind, counting from 0 in the order you gave them" }, do: { type: "string", enum: ["open", "dismiss"] } }, required: ["ref", "kind", "index", "do"] },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 }];
 
 // ---------- The panel shown in the chat ----------
@@ -76,6 +82,9 @@ const UI_HTML = String.raw`<!DOCTYPE html>
   .it { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid light-dark(rgba(0,0,0,.09), rgba(255,255,255,.14)); }
   .k { flex: none; width: 74px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
   .t { flex: 1; min-width: 0; } .t b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .t span { font-size: 12px; opacity: .7; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .go { flex: none; display: flex; gap: 6px; align-items: center; }
+  .go button { font-size: 12px; padding: 3px 10px; border-radius: 7px; } .go .x { padding: 3px 7px; border-color: transparent; opacity: .6; } .go .x:hover { opacity: 1; }
+  .go .main { background: light-dark(#17384a, #dfe9ee); color: light-dark(#fff, #10222c); border-color: transparent; }
   .st { flex: none; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: light-dark(rgba(0,0,0,.07), rgba(255,255,255,.14)); white-space: nowrap; }
   .st.done { background: light-dark(#dff3e4, #1f4a2c); } .st.gone { opacity: .55; } .st.bad { background: light-dark(#fbe1dc, #5a2520); }
   .foot { display: flex; gap: 10px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid light-dark(rgba(0,0,0,.09), rgba(255,255,255,.14)); }
@@ -87,7 +96,7 @@ const UI_HTML = String.raw`<!DOCTYPE html>
 <h1 id="h">For your Chief of Staff app</h1>
 <p class="sub" id="sub">Preparing</p>
 <div id="list"></div>
-<div class="foot"><span id="note">Nothing is sent or changed until you approve it in the app.</span><button id="chk" disabled>See What Happened</button></div>
+<div class="foot"><span id="note">Open an item to check it in your app. Nothing is sent until you send it.</span><button id="chk" disabled>See What Happened</button></div>
 <script>
 (function () {
   var nextId = 1, pending = {}, args = null, ref = "", host = {};
@@ -114,6 +123,13 @@ const UI_HTML = String.raw`<!DOCTYPE html>
       var i = seen[r[0]] = (seen[r[0]] == null ? 0 : seen[r[0]] + 1), st = state && state[r[0]] && state[r[0]][i];
       var it = el("div", "it"); it.appendChild(el("span", "k", r[1])); var t = el("div", "t"); t.appendChild(el("b", "", r[2])); if (r[3]) t.appendChild(el("span", "", r[3])); it.appendChild(t);
       if (st) it.appendChild(el("span", "st" + (st === "waiting" ? "" : st === "dismissed" ? " gone" : st === "failed" ? " bad" : " done"), WORD[st] || st));
+      if (ref && st !== "dismissed") {
+        var g = el("span", "go"), verb = { emails: "Open", meetings: "Open", changes: "Review", actions: "Add", documents: "Make" }[r[0]] || "Open";
+        var b = el("button", st && st !== "waiting" ? "" : "main", st && st !== "waiting" && r[0] !== "changes" ? (verb === "Open" ? "Open Again" : verb) : verb); b.title = "Opens it in your Chief of Staff app. Nothing is sent.";
+        b.addEventListener("click", (function (kind, n, btn) { return function () { act(kind, n, "open", btn); }; })(r[0], i, b)); g.appendChild(b);
+        if (!st || st === "waiting") { var x = el("button", "x", "×"); x.title = "Take this one off the list"; x.addEventListener("click", (function (kind, n, btn) { return function () { act(kind, n, "dismiss", btn); }; })(r[0], i, x)); g.appendChild(x); }
+        it.appendChild(g);
+      }
       list.appendChild(it);
     });
     size();
@@ -124,6 +140,7 @@ const UI_HTML = String.raw`<!DOCTYPE html>
     var sc = (res && res.structuredContent) || {}, tx = res && res.content && res.content[0] && res.content[0].text || "";
     if (sc.states) { var one = sc.states[0]; if (one) { if (!ref) ref = one.ref || ""; paint(one.state); sub("As at " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); } return; }
     if (res && res.isError) { sub(tx || "It could not be handed over."); return; }
+    if (sc.asked) return;
     if (sc.ref) { ref = sc.ref; sub("Waiting in your Chief of Staff app for you to approve"); document.getElementById("chk").disabled = false; paint(sc.state || null); }
     else if (tx) sub(tx.slice(0, 160));
   }
@@ -141,6 +158,16 @@ const UI_HTML = String.raw`<!DOCTYPE html>
     if (host.serverTools) request("tools/call", { name: "check_outcome", arguments: ref ? { ref: ref } : {} }).then(function (r) { fromResult(r); again(); }, function () { ask(); again(); });
     else { ask(); again(); }
   });
+  var last = null;
+  function act(kind, n, what, btn) {
+    btn.disabled = true; sub(what === "open" ? "Asking your app to open it" : "Taking it off the list");
+    var a = { ref: ref, kind: kind, index: n, do: what };
+    var done = function () { sub(what === "open" ? "Opening in your Chief of Staff app (a few seconds)" : "Taken off the list"); setTimeout(refresh, 7000); };
+    var viaClaude = function () { request("ui/message", { role: "user", content: [{ type: "text", text: (what === "open" ? "Open" : "Dismiss") + " item " + (n + 1) + " of the " + kind + " you handed to my Chief of Staff app (reference " + ref + "), using act_on_item." }] }).then(function () { sub("Asked Claude to do it"); }, function () { btn.disabled = false; sub("It could not be passed on. Open it from the app."); }); };
+    if (host.serverTools) request("tools/call", { name: "act_on_item", arguments: a }).then(function (r) { if (r && r.isError) { btn.disabled = false; sub((r.content && r.content[0] && r.content[0].text) || "It could not be passed on."); } else done(); }, viaClaude);
+    else viaClaude();
+  }
+  function refresh() { if (!host.serverTools) return; request("tools/call", { name: "check_outcome", arguments: ref ? { ref: ref } : {} }).then(function (r) { fromResult(r); }, function () {}); }
   function ask() { sub("Asked Claude to check"); request("ui/message", { role: "user", content: [{ type: "text", text: "What happened to what you handed to my Chief of Staff app" + (ref ? " (reference " + ref + ")" : "") + "? Check with check_outcome." }] }).catch(function () { sub("Ask Claude: what happened to what you handed over?"); }); }
   try { new ResizeObserver(size).observe(document.body); } catch (e) {}
   request("ui/initialize", { protocolVersion: "2026-01-26", appInfo: { name: "chief-of-staff-app", version: "1.0.0" }, appCapabilities: { availableDisplayModes: ["inline"] } }).then(function (r) { host = (r && r.hostCapabilities) || {}; vars(r && r.hostContext); notify("ui/notifications/initialized", {}); size(); }, function () { notify("ui/notifications/initialized", {}); });
@@ -241,7 +268,7 @@ const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.5.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.6.0" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -309,6 +336,19 @@ async function mcp(req: Request, secret: string) {
           for (const k of KINDS) (Array.isArray(st[k]) ? st[k] : []).forEach((v, n) => lines.push(`- ${ONE[k]} ${n + 1}: ${SAY[v] || v}`));
           return `Reference ${o.ref}, handed over ${String(o.created_at).slice(0, 16).replace("T", " ")} UTC:\n${lines.join("\n") || "- nothing listed"}`; }).join("\n\n");
         return ok({ content: [{ type: "text", text: text + "\n\nItems are numbered in the order you gave them. Do not say anything was sent: he sends emails and invitations himself." }], structuredContent: { states: list.map((o: any) => ({ ref: o.ref, state: o.state })) } });
+      }
+      // A button in the panel: the app is asked to open that item, or take it off the list. It collects the request
+      // within a few seconds. Nothing about the item itself is kept here: only which one, and what to do.
+      if (p.name === "act_on_item") {
+        const okRef = typeof a.ref === "string" && /^[0-9a-f]{10}$/.test(a.ref), idx = Number(a.index);
+        if (!okRef || !KINDS.includes(a.kind) || !Number.isInteger(idx) || idx < 0 || idx > 99 || !["open", "dismiss"].includes(a.do)) return ok({ content: [{ type: "text", text: "That is not an item that was handed over." }], isError: true });
+        const known = await (await db(`cos_outcomes?s_hash=eq.${sHash}&ref=eq.${a.ref}&select=state`)).json().catch(() => []);
+        const st = Array.isArray(known) && known[0] && known[0].state && Array.isArray(known[0].state[a.kind]) ? known[0].state[a.kind] : null;
+        if (!st || idx >= st.length) return ok({ content: [{ type: "text", text: "That item is not among what was handed over under that reference." }], isError: true });
+        await db(`cos_cmds?s_hash=eq.${sHash}&created_at=lt.${new Date(Date.now() - 600e3).toISOString()}`, { method: "DELETE" });
+        const r = await db("cos_cmds", { method: "POST", body: JSON.stringify({ s_hash: sHash, ref: a.ref, kind: a.kind, idx, act: a.do }) });
+        if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be passed to the app just now. Try again in a moment." }], isError: true });
+        return ok({ content: [{ type: "text", text: a.do === "open" ? "His app has been asked to open it. It opens within a few seconds if the app is running on his Mac. Nothing has been sent." : "His app has been asked to take it off the list." }], structuredContent: { asked: a.do, kind: a.kind, index: idx } });
       }
       if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
       const n = KINDS.map(k => a[k]).reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
@@ -380,7 +420,14 @@ async function app(req: Request, what: string) {
   const box = await (await db(`cos_boxes?t_hash=eq.${tHash}&select=s_hash`)).json().catch(() => []);
   if (!Array.isArray(box) || !box.length) return json({ error: "not known" }, 401);
   const s = box[0].s_hash;
-  if (what === "pull") { const rows = await (await db(`cos_relay?s_hash=eq.${s}&select=id,sealed,created_at&order=created_at.asc&limit=20`)).json().catch(() => []); return json({ ok: true, rows: Array.isArray(rows) ? rows : [] }); }
+  if (what === "pull") {
+    const rows = await (await db(`cos_relay?s_hash=eq.${s}&select=id,sealed,created_at&order=created_at.asc&limit=20`)).json().catch(() => []);
+    // (buttons pressed in the chat panel: handed over once, then gone)
+    const cmds = await (await db(`cos_cmds?s_hash=eq.${s}&select=id,ref,kind,idx,act&order=created_at.asc&limit=20`)).json().catch(() => []);
+    const list = Array.isArray(cmds) ? cmds : [];
+    if (list.length) await db(`cos_cmds?s_hash=eq.${s}&id=in.(${list.map((c: any) => c.id).join(",")})`, { method: "DELETE" });
+    return json({ ok: true, rows: Array.isArray(rows) ? rows : [], cmds: list.map((c: any) => ({ ref: c.ref, kind: c.kind, index: c.idx, act: c.act })) });
+  }
   if (what === "ack") { const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x: unknown) => typeof x === "string" && /^[0-9a-f-]{36}$/.test(x as string)).slice(0, 40); if (ids.length) await db(`cos_relay?s_hash=eq.${s}&id=in.(${ids.join(",")})`, { method: "DELETE" }); return json({ ok: true }); }
   // The names of his profiles (names only), so Claude can offer them as choices. An empty list turns the question off.
   // Also: which profile his app is in now (so he is not asked when he is plainly in one), the titles of his staff in
@@ -404,7 +451,7 @@ async function app(req: Request, what: string) {
   if (what === "rotate") {                                              // a new address and key for the same app; the old address stops at once
     if (!okHash(body.s_hash) || !okHash(body.t_hash) || typeof body.pub !== "string" || body.pub.length > 200) return json({ error: "bad request" }, 400);
     const was = await (await db(`cos_boxes?s_hash=eq.${s}&select=profiles,ctx`)).json().catch(() => []);
-    await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); await db(`cos_outcomes?s_hash=eq.${s}`, { method: "DELETE" });
+    await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); await db(`cos_outcomes?s_hash=eq.${s}`, { method: "DELETE" }); await db(`cos_cmds?s_hash=eq.${s}`, { method: "DELETE" });
     const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub, profiles: (Array.isArray(was) && was[0] && was[0].profiles) || [], ctx: (Array.isArray(was) && was[0] && was[0].ctx) || {} }) });
     return r.ok ? json({ ok: true }) : json({ error: "could not change it" }, 400);
   }

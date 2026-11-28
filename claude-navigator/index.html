@@ -1795,6 +1795,7 @@
   .cos-head .sp { flex: 1; -webkit-app-region: drag; }
   .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
+  dialog.conn-quiet { opacity: 0; pointer-events: none; } dialog.conn-quiet::backdrop { background: transparent; }
   .pop-leaving { opacity: .55; outline: 2px dashed var(--accent); outline-offset: -2px; }
   .cos-canvas { cursor: grab; } .cos-canvas.panning, .cos-canvas.panning * { cursor: grabbing !important; user-select: none; }
   .cos-canvas [data-cid], .cos-canvas button, .cos-canvas a, .cos-canvas input { cursor: default; }
@@ -18333,7 +18334,7 @@ body { width: max-content !important; min-width: 0 !important; }
           row('If the Address Gets Out', 'Make a new one. The old address stops working at once, and you add the new one in Claude in its place.', ['New Address\u2026', async () => { if (!confirm('Make a new address? The one in Claude stops working until you replace it there.')) return; const r = await window.navigatorApp.connRotate(); if (!r || !r.ok) return toast((r && r.error) || 'The address could not be changed.'); connUi.status = await window.navigatorApp.connStatus(); try { await navigator.clipboard.writeText(r.url); toast('The new address is copied. Replace the connector in Claude with it.'); } catch (e) { /* copied from the row above */ } show(); }]);
           row('Claude Asks Which Profile', connAskOn() ? 'On. When Claude is not sure which profile something is for, who an action is for, or who a reply goes to, it asks you in the chat with a short list to pick from. It does not ask about the profile while this app is in one. Only names are given to the relay: your profiles and your staff titles.' : 'Off. Claude does not ask, and the relay holds none of your profile or staff names. You choose on the card in this app.',
             [connAskOn() ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connAsk', connAskOn() ? '0' : '1'); await connTellProfiles(true); show(); }]);
-          row('A Panel in the Claude Chat', ls.get('claudeNavigator.connPanel') !== '0' ? 'On. When Claude hands something over, the chat shows it laid out in a small panel, with a button to see what you have done with it.' : 'Off. Claude just says that it is waiting in the app.',
+          row('A Panel in the Claude Chat', ls.get('claudeNavigator.connPanel') !== '0' ? 'On. When Claude hands something over, the chat shows it in a small panel. You open or dismiss each item from there, and nothing pops up over the chat. It also waits under From Claude.' : 'Off. Claude just says that it is waiting, and this app shows it to you in a window.',
             [ls.get('claudeNavigator.connPanel') !== '0' ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connPanel', ls.get('claudeNavigator.connPanel') !== '0' ? '0' : '1'); await connTellProfiles(true); show(); }]);
           row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
         }
@@ -18639,7 +18640,18 @@ body { width: max-content !important; min-width: 0 !important; }
     c.hidden = !n; c.textContent = n ? `From Claude \u00b7 ${todo || n} to do` : '';
     c.style.bottom = $('offChip') && !$('offChip').hidden ? '46px' : '12px';
   }
-  async function connShow(it) {
+  // A button pressed in the panel in the Claude chat: open that item, or take it off the list, without the list window
+  // getting in the way. (An item that needs a choice from you, such as a change to approve, shows the window.)
+  async function connCmds(cmds) {
+    for (const c of cmds) {
+      const it = connUi.items.find(x => x.ref === c.ref);
+      if (!it) { toast('That one has already been dealt with.'); continue; }
+      if (connUi.open[it.id]) continue;                       // its window is open: you are already looking at it
+      if (mailUi.compose && c.act === 'open' && (c.kind === 'emails')) { toast('Finish or close the email you are writing, then open it again.'); continue; }
+      try { await connShow(it, c); } catch (e) { toast('It could not be opened from the chat. It is under From Claude.'); }
+    }
+  }
+  async function connShow(it, cmd) {
     if (connUi.open[it.id]) return;
     const emails = (Array.isArray(it.emails) ? it.emails : []).map(m => ({ to: String(m.to || ''), cc: String(m.cc || ''), subject: String(m.subject || ''), text: String(m.body || ''), _raw: m }));
     const mraw = Array.isArray(it.meetings) ? it.meetings : [];
@@ -18653,11 +18665,11 @@ body { width: max-content !important; min-width: 0 !important; }
     if (!emails.length && !meets.length && !changes.length && !acts.length && !docs.length) { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); return connPaint(); }
     const acc = connAccFor(it.for_account);
     connUi.open[it.id] = true;
-    const d = mailDlg('plan-dlg mail-meets', '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><span class="cn-left"></span><span class="dlg-spacer"></span><button class="btn" data-x="later" title="It stays under From Claude until you have finished with it">Keep for Later</button><button class="btn-primary" data-x="close" title="Takes it off the waiting list">Finished</button></div>');
+    const d = mailDlg('plan-dlg mail-meets' + (cmd ? ' conn-quiet' : ''), '<h2></h2><p class="hint">From Claude, for you to check. Nothing is sent, and nobody is invited, unless you do it yourself.</p><div class="mt-list"></div><div class="pl-host"></div><div class="dlg-actions"><span class="cn-left"></span><span class="dlg-spacer"></span><button class="btn" data-x="later" title="It stays under From Claude until you have finished with it">Keep for Later</button><button class="btn-primary" data-x="close" title="Takes it off the waiting list">Finished</button></div>');
     d.querySelector('h2').textContent = String(it.summary || 'From Claude').slice(0, 140);
     // Each thing has its own line: open it (which takes you to Mail or the Calendar and counts it as dealt with), tick it
     // done yourself, or take it off the list. What you have dealt with stays dealt with when you come back.
-    const raws = [];
+    const raws = [], regs = [];
     const left = () => raws.filter(r => !r._done && !r._gone).length + changes.filter(c => !c._st).length;
     // Claude can ask what became of what it handed over. It is told only the state of each item, by its place in the
     // list (waiting, opened, done, dismissed, did not work), never what the items were.
@@ -18675,9 +18687,12 @@ body { width: max-content !important; min-width: 0 !important; }
       r.querySelector('b').textContent = title; r.querySelector('span').textContent = sub;
       const go = r.querySelector('[data-r="go"]'), tick = r.querySelector('[data-r="tick"]');
       const paint = () => { r.classList.toggle('done', !!raw._done); go.textContent = raw._opened || raw._done ? words[1] : words[0]; go.className = raw._done ? 'btn' : 'btn-primary'; tick.textContent = raw._done ? '✓ Done' : 'Mark Done'; tick.title = raw._done ? 'Dealt with. Click to put it back on the list.' : 'Tick this off without opening it'; count(); };
-      go.addEventListener('click', async () => { raw._opened = true; raw._done = true; paint(); if (goTo) { await shut(true); try { if (currentApp !== goTo) setApp(goTo); } catch (e) { /* opens where you are */ } await new Promise(z => setTimeout(z, 250)); } await run(go); });
+      const doGo = async () => { raw._opened = true; raw._done = true; paint(); if (goTo) { await shut(true); try { if (currentApp !== goTo) setApp(goTo); } catch (e) { /* opens where you are */ } await new Promise(z => setTimeout(z, 250)); } await run(go); };
+      const doX = () => { raw._gone = true; r.remove(); count(); };
+      go.addEventListener('click', doGo);
       tick.addEventListener('click', () => { raw._done = !raw._done; paint(); });
-      r.querySelector('[data-r="x"]').addEventListener('click', () => { raw._gone = true; r.remove(); count(); });
+      r.querySelector('[data-r="x"]').addEventListener('click', doX);
+      regs.push({ raw, doGo, doX, goTo });
       d.querySelector('.mt-list').appendChild(r); paint();
     };
     for (const m of emails) { const rt = m._raw.reply_to && typeof m._raw.reply_to === 'object' && m._raw.reply_to.subject ? m._raw.reply_to : null;
@@ -18709,6 +18724,17 @@ body { width: max-content !important; min-width: 0 !important; }
     d.querySelector('[data-x="close"]').addEventListener('click', () => shut(false));
     d.querySelector('[data-x="later"]').addEventListener('click', () => shut(true));
     d.addEventListener('cancel', e => { e.preventDefault(); shut(true); });
+    if (cmd) {
+      const target = (Array.isArray(it[cmd.kind]) ? it[cmd.kind] : [])[cmd.index], reg = target && regs.find(z => z.raw === target);
+      const reveal = () => d.classList.remove('conn-quiet');
+      if (cmd.act === 'dismiss') {
+        if (reg) { if (!reg.raw._gone) reg.doX(); await shut(true); toast('Taken off the list'); }
+        else if (cmd.kind === 'changes' && changes[cmd.index]) { if (!changes[cmd.index]._st) changes[cmd.index]._st = 'skipped'; await shut(true); toast('Taken off the list'); }
+        else reveal();
+      } else if (reg && reg.goTo) await reg.doGo();                                    // an email or a meeting: straight to it
+      else if (reg && cmd.kind === 'actions' && botStaffNamed(reg.raw.for)) { await reg.doGo(); await shut(true); toast(`Added to the ${botStaffNamed(reg.raw.for).name}\u2019s actions`); }
+      else reveal();                                                                   // needs you: a change to approve, who an action is for, where a document goes
+    }
   }
   // Claude can ask "which profile?" when it is unsure: for that the relay is given the names of your profiles, and
   // nothing else about them. Sent when they change; an empty list (the setting off) stops the question.
@@ -18773,11 +18799,13 @@ body { width: max-content !important; min-width: 0 !important; }
       if (connUi.status.on && !connUi.busy && navigator.onLine !== false && !offIs()) {
         connUi.busy = true; const r = await window.navigatorApp.connPull(); connUi.busy = false;
         if (r && r.gone) connUi.status = { on: false };
+        if (r && r.ok && (r.cmds || []).length) setTimeout(() => connCmds(r.cmds), (r.fresh || []).length ? 600 : 0);
         if (r && r.ok && (r.fresh || []).length) {
           const open = Object.keys(connUi.open); connUi.items = (r.items || []).map(x => (open.includes(x.id) && connUi.items.find(y => y.id === x.id)) || x); connPaint(); chime('ready');
           const fresh = connUi.items.filter(x => r.fresh.includes(x.id));
-          // it opens by itself only when nothing else is in front of you; otherwise it waits under From Claude
-          if (!mailUi.compose && !document.querySelector('dialog[open]')) { for (const it of fresh) await connShow(it); }
+          // With the panel on, the Claude chat shows it and you open things from there, so nothing pops up over the
+          // chat: it waits under From Claude. Without the panel it opens by itself when nothing else is in front of you.
+          if (ls.get('claudeNavigator.connPanel') === '0' && !mailUi.compose && !document.querySelector('dialog[open]')) { for (const it of fresh) await connShow(it); }
           else toast(`Claude has handed over ${fresh.length === 1 ? '\u201c' + String(fresh[0].summary || 'something').slice(0, 50) + '\u201d' : fresh.length + ' things'}. ${fresh.length === 1 ? 'It is' : 'They are'} waiting under From Claude.`, { label: 'Show', run: () => connShow(fresh[0]) });
         }
       }
