@@ -1796,6 +1796,12 @@
   .cos-body { flex: 1; min-width: 0; min-height: 0; display: flex; }
   .cos-canvas { flex: 1; overflow: auto; position: relative; background: radial-gradient(circle, color-mix(in srgb, var(--muted) 22%, transparent) 1px, transparent 1px) 0 0 / 18px 18px; }
   dialog.conn-quiet { opacity: 0; pointer-events: none; } dialog.conn-quiet::backdrop { background: transparent; }
+  dialog.instr-dlg { width: min(620px, 94vw); } dialog.instr-dlg .ic-list { max-height: 56vh; overflow: auto; margin: var(--sp-2) 0; }
+  dialog.instr-dlg .ic-h { font-size: var(--fs-label); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: var(--sp-3) 0 var(--sp-1); }
+  dialog.instr-dlg .ic-r { display: flex; align-items: center; gap: var(--sp-2h); padding: var(--sp-2) 0; border-top: 1px solid var(--line); }
+  dialog.instr-dlg .ic-r > div { flex: 1; min-width: 0; } dialog.instr-dlg .ic-r b { display: block; font-size: var(--fs-body); } dialog.instr-dlg .ic-r div span { display: block; font-size: var(--fs-caption); color: var(--muted); }
+  dialog.instr-dlg .ic-r em { flex: none; font-style: normal; font-size: var(--fs-caption); color: var(--muted); }
+  dialog.instr-dlg .ic-r .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: #c0392b; } dialog.instr-dlg .ic-r.ok .dot { background: #2e9e5b; } dialog.instr-dlg .ic-r.old .dot { background: #e0a020; }
   .pop-leaving { opacity: .55; outline: 2px dashed var(--accent); outline-offset: -2px; }
   .cos-canvas { cursor: grab; } .cos-canvas.panning, .cos-canvas.panning * { cursor: grabbing !important; user-select: none; }
   .cos-canvas [data-cid], .cos-canvas button, .cos-canvas a, .cos-canvas input { cursor: default; }
@@ -6461,8 +6467,27 @@
     items.splice(i < 0 ? items.length : i, 0, '-', { label: n.done ? 'Mark Not Done' : 'Mark Done', run: () => toggleDone(n.id) },
       n.board ? { label: n.board.archived ? 'Open the Archived Whiteboard' : 'Open the Whiteboard', run: () => itemBoardOpen(n.id) } : { label: 'Add a Whiteboard\u2026', run: () => itemBoardMenu(n.id, lastMenuX, lastMenuY) },
       ...(n.board ? [{ label: 'Whiteboard\u2026', key: '\u25B8', run: () => itemBoardMenu(n.id, lastMenuX, lastMenuY) }] : []),
-      ...filingMenuItems(n.id));
+      ...filingMenuItems(n.id),
+      ...(giveItems(n).length ? [{ label: 'Give to Another Staff Member', key: '\u25B8', run: () => showMenu(lastMenuX, lastMenuY, giveItems(n)) }] : []));
     return items;
+  }
+  // An action that landed with the wrong person, or in the wrong profile, is handed to the right one: every staff
+  // member in every profile is offered, under the name of their profile.
+  function giveItems(n) {
+    const here = teamCtxOf(n.id), out = [];
+    for (const p of profiles()) {
+      const t = (cos.teams || {})[p.id], staff = t ? (t.nodes || []).filter(x => x.kind === 'staff' && !x.chief && !(here && here.staff && here.staff.staffId === x.id)) : [];
+      if (!staff.length) continue;
+      if (out.length) out.push('-');
+      out.push({ label: p.name, disabled: true });
+      for (const st of staff) out.push({ label: '   ' + (st.name || 'Staff member'), run: () => {
+        const f = staffFolder(st, p), cur = locate(n.id); if (!f || !cur) return toast('It could not be moved.');
+        snap(); moveNode(cur, f.id); commit();
+        try { if (currentApp === 'cos') renderCos(); else renderAll(); } catch (e) { /* drawn next time */ }
+        toast(`Given to ${st.name}${activeProfile() && activeProfile().id !== p.id ? ' in ' + p.name : ''}`, true);
+      } });
+    }
+    return out;
   }
   function menuForBase(n, scope) {
     const savePage = isApp && state.pageUrl;
@@ -10950,6 +10975,43 @@ body { width: max-content !important; min-width: 0 !important; }
   }
 
   // ---------- Chief of Staff: the … menu and keyboard shortcuts ----------
+  // Where each staff member's Claude Project stands: whether it exists, whether their instructions are in it, and
+  // whether those are the latest. One list for every profile, with the one thing to do beside each.
+  function cosInstrState(n, mine) {
+    if (!n.claudeProject) return { k: 'none', say: 'No Claude Project yet', why: 'They cannot take work until they have one.', go: 'Set Up\u2026' };
+    if (!n.instructionsAt) return { k: 'todo', say: 'Instructions not added', why: 'Their project exists, but Claude has not been told their role or where the files are.', go: 'Add\u2026' };
+    const when = new Date(n.instructionsAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!mine && !(n.folderId && nodeOf(n.folderId))) return { k: 'ok', say: 'Added ' + when, why: '', go: '' };
+    let now = ''; try { now = staffSkillSig(n); } catch (e) { return { k: 'ok', say: 'Added ' + when, why: '', go: '' }; }
+    const was = String(n.instructionsSkills || '');
+    if (now === was) return { k: 'ok', say: 'Up to date', why: 'Last saved ' + when, go: '' };
+    const strip = z => z.replace(/\|\+top folder$/, '').replace(/\|\+app (?:connector|skill)$/, ''), bits = [];
+    if (strip(now) !== strip(was)) bits.push('their skills have changed');
+    if (/\|\+app skill/.test(now) !== /\|\+app skill/.test(was)) bits.push(/\|\+app connector/.test(was) ? 'a shorter line about the app connector' : connOnFlag() ? 'the line about the app connector' : 'the app connector is now off');
+    if (/\|\+top folder$/.test(now) && !/\|\+top folder$/.test(was)) bits.push('how Claude reaches your files');
+    return { k: 'old', say: 'Out of date', why: 'Changed since ' + when + ': ' + (bits.join(', ') || 'the wording') + '.', go: 'Update\u2026' };
+  }
+  function cosInstrCheck() {
+    const d = mailDlg('instr-dlg', '<h2>Staff instructions</h2><p class="hint"></p><div class="ic-list"></div><p class="hint ic-how">To update one: press its button. The app opens their Claude Project and fills in the instructions. In Claude, click Save, then come back and press \u201cI\u2019ve Saved Them\u201d. Nothing needs to be copied by hand unless the filling in does not take.</p><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const list = d.querySelector('.ic-list'), act = activeProfile(); let total = 0, ok = 0;
+    for (const p of profiles()) {
+      const t = (cos.teams || {})[p.id], staff = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief) : [];
+      if (!staff.length) continue;
+      const h = document.createElement('div'); h.className = 'ic-h'; h.textContent = p.name; list.appendChild(h);
+      for (const n of staff) {
+        const st = cosInstrState(n, !!act && act.id === p.id); total++; if (st.k === 'ok') ok++;
+        const r = document.createElement('div'); r.className = 'ic-r ' + st.k; r.innerHTML = '<span class="dot"></span><div><b></b><span></span></div><em></em>';
+        r.querySelector('b').textContent = n.name || 'Staff member'; r.querySelector(':scope > div > span').textContent = st.why; r.querySelector('em').textContent = st.say;
+        if (st.go) { const b = document.createElement('button'); b.type = 'button'; b.className = st.k === 'old' ? 'btn' : 'btn-primary'; b.textContent = st.go;
+          b.addEventListener('click', () => { d.close(); if (!act || act.id !== p.id) setProfile(p.id, { quiet: true }); setTimeout(() => { try { if (currentApp !== 'cos') setApp('cos'); if (n.instructionsAt) cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); } catch (e) { toast('Open ' + (n.name || 'them') + ' in Chief of Staff and press Update Instructions.'); } }, act && act.id === p.id ? 0 : 500); });
+          r.appendChild(b); }
+        list.appendChild(r);
+      }
+    }
+    d.querySelector('.hint').textContent = total ? (ok === total ? `All ${total} staff are up to date. Nothing to do.` : `${ok} of ${total} staff are up to date. ${total - ok} need${total - ok === 1 ? 's' : ''} something.`) : 'No staff have been added yet.';
+    if (!total || ok === total) d.querySelector('.ic-how').remove();
+    d.querySelector('[data-x="close"]').addEventListener('click', () => d.close());
+  }
   function cosMoreMenu(x, y) {
     const t = cosTeam();
     showMenu(x, y, [
@@ -10957,6 +11019,8 @@ body { width: max-content !important; min-width: 0 !important; }
       '-',
       { label: 'Ask the Team', disabled: !t, run: () => { const c = t && t.nodes.find(x => x.chief); if (c) cosAsk(c); } },
       { label: claraNode() ? 'Ask Clara to Schedule…' : 'Add an Executive Assistant with Clara…', disabled: !t, run: () => claraNode() ? askClara(claraNode()) : cosAddClara() },
+      '-',
+      { label: 'Check Staff Instructions…', run: () => cosInstrCheck() },
       '-',
       { label: 'Export Org Chart as PDF…', disabled: !t, run: () => cosExport('pdf') },
       { label: 'Export Org Chart as Image…', disabled: !t, run: () => cosExport('png') },
