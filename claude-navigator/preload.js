@@ -25,6 +25,7 @@ if (location.protocol === 'file:') contextBridge.exposeInMainWorld('navigatorApp
   confirmBox: (o) => { try { return ipcRenderer.sendSync('confirm-box', o); } catch (e) { return null; } },
   iconSet: () => ipcRenderer.invoke('icon-set'),
   clipText: () => ipcRenderer.invoke('clip-text'),
+  clipHtml: () => ipcRenderer.invoke('clip-html'),
   readDownloadedHtml: (file) => ipcRenderer.invoke('read-downloaded-html', file),
   startupLog: () => ipcRenderer.invoke('startup-log'),
   startNote: (text) => ipcRenderer.send('start-note', String(text)),

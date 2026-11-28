@@ -1585,6 +1585,8 @@ ipcMain.handle('open-external', (_e, url) => { if (httpUrl(url)) return shell.op
 // you downloaded (an .html file in Downloads, read as text and never run).
 // The set of icons an app's own icon can be changed to (Lucide, ISC licence: vendor/lucide-LICENSE.txt).
 ipcMain.handle('icon-set', async e => { if (!fromOwnWindow(e)) return null; try { return JSON.parse(await fs.promises.readFile(path.join(__dirname, 'vendor', 'lucide-icons.json'), 'utf8')); } catch (er) { return {}; } });
+// (a Copy button on a design usually puts the design itself on the clipboard as HTML, and only its words as text)
+ipcMain.handle('clip-html', e => (fromOwnWindow(e) ? String(clipboard.readHTML() || '').slice(0, 600000) : ''));
 ipcMain.handle('clip-text', e => (fromOwnWindow(e) ? String(clipboard.readText() || '').slice(0, 400000) : ''));
 ipcMain.handle('read-downloaded-html', async (e, file) => {
   if (!fromOwnWindow(e) || typeof file !== 'string' || !/\.html?$/i.test(file) || !inDownloads(file)) return '';
