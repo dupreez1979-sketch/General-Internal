@@ -539,7 +539,7 @@ async function mcp(req: Request, secret: string) {
           if (folders.length) props.folder = { type: "string", title: "Folder", enum: [...folders, LATER] };
           const said = [D.type || "", curStaff ? "for " + curStaff : "", curFolder ? "in " + curFolder : ""].filter(Boolean).join(", ");
           console.log("mcp " + JSON.stringify({ call: "tools/call", step: "design form", fields: Object.keys(props) }));
-          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: `Save \u201c${D.name}\u201d to your Design Studio?${said ? " Suggested: " + said + "." : ""} Change anything below, or leave it as it is.`, requestedSchema: { type: "object", properties: props, required: [] } } } } } }, status: 200 };
+          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: `Save “${D.name}” to your Design Studio?${said ? " Suggested: " + said + "." : ""} Change anything below, or leave it as it is.`, requestedSchema: { type: "object", properties: props, required: [] } } } } } }, status: 200 };
         }
         if (inApp) D.folder = "";          // (with no folder given, his app opens its own Save form for him to confirm)
         const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), design: D }));
