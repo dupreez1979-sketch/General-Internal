@@ -9536,9 +9536,57 @@
     viewExec(script).then(r => { if (r === 'filled' || r === 'same' || r === 'name only') return end(r); if (tries > 1) setTimeout(() => cosFill(script, tries - 1, said), 1500); else end('none'); })
       .catch(() => { if (tries > 1) setTimeout(() => cosFill(script, tries - 1, said), 1500); else end('none'); });
   }
-  const cosFillSaid = n => r => toast(r === 'filled' ? `${n.name}’s new instructions are in the box in Claude. Click Save there, then “I’ve Saved Them” here.`
-    : r === 'same' ? `${n.name}’s instructions in Claude are already the latest. Press “I’ve Saved Them”.`
-    : `The instructions could not be put into Claude’s box. Copy them from here and paste over what is there.`);
+  // Presses Save in that same box, and waits for Claude to close it (which is how it says the save took).
+  const SAVE_INSTRUCTIONS = `(async () => {
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    let clicked = false;
+    for (let i = 0; i < 48; i++) {
+      const d = document.querySelector('[role="dialog"]');
+      if (!d) return clicked ? 'saved' : 'none';
+      if (!clicked) { const b = [...d.querySelectorAll('button')].find(e => /^save/i.test((e.innerText || '').trim())); if (b && !b.disabled && b.getAttribute('aria-disabled') !== 'true') { b.click(); clicked = true; } }
+      await sleep(250);
+    }
+    return 'none';
+  })()`;
+  // One staff member's instructions, put into their Claude Project and saved there, with nothing for you to copy or
+  // press. It is done in the Claude pane in front of you, after you asked for it. Resolves 'saved', 'same' (they were
+  // already the latest) or 'failed' (then it is left open for you to finish by hand).
+  function cosInstrPush(n, quiet) {
+    return new Promise(done => {
+      if (!n.claudeProject) return done('failed');
+      cosUi.page = n.id; cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos();
+      go({ kind: 'page', url: n.claudeProject.url });
+      const mark = () => cosChange(() => { n.instructionsAt = Date.now(); n.instructionsSkills = staffSkillSig(n); }, null);
+      cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n)), 8, async r => {
+        if (r === 'same') { mark(); viewExec(`(() => { const d = document.querySelector('[role="dialog"]'); const b = d && [...d.querySelectorAll('button')].find(e => /^cancel/i.test((e.innerText || '').trim())); if (b) b.click(); })()`).catch(() => {}); if (!quiet) toast(`${n.name}’s instructions in Claude were already the latest.`); return done('same'); }
+        if (r !== 'filled') { if (!quiet) toast(`${n.name}’s instructions could not be put into Claude’s box. Copy them from here and paste over what is there.`); return done('failed'); }
+        let sv = 'none'; try { sv = await viewExec(SAVE_INSTRUCTIONS); } catch (e) { sv = 'none'; }
+        if (sv === 'saved') { mark(); if (!quiet) toast(`${n.name}’s instructions are saved in their Claude Project.`, true); return done('saved'); }
+        if (!quiet) toast(`${n.name}’s new instructions are in the box in Claude, but Save could not be pressed for you. Click Save there, then “I’ve Saved Them” here.`);
+        done('failed');
+      });
+    });
+  }
+  // Every staff member whose instructions are behind, one after another, while you watch. Stops at the first one that
+  // cannot be saved, so nothing is left half done without your knowing.
+  async function cosInstrPushAll(list) {
+    if (cosUi.pushing) return; cosUi.pushing = true;
+    let ok = 0, stopped = null;
+    try {
+      for (let i = 0; i < list.length; i++) {
+        const { n, p } = list[i];
+        if (!activeProfile() || activeProfile().id !== p.id) { setProfile(p.id, { quiet: true }); await new Promise(z => setTimeout(z, 700)); }
+        if (currentApp !== 'cos') { setApp('cos'); await new Promise(z => setTimeout(z, 400)); }
+        toast(`Updating ${n.name} (${i + 1} of ${list.length})…`);
+        const r = await cosInstrPush(n, true);
+        if (r === 'failed') { stopped = n; break; }
+        ok++; await new Promise(z => setTimeout(z, 900));
+      }
+    } finally { cosUi.pushing = false; }
+    cosUi.setupFor = null; cosUi.adding = false; try { renderCos(); } catch (e) { /* drawn next time */ }
+    if (stopped) { toast(`${ok} updated. ${stopped.name} could not be saved automatically: finish that one by hand, then carry on.`, { label: 'Show the List', run: () => cosInstrCheck() }); cosChange(() => { delete stopped.instructionsAt; }, null); cosStartSetup(stopped); }
+    else { chime('made'); toast(`All ${ok} staff instructions are up to date in Claude.`, { label: 'Show the List', run: () => cosInstrCheck() }); }
+  }
   // Projects already in Claude that look like this staff member's.
   function cosProjectMatches(n) {
     const p = activeProfile(), want = [n.name, p ? p.name : ''].filter(Boolean).join(' ');
@@ -9559,12 +9607,12 @@
   function cosStartSetup(n) {
     cosUi.page = n.id; cosUi.setupFor = n.id;
     cosFreshProjects(() => { if (cosUi.setupFor) cosRender(); });
-    if (n.claudeProject) { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: n.claudeProject.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n)), 8, cosFillSaid(n)); return; }
+    if (n.claudeProject) { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); cosInstrPush(n).then(r => { if (r !== 'failed' && cosUi.setupFor === n.id) { cosUi.setupFor = null; cosUi.adding = false; renderCos(); } }); return; }
     cosSetUpProject(n);
   }
   function cosLinkProject(n, pr) {
     cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; }, `${n.name} now uses \u201c${pr.name}\u201d`);
-    if (cosUi.setupFor === n.id) { cosUi.adding = true; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: pr.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n)), 8, cosFillSaid(n)); }
+    if (cosUi.setupFor === n.id) cosInstrPush(n).then(r => { if (r !== 'failed' && cosUi.setupFor === n.id) { cosUi.setupFor = null; cosUi.adding = false; renderCos(); } });
   }
   // A short line for Claude's "What are you trying to achieve?" (the instructions come later, in step 2).
   function cosProjectAbout(n) {
@@ -9622,7 +9670,7 @@
     const s2 = step(2, 'Add their instructions', step2 ? 'now' : n.instructionsAt ? 'done' : 'todo');
     if (!n.instructionsAt) {
       if (step2) {
-        para(s2, 'The app opens the project\u2019s Instructions in Claude and puts these in, replacing what it wrote there before and keeping anything you added yourself. Check them and click Save in Claude:');
+        para(s2, 'The app puts these into the project\u2019s Instructions in Claude and saves them for you. If that did not take, paste them over what is there, click Save in Claude, then press the button below:');
         field(s2, 'Instructions', cosProjectInstructions(n), true);
         const row = document.createElement('div'); row.className = 'row';
         row.append(
@@ -9645,7 +9693,7 @@
       m.claudeProject = link;
       cosUi.setupFor = m.id; cosUi.adding = true;
       // Next: the instructions (their role and where the company files are), filled in for you to save.
-      setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => toast('That could not be copied. Try again.')); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(m))); toast(`Project made. Now check ${m.name}\u2019s instructions in Claude and click Save.`); }, 1200);
+      setTimeout(() => { navigator.clipboard.writeText(cosProjectInstructions(m)).catch(() => toast('That could not be copied. Try again.')); toast(`Project made. Adding ${m.name}\u2019s instructions\u2026`); cosInstrPush(m).then(r => { if (r !== 'failed' && cosUi.setupFor === m.id) { cosUi.setupFor = null; cosUi.adding = false; renderCos(); } }); }, 1200);
     } });
     cosFill(FILL_PROJECT(cosProjectName(n), cosProjectAbout(n)));
   }
@@ -9854,7 +9902,7 @@
         ? `Claude only knows which skills ${n.name} uses from their project instructions. Update them to include ${names.length === 1 ? `“${names[0]}”` : `their ${names.length} skills`}.`
         : `${n.name} no longer has skills here. Update their project instructions so Claude stops using the old ones.`;
       const b1 = document.createElement('button'); b1.className = 'btn-primary'; b1.textContent = 'Update Instructions';
-      b1.addEventListener('click', () => { cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); });
+      b1.addEventListener('click', () => { if (n.claudeProject && activeProfile()) return cosInstrPushAll([{ n, p: activeProfile() }]); cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); });
       const b2 = document.createElement('button'); b2.className = 'btn'; b2.textContent = 'Not Now';
       b2.title = 'Hide this until their skills change again';
       b2.addEventListener('click', () => cosChange(() => { n.instructionsSkills = staffSkillSig(n); }, null));
@@ -11011,24 +11059,25 @@ body { width: max-content !important; min-width: 0 !important; }
     return { k: 'old', say: 'Out of date', why: 'Changed since ' + when + ': ' + (bits.join(', ') || 'the wording') + '.', go: 'Update\u2026' };
   }
   function cosInstrCheck() {
-    const d = mailDlg('instr-dlg', '<h2>Staff instructions</h2><p class="hint"></p><div class="ic-list"></div><p class="hint ic-how">To update one: press its button. The app opens their Claude Project and fills in the instructions. In Claude, click Save, then come back and press \u201cI\u2019ve Saved Them\u201d. Nothing needs to be copied by hand unless the filling in does not take.</p><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
-    const list = d.querySelector('.ic-list'), act = activeProfile(); let total = 0, ok = 0;
+    const d = mailDlg('instr-dlg', '<h2>Staff instructions</h2><p class="hint"></p><div class="ic-list"></div><p class="hint ic-how">Press a button and the app does it for you in the Claude pane, while you watch: it opens their project, replaces the instructions, and saves. Anything you typed into a project\u2019s instructions yourself is kept. If one cannot be saved, it stops there and shows you that one to finish by hand.</p><div class="dlg-actions"><span class="dlg-spacer"></span><button class="btn-primary" data-x="close">Done</button></div>');
+    const list = d.querySelector('.ic-list'), act = activeProfile(), behind = []; let total = 0, ok = 0;
     for (const p of profiles()) {
       const t = (cos.teams || {})[p.id], staff = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief) : [];
       if (!staff.length) continue;
       const h = document.createElement('div'); h.className = 'ic-h'; h.textContent = p.name; list.appendChild(h);
       for (const n of staff) {
-        const st = cosInstrState(n, !!act && act.id === p.id); total++; if (st.k === 'ok') ok++;
+        const st = cosInstrState(n, !!act && act.id === p.id); total++; if (st.k === 'ok') ok++; else if (n.claudeProject) behind.push({ n, p });
         const r = document.createElement('div'); r.className = 'ic-r ' + st.k; r.innerHTML = '<span class="dot"></span><div><b></b><span></span></div><em></em>';
         r.querySelector('b').textContent = n.name || 'Staff member'; r.querySelector(':scope > div > span').textContent = st.why; r.querySelector('em').textContent = st.say;
         if (st.go) { const b = document.createElement('button'); b.type = 'button'; b.className = st.k === 'old' ? 'btn' : 'btn-primary'; b.textContent = st.go;
-          b.addEventListener('click', () => { d.close(); if (!act || act.id !== p.id) setProfile(p.id, { quiet: true }); setTimeout(() => { try { if (currentApp !== 'cos') setApp('cos'); if (n.instructionsAt) cosChange(() => { delete n.instructionsAt; }, null); cosStartSetup(n); } catch (e) { toast('Open ' + (n.name || 'them') + ' in Chief of Staff and press Update Instructions.'); } }, act && act.id === p.id ? 0 : 500); });
+          b.addEventListener('click', () => { d.close(); if (n.claudeProject) return cosInstrPushAll([{ n, p }]); if (!act || act.id !== p.id) setProfile(p.id, { quiet: true }); setTimeout(() => { try { if (currentApp !== 'cos') setApp('cos'); cosStartSetup(n); } catch (e) { toast('Open ' + (n.name || 'them') + ' in Chief of Staff to set them up.'); } }, act && act.id === p.id ? 0 : 500); });
           r.appendChild(b); }
         list.appendChild(r);
       }
     }
     d.querySelector('.hint').textContent = total ? (ok === total ? `All ${total} staff are up to date. Nothing to do.` : `${ok} of ${total} staff are up to date. ${total - ok} need${total - ok === 1 ? 's' : ''} something.`) : 'No staff have been added yet.';
     if (!total || ok === total) d.querySelector('.ic-how').remove();
+    if (behind.length > 1) { const all = document.createElement('button'); all.type = 'button'; all.className = 'btn-primary'; all.textContent = `Update All ${behind.length}`; all.title = 'Does each one in turn in the Claude pane while you watch: opens their project, puts the new instructions in, and saves'; all.addEventListener('click', () => { d.close(); cosInstrPushAll(behind); }); const close = d.querySelector('[data-x="close"]'); close.className = 'btn'; close.before(all); }
     d.querySelector('[data-x="close"]').addEventListener('click', () => d.close());
   }
   function cosMoreMenu(x, y) {
