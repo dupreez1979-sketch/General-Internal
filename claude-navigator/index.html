@@ -9494,19 +9494,33 @@
     }
     return 'none';
   })()`;
+  // The instructions go into the project's Instructions box in Claude. What is already there is replaced, not added to:
+  // every paragraph this app wrote before (its role, skills, outputs, connector and company-files lines, in any
+  // earlier wording) gives way to the new set. Anything you typed in there yourself is kept, underneath.
   const FILL_INSTRUCTIONS = text => `(async () => {
     const sleep = ms => new Promise(r => setTimeout(r, ms));
     const label = e => ((e.innerText || '') + ' ' + (e.getAttribute('aria-label') || '')).replace(/\\s+/g, ' ').trim();
-    const set = (el, v) => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); };
     const want = ${JSON.stringify(text)};
+    const OURS = /^(You are |Your role:|Your skills:|You lead the |Use my Granola|Point out when something already exists|The company folders hold outputs|Before answering, read |When a piece of work is finished|Anything that makes or changes something of mine|To put anything in my calendar|Company files:)/;
+    const merged = have => { const mine = String(have || '').split(/\\n\\s*\\n/).map(x => x.trim()).filter(Boolean).filter(x => !OURS.test(x) && !want.includes(x)); return mine.length ? want + '\\n\\n' + mine.join('\\n\\n') : want; };
+    const same = (a, b) => String(a).replace(/\\s+/g, ' ').trim() === String(b).replace(/\\s+/g, ' ').trim();
     let clicked = false;
     for (let i = 0; i < 48; i++) {
-      const ta = document.querySelector('[role="dialog"] textarea');
-      if (ta) {
-        const have = ta.value.trim();
-        if (!have.includes(want.split('\\n')[0])) set(ta, have ? have + '\\n\\n' + want : want);
-        ta.focus();
-        return 'filled';
+      const box = document.querySelector('[role="dialog"] textarea') || document.querySelector('[role="dialog"] [contenteditable="true"]');
+      if (box) {
+        const isTa = box.tagName === 'TEXTAREA', have = isTa ? box.value : box.innerText, next = merged(have);
+        if (same(have, next)) { box.focus(); return 'same'; }
+        box.focus();
+        if (isTa) {
+          Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(box, next);
+          box.dispatchEvent(new Event('input', { bubbles: true })); box.dispatchEvent(new Event('change', { bubbles: true }));
+          await sleep(150);
+          if (!same(box.value, next)) { box.select(); try { document.execCommand('insertText', false, next); } catch (e) { /* the first way stands */ } await sleep(150); }
+          return same(box.value, next) ? 'filled' : 'none';
+        }
+        try { const r = document.createRange(); r.selectNodeContents(box); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); document.execCommand('insertText', false, next); } catch (e) { return 'none'; }
+        await sleep(150);
+        return same(box.innerText, next) ? 'filled' : 'none';
       }
       if (!clicked) {
         const b = [...document.querySelectorAll('button, [role="button"]')].find(e => /instructions/i.test(label(e)) && label(e).length < 60);
@@ -9516,10 +9530,15 @@
     }
     return 'none';
   })()`;
-  function cosFill(script, tries = 8) {
-    viewExec(script).then(r => { if (r !== 'filled' && r !== 'name only' && tries > 1) setTimeout(() => cosFill(script, tries - 1), 1500); })
-      .catch(() => { if (tries > 1) setTimeout(() => cosFill(script, tries - 1), 1500); });
+  // (said in plain words when it has worked, when there was nothing to change, and when it could not be done)
+  function cosFill(script, tries = 8, said) {
+    const end = r => { if (said) said(r); };
+    viewExec(script).then(r => { if (r === 'filled' || r === 'same' || r === 'name only') return end(r); if (tries > 1) setTimeout(() => cosFill(script, tries - 1, said), 1500); else end('none'); })
+      .catch(() => { if (tries > 1) setTimeout(() => cosFill(script, tries - 1, said), 1500); else end('none'); });
   }
+  const cosFillSaid = n => r => toast(r === 'filled' ? `${n.name}’s new instructions are in the box in Claude. Click Save there, then “I’ve Saved Them” here.`
+    : r === 'same' ? `${n.name}’s instructions in Claude are already the latest. Press “I’ve Saved Them”.`
+    : `The instructions could not be put into Claude’s box. Copy them from here and paste over what is there.`);
   // Projects already in Claude that look like this staff member's.
   function cosProjectMatches(n) {
     const p = activeProfile(), want = [n.name, p ? p.name : ''].filter(Boolean).join(' ');
@@ -9540,12 +9559,12 @@
   function cosStartSetup(n) {
     cosUi.page = n.id; cosUi.setupFor = n.id;
     cosFreshProjects(() => { if (cosUi.setupFor) cosRender(); });
-    if (n.claudeProject) { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: n.claudeProject.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n))); return; }
+    if (n.claudeProject) { cosUi.adding = true; cosUi.claudeShut = false; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: n.claudeProject.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n)), 8, cosFillSaid(n)); return; }
     cosSetUpProject(n);
   }
   function cosLinkProject(n, pr) {
     cosChange(() => { n.claudeProject = { name: pr.name || 'Claude project', url: pr.url }; }, `${n.name} now uses \u201c${pr.name}\u201d`);
-    if (cosUi.setupFor === n.id) { cosUi.adding = true; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: pr.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n))); }
+    if (cosUi.setupFor === n.id) { cosUi.adding = true; cosUi.srcFrom = 'claude'; renderCos(); go({ kind: 'page', url: pr.url }); cosFill(FILL_INSTRUCTIONS(cosProjectInstructions(n)), 8, cosFillSaid(n)); }
   }
   // A short line for Claude's "What are you trying to achieve?" (the instructions come later, in step 2).
   function cosProjectAbout(n) {
@@ -9603,7 +9622,7 @@
     const s2 = step(2, 'Add their instructions', step2 ? 'now' : n.instructionsAt ? 'done' : 'todo');
     if (!n.instructionsAt) {
       if (step2) {
-        para(s2, 'In the project in Claude, open its Instructions, put this in (the app tries to fill it in for you), and click Save:');
+        para(s2, 'The app opens the project\u2019s Instructions in Claude and puts these in, replacing what it wrote there before and keeping anything you added yourself. Check them and click Save in Claude:');
         field(s2, 'Instructions', cosProjectInstructions(n), true);
         const row = document.createElement('div'); row.className = 'row';
         row.append(
