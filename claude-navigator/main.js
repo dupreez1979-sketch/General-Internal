@@ -1302,7 +1302,7 @@ ipcMain.handle('fs-apply', async (_e, payload) => {
 ipcMain.handle('fs-open', (_e, rel) => { if (folderSync) return shell.openPath(folderSync.abs(rel)); });
 // The Chief of Staff's reference files, kept by the app in a hidden folder in each company folder (the folder
 // sync skips hidden folders): a live overview of the team, and what the Chief of Staff has learned.
-const COS_NOTE_NAMES = ['Team overview.md', 'What the Chief of Staff has learned.md'];
+const COS_NOTE_NAMES = ['Team overview.md', 'What the Chief of Staff has learned.md', 'Design Studio.json'];
 ipcMain.handle('fs-cos-notes', async (_e, profileRel, files) => {
   if (!folderSync || typeof profileRel !== 'string' || !profileRel || /(^|[\\/])\.\.([\\/]|$)/.test(profileRel) || !files || typeof files !== 'object') return false;
   try {
@@ -1316,6 +1316,11 @@ ipcMain.handle('fs-cos-notes', async (_e, profileRel, files) => {
     }
     return dir;
   } catch (e) { return false; }
+});
+// (read back: which items were saved as designs, kept beside the folders so the marks outlive the app's own data)
+ipcMain.handle('fs-cos-read', async (e, profileRel, name) => {
+  if (!fromOwnWindow(e) || !folderSync || typeof profileRel !== 'string' || !profileRel || /(^|[\\/])\.\.([\\/]|$)/.test(profileRel) || !COS_NOTE_NAMES.includes(name)) return '';
+  try { const t = await fs.promises.readFile(path.join(folderSync.abs(path.join(profileRel, '.chief-of-staff')), name), 'utf8'); return t.length > 2e6 ? '' : t; } catch (er) { return ''; }
 });
 ipcMain.handle('fs-reveal', (_e, rel) => { if (folderSync) shell.showItemInFolder(rel ? folderSync.abs(rel) : folderSync.root); });
 ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : null));
@@ -1331,6 +1336,12 @@ ipcMain.handle('design-thumb-set', (e, id, dataUrl) => {
   if (!fromOwnWindow(e) || !id) return '';
   try { const m = /^data:image\/(?:png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=]+)$/i.exec(String(dataUrl || '')); if (!m || m[1].length > 12e6) return ''; return thumbKeep(id, nativeImage.createFromBuffer(Buffer.from(m[1], 'base64'))); } catch (er) { return ''; }
 });
+// (pictures of designs that no longer exist are cleared out; never when the list of designs came back empty)
+ipcMain.handle('design-thumb-sweep', (e, keep) => {
+  if (!fromOwnWindow(e) || !Array.isArray(keep) || !keep.length) return 0;
+  try { const want = new Set(keep.map(id => path.basename(thumbFile(id)))); let n = 0; for (const f of fs.readdirSync(thumbDir())) if (/\.jpg$/.test(f) && !want.has(f)) { fs.rmSync(path.join(thumbDir(), f), { force: true }); n++; } return n; } catch (er) { return 0; }
+});
+ipcMain.handle('design-thumb-copy', (e, from, to) => { if (!fromOwnWindow(e) || !from || !to) return false; try { fs.copyFileSync(thumbFile(from), thumbFile(to)); return true; } catch (er) { return false; } });
 ipcMain.handle('design-thumb-del', (e, id) => { if (!fromOwnWindow(e) || !id) return false; try { fs.rmSync(thumbFile(id), { force: true }); } catch (er) { /* gone */ } return true; });
 // (a file in the company folders: the picture macOS itself would show for it, so PowerPoint, PDF, video and Word all get one)
 ipcMain.handle('design-thumb-file', async (e, id, where) => {

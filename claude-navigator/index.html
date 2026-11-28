@@ -2902,7 +2902,7 @@
   state.libShowAttached = ls.get('claudeNavigator.libShowAttached') !== 'off';
   let libAnchor = null, libPendingSingle = null;
 
-  function save() { bumpCaches(); ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) { fsState.savedAt = Date.now(); scheduleApply(); } }
+  function save() { try { if (typeof dsMarksSoon === 'function') dsMarksSoon(); } catch (e) { /* starting up */ } bumpCaches(); ls.set(STORE, JSON.stringify(state.tree)); if (fsState.enabled && !fsState.pulling) { fsState.savedAt = Date.now(); scheduleApply(); } }
 
   // ---------- Folders on this computer (Documents › Claude Navigator) ----------
   // The disk mirrors the app: app changes are written to disk shortly after; Finder changes come back in.
@@ -5333,7 +5333,7 @@
     if (!nodeOf(a.folderId)) return;
     const link = addLink(a.folderId, realTitle(title), url, { autoName: true });
     if (a.kind !== 'chat' && a.kind !== 'project') { link.as = a.kind === 'artifactChat' ? 'artifact' : a.kind; save(); renderSide(); }
-    if (a.design) { link.design = { type: a.design.type || 'Other', staff: a.design.staff || '', at: Date.now() }; save(); setTimeout(() => { try { if (nodeOf(link.id) && dsShowing(link)) dsCapture(link, true); dsRepaint(); } catch (e) { /* moved on */ } }, 9000); }
+    if (a.design) { link.design = dsMark(a.design.type, a.design.staff); save(); setTimeout(() => { try { if (nodeOf(link.id) && dsShowing(link)) dsCapture(link, true); dsRepaint(); } catch (e) { /* moved on */ } }, 9000); }
     toast(`Saved in ${nodeOf(a.folderId).name}`, true);
     renderToolbar();
     syncSideSel();
@@ -5442,6 +5442,8 @@
     ].filter(Boolean));
   }
   function showNewMenu(x, y, folderId = newHereFolder()) {
+    // In the Design Studio, New means a new design (and still a new folder to keep designs in).
+    if (isApp && currentApp === 'navigator' && navFace === 'studio') return showMenu(x, y, [['slides', 'Slides'], ['doc', 'Document'], ['design', 'Design'], ['dashboard', 'Dashboard'], ['whiteboard', 'Whiteboard']].map(([k, label]) => ({ label: `New ${label} Design`, icon: NEW_KINDS[k].icon, run: () => dsNew(k) })).concat(['-', { label: 'Save the Claude Page on Screen\u2026', disabled: !state.pageUrl || pane.hidden, run: dsSavePage }, '-', { label: 'New Folder', icon: 'folder', key: K.mod + K.shift + 'N', run: () => newFolder(folderId) }]));
     const f = nodeOf(folderId);
     const where = f ? ` in “${f.name}”` : '';
     showMenu(x, y, [
@@ -6052,7 +6054,9 @@
       if (!fsState.enabled || !n.path) return toast('Files can only be copied while your folders are kept on this Mac');
       const res = await window.navigatorApp.fsCopy(n.path, null);
       if (!res || res.error) return toast(`Could not copy it: ${res ? res.error : 'unknown error'}`);
+      const before = new Set(); walk(state.tree, x => before.add(x.id));
       await pullFromDisk();
+      if (isDesign(n)) { const par = (locate(n.id) || {}).parent, copy = ((par && par.children) || []).find(x => x.type === 'file' && !before.has(x.id)); if (copy) { copy.design = dsMark(n.design.type, n.design.staff); try { await window.navigatorApp.designThumbCopy(dsKey(n), dsKey(copy)); } catch (e) { /* it gets its own picture */ } save(); renderAll(); } }
       return toast(`Made a copy of \u201c${n.name}\u201d`);
     }
     if (n.type !== 'folder') return;
@@ -7295,7 +7299,7 @@
         if (!f || !f.path) return toast('Drop files onto a folder');
         const done = await window.navigatorApp.fsImport(paths, f.path);
         await pullFromDisk();
-        if (currentApp === 'navigator' && navFace === 'studio') { const names = paths.map(x => String(x).split(/[\\/]/).pop().toLowerCase()), f2 = nodeOf(folderId), fresh = ((f2 && f2.children) || []).filter(x => x.type === 'file' && !x.design && names.includes(String(x.name).toLowerCase())); if (fresh.length) { snap(); for (const x of fresh) x.design = { type: /\.(mp4|mov|m4v|webm)$/i.test(x.name) ? 'Video' : /\.(pptx?|key)$/i.test(x.name) ? 'Presentation' : /\.(docx?|pdf|pages)$/i.test(x.name) ? 'Document' : 'Other', staff: dsS().staff || '', at: Date.now() }; commit(); } }
+        if (currentApp === 'navigator' && navFace === 'studio') { const names = paths.map(x => String(x).split(/[\\/]/).pop().toLowerCase()), f2 = nodeOf(folderId), fresh = ((f2 && f2.children) || []).filter(x => x.type === 'file' && !x.design && names.includes(String(x.name).toLowerCase())); if (fresh.length) { snap(); for (const x of fresh) x.design = dsMark(/\.(mp4|mov|m4v|webm)$/i.test(x.name) ? 'Video' : /\.(pptx?|key)$/i.test(x.name) ? 'Presentation' : /\.(docx?|pdf|pages)$/i.test(x.name) ? 'Document' : 'Other', dsS().staff); commit(); } }
         toast(`Copied ${done.length} file${done.length === 1 ? '' : 's'} into ${f.name}`, { label: isMac ? 'Show in Finder' : 'Show', run: () => window.navigatorApp.fsReveal(f.path) });
       };
       // Files need real folders on the Mac to live in: offer to switch that on, then copy them in.
@@ -8517,7 +8521,7 @@
       <label>Name<input name="name"></label>
       ${n.kind === 'staff' ? '<label>Role (what they do, for you and for Claude)<textarea name="role" rows="3" placeholder="e.g. Board papers, agendas and minutes; keeps the registers up to date"></textarea></label>' : '<label>What this department does<textarea name="about"></textarea></label>'}
       ${n.chief ? '' : `<label>${n.kind === 'dept' ? 'Sits under' : 'Reports to'}<select name="parent"></select></label>`}
-      ${n.kind === 'staff' && !n.external ? '<label>Usually files in<select name="fileTo" title="Where File puts their finished work in the company folders"></select></label>' : ''}
+      ${n.kind === 'staff' && !n.external ? '<label>Usually files in<select name="fileTo" title="Where File puts their finished work in the company folders, and where their designs are saved unless you choose another folder"></select></label>' : ''}
       <label>Colour<div class="cos-swatches"></div></label>
       ${n.kind === 'staff' ? '<button class="btn-primary" data-a="open">Open Page</button>' : ''}
       <div class="row2"><button class="btn" data-a="staff">Add Staff Below</button><button class="btn" data-a="dept">Add Department</button>${n.chief ? '' : '<button class="btn" data-a="remove">Remove…</button>'}</div>
@@ -21016,6 +21020,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
       go({ kind: 'folder', id: null });
       commit();
       if (data && data.cos && data.cos.teams) { cos = data.cos; saveCos(); }
+      if (data && data.designPics && typeof data.designPics === 'object') dsRestorePics(data.designPics);
       // The app's own notes about chats and artifacts come back too (added to what is there now).
       const x = data && data.links;
       if (x) {
@@ -21042,6 +21047,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     const data = { app: 'claude-navigator', version: 2, saved: new Date().toISOString(), tree: state.tree,
       links: { related: lib.related, detached: lib.detached, archived: lib.archived, kinds: lib.kinds }, cos };
     try {
+      data.designPics = await dsBackupPics();          // (the pictures of your designs, so a restore brings them back too)
       const res = await window.navigatorApp.backupWrite(JSON.stringify(data));
       if (res && res.name) ls.set(LAST_BACKUP, todayKey());
     } catch (e) { /* tried again next hour */ }
@@ -21429,6 +21435,9 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   const DS_TYPES = ['Presentation', 'Proposal', 'Document', 'Report', 'Video', 'Social', 'Email', 'Invitation', 'Brand', 'Web page', 'Other'];
   const DS_KIND_TYPE = { slides: 'Presentation', doc: 'Document', design: 'Other', dashboard: 'Report', whiteboard: 'Other' };
   function dsS() { return dsS.s || (dsS.s = { q: '', staff: '', sel: '', thumbs: {}, asked: new Set() }); }
+  // Each design's picture is kept under a name of its own (not the item's id, which changes when folders are restored).
+  const dsKey = n => (n && n.design && n.design.pic) || (n && n.id) || '';
+  const dsMark = (type, staff, was) => ({ type: type || 'Other', staff: staff || '', at: (was && was.at) || Date.now(), pic: (was && was.pic) || uid() });
   const isDesign = n => !!(n && n.design && (n.type === 'link' || n.type === 'file'));
   function dsRows(nodes) { const out = []; walk(nodes || [], (n, d, path) => { if (isDesign(n)) out.push({ n, parent: path[path.length - 1] || null }); }); return out; }
   function dsStaffOf(n) { const id = n && n.design && n.design.staff; if (!id) return null; for (const t of Object.values(cos.teams || {})) { const s = (t.nodes || []).find(x => x.id === id); if (s) return s; } return null; }
@@ -21439,33 +21448,33 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
   // The picture: the one kept for it, or (for a file in your folders) the one macOS would show, asked for once.
   function dsThumbInto(n, box) {
     const S = dsS(), put = u => { if (!u || !box.isConnected && !box.parentNode) return; const im = new Image(); im.alt = ''; im.src = u; box.querySelector('.ds-tile') && box.querySelector('.ds-tile').remove(); box.prepend(im); };
-    if (S.thumbs[n.id]) return put(S.thumbs[n.id]);
-    if (!isApp || !window.navigatorApp.designThumbGet || S.thumbs[n.id] === '') return;
-    window.navigatorApp.designThumbGet(n.id).then(async u => {
-      if (!u && n.type === 'file' && n.path && !S.asked.has(n.id)) { S.asked.add(n.id); try { u = await window.navigatorApp.designThumbFile(n.id, n.path); } catch (e) { u = ''; } }
-      S.thumbs[n.id] = u || ''; if (u) put(u);
+    if (S.thumbs[dsKey(n)]) return put(S.thumbs[dsKey(n)]);
+    if (!isApp || !window.navigatorApp.designThumbGet || S.thumbs[dsKey(n)] === '') return;
+    window.navigatorApp.designThumbGet(dsKey(n)).then(async u => {
+      if (!u && n.type === 'file' && n.path && !S.asked.has(n.id)) { S.asked.add(n.id); try { u = await window.navigatorApp.designThumbFile(dsKey(n), n.path); } catch (e) { u = ''; } }
+      S.thumbs[dsKey(n)] = u || ''; if (u) put(u);
     }).catch(() => {});
   }
   // A picture of the Claude page on screen, when it is showing this design.
   async function dsCapture(n, quiet) {
     try {
       if (!isApp || !view || pane.hidden || !window.navigatorApp.designThumbCapture) { if (!quiet) toast('Open the design in Claude first, then try again.'); return false; }
-      const u = await window.navigatorApp.designThumbCapture(n.id, view.getWebContentsId());
+      const u = await window.navigatorApp.designThumbCapture(dsKey(n), view.getWebContentsId());
       if (!u) { if (!quiet) toast('The picture could not be taken. Try again when the design has finished loading.'); return false; }
-      dsS().thumbs[n.id] = u; dsRepaint(); if (!quiet) toast('Picture updated'); return true;
+      dsS().thumbs[dsKey(n)] = u; dsRepaint(); if (!quiet) toast('Picture updated'); return true;
     } catch (e) { return false; }
   }
   const dsShowing = n => !!(n && n.url && state.pageUrl && !pane.hidden && normUrl(state.pageUrl) === normUrl(String(n.url).split('#')[0]));
   function dsRepaint() { try { if (currentApp === 'navigator' && navFace === 'studio') renderMain(); else if (currentApp === 'cos' && cosUi.tab === 'designs') renderCos(); } catch (e) { /* not showing */ } }
   // No picture yet: take one once the page has had time to draw, if it is still the page on screen.
-  function dsPictureSoon(n) { if (!dsS().thumbs[n.id]) setTimeout(() => { if (nodeOf(n.id) && dsShowing(n) && !dsS().thumbs[n.id]) dsCapture(n, true); }, 7000); }
+  function dsPictureSoon(n) { if (!dsS().thumbs[dsKey(n)]) setTimeout(() => { if (nodeOf(n.id) && dsShowing(n) && !dsS().thumbs[dsKey(n)]) dsCapture(n, true); }, 7000); }
   function dsOpen(n) {
     if (currentApp === 'cos' && n.type === 'link') { if (n.madeFile) openOutput({ name: n.name, url: n.url, file: n.madeFile }, true); else { cosOpenLink({ name: n.name, url: n.url }); dsPictureSoon(n); } } else openNode(n);
   }
-  function dsRemove(n) { snap(); delete n.design; commit(); try { window.navigatorApp.designThumbDel(n.id); } catch (e) { /* no picture */ } delete dsS().thumbs[n.id]; toast(`“${n.name}” is no longer in the Design Studio. It is still in its folder.`, { label: 'Undo', run: () => undo() }); }
+  function dsRemove(n) { snap(); delete n.design; commit(); toast(`“${n.name}” is no longer in the Design Studio. It is still in its folder.`, { label: 'Undo', run: () => undo() }); }
   function dsPickPicture(n) {
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg,image/webp,image/gif';
-    inp.addEventListener('change', () => { const f = inp.files[0]; if (!f) return; if (f.size > 8e6) return toast('That picture is over 8 MB. Choose a smaller one.'); const rd = new FileReader(); rd.onload = async () => { const u = await window.navigatorApp.designThumbSet(n.id, String(rd.result)); if (!u) return toast('That picture could not be used.'); dsS().thumbs[n.id] = u; dsRepaint(); }; rd.readAsDataURL(f); });
+    inp.addEventListener('change', () => { const f = inp.files[0]; if (!f) return; if (f.size > 8e6) return toast('That picture is over 8 MB. Choose a smaller one.'); const rd = new FileReader(); rd.onload = async () => { const u = await window.navigatorApp.designThumbSet(dsKey(n), String(rd.result)); if (!u) return toast('That picture could not be used.'); dsS().thumbs[dsKey(n)] = u; dsRepaint(); }; rd.readAsDataURL(f); });
     inp.click();
   }
   // Saving something as a design, or changing a design's details. With a node it is marked where it is; with a page
@@ -21489,7 +21498,14 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     if (st0 && !people.some(x => x.id === st0)) st0 = (people.find(x => x.name.toLowerCase() === String(st0).toLowerCase()) || {}).id || '';
     f('staff').value = st0 || '';
     d.querySelector('.fo').hidden = !!node;
-    if (!node) { for (const [id, label] of folders) f('folder').appendChild(Object.assign(document.createElement('option'), { value: id, textContent: label })); const pick = [folderId, state.loc.kind === 'folder' ? state.loc.id : null, state.lastFolderId, ls.get('claudeNavigator.dsFolder')].find(x => x && folders.some(z => z[0] === x)); if (pick) f('folder').value = pick; }
+    if (!node) {
+      for (const [id, label] of folders) f('folder').appendChild(Object.assign(document.createElement('option'), { value: id, textContent: label }));
+      // Where it goes, unless you say: the folder you are in, else where this staff member usually files, else where you last saved one.
+      const usualOf = sid => { const u = usualPlace(people.find(x => x.id === sid)); return u ? u.id : null; };
+      const pick = [folderId !== (p && p.id) ? folderId : null, currentApp === 'navigator' && navFace === 'studio' && state.loc.kind === 'folder' ? state.loc.id : null, usualOf(f('staff').value), state.lastFolderId, ls.get('claudeNavigator.dsFolder')].find(x => x && folders.some(z => z[0] === x)); if (pick) f('folder').value = pick;
+      let touched = false; f('folder').addEventListener('change', () => { touched = true; });
+      f('staff').addEventListener('change', () => { const u = usualOf(f('staff').value); if (!touched && u && folders.some(z => z[0] === u)) f('folder').value = u; });
+    }
     d.addEventListener('click', e => {
       const x = e.target.dataset && e.target.dataset.x; if (!x) return;
       if (x === 'cancel') return d.close();
@@ -21504,10 +21520,10 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
         if (!n) { n = Link(nm, url); if (madeFile) n.madeFile = madeFile; insertInto(into, n); }
       }
       n.name = nm; n.autoName = false;
-      n.design = { type: f('type').value || 'Other', staff: f('staff').value || '', at: (was && was.at) || Date.now() };
+      n.design = dsMark(f('type').value, f('staff').value, was);
       commit(); d.close();
       if (!was) toast(`Saved to the Design Studio${node ? '' : ' in ' + nodeOf(f('folder').value).name}`, { label: 'Show', run: () => { setApp('studio'); go({ kind: 'folder', id: folderIdOf(n.id) }); dsS().sel = n.id; dsRepaint(); } });
-      if (n.type === 'link' && !n.madeFile && dsShowing(n) && !dsS().thumbs[n.id]) setTimeout(() => dsCapture(n, true), 300);
+      if (n.type === 'link' && !n.madeFile && dsShowing(n) && !dsS().thumbs[dsKey(n)]) setTimeout(() => dsCapture(n, true), 300);
       dsRepaint(); if (after) after(n);
     });
     setTimeout(() => f('name').select(), 50);
@@ -21629,12 +21645,47 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     snap();
     let n = (nodeOf(fo).children || []).find(x => x.type === 'link' && x.url === url);
     if (!n) { n = Link(nm, url); if (madeFile) n.madeFile = madeFile; insertInto(fo, n); }
-    n.name = nm; n.autoName = false; n.design = { type: DS_TYPES.find(t => t.toLowerCase() === String(D.type || '').toLowerCase()) || String(D.type || 'Other').slice(0, 30), staff, at: Date.now() };
+    n.name = nm; n.autoName = false; n.design = dsMark(DS_TYPES.find(t => t.toLowerCase() === String(D.type || '').toLowerCase()) || String(D.type || 'Other').slice(0, 30), staff, n.design);
     commit(); chime('made');
     toast(`“${nm}” is in the Design Studio, in ${nodeOf(fo).name}`, { label: 'Show', run: () => { setApp('studio'); go({ kind: 'folder', id: fo }); dsS().sel = n.id; dsRepaint(); } });
     if (dsShowing(n)) setTimeout(() => dsCapture(n, true), 400);
     dsRepaint();
   }
+
+  // The marks are also written beside each profile's folders (.chief-of-staff/Design Studio.json), so that if the
+  // app's own data is ever rebuilt from the folders, what you had saved as designs comes back marked.
+  let dsMarksLast = {}, dsMarksTimer = 0;
+  function dsMarksWrite() {
+    if (!isApp || SOLO || !fsState.enabled || !window.navigatorApp.fsCosNotes) return;
+    for (const p of profiles()) {
+      const rows = dsRows(p.children || []); const key = p.path || p.name; if (!key) continue;
+      const text = JSON.stringify({ app: 'claude-navigator', what: 'designs', saved: new Date().toISOString().slice(0, 10), designs: rows.map(r => ({ name: r.n.name, url: r.n.type === 'link' ? r.n.url : '', file: r.n.type === 'file' ? r.n.path || '' : '', made: r.n.madeFile || '', type: r.n.design.type || 'Other', staff: (dsStaffOf(r.n) || {}).name || '', at: r.n.design.at || 0, pic: r.n.design.pic || '' })) }, null, 1);
+      const sig = text.replace(/"saved": "[^"]*",/, '');
+      if (dsMarksLast[key] === sig || (!rows.length && dsMarksLast[key] === undefined)) { if (dsMarksLast[key] === undefined) dsMarksLast[key] = sig; continue; }          // (an empty list is never the first thing written: see dsMarksRestore)
+      dsMarksLast[key] = sig; window.navigatorApp.fsCosNotes(key, { 'Design Studio.json': text }).catch(() => { delete dsMarksLast[key]; });
+    }
+  }
+  var dsMarksSoon = () => { clearTimeout(dsMarksTimer); dsMarksTimer = setTimeout(() => { try { dsMarksWrite(); } catch (e) { /* next change */ } }, 4000); };
+  // Only for a profile that has no designs at all while its folder says it had some: the rebuilt case. Never undoes a removal.
+  async function dsMarksRestore() {
+    if (!isApp || SOLO || !fsState.enabled || !window.navigatorApp.fsCosRead) return;
+    let back = 0;
+    for (const p of profiles()) {
+      if (dsRows(p.children || []).length) continue;
+      let list = []; try { const t = await window.navigatorApp.fsCosRead(p.path || p.name, 'Design Studio.json'); list = (t && JSON.parse(t).designs) || []; } catch (e) { list = []; }
+      if (!Array.isArray(list) || !list.length) continue;
+      const people = dsStaffChoices(p), byUrl = new Map(), byPath = new Map();
+      walk(p.children || [], n => { if (n.type === 'link' && n.url && !byUrl.has(n.url)) byUrl.set(n.url, n); if (n.type === 'file' && n.path) byPath.set(n.path, n); });
+      for (const d of list.slice(0, 2000)) { const n = d && (d.file ? byPath.get(d.file) : byUrl.get(d.url)); if (!n || n.design) continue; n.design = { type: String(d.type || 'Other').slice(0, 30), staff: (people.find(x => x.name === d.staff) || {}).id || '', at: Number(d.at) || Date.now(), pic: /^[a-z0-9]{6,20}$/.test(String(d.pic || '')) ? d.pic : uid() }; back++; }
+    }
+    if (back) { save(); renderAll(); toast(`${back} design${back === 1 ? '' : 's'} put back in the Design Studio from your folders.`); }
+  }
+  // Pictures of designs that no longer exist are cleared out, a while after the app starts.
+  function dsSweep() { try { const keep = dsRows(state.tree).map(r => dsKey(r.n)); if (isApp && !SOLO && keep.length && window.navigatorApp.designThumbSweep) window.navigatorApp.designThumbSweep(keep); } catch (e) { /* next time */ } }
+  if (isApp && !SOLO) { setTimeout(() => { dsMarksRestore().then(() => { dsMarksWrite(); dsSweep(); }).catch(() => {}); }, 45000); }
+  // For a backup: the pictures, up to 3 MB of them (newest designs first). They are put back on restore.
+  async function dsBackupPics() { const out = {}; let size = 0; try { for (const r of dsRows(state.tree).sort((a, b) => (b.n.design.at || 0) - (a.n.design.at || 0))) { const k = dsKey(r.n), u = await window.navigatorApp.designThumbGet(k); if (!u) continue; if (size + u.length > 3e6) break; out[k] = u; size += u.length; } } catch (e) { /* a backup without pictures */ } return out; }
+  async function dsRestorePics(pics) { try { for (const [k, u] of Object.entries(pics || {}).slice(0, 400)) if (/^[A-Za-z0-9_-]{4,60}$/.test(k) && typeof u === 'string') { await window.navigatorApp.designThumbSet(k, u); dsS().thumbs[k] = u; } dsRepaint(); } catch (e) { /* pictures are retaken as designs are opened */ } }
 
   // ---------- A profile's design system ----------
   // A setting on the profile (not a folder): the Claude design system to use by default when making docs,
