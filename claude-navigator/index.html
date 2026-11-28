@@ -2293,7 +2293,7 @@
 
 <aside id="side" aria-label="Sidebar">
   <div class="side-top"><span class="brand">Claude Navigator</span>
-    <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator and Notes"><span data-icon="apps"></span></button>
+    <button class="tb app-btn" id="appBtn" title="Apps: Chief of Staff, File Navigator, Design Studio and the rest"><span data-icon="apps"></span></button>
     <span id="topLeft"><button id="tlProf" class="all" title="Switch profile"></button><button class="tb" id="sideToggle" title="Hide or show the sidebar"><svg width="18" height="18" viewBox="0 0 16 16"><rect x="1.8" y="3" width="12.4" height="10" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 5.6v4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button></span>
     <button class="profile-btn" id="profileBtn" title="Switch profile (Ctrl+Alt+1, 2, 3... and Ctrl+Alt+0 for All Profiles)"><span class="pdot all"></span><span class="ptext"><span class="pname">All Profiles</span><span class="psub"></span></span><span class="pchev" data-icon="chev"></span></button>
   </div>
@@ -2530,11 +2530,11 @@
   // SOLO: this window is one app (Mail, Calendar or Notes) opened in a window of its own, to sit on another screen.
   // The main window owns your folders, your team and the layout. A solo window may only save its own app's settings
   // (below), never the folder tree or anything else, so two windows cannot overwrite each other.
-  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'cos', 'navigator', 'claude', 'monday'].includes(k) ? k : ''; } catch (e) { return ''; } })();
+  const SOLO = (() => { try { const k = new URLSearchParams(location.search).get('solo'); return ['mail', 'cal', 'cos', 'navigator', 'studio', 'claude', 'monday'].includes(k) ? k : ''; } catch (e) { return ''; } })();
   // Mail, Calendar and Notes windows save only their own settings. Chief of Staff, File Navigator, Claude and monday.com
   // work on your folders and team, so their windows save those too; every window takes in what another has just saved
   // (see the 'storage' listeners), and only the main window writes folders to the Mac and makes backups.
-  const SOLO_TREE = ['cos', 'navigator', 'claude', 'monday'].includes(SOLO);
+  const SOLO_TREE = ['cos', 'navigator', 'studio', 'claude', 'monday'].includes(SOLO);
   const SOLO_ITEM = (() => { try { const j = SOLO && new URLSearchParams(location.search).get('item'); return j ? JSON.parse(j) : null; } catch (e) { return null; } })();
   const SOLO_LAYOUT = k => ['claudeNavigator.app', 'claudeNavigator.side.v1', 'claudeNavigator.navFace', 'claudeNavigator.frames.v1', 'claudeNavigator.split', 'claudeNavigator.appOrder', 'claudeNavigator.appHidden', 'claudeNavigator.activeProfile'].includes(k);
   const SOLO_SAVES = k => (SOLO_TREE && !SOLO_LAYOUT(k)) || ['claudeNavigator.mail.v1', 'claudeNavigator.cal.v1', 'claudeNavigator.notes.v1', 'claudeNavigator.links.v1'].includes(k) || String(k).startsWith('claudeNavigator.calcache.');
@@ -3714,10 +3714,11 @@
   function renderMainList() {
     if (state.loc.kind === 'library') return renderLibrary();
     // The Design Studio is the same list (or icons), holding only the items saved as designs, from this folder down.
-    const studio = isApp && currentApp === 'navigator' && navFace === 'studio' && !state.query;
+    // The Search box at the top looks through the designs (all of the profile's) while you are in the studio.
+    const studio = isApp && currentApp === 'navigator' && navFace === 'studio';
     let items, where = false, dsAllCount = 0;
     if (studio) {
-      const S = dsS(), q = S.q.trim().toLowerCase(), all = dsRows(childrenOf(state.loc.id)); dsAllCount = all.length;
+      const S = dsS(), q = String(state.query || '').trim().toLowerCase(), all = dsRows(q ? rootList() : childrenOf(state.loc.id)); dsAllCount = all.length;
       items = all.filter(r => (!S.staff || r.n.design.staff === S.staff) && dsMatch(r, q)).map(r => r.n);
     } else if (state.query) {
       const m = searchMatcher(state.query);
@@ -3759,7 +3760,7 @@
         : unfiltered ? '<b>Nothing matches these filters</b>Change or reset them in Filter at the top.'
         : `<b>This folder is empty</b>Open a Claude chat and press ${K.mod}S to save it here, drag links in, or right-click for more.`;
       frag.appendChild(e);
-    } else if (state.view === 'icons' && !where) {
+    } else if (state.view === 'icons' && (!where || studio)) {
       const g = document.createElement('div');
       g.className = studio ? 'grid ds-grid' : 'grid';
       for (const n of pageItems) g.appendChild(studio ? dsTile(n) : tileFor(n));
@@ -8188,7 +8189,7 @@
   }
   function setApp(a) { try { window.__navDoing = 'showing ' + a; startNote('show ' + a); } catch (e) { /* log only */ }
     if (SOLO) {                                   // a window of its own stays the app it is
-      if (SOLO_TREE && SOLO !== 'cos' && ['navigator', 'claude', 'monday'].includes(a)) a = SOLO;
+      if (SOLO_TREE && SOLO !== 'cos' && ['navigator', 'studio', 'claude', 'monday'].includes(a)) a = SOLO;
       else if (a !== SOLO) { try { window.navigatorApp.appWindowMain(); } catch (e) { /* no main window */ } return toast('That opens in the main window.'); }
     }
     if (a === 'notes' && currentApp !== 'notes') { try { notesState.from = currentApp; } catch (e) { /* starting up */ } }
@@ -17473,7 +17474,7 @@ body { width: max-content !important; min-width: 0 !important; }
   const dockClaudeShowing = () => currentApp === 'cos' ? document.body.classList.contains('cos-adding') : !pane.hidden;
   // Apps open in windows of their own (Mail, Calendar, Notes). The strip marks them; clicking one brings its window forward.
   let appWins = [];
-  const OWN_WINDOW = ['mail', 'cal', 'cos', 'navigator', 'claude', 'monday'];
+  const OWN_WINDOW = ['mail', 'cal', 'cos', 'navigator', 'studio', 'claude', 'monday'];
   // What a double-click on an app in the strip does: 'window' (its own window, the usual) or 'beside' (split the screen).
   const dockDbl = () => (ls.get('claudeNavigator.dockDbl') === 'beside' ? 'beside' : 'window');
   async function appOwnWindow(k) {
@@ -17518,7 +17519,7 @@ body { width: max-content !important; min-width: 0 !important; }
         if (k === 'actions') return dockClick(k, e);
         if (appWins.includes(k === 'folders' ? 'navigator' : k)) return window.navigatorApp.appWindowOpen(k === 'folders' ? 'navigator' : k);          // it is in its own window: bring that forward
         clearTimeout(dockTimer);
-        if (e.detail >= 2 && k === 'studio') return dockMain(k);          // (the Design Studio is always the main app: it has no side or window form)
+        if (e.detail >= 2 && k === 'studio' && dockDbl() !== 'window') return dockMain(k);          // (the Design Studio opens as the main app or in its own window, not beside another)
         if (e.detail >= 2) {
           // A double-click gives the app a window of its own, to put on any screen (or opens it beside, if you chose that).
           const wk = k === 'folders' ? 'navigator' : k;
@@ -18582,8 +18583,9 @@ body { width: max-content !important; min-width: 0 !important; }
     { name: 'search_email', description: 'Search his mailboxes for emails matching a few key words (people, subjects, topics). Returns up to 8, newest first, each with a ref, who it is from, the date, the subject and a short preview.', input_schema: { type: 'object', properties: { query: { type: 'string', description: 'A few key words, for example: flight Perth itinerary' } }, required: ['query'] } },
     { name: 'read_email', description: 'Read one email in full, by the ref that search_email gave. Use it only when the preview is not enough.', input_schema: { type: 'object', properties: { ref: { type: 'string' } }, required: ['ref'] } },
     { name: 'calendar', description: 'List his calendar events between two days, inclusive.', input_schema: { type: 'object', properties: { from: { type: 'string', description: 'YYYY-MM-DD' }, to: { type: 'string', description: 'YYYY-MM-DD' } }, required: ['from', 'to'] } },
+    { name: 'designs', description: 'List the finished designs he has saved in his Design Studio (presentations, proposals, documents, videos): name, type, staff member, folder and link. Use it when he asks where a design is or what designs exist.', input_schema: { type: 'object', properties: { query: { type: 'string', description: 'Words to look for in the name, type, staff member or folder. Leave empty for all of them.' } } } },
   ].concat(gran.on && window.navigatorApp.granolaAsk ? [{ name: 'meetings', description: 'Ask what was said, decided or agreed in his recorded meetings.', input_schema: { type: 'object', properties: { question: { type: 'string' } }, required: ['question'] } }] : []);
-  const BOT_TOOL_SAYS = { mail_setup: 'Looking at your folders and rules\u2026', propose_changes: 'Setting out what to change\u2026', search_email: 'Searching your email\u2026', read_email: 'Reading an email\u2026', calendar: 'Checking your calendar\u2026', meetings: 'Looking through your meetings\u2026' };
+  const BOT_TOOL_SAYS = { mail_setup: 'Looking at your folders and rules\u2026', propose_changes: 'Setting out what to change\u2026', search_email: 'Searching your email\u2026', read_email: 'Reading an email\u2026', calendar: 'Checking your calendar\u2026', designs: 'Looking in the Design Studio\u2026', meetings: 'Looking through your meetings\u2026' };
   const BOT_TOOL_USED = { search_email: 'your email', read_email: 'your email', calendar: 'your calendar', meetings: 'your meetings' };
   async function botTool(name, input, refs) {
     const accs = mailVisible().slice(0, 4), day = d => new Date(d).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
@@ -18597,6 +18599,11 @@ body { width: max-content !important; min-width: 0 !important; }
       return rows.slice(0, 8).map(x => { const ref = 'm' + (refs.push({ kind: 'mail', acc: x.a, id: x.m.id, title: x.m.subject || '(No subject)', m: Object.assign({}, x.m, { _acc: x.a }) })); return `${ref} | From: ${(x.m.from && x.m.from.emailAddress && (x.m.from.emailAddress.name || x.m.from.emailAddress.address)) || 'unknown'} | ${day(x.m.receivedDateTime)} | ${x.m.subject || '(No subject)'} | ${String(x.m.bodyPreview || '').replace(/\s+/g, ' ').slice(0, 200)}`; }).join('\n');
     }
     if (name === 'read_email') { const r = refs[+String(input.ref || '').replace(/\D/g, '') - 1]; if (!r || r.kind !== 'mail') return 'No email with that ref. Use a ref from search_email.'; const T = await mailTextOf(r.acc, { id: r.id }); return T ? `${T.head}\n\n${T.text.slice(0, 7000)}` : 'That email could not be read.'; }
+    if (name === 'designs') {
+      const q = String(input.query || '').trim().toLowerCase(), rows = dsRows(rootList()).filter(r => dsMatch(r, q));
+      if (!rows.length) return q ? `No design in the Design Studio matches \u201c${q}\u201d.` : 'The Design Studio is empty.';
+      return rows.slice(0, 40).map(r => `- ${r.n.name} [${r.n.design.type || 'Other'}]${dsStaffOf(r.n) ? ', ' + dsStaffOf(r.n).name : ''}${r.parent ? ', in ' + r.parent.name : ''}${r.n.type === 'link' ? ' ' + String(r.n.url).split('#')[0] : ''}`).join('\n');
+    }
     if (name === 'calendar') {
       const ok = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')); if (!ok(input.from) || !ok(input.to)) return 'Give both days as YYYY-MM-DD.';
       if (!accs.length) return 'No calendar is connected in the app.';
@@ -20247,6 +20254,7 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
         if (sf && workItems(sf).length) L.push('Skills: ' + workItems(sf).filter(x => !inArchive(x.id)).map(x => x.name).join(', '));
       }
       for (const r of cosRoutines(n)) L.push(`Routine: ${r.name}, ${routineWhen(r)}${r.paused ? ' (paused)' : ''}`);
+      try { const ds = dsRows(p.children || []).filter(r => r.n.design.staff === n.id); if (ds.length) { L.push('Designs in the Design Studio:'); ds.slice(0, 40).forEach(r => L.push(`- ${r.n.name} [${r.n.design.type || 'Other'}]${r.parent ? ', in ' + r.parent.name : ''}${r.n.type === 'link' ? ` (${String(r.n.url).split('#')[0]})` : ''}`)); } } catch (e) { /* no designs listed */ }
       L.push('');
     }
     L.push('## Company folders');
@@ -21567,17 +21575,15 @@ const why = String(c.why || '').replace(/\s+/g, ' ').trim().slice(0, 400);
     const people = p ? dsStaffChoices(p) : []; if (S.staff && !people.some(x => x.id === S.staff)) S.staff = '';
     const head = document.createElement('div'); head.className = 'ds-head';
     for (const ev of ['click', 'dblclick', 'keydown', 'contextmenu', 'mousedown']) head.addEventListener(ev, e => e.stopPropagation());
-    const h = document.createElement('div'); h.className = 'ds-h'; h.appendChild(Object.assign(document.createElement('b'), { textContent: here ? here.name : (p ? p.name : 'All profiles') })); h.appendChild(Object.assign(document.createElement('span'), { textContent: `${shown} design${shown === 1 ? '' : 's'}${shown !== allCount ? ' of ' + allCount : ''}${here ? ', with its folders' : ''}` }));
+    const h = document.createElement('div'); h.className = 'ds-h'; h.appendChild(Object.assign(document.createElement('b'), { textContent: state.query ? 'Search' : here ? here.name : (p ? p.name : 'All profiles') })); h.appendChild(Object.assign(document.createElement('span'), { textContent: `${shown} design${shown === 1 ? '' : 's'}${shown !== allCount ? ' of ' + allCount : ''}${state.query ? ' in every folder' : here ? ', with its folders' : ''}` }));
     const btn = (label, title, run, cls) => { const b = document.createElement('button'); b.className = cls || 'tb'; b.innerHTML = '<span class="t"></span>'; b.firstChild.textContent = label; b.title = title; b.addEventListener('click', () => run(b)); return b; };
     const who = btn(`${S.staff ? (people.find(x => x.id === S.staff) || {}).name : 'All Staff'} ▾`, 'Show one staff member’s designs', b => { const r0 = b.getBoundingClientRect(), counts = new Map(); for (const r of dsRows(childrenOf(state.loc.id))) counts.set(r.n.design.staff || '', (counts.get(r.n.design.staff || '') || 0) + 1); showMenu(r0.left, r0.bottom + 4, [{ label: `All Staff (${allCount})`, checked: !S.staff, run: () => { S.staff = ''; renderMain(); } }, '-', ...people.map(z => ({ label: `${z.name} (${counts.get(z.id) || 0})`, checked: S.staff === z.id, run: () => { S.staff = z.id; renderMain(); } }))]); });
     who.classList.toggle('on', !!S.staff); who.hidden = !people.length;
     // The design system of the profile: open it in Claude to look at it or change it, or choose a different one.
     const sysOf = pr => [pr.designSystem ? { label: `Open “${pr.designSystem.name}” in Claude`, icon: 'designsystem', run: () => go({ kind: 'page', url: pr.designSystem.url }) } : null, { label: pr.designSystem ? 'Choose a Different One…' : `Choose ${pr.name}’s Design System…`, run: () => { openProfileDialog(pr); try { profileTab('look'); } catch (e) { /* the first tab shows */ } } }].filter(Boolean);
     const dsys = btn(p ? (p.designSystem ? `Design System: ${p.designSystem.name} ▾` : 'Design System ▾') : 'Design Systems ▾', 'The design system this profile’s designs start from. Open it in Claude to view or edit it.', b => { const r0 = b.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, p ? sysOf(p) : profiles().flatMap((pr, i2) => [...(i2 ? ['-'] : []), { label: pr.name, disabled: true, run: () => {} }, ...sysOf(pr)])); });
-    const sq = document.createElement('input'); sq.type = 'search'; sq.className = 'ds-q'; sq.placeholder = 'Search designs'; sq.value = S.q;
-    sq.addEventListener('input', () => { S.q = sq.value; clearTimeout(S.qt); S.qt = setTimeout(() => { renderMain(); const again = browseEl.querySelector('.ds-q'); if (again) { again.focus(); again.setSelectionRange(again.value.length, again.value.length); } }, 180); });
     const mk = btn('New Design ▾', 'Start a design in Claude, with this profile’s design system. What it makes is saved here as a design.', b => { const r0 = b.getBoundingClientRect(); showMenu(r0.left, r0.bottom + 4, [['slides', 'Slides'], ['doc', 'Document'], ['design', 'Design'], ['dashboard', 'Dashboard'], ['whiteboard', 'Whiteboard']].map(([k, label]) => ({ label, icon: NEW_KINDS[k].icon, run: () => dsNew(k) })).concat(['-', { label: 'Save the Claude Page on Screen…', disabled: !state.pageUrl || pane.hidden, run: dsSavePage }])); }, 'btn-primary ds-new');
-    head.append(h, who, dsys, sq, mk);
+    head.append(h, who, dsys, mk);
     return head;
   }
   // A design as an icon: its picture. It is an ordinary item underneath, so selecting, renaming, dragging, moving,
