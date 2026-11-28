@@ -4,7 +4,7 @@
 // Canva, design systems) works exactly as it does in the browser.
 
 const {
-  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen, webFrameMain, safeStorage,
+  app, BrowserWindow, ipcMain, shell, Menu, clipboard, session, systemPreferences, webContents, dialog, net, screen, webFrameMain, safeStorage, nativeImage,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -1322,6 +1322,37 @@ ipcMain.handle('fs-abs', (_e, rel) => (folderSync ? folderSync.abs(rel || '') : 
 // A file in your company folders, read so it can be attached to an email (what Claude names when it hands one over).
 // Only a file inside the synced folder is ever read: a full path is first turned into a path from that folder, and
 // anything that leads outside it (by name or through a shortcut) is refused. Nothing over 25 MB.
+// ----- Design Studio: the small picture of each saved design, kept on this Mac only (one file per design).
+const thumbDir = () => path.join(app.getPath('userData'), 'design-thumbs');
+const thumbFile = id => path.join(thumbDir(), String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 60) + '.jpg');
+const thumbKeep = (id, img) => { if (!img || img.isEmpty()) return ''; const s = img.getSize(), w = Math.min(720, s.width); const small = s.width > w ? img.resize({ width: w, quality: 'good' }) : img; const buf = small.toJPEG(82); fs.mkdirSync(thumbDir(), { recursive: true }); fs.writeFileSync(thumbFile(id), buf); return 'data:image/jpeg;base64,' + buf.toString('base64'); };
+ipcMain.handle('design-thumb-get', (e, id) => { if (!fromOwnWindow(e) || !id) return ''; try { return 'data:image/jpeg;base64,' + fs.readFileSync(thumbFile(id)).toString('base64'); } catch (er) { return ''; } });
+ipcMain.handle('design-thumb-set', (e, id, dataUrl) => {
+  if (!fromOwnWindow(e) || !id) return '';
+  try { const m = /^data:image\/(?:png|jpe?g|webp|gif);base64,([A-Za-z0-9+/=]+)$/i.exec(String(dataUrl || '')); if (!m || m[1].length > 12e6) return ''; return thumbKeep(id, nativeImage.createFromBuffer(Buffer.from(m[1], 'base64'))); } catch (er) { return ''; }
+});
+ipcMain.handle('design-thumb-del', (e, id) => { if (!fromOwnWindow(e) || !id) return false; try { fs.rmSync(thumbFile(id), { force: true }); } catch (er) { /* gone */ } return true; });
+// (a file in the company folders: the picture macOS itself would show for it, so PowerPoint, PDF, video and Word all get one)
+ipcMain.handle('design-thumb-file', async (e, id, where) => {
+  if (!fromOwnWindow(e) || !id || !folderSync) return '';
+  try {
+    let rel = String(where || '').trim(); if (!rel || rel.length > 1000) return '';
+    if (path.isAbsolute(rel)) rel = path.relative(folderSync.root, rel);
+    const abs = folderSync.abs(rel); if (!fs.statSync(abs).isFile()) return '';
+    let img = null;
+    if (/\.(png|jpe?g|gif|webp)$/i.test(abs) && fs.statSync(abs).size < 30e6) img = nativeImage.createFromPath(abs);
+    if (!img || img.isEmpty()) img = await nativeImage.createThumbnailFromPath(abs, { width: 720, height: 540 });
+    return thumbKeep(id, img);
+  } catch (er) { return ''; }
+});
+// (a Claude page that is on screen in this app: a picture of what you are looking at, taken when you save it or open it)
+ipcMain.handle('design-thumb-capture', async (e, id, wcId) => {
+  if (!fromOwnWindow(e) || !id) return '';
+  try {
+    const wc = webContents.fromId(Number(wcId)); if (!wc || wc.isDestroyed() || !wc.hostWebContents || !isOwnContents(wc.hostWebContents)) return '';
+    return thumbKeep(id, await wc.capturePage());
+  } catch (er) { return ''; }
+});
 ipcMain.handle('fs-file-bytes', (e, where) => {
   if (!fromOwnWindow(e) || !folderSync) return { ok: false, error: 'Company folders are not on' };
   try {
