@@ -53,7 +53,99 @@ const TOOLS = [{
     required: ["summary"],
   },
   annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+}, {
+  name: "check_outcome",
+  title: "See what he did with what you handed over",
+  description: "Find out what the user did in his Chief of Staff app with things you handed over using show_for_approval: for each email, meeting, change, action and document, whether it is still waiting, was opened, done, dismissed or failed. Use it before you say that anything was sent, booked, added or changed, and when he asks what happened. It tells you only the state of each item, in the order you gave them. An email or meeting that was opened is with him to check and send: you cannot know whether he sent it.",
+  inputSchema: { type: "object", properties: { ref: { type: "string", description: "The reference show_for_approval gave you. Leave out for the most recent hand-overs." } } },
+  annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
 }];
+
+// ---------- The panel shown in the chat ----------
+// Where the chat can show a connector's own panel (the "ui" extension), the hand-over is laid out there: what was
+// handed over, that it is waiting in the app, and a button to see what he has done with it. The page is self-contained:
+// it loads nothing from anywhere, and everything it shows is put in as plain text.
+const UI_URI = "ui://chief-of-staff-app/handover", UI_MIME = "text/html;profile=mcp-app";
+const UI_HTML = String.raw`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="color-scheme" content="light dark">
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; padding: 14px 16px; font: 14px/1.4 var(--font-sans, system-ui, -apple-system, sans-serif); background: transparent; color: var(--color-text-primary, light-dark(#1d1d1f, #f2f2f2)); }
+  h1 { font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+  .sub { font-size: 12px; opacity: .65; margin: 0 0 10px; }
+  .it { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; border-top: 1px solid light-dark(rgba(0,0,0,.09), rgba(255,255,255,.14)); }
+  .k { flex: none; width: 74px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; opacity: .6; }
+  .t { flex: 1; min-width: 0; } .t b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .t span { font-size: 12px; opacity: .7; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .st { flex: none; font-size: 11px; padding: 2px 8px; border-radius: 999px; background: light-dark(rgba(0,0,0,.07), rgba(255,255,255,.14)); white-space: nowrap; }
+  .st.done { background: light-dark(#dff3e4, #1f4a2c); } .st.gone { opacity: .55; } .st.bad { background: light-dark(#fbe1dc, #5a2520); }
+  .foot { display: flex; gap: 10px; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid light-dark(rgba(0,0,0,.09), rgba(255,255,255,.14)); }
+  .foot span { flex: 1; font-size: 12px; opacity: .7; }
+  button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 8px; border: 1px solid light-dark(rgba(0,0,0,.18), rgba(255,255,255,.25)); background: transparent; color: inherit; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+</style></head>
+<body>
+<h1 id="h">For your Chief of Staff app</h1>
+<p class="sub" id="sub">Preparing</p>
+<div id="list"></div>
+<div class="foot"><span id="note">Nothing is sent or changed until you approve it in the app.</span><button id="chk" disabled>See What Happened</button></div>
+<script>
+(function () {
+  var nextId = 1, pending = {}, args = null, ref = "", host = {};
+  function send(m) { window.parent.postMessage(m, "*"); }
+  function request(method, params) { var id = nextId++; send({ jsonrpc: "2.0", id: id, method: method, params: params }); return new Promise(function (res, rej) { pending[id] = { res: res, rej: rej }; setTimeout(function () { if (pending[id]) { delete pending[id]; rej(new Error("no answer")); } }, 20000); }); }
+  function notify(method, params) { send({ jsonrpc: "2.0", method: method, params: params || {} }); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; }
+  function vars(ctx) { try { var v = (ctx && ctx.styles && ctx.styles.variables) || {}; for (var k in v) if (v[k]) document.documentElement.style.setProperty(k, v[k]); } catch (e) {} }
+  function when(v) { var m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(v || "")); if (!m) return v || ""; var d = new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0)); var s = d.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" }); return m[4] ? s + ", " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : s; }
+  var WORD = { waiting: "Waiting", opened: "Opened", done: "Done", added: "Added", made: "Made", dismissed: "Dismissed", failed: "Did not work" };
+  function rows() {
+    var out = [], a = args || {};
+    (a.emails || []).forEach(function (m) { var f = (m.attach || []).length; out.push(["emails", m.reply_to ? "Reply" : "Email", m.subject || (m.reply_to && m.reply_to.subject) || "(No subject)", (m.to ? "To " + m.to : (m.reply_to && m.reply_to.from ? "To " + m.reply_to.from : "")) + (f ? (f === 1 ? " · 1 file" : " · " + f + " files") : "")]); });
+    (a.meetings || []).forEach(function (m) { out.push(["meetings", "Meeting", m.title || "Meeting", [when(m.date), m.start && (m.start + (m.end ? " to " + m.end : "")), m.where].filter(Boolean).join(" · ")]); });
+    (a.changes || []).forEach(function (c) { var w = { add_event: "Calendar", change_event: "Calendar", remove_event: "Calendar", add_rule: "Mail rule", add_folder: "Folder" }[c.do] || "Change", v = { add_event: "Add", change_event: "Change", remove_event: "Remove", add_rule: "Add", add_folder: "Add" }[c.do] || ""; out.push(["changes", w, (v ? v + " “" : "“") + (c.title || c.find || c.name || "") + "”", [when(c.start || c.date), c.where].filter(Boolean).join(" · ")]); });
+    (a.actions || []).forEach(function (x) { out.push(["actions", "Action", x.action || "", x.for ? "For the " + x.for : "You choose who it is for"]); });
+    (a.documents || []).forEach(function (x) { out.push(["documents", "Document", x.title || "Document", "A Word file in a folder you choose"]); });
+    return out;
+  }
+  function paint(state) {
+    var a = args || {}, list = document.getElementById("list"), seen = {}; list.textContent = "";
+    document.getElementById("h").textContent = a.summary || "For your Chief of Staff app";
+    rows().forEach(function (r) {
+      var i = seen[r[0]] = (seen[r[0]] == null ? 0 : seen[r[0]] + 1), st = state && state[r[0]] && state[r[0]][i];
+      var it = el("div", "it"); it.appendChild(el("span", "k", r[1])); var t = el("div", "t"); t.appendChild(el("b", "", r[2])); if (r[3]) t.appendChild(el("span", "", r[3])); it.appendChild(t);
+      if (st) it.appendChild(el("span", "st" + (st === "waiting" ? "" : st === "dismissed" ? " gone" : st === "failed" ? " bad" : " done"), WORD[st] || st));
+      list.appendChild(it);
+    });
+    size();
+  }
+  function size() { try { var r = document.documentElement.getBoundingClientRect(); notify("ui/notifications/size-changed", { width: Math.ceil(r.width), height: Math.ceil(document.body.scrollHeight) }); } catch (e) {} }
+  function sub(t) { document.getElementById("sub").textContent = t; }
+  function fromResult(res) {
+    var sc = (res && res.structuredContent) || {}, tx = res && res.content && res.content[0] && res.content[0].text || "";
+    if (sc.states) { var one = sc.states[0]; if (one) { if (!ref) ref = one.ref || ""; paint(one.state); sub("As at " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); } return; }
+    if (res && res.isError) { sub(tx || "It could not be handed over."); return; }
+    if (sc.ref) { ref = sc.ref; sub("Waiting in your Chief of Staff app for you to approve"); document.getElementById("chk").disabled = false; paint(sc.state || null); }
+    else if (tx) sub(tx.slice(0, 160));
+  }
+  window.addEventListener("message", function (ev) {
+    if (ev.source !== window.parent) return; var m = ev.data; if (!m || m.jsonrpc !== "2.0") return;
+    if (m.id !== undefined && !m.method) { var p = pending[m.id]; if (p) { delete pending[m.id]; if (m.error) p.rej(m.error); else p.res(m.result); } return; }
+    if (m.method === "ui/notifications/tool-input" || m.method === "ui/notifications/tool-input-partial") { if (m.params && m.params.arguments) { args = m.params.arguments; paint(null); if (m.method === "ui/notifications/tool-input") sub("Handing it to your app"); } }
+    else if (m.method === "ui/notifications/tool-result") fromResult(m.params);
+    else if (m.method === "ui/notifications/host-context-changed") vars(m.params);
+    else if (m.method === "ui/resource-teardown" && m.id !== undefined) send({ jsonrpc: "2.0", id: m.id, result: {} });
+  });
+  document.getElementById("chk").addEventListener("click", function () {
+    var b = this; b.disabled = true; sub("Checking");
+    var again = function () { b.disabled = false; };
+    if (host.serverTools) request("tools/call", { name: "check_outcome", arguments: ref ? { ref: ref } : {} }).then(function (r) { fromResult(r); again(); }, function () { ask(); again(); });
+    else { ask(); again(); }
+  });
+  function ask() { sub("Asked Claude to check"); request("ui/message", { role: "user", content: [{ type: "text", text: "What happened to what you handed to my Chief of Staff app" + (ref ? " (reference " + ref + ")" : "") + "? Check with check_outcome." }] }).catch(function () { sub("Ask Claude: what happened to what you handed over?"); }); }
+  try { new ResizeObserver(size).observe(document.body); } catch (e) {}
+  request("ui/initialize", { protocolVersion: "2026-01-26", appInfo: { name: "chief-of-staff-app", version: "1.0.0" }, appCapabilities: { availableDisplayModes: ["inline"] } }).then(function (r) { host = (r && r.hostCapabilities) || {}; vars(r && r.hostContext); notify("ui/notifications/initialized", {}); size(); }, function () { notify("ui/notifications/initialized", {}); });
+})();
+</script></body></html>`;
 
 // ---------- The skill the connector carries ----------
 // How to use the one tool well, sent with the connector itself (the "skills" extension of the newer standard), so the
@@ -126,10 +218,18 @@ The app can only attach a file that is on his Mac, inside his company folders. I
 He has more than one organisation and mailbox. When the chat makes it clear which one this belongs to, say so in
 \`for_account\`, in his own words or as an email address. If it is not clear, leave it out and he chooses in the app.
 
-## What you cannot know
+## Finding out what he did
 
-You do not see whether he approved, changed or dismissed an item. Do not assume it happened. If he later says
-something was not right, hand him a corrected version in a new call.
+You do not see what he does in the app unless you ask. \`show_for_approval\` gives you a reference. Use
+\`check_outcome\` with it:
+
+- before you say that anything was sent, booked, added or changed;
+- when he asks what happened, or asks you to carry on from where things are.
+
+It tells you, for each item in the order you gave them, whether it is waiting, opened, done, dismissed or did not
+work. An email or meeting that was opened is with him to check and send: you still cannot know that he sent it, so
+never say it was sent. If something was dismissed, do not hand it over again unless he asks. If he says something
+was not right, hand him a corrected version in a new call.
 `;
 const skillEntry = async () => { const bytes = new TextEncoder().encode(SKILL_MD); return { uri: SKILL_URI, frontmatter: { name: SKILL_NAME, description: SKILL_DESC }, resources: [{ uri: SKILL_URI, digest: "sha256:" + [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(x => x.toString(16).padStart(2, "0")).join(""), size: bytes.length }] }; };
 const CACHE = { ttlMs: 300000, cacheScope: "private" };
@@ -141,7 +241,7 @@ const CAPS = { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/
 // A request is treated as the newer kind when it carries that version in its _meta; anything else is the older kind.
 const MODERN = ["2026-07-28"], LEGACY = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const PV = "io.modelcontextprotocol/protocolVersion";
-const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.4.0" };
+const SERVER_INFO = { name: "chief-of-staff-app", title: "Chief of Staff app", version: "1.5.0" };
 const INSTRUCTIONS = "Use show_for_approval to hand emails, meetings and calendar or mail changes to the user's app, where he approves them. It never sends or changes anything by itself.";
 // Only Claude's own pages may call this from a browser (a request from Claude's servers carries no Origin at all).
 const originOk = (o: string | null) => { if (!o) return true; try { const h = new URL(o).hostname.toLowerCase(); return ["claude.ai", "claude.com", "anthropic.com"].some(d => h === d || h.endsWith("." + d)); } catch { return false; } };
@@ -150,7 +250,7 @@ type Ans = { body: unknown; status: number } | null;
 async function mcp(req: Request, secret: string) {
   if (!originOk(req.headers.get("origin"))) return json({ jsonrpc: "2.0", error: { code: -32600, message: "origin not allowed" } }, 403);
   const sHash = await sha(secret);
-  const box = await (await db(`cos_boxes?s_hash=eq.${sHash}&select=pub,profiles`)).json().catch(() => []);
+  const box = await (await db(`cos_boxes?s_hash=eq.${sHash}&select=pub,profiles,ctx`)).json().catch(() => []);
   if (!Array.isArray(box) || !box.length) return json({ error: "not found" }, 404);
   if (req.method !== "POST") return new Response(null, { status: 405, headers: { Allow: "POST" } });
   const raw = await req.text(); if (raw.length > 400_000) return json({ jsonrpc: "2.0", id: null, error: { code: -32600, message: "too large" } }, 413);
@@ -186,34 +286,79 @@ async function mcp(req: Request, secret: string) {
     if (m.method === "skills/get") return p.uri === SKILL_URI ? ok({ skill: await skillEntry(), ...CACHE }) : err(-32602, `No skill is served at ${String(p.uri || "").slice(0, 200)}`, 400);
     if (m.method === "resources/list") return ok({ resources: [{ uri: SKILL_URI, name: "SKILL.md", title: "How to use the Chief of Staff app", mimeType: "text/markdown" }], ...CACHE });
     if (m.method === "resources/templates/list") return ok({ resourceTemplates: [], ...CACHE });
+    if (m.method === "resources/read" && p.uri === UI_URI) return ok({ contents: [{ uri: UI_URI, mimeType: UI_MIME, text: UI_HTML, _meta: { ui: { prefersBorder: true } } }], ...CACHE });
     if (m.method === "resources/read") return p.uri === SKILL_URI ? ok({ contents: [{ uri: SKILL_URI, mimeType: "text/markdown", text: SKILL_MD }], ...CACHE }) : err(-32602, "No such resource", 400);
-    if (m.method === "tools/list") return ok(modern ? { tools: TOOLS, ttlMs: 300000, cacheScope: "private" } : { tools: TOOLS });
+    const ctx = (box[0].ctx && typeof box[0].ctx === "object" ? box[0].ctx : {}) as Record<string, any>;
+    const caps = (meta["io.modelcontextprotocol/clientCapabilities"] || p.capabilities || {}) as Record<string, any>;
+    const uiCap = caps.extensions && caps.extensions["io.modelcontextprotocol/ui"];
+    const panel = ctx.panel !== false && !!uiCap && (!Array.isArray(uiCap.mimeTypes) || uiCap.mimeTypes.includes(UI_MIME));
+    const toolList = () => TOOLS.map(t => panel && t.name === "show_for_approval" ? { ...t, _meta: { ui: { resourceUri: UI_URI, visibility: ["model", "app"] }, "ui/resourceUri": UI_URI } } : t);
+    if (m.method === "tools/list") return ok(modern ? { tools: toolList(), ttlMs: 300000, cacheScope: "private" } : { tools: toolList() });
     if (m.method === "tools/call") {
       const a = p.arguments || {};
-      if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
-      const n = [a.emails, a.meetings, a.changes, a.actions, a.documents].reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
-      if (!n) return ok({ content: [{ type: "text", text: "Nothing was given to show. Include emails, meetings, changes, actions or documents." }], isError: true });
-      // Which of his profiles is this for? When Claude has not said, the app has given their names, and this chat can
-      // put a question to him, he is asked once, with the names to pick from. Whatever he does, the hand-over goes on:
-      // if he skips the question he chooses in the app, as before.
-      const names: string[] = Array.isArray(box[0].profiles) ? box[0].profiles.filter((x: unknown) => typeof x === "string" && x) : [];
-      const cc = (meta["io.modelcontextprotocol/clientCapabilities"] || {}) as Record<string, any>, el = cc.elicitation;
-      const canAsk = modern && !!el && typeof el === "object" && (!Object.keys(el).length || "form" in el);
-      const said = p.inputResponses && typeof p.inputResponses === "object" ? p.inputResponses.account : null;
-      if (said && said.action === "accept" && said.content && names.includes(String(said.content.account))) a.for_account = String(said.content.account);
-      else if (!said && !p.inputResponses && canAsk && names.length > 1 && !String(a.for_account || "").trim()) {
-        console.log("mcp " + JSON.stringify({ call: "tools/call", step: "asked which profile", choices: names.length }));
-        return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { account: { method: "elicitation/create", params: { mode: "form", message: "Which of your profiles is this for? It decides which mailbox and calendar it goes into.", requestedSchema: { type: "object", properties: { account: { type: "string", title: "Profile", enum: names } }, required: ["account"] } } } } } }, status: 200 };
+      const KINDS = ["emails", "meetings", "changes", "actions", "documents"];
+      // What he did with it: only the state of each item, by its place in the list. Never what the items were.
+      if (p.name === "check_outcome") {
+        const want = typeof a.ref === "string" && /^[0-9a-f]{10}$/.test(a.ref) ? a.ref : "";
+        const got = await (await db(`cos_outcomes?s_hash=eq.${sHash}${want ? `&ref=eq.${want}` : ""}&select=ref,state,created_at,updated_at&order=created_at.desc&limit=${want ? 1 : 5}`)).json().catch(() => []);
+        const list = Array.isArray(got) ? got : [];
+        if (!list.length) return ok({ content: [{ type: "text", text: want ? `Nothing is recorded for reference ${want}. It may be more than a week old.` : "Nothing has been handed over in the last week." }], structuredContent: { states: [] } });
+        const SAY: Record<string, string> = { waiting: "waiting in the app (he has not dealt with it)", opened: "opened for him to check and send (you cannot know whether he sent it)", done: "done", added: "added", made: "made", dismissed: "dismissed (he chose not to do it)", failed: "did not work" };
+        const ONE: Record<string, string> = { emails: "Email", meetings: "Meeting", changes: "Change", actions: "Action", documents: "Document" };
+        const text = list.map((o: any) => { const st = (o.state && typeof o.state === "object" ? o.state : {}) as Record<string, string[]>; const lines: string[] = [];
+          for (const k of KINDS) (Array.isArray(st[k]) ? st[k] : []).forEach((v, n) => lines.push(`- ${ONE[k]} ${n + 1}: ${SAY[v] || v}`));
+          return `Reference ${o.ref}, handed over ${String(o.created_at).slice(0, 16).replace("T", " ")} UTC:\n${lines.join("\n") || "- nothing listed"}`; }).join("\n\n");
+        return ok({ content: [{ type: "text", text: text + "\n\nItems are numbered in the order you gave them. Do not say anything was sent: he sends emails and invitations himself." }], structuredContent: { states: list.map((o: any) => ({ ref: o.ref, state: o.state })) } });
       }
-      if (said) console.log("mcp " + JSON.stringify({ call: "tools/call", step: "answer to which profile", action: String(said.action || "").slice(0, 12) }));
-      const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), summary: String(a.summary || "").slice(0, 300), for_account: String(a.for_account || "").slice(0, 120), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [], actions: a.actions || [], documents: a.documents || [] }));
-      // a box never holds more than a handful, and nothing older than two days
+      if (p.name !== "show_for_approval") return err(-32602, "unknown tool", 400);
+      const n = KINDS.map(k => a[k]).reduce((t: number, l: unknown) => t + (Array.isArray(l) ? l.length : 0), 0);
+      if (!n) return ok({ content: [{ type: "text", text: "Nothing was given to show. Include emails, meetings, changes, actions or documents." }], isError: true });
+      // What is still unsettled is asked once, in one small form, where the chat can show one: which profile (unless
+      // Claude said, or his app is in a profile already), who an action is for, and who a reply goes to. Whatever he
+      // does with the form, the hand-over goes on: anything he leaves, he settles in the app as before.
+      const names: string[] = Array.isArray(box[0].profiles) ? box[0].profiles.filter((x: unknown) => typeof x === "string" && x) : [];
+      const active = typeof ctx.active === "string" ? ctx.active : "";
+      const staffBy = (ctx.staff && typeof ctx.staff === "object" ? ctx.staff : {}) as Record<string, unknown>;
+      const el = caps.elicitation;
+      const canAsk = modern && !!el && typeof el === "object" && (!Object.keys(el).length || "form" in el);
+      const acts: any[] = (Array.isArray(a.actions) ? a.actions : []).filter((x: any) => x && typeof x === "object");
+      const loose = acts.filter(x => !String(x.for || "").trim());
+      const replies: any[] = (Array.isArray(a.emails) ? a.emails : []).filter((e: any) => e && typeof e === "object" && e.reply_to && typeof e.reply_all !== "boolean");
+      const LATER = "I will choose in the app", SENDER = "Just the sender", EVERYONE = "Everyone on the email";
+      const resp = p.inputResponses && typeof p.inputResponses === "object" ? (p.inputResponses.details || p.inputResponses.account) : null;
+      if (resp) {
+        console.log("mcp " + JSON.stringify({ call: "tools/call", step: "answer to the questions", action: String(resp.action || "").slice(0, 12) }));
+        const c = resp.action === "accept" && resp.content && typeof resp.content === "object" ? resp.content : {};
+        if (names.includes(String(c.account))) a.for_account = String(c.account);
+        if (typeof c.staff === "string" && c.staff && c.staff !== LATER) for (const x of loose) x.for = c.staff.slice(0, 80);
+        if (typeof c.reply === "string") for (const e of replies) e.reply_all = c.reply === EVERYONE;
+      } else if (!p.inputResponses && canAsk) {
+        const props: Record<string, unknown> = {}, asks: string[] = [];
+        if (!String(a.for_account || "").trim() && names.length > 1 && !active) { props.account = { type: "string", title: "Profile", description: "Which mailbox and calendar it goes into", enum: names }; asks.push("profile"); }
+        if (loose.length) {
+          const prof = names.find(x => x.toLowerCase() === String(a.for_account || "").trim().toLowerCase()) || active;
+          let list = Array.isArray(staffBy[prof]) ? (staffBy[prof] as unknown[]) : ([] as unknown[]).concat(...Object.values(staffBy).filter(Array.isArray) as unknown[][]);
+          list = [...new Set(list.filter(x => typeof x === "string" && x))].slice(0, 40);
+          if (list.length > 1) { props.staff = { type: "string", title: loose.length === 1 ? "Who is the action for" : `Who are these ${loose.length} actions for`, enum: [...list, LATER] }; asks.push("staff"); }
+        }
+        if (replies.length) { props.reply = { type: "string", title: replies.length === 1 ? "Reply to" : "Replies go to", enum: [SENDER, EVERYONE] }; asks.push("reply"); }
+        if (asks.length) {
+          console.log("mcp " + JSON.stringify({ call: "tools/call", step: "asked", about: asks }));
+          return { body: { jsonrpc: "2.0", id: m.id, result: { resultType: "input_required", inputRequests: { details: { method: "elicitation/create", params: { mode: "form", message: asks.length === 1 && asks[0] === "profile" ? "Which of your profiles is this for? It decides which mailbox and calendar it goes into." : "A couple of things to settle before this goes to your app. Leave any of them and you can choose in the app.", requestedSchema: { type: "object", properties: props, required: asks.length === 1 && asks[0] === "profile" ? ["account"] : [] } } } } } }, status: 200 };
+        }
+      }
+      const ref = crypto.randomUUID().replace(/-/g, "").slice(0, 10);
+      const state: Record<string, string[]> = {}; for (const k of KINDS) { const c = Array.isArray(a[k]) ? a[k].length : 0; if (c) state[k] = Array(Math.min(c, 100)).fill("waiting"); }
+      const sealed = await seal(box[0].pub, JSON.stringify({ at: Date.now(), ref, summary: String(a.summary || "").slice(0, 300), for_account: String(a.for_account || "").slice(0, 120), emails: a.emails || [], meetings: a.meetings || [], changes: a.changes || [], actions: a.actions || [], documents: a.documents || [] }));
+      // a box never holds more than a handful, and nothing older than two days; what he did is kept a week
       await db(`cos_relay?s_hash=eq.${sHash}&created_at=lt.${new Date(Date.now() - 2 * 864e5).toISOString()}`, { method: "DELETE" });
+      await db(`cos_outcomes?s_hash=eq.${sHash}&created_at=lt.${new Date(Date.now() - 7 * 864e5).toISOString()}`, { method: "DELETE" });
       const have = await (await db(`cos_relay?s_hash=eq.${sHash}&select=id`)).json().catch(() => []);
       if (Array.isArray(have) && have.length >= 40) return ok({ content: [{ type: "text", text: "His app has not collected the earlier ones yet. Ask him to open the Chief of Staff app on his Mac, then try again." }], isError: true });
       const r = await db("cos_relay", { method: "POST", body: JSON.stringify({ s_hash: sHash, sealed }) });
       if (!r.ok) return ok({ content: [{ type: "text", text: "It could not be handed to the app just now. Try again in a moment." }], isError: true });
-      return ok({ content: [{ type: "text", text: `Handed to his Chief of Staff app: ${n} item${n === 1 ? "" : "s"} are waiting there for him to check and approve. Nothing has been sent, created or changed yet, and you cannot see whether he approves. Tell him briefly that it is waiting in the app (it shows within a few seconds if the app is open on his Mac). Do not also make these changes with any other tool.` }] });
+      await db("cos_outcomes", { method: "POST", body: JSON.stringify({ s_hash: sHash, ref, state }) }).catch(() => null);
+      return ok({ content: [{ type: "text", text: `Handed to his Chief of Staff app: ${n} item${n === 1 ? "" : "s"} are waiting there for him to check and approve. Nothing has been sent, created or changed yet. Tell him briefly that it is waiting in the app (it shows within a few seconds if the app is open on his Mac). Do not also make these changes with any other tool. Reference ${ref}: use check_outcome with it to see what he did, before you say anything was done.` }], structuredContent: { ref, state } });
     }
     return err(-32601, "method not found", 404);
   };
@@ -238,15 +383,32 @@ async function app(req: Request, what: string) {
   if (what === "pull") { const rows = await (await db(`cos_relay?s_hash=eq.${s}&select=id,sealed,created_at&order=created_at.asc&limit=20`)).json().catch(() => []); return json({ ok: true, rows: Array.isArray(rows) ? rows : [] }); }
   if (what === "ack") { const ids = (Array.isArray(body.ids) ? body.ids : []).filter((x: unknown) => typeof x === "string" && /^[0-9a-f-]{36}$/.test(x as string)).slice(0, 40); if (ids.length) await db(`cos_relay?s_hash=eq.${s}&id=in.(${ids.join(",")})`, { method: "DELETE" }); return json({ ok: true }); }
   // The names of his profiles (names only), so Claude can offer them as choices. An empty list turns the question off.
-  if (what === "profiles") { const names = (Array.isArray(body.names) ? body.names : []).filter((x: unknown) => typeof x === "string").map((x: string) => x.trim().slice(0, 60)).filter(Boolean).slice(0, 20); const r = await db(`cos_boxes?s_hash=eq.${s}`, { method: "PATCH", body: JSON.stringify({ profiles: names }) }); return r.ok ? json({ ok: true, count: names.length }) : json({ error: "could not keep them" }, 400); }
+  // Also: which profile his app is in now (so he is not asked when he is plainly in one), the titles of his staff in
+  // each profile (to offer when an action has nobody named), and whether he wants the panel in the chat. Names only.
+  if (what === "profiles") {
+    const clean = (l: unknown, max: number) => (Array.isArray(l) ? l : []).filter((x: unknown) => typeof x === "string").map((x: string) => x.trim().slice(0, 60)).filter(Boolean).slice(0, max);
+    const names = clean(body.names, 20), staff: Record<string, string[]> = {};
+    if (body.staff && typeof body.staff === "object") for (const k of Object.keys(body.staff).slice(0, 20)) if (names.includes(k)) staff[k] = clean(body.staff[k], 40);
+    const ctx = { active: typeof body.active === "string" && names.includes(body.active.trim()) ? body.active.trim() : "", staff, panel: body.panel !== false };
+    const r = await db(`cos_boxes?s_hash=eq.${s}`, { method: "PATCH", body: JSON.stringify({ profiles: names, ctx }) });
+    return r.ok ? json({ ok: true, count: names.length }) : json({ error: "could not keep them" }, 400);
+  }
+  // What he did with a hand-over: the state of each item by its place, nothing else.
+  if (what === "outcome") {
+    if (typeof body.ref !== "string" || !/^[0-9a-f]{10}$/.test(body.ref) || !body.state || typeof body.state !== "object") return json({ error: "bad request" }, 400);
+    const OKS = ["waiting", "opened", "done", "added", "made", "dismissed", "failed"], state: Record<string, string[]> = {};
+    for (const k of ["emails", "meetings", "changes", "actions", "documents"]) if (Array.isArray(body.state[k])) state[k] = body.state[k].slice(0, 100).map((v: unknown) => (OKS.includes(String(v)) ? String(v) : "waiting"));
+    const r = await db(`cos_outcomes?s_hash=eq.${s}&ref=eq.${body.ref}`, { method: "PATCH", body: JSON.stringify({ state, updated_at: new Date().toISOString() }) });
+    return r.ok ? json({ ok: true }) : json({ error: "could not keep it" }, 400);
+  }
   if (what === "rotate") {                                              // a new address and key for the same app; the old address stops at once
     if (!okHash(body.s_hash) || !okHash(body.t_hash) || typeof body.pub !== "string" || body.pub.length > 200) return json({ error: "bad request" }, 400);
-    const was = await (await db(`cos_boxes?s_hash=eq.${s}&select=profiles`)).json().catch(() => []);
-    await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" });
-    const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub, profiles: (Array.isArray(was) && was[0] && was[0].profiles) || [] }) });
+    const was = await (await db(`cos_boxes?s_hash=eq.${s}&select=profiles,ctx`)).json().catch(() => []);
+    await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); await db(`cos_outcomes?s_hash=eq.${s}`, { method: "DELETE" });
+    const r = await db("cos_boxes", { method: "POST", body: JSON.stringify({ s_hash: body.s_hash, t_hash: body.t_hash, pub: body.pub, profiles: (Array.isArray(was) && was[0] && was[0].profiles) || [], ctx: (Array.isArray(was) && was[0] && was[0].ctx) || {} }) });
     return r.ok ? json({ ok: true }) : json({ error: "could not change it" }, 400);
   }
-  if (what === "unregister") { await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); return json({ ok: true }); }
+  if (what === "unregister") { await db(`cos_boxes?s_hash=eq.${s}`, { method: "DELETE" }); await db(`cos_outcomes?s_hash=eq.${s}`, { method: "DELETE" }); return json({ ok: true }); }
   return json({ error: "not found" }, 404);
 }
 

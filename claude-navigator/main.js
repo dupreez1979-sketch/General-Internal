@@ -2079,7 +2079,21 @@ ipcMain.handle('conn-rotate', async e => {
   } catch (er) { return { ok: false, error: 'The address could not be changed just now.' }; }
 });
 // The names of your profiles go to the relay (names only), so Claude can ask which one something is for.
-ipcMain.handle('conn-profiles', async (e, names) => { if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on || !c.t) return { ok: false }; try { const r = await connPost('profiles', { names: (Array.isArray(names) ? names : []).filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, 20) }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; } });
+// Also which profile the app is in, the titles of the staff in each profile, and whether the panel in the chat is wanted.
+ipcMain.handle('conn-profiles', async (e, about) => {
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on || !c.t) return { ok: false };
+  const a = Array.isArray(about) ? { names: about } : (about && typeof about === 'object' ? about : {});
+  const clean = (l, max) => (Array.isArray(l) ? l : []).filter(x => typeof x === 'string').map(x => x.slice(0, 60)).slice(0, max);
+  const staff = {}; if (a.staff && typeof a.staff === 'object') for (const k of Object.keys(a.staff).slice(0, 20)) staff[String(k).slice(0, 60)] = clean(a.staff[k], 40);
+  try { const r = await connPost('profiles', { names: clean(a.names, 20), active: typeof a.active === 'string' ? a.active.slice(0, 60) : '', staff, panel: a.panel !== false }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
+});
+// What you did with something Claude handed over: only the state of each item, by its place in the list.
+ipcMain.handle('conn-outcome', async (e, ref, state) => {
+  if (!fromOwnWindow(e)) return null; const c = connGet(); if (!c || !c.on || !c.t || !/^[0-9a-f]{10}$/.test(String(ref))) return { ok: false };
+  const OKS = ['waiting', 'opened', 'done', 'added', 'made', 'dismissed', 'failed'], out = {};
+  for (const k of ['emails', 'meetings', 'changes', 'actions', 'documents']) if (state && Array.isArray(state[k])) out[k] = state[k].slice(0, 100).map(v => (OKS.includes(v) ? v : 'waiting'));
+  try { const r = await connPost('outcome', { ref: String(ref), state: out }, c.t); return { ok: !!r.ok }; } catch (er) { return { ok: false }; }
+});
 ipcMain.handle('conn-status', e => { if (!fromOwnWindow(e)) return null; const c = connGet(); return { on: !!(c && c.on), url: c && c.on ? `${connBase()}/mcp/${c.s}` : '' }; });
 ipcMain.handle('conn-on', async e => {
   if (!fromOwnWindow(e)) return null;

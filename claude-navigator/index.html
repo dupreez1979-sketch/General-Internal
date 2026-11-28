@@ -18331,8 +18331,10 @@ body { width: max-content !important; min-width: 0 !important; }
         if (st.on) {
           row('Add It in Claude, Once', 'Copy the address, then in Claude open Settings, Connectors, Add custom connector. Name it \u201cChief of Staff app\u201d, paste the address and choose no sign-in. Keep the address to yourself: anyone who has it could put suggestions on your approval card (they could not read or change anything).', ['Copy the Address', async () => { try { await navigator.clipboard.writeText(st.url); toast('Copied. Paste it into Claude\u2019s Add custom connector box.'); } catch (e) { toast('Could not copy it.'); } }], ['Open Claude\u2019s Connectors', leave(() => go({ kind: 'page', url: 'https://claude.ai/settings/connectors' }))]);
           row('If the Address Gets Out', 'Make a new one. The old address stops working at once, and you add the new one in Claude in its place.', ['New Address\u2026', async () => { if (!confirm('Make a new address? The one in Claude stops working until you replace it there.')) return; const r = await window.navigatorApp.connRotate(); if (!r || !r.ok) return toast((r && r.error) || 'The address could not be changed.'); connUi.status = await window.navigatorApp.connStatus(); try { await navigator.clipboard.writeText(r.url); toast('The new address is copied. Replace the connector in Claude with it.'); } catch (e) { /* copied from the row above */ } show(); }]);
-          row('Claude Asks Which Profile', connAskOn() ? 'On. When Claude is not sure which of your profiles something is for, it asks you in the chat, with your profile names to pick from. Only the names are given to the relay.' : 'Off. Claude does not ask, and the relay holds none of your profile names. You choose the profile on the card in this app.',
+          row('Claude Asks Which Profile', connAskOn() ? 'On. When Claude is not sure which profile something is for, who an action is for, or who a reply goes to, it asks you in the chat with a short list to pick from. It does not ask about the profile while this app is in one. Only names are given to the relay: your profiles and your staff titles.' : 'Off. Claude does not ask, and the relay holds none of your profile or staff names. You choose on the card in this app.',
             [connAskOn() ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connAsk', connAskOn() ? '0' : '1'); await connTellProfiles(true); show(); }]);
+          row('A Panel in the Claude Chat', ls.get('claudeNavigator.connPanel') !== '0' ? 'On. When Claude hands something over, the chat shows it laid out in a small panel, with a button to see what you have done with it.' : 'Off. Claude just says that it is waiting in the app.',
+            [ls.get('claudeNavigator.connPanel') !== '0' ? 'Turn Off' : 'Turn On', async () => { ls.set('claudeNavigator.connPanel', ls.get('claudeNavigator.connPanel') !== '0' ? '0' : '1'); await connTellProfiles(true); show(); }]);
           row('How It Is Kept Private', 'What Claude hands over is locked with a key that only this Mac holds, waits on the relay for a few seconds, and is deleted once this app has collected it. The relay cannot reach your mail or calendar.');
         }
       },
@@ -18657,7 +18659,16 @@ body { width: max-content !important; min-width: 0 !important; }
     // done yourself, or take it off the list. What you have dealt with stays dealt with when you come back.
     const raws = [];
     const left = () => raws.filter(r => !r._done && !r._gone).length + changes.filter(c => !c._st).length;
-    const count = () => { const el = d.querySelector('.cn-left'); if (el) { const n = left(); el.textContent = n ? `${n} still to do` : 'All dealt with'; } };
+    // Claude can ask what became of what it handed over. It is told only the state of each item, by its place in the
+    // list (waiting, opened, done, dismissed, did not work), never what the items were.
+    let tellT = 0;
+    const tell = closing => { if (!it.ref || !window.navigatorApp.connOutcome) return;
+      const st = (r, good) => (!r ? 'waiting' : r._gone ? 'dismissed' : r._done ? good : closing ? 'dismissed' : 'waiting');
+      const state = { emails: emails.map(m => st(m._raw, 'opened')), meetings: mraw.map(r => st(r, 'opened')), actions: acts.map(a => st(a, 'added')), documents: docs.map(x => st(x, 'made')),
+        changes: changes.map(c => (c._st === 'done' ? 'done' : c._st === 'failed' ? 'failed' : c._st === 'skipped' || (closing && c._st !== 'doing') ? 'dismissed' : 'waiting')) };
+      for (const k of Object.keys(state)) if (!state[k].length) delete state[k];
+      window.navigatorApp.connOutcome(it.ref, state).catch(() => {}); };
+    const count = () => { const el = d.querySelector('.cn-left'); if (el) { const n = left(); el.textContent = n ? `${n} still to do` : 'All dealt with'; } clearTimeout(tellT); tellT = setTimeout(() => tell(false), 1500); };
     const row = (title, sub, raw, run, words = ['Open…', 'Open Again…'], goTo) => {
       raws.push(raw); if (raw._gone) return;
       const r = document.createElement('div'); r.className = 'mt'; r.innerHTML = '<div><b></b><span></span></div><span class="mt-b"><button type="button" class="btn-primary" data-r="go"></button><button type="button" class="btn" data-r="tick"></button><button type="button" class="btn ico" data-r="x" title="Take this one off the list" aria-label="Remove">×</button></span>';
@@ -18672,11 +18683,11 @@ body { width: max-content !important; min-width: 0 !important; }
     for (const m of emails) { const rt = m._raw.reply_to && typeof m._raw.reply_to === 'object' && m._raw.reply_to.subject ? m._raw.reply_to : null;
       const files = (Array.isArray(m._raw.attach) ? m._raw.attach : []).filter(x => typeof x === 'string' && x.trim()).slice(0, 10);
       const fnote = files.length ? ` \u00b7 ${files.length === 1 ? `with \u201c${files[0].split('/').pop()}\u201d attached` : `with ${files.length} files attached`}` : '';
-      if (!rt) { row(`Email: ${m.subject || '(No subject)'}`, (m.to ? `To ${m.to}` : 'Nobody in To yet') + fnote, m._raw, async () => { await chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})); await connAttach(files); }, undefined, 'mail'); continue; }
+      if (!rt) { row(`Email: ${m.subject || '(No subject)'}`, (m.to ? `To ${m.to}` : 'Nobody in To yet') + fnote, m._raw, async () => { const who = await connPeople(m.to, m.cc, acc); await chatToEmail(Object.assign({ to: who.to, cc: who.cc, subject: m.subject, text: m.text }, acc ? { acc } : {})); await connAttach(files); if (who.missing.length) setTimeout(() => toast(who.missing.length === 1 ? `No email address was found for \u201c${who.missing[0]}\u201d. Add it before you send.` : `No email address was found for ${who.missing.join(', ')}. Add them before you send.`), files.length ? 2500 : 300); }, undefined, 'mail'); continue; }
       // a reply opens as a real reply: on the original email, in its conversation, with the history underneath
       row(`Reply: ${rt.subject}`, `To ${rt.from || 'the sender'}${m._raw.reply_all ? ' and everyone on it' : ''}, with the earlier emails underneath`, m._raw, async b => {
         b.disabled = true; const hit = await connFindMail(rt, acc); b.disabled = false;
-        if (!hit) { toast('The email this answers was not found in your mail, so it opened as a new email.'); await chatToEmail(Object.assign({ to: m.to, cc: m.cc, subject: m.subject || `RE: ${rt.subject}`, text: m.text }, acc ? { acc } : {})); return connAttach(files); }
+        if (!hit) { toast('The email this answers was not found in your mail, so it opened as a new email.'); const who = await connPeople(m.to || rt.from || '', m.cc, acc); await chatToEmail(Object.assign({ to: who.to, cc: who.cc, subject: m.subject || `RE: ${rt.subject}`, text: m.text }, acc ? { acc } : {})); return connAttach(files); }
         if (!mailOn()) { sideOpen('mail', !!sideState.app); await new Promise(r => setTimeout(r, 400)); }
         await mailCompose(m._raw.reply_all ? 'replyAll' : 'reply', hit, { text: m.text }); await connAttach(files);
       }, undefined, 'mail'); }
@@ -18689,7 +18700,7 @@ body { width: max-content !important; min-width: 0 !important; }
     if (changes.length) { const plan = it._plan = it._plan || { summary: `${changes.length} change${changes.length === 1 ? '' : 's'} to your calendar or mail` }; plan.changes = changes; if (acc && !plan.acc) { plan.acc = acc; plan.accSet = true; } d.querySelector('.pl-host').appendChild(planCard({ plan, planRefs: [] })); }
     // what was done on the card is remembered with it, so opening it again never offers the same change twice
     const tidy = () => JSON.parse(JSON.stringify(it, (k, v) => (k === '_hit' ? undefined : v)));
-    const shut = async keep => { delete connUi.open[it.id]; d.close(); d.remove();
+    const shut = async keep => { delete connUi.open[it.id]; clearTimeout(tellT); tell(!(keep && left() > 0)); d.close(); d.remove();
       for (const c of changes) if (c._st === 'doing') delete c._st;
       if (keep && left() > 0) await window.navigatorApp.connKeep(tidy()); else { await window.navigatorApp.connRemove(it.id); connUi.items = connUi.items.filter(x => x.id !== it.id); }
       connPaint(); };
@@ -18720,13 +18731,37 @@ body { width: max-content !important; min-width: 0 !important; }
     if (missing.length) toast(missing.length === 1 ? `\u201c${missing[0].name}\u201d is not attached: ${missing[0].why}. Attach it yourself before you send.` : `${missing.length} files are not attached (${missing.map(x => x.name).join(', ')}). Attach them yourself before you send.`);
     else if (got.length) toast(got.length === 1 ? `Attached \u201c${got[0].name}\u201d` : `Attached ${got.length} files`);
   }
+  // Claude often names a person without their address. Each name is looked up among the people you write to (in the
+  // account the email goes from) and given its address, so the email can actually be sent. A name with no match is
+  // left as it is and said so, never guessed.
+  async function connPeople(to, cc, accId) {
+    if (mailUi.accounts === null) await mailLoadAccounts();
+    const A = (accId && mailAccById(accId)) || mailVisible().find(a => !a.needsSignIn && !a.shared) || mailVisible()[0], missing = [];
+    const one = async str => { const out = [];
+      for (const raw of mailSplit(String(str || '')).map(z => z.trim()).filter(Boolean)) {
+        if (/[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+/.test(raw)) { out.push(raw); continue; }
+        let hit = null;
+        if (A) { try { const pr = await mailApi(A.id, { path: `/me/people?$search=${encodeURIComponent('"' + raw.replace(/"/g, '') + '"')}&$top=3&$select=displayName,scoredEmailAddresses` }); hit = pr.ok && (pr.data.value || []).map(x => ({ name: x.displayName, address: ((x.scoredEmailAddresses || [])[0] || {}).address })).find(x => x.address); } catch (e) { /* not found */ } }
+        if (hit) out.push(`${(hit.name || raw).replace(/[<>,]/g, ' ').trim()} <${hit.address}>`); else { out.push(raw); missing.push(raw); }
+      }
+      return out.join(', '); };
+    return { to: await one(to), cc: await one(cc), missing };
+  }
   const connAskOn = () => ls.get('claudeNavigator.connAsk') !== '0';
   async function connTellProfiles(force) {
     if (!isApp || !window.navigatorApp.connProfiles || !connUi.status || !connUi.status.on) return;
-    let names = []; try { names = connAskOn() ? profiles().map(p => String(p.name || '').trim()).filter(Boolean) : []; } catch (e) { return; }
-    const key = JSON.stringify(names) + '|' + ((connUi.status.url || '').slice(-8));
+    let about = null;
+    try {
+      const ps = connAskOn() ? profiles().filter(p => String(p.name || '').trim()) : [], staff = {};
+      // (the titles of the staff in each profile, so Claude can ask who an action is for; and the profile you are in,
+      //  so it does not ask which profile when you are plainly working in one)
+      for (const p of ps) { const t = (cos.teams || {})[p.id]; const l = t ? (t.nodes || []).filter(n => n.kind === 'staff' && !n.chief).map(n => String(n.name || '').trim()).filter(Boolean) : []; if (l.length) staff[p.name.trim()] = l; }
+      const act = activeProfile();
+      about = { names: ps.map(p => p.name.trim()), active: connAskOn() && act ? String(act.name || '').trim() : '', staff, panel: ls.get('claudeNavigator.connPanel') !== '0' };
+    } catch (e) { return; }
+    const key = JSON.stringify(about) + '|' + ((connUi.status.url || '').slice(-8));
     if (!force && ls.get('claudeNavigator.connProfilesSent') === key) return;
-    const r = await window.navigatorApp.connProfiles(names).catch(() => null);
+    const r = await window.navigatorApp.connProfiles(about).catch(() => null);
     if (r && r.ok) ls.set('claudeNavigator.connProfilesSent', key);
   }
   async function connPoll() {
